@@ -7,6 +7,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.15.1] - 2026-02-22
+
+### Fixed
+- **RPM packaging**: Added KCM and editor translation files (`kcm_plasmazones.mo`, `plasmazones-editor.mo`) to spec `%files` section, fixing "unpackaged file(s) found" build failure on Fedora.
+
 ## [1.15.0] - 2026-02-22
 
 ### Added
