@@ -216,7 +216,7 @@ Item {
                     text: {
                         var zoneCount = root.modelData.zoneCount || 0
                         if (root.modelData.isSystem) {
-                            return i18n("System • %1", zoneCount)
+                            return i18n("System · %1 zones", zoneCount)
                         } else {
                             return i18n("%1 zones", zoneCount)
                         }
