@@ -345,7 +345,7 @@ install(DIRECTORY data/shaders/
     PATTERN "*.glsl"
     PATTERN "*.vert"
     PATTERN "*.frag"
-    PATTERN "preview.png"
+    PATTERN "*.png"
 )
 
 # Install icons (hicolor for dark themes, hicolor-light for light themes)

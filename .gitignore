@@ -52,6 +52,9 @@ ui_*.h
 *.lo
 *.slo
 
+# SPIR-V compiled shaders
+*.spv
+
 # Precompiled Headers
 *.gch
 *.pch
