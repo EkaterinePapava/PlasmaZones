@@ -48,9 +48,9 @@ public:
 
     QVector<QRect> calculateZones(const TilingParams &params) const override;
 
-    // Fibonacci supports split ratio but not master count
+    // Fibonacci always uses balanced 0.5 splits — split ratio is master-stack only
     bool supportsMasterCount() const noexcept override { return false; }
-    bool supportsSplitRatio() const noexcept override { return true; }
+    bool supportsSplitRatio() const noexcept override { return false; }
     qreal defaultSplitRatio() const noexcept override { return 0.5; }
     int defaultMaxWindows() const noexcept override { return 5; }
 };

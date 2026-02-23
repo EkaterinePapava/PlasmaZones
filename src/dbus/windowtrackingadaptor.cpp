@@ -1004,7 +1004,7 @@ QString WindowTrackingAdaptor::getMoveTargetForWindow(const QString& windowId, c
                                         .toJson(QJsonDocument::Compact));
     }
 
-    Q_EMIT navigationFeedback(true, QStringLiteral("move"), QString(), currentZoneId, targetZoneId, screenName);
+    Q_EMIT navigationFeedback(true, QStringLiteral("move"), direction, currentZoneId, targetZoneId, screenName);
     return QString::fromUtf8(QJsonDocument(moveResult(true, QString(), targetZoneId, rectToJson(geo),
                                                       currentZoneId, screenName))
                                      .toJson(QJsonDocument::Compact));
@@ -1069,7 +1069,7 @@ QString WindowTrackingAdaptor::getFocusTargetForWindow(const QString& windowId, 
                                         .toJson(QJsonDocument::Compact));
     }
 
-    Q_EMIT navigationFeedback(true, QStringLiteral("focus"), QString(), currentZoneId, targetZoneId, screenName);
+    Q_EMIT navigationFeedback(true, QStringLiteral("focus"), direction, currentZoneId, targetZoneId, screenName);
     return QString::fromUtf8(QJsonDocument(focusResult(true, QString(), windowsInZone.first(),
                                                        currentZoneId, targetZoneId, screenName))
                                      .toJson(QJsonDocument::Compact));
@@ -1250,7 +1250,7 @@ QString WindowTrackingAdaptor::getSwapTargetForWindow(const QString& windowId, c
 
     QStringList windowsInTargetZone = m_service->windowsInZone(targetZoneId);
     if (windowsInTargetZone.isEmpty()) {
-        Q_EMIT navigationFeedback(true, QStringLiteral("swap"), QStringLiteral("moved_to_empty"),
+        Q_EMIT navigationFeedback(true, QStringLiteral("swap"), direction,
                                  currentZoneId, targetZoneId, screenName);
         return QString::fromUtf8(QJsonDocument(swapResult(true, QStringLiteral("moved_to_empty"),
                                                         windowId, targetGeom.x(), targetGeom.y(),
@@ -1261,7 +1261,7 @@ QString WindowTrackingAdaptor::getSwapTargetForWindow(const QString& windowId, c
     }
 
     QString targetWindowId = windowsInTargetZone.first();
-    Q_EMIT navigationFeedback(true, QStringLiteral("swap"), QString(),
+    Q_EMIT navigationFeedback(true, QStringLiteral("swap"), direction,
                              currentZoneId, targetZoneId, screenName);
     return QString::fromUtf8(QJsonDocument(swapResult(true, QString(),
                                                       windowId, targetGeom.x(), targetGeom.y(),

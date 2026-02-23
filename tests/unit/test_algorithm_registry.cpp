@@ -116,7 +116,7 @@ private Q_SLOTS:
         QVERIFY(algo != nullptr);
         QCOMPARE(algo->name(), QStringLiteral("BSP"));
         QVERIFY(!algo->supportsMasterCount());
-        QVERIFY(algo->supportsSplitRatio());
+        QVERIFY(!algo->supportsSplitRatio());
     }
 
     void testBuiltIn_rowsRegistered()
@@ -138,7 +138,7 @@ private Q_SLOTS:
         QVERIFY(algo != nullptr);
         QCOMPARE(algo->name(), QStringLiteral("Fibonacci"));
         QVERIFY(!algo->supportsMasterCount());
-        QVERIFY(algo->supportsSplitRatio());
+        QVERIFY(!algo->supportsSplitRatio());
     }
 
     void testBuiltIn_monocleRegistered()

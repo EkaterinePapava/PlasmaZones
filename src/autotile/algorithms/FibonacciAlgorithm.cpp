@@ -3,7 +3,6 @@
 
 #include "FibonacciAlgorithm.h"
 #include "../AlgorithmRegistry.h"
-#include "../TilingState.h"
 #include "core/constants.h"
 #include <KLocalizedString>
 #include <cmath>
@@ -47,11 +46,9 @@ QVector<QRect> FibonacciAlgorithm::calculateZones(const TilingParams &params) co
 
     QVector<QRect> zones;
 
-    if (windowCount <= 0 || !screenGeometry.isValid() || !params.state) {
+    if (windowCount <= 0 || !screenGeometry.isValid()) {
         return zones;
     }
-
-    const auto &state = *params.state;
 
     const QRect area = innerRect(screenGeometry, outerGap);
 
@@ -61,8 +58,9 @@ QVector<QRect> FibonacciAlgorithm::calculateZones(const TilingParams &params) co
         return zones;
     }
 
-    // Get split ratio from state
-    const qreal splitRatio = std::clamp(state.splitRatio(), MinSplitRatio, MaxSplitRatio);
+    // Fibonacci always uses balanced 0.5 splits — the split ratio setting
+    // is a master-stack concept and does not apply here.
+    constexpr qreal splitRatio = 0.5;
 
     // Precompute cumulative min dimensions for remaining windows at each split.
     // remainingMinWidth[i] = sum of minWidths for windows i..windowCount-1 + gaps

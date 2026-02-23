@@ -823,6 +823,114 @@ void AutotileEngine::rotateWindowOrder(bool clockwise)
     qCInfo(lcAutotile) << "Rotated windows" << (clockwise ? "clockwise" : "counterclockwise");
 }
 
+void AutotileEngine::swapFocusedInDirection(const QString& direction, const QString& action)
+{
+    const bool forward = (direction == QLatin1String("right") || direction == QLatin1String("down"));
+
+    QString screenName;
+    TilingState* state = nullptr;
+    const QStringList windows = tiledWindowsForFocusedScreen(screenName, state);
+
+    if (windows.size() < 2 || !state) {
+        Q_EMIT navigationFeedbackRequested(false, action,
+                                           QStringLiteral("nothing_to_swap"),
+                                           QString(), QString(), screenName);
+        return;
+    }
+
+    const QString focused = state->focusedWindow();
+    if (focused.isEmpty()) {
+        Q_EMIT navigationFeedbackRequested(false, action,
+                                           QStringLiteral("no_focus"),
+                                           QString(), QString(), screenName);
+        return;
+    }
+
+    const int currentIndex = windows.indexOf(focused);
+    if (currentIndex < 0) {
+        Q_EMIT navigationFeedbackRequested(false, action,
+                                           QStringLiteral("no_focus"),
+                                           QString(), QString(), screenName);
+        return;
+    }
+
+    int targetIndex = forward ? currentIndex + 1 : currentIndex - 1;
+    // Wrap around
+    if (targetIndex < 0) {
+        targetIndex = windows.size() - 1;
+    } else if (targetIndex >= windows.size()) {
+        targetIndex = 0;
+    }
+
+    const QString targetWindow = windows.at(targetIndex);
+    const bool swapped = state->swapWindowsById(focused, targetWindow);
+    retileAfterOperation(screenName, swapped);
+
+    Q_EMIT navigationFeedbackRequested(swapped, action, direction,
+                                       QString(), QString(), screenName);
+}
+
+void AutotileEngine::focusInDirection(const QString& direction, const QString& action)
+{
+    const bool forward = (direction == QLatin1String("right") || direction == QLatin1String("down"));
+
+    QString screenName;
+    TilingState* state = nullptr;
+    const QStringList windows = tiledWindowsForFocusedScreen(screenName, state);
+
+    if (windows.isEmpty() || !state) {
+        Q_EMIT navigationFeedbackRequested(false, action,
+                                           QStringLiteral("no_windows"),
+                                           QString(), QString(), screenName);
+        return;
+    }
+
+    const QString focused = state->focusedWindow();
+    const int currentIndex = qMax(0, windows.indexOf(focused));
+    const int targetIndex = (currentIndex + (forward ? 1 : -1) + windows.size()) % windows.size();
+
+    Q_EMIT focusWindowRequested(windows.at(targetIndex));
+    Q_EMIT navigationFeedbackRequested(true, action, direction,
+                                       QString(), QString(), screenName);
+}
+
+void AutotileEngine::moveFocusedToPosition(int position)
+{
+    QString screenName;
+    TilingState* state = nullptr;
+    const QStringList windows = tiledWindowsForFocusedScreen(screenName, state);
+
+    if (windows.isEmpty() || !state) {
+        Q_EMIT navigationFeedbackRequested(false, QStringLiteral("snap"),
+                                           QStringLiteral("no_windows"),
+                                           QString(), QString(), screenName);
+        return;
+    }
+
+    const QString focused = state->focusedWindow();
+    if (focused.isEmpty()) {
+        Q_EMIT navigationFeedbackRequested(false, QStringLiteral("snap"),
+                                           QStringLiteral("no_focus"),
+                                           QString(), QString(), screenName);
+        return;
+    }
+
+    // position is 1-based (from snap-to-zone-N shortcuts), convert to 0-based
+    const int targetIndex = qBound(0, position - 1, windows.size() - 1);
+    const bool moved = state->moveToTiledPosition(focused, targetIndex);
+    retileAfterOperation(screenName, moved);
+
+    if (moved) {
+        Q_EMIT navigationFeedbackRequested(true, QStringLiteral("snap"),
+                                           QStringLiteral("position_%1").arg(position),
+                                           QString(), QString(), screenName);
+    } else {
+        Q_EMIT navigationFeedbackRequested(false, QStringLiteral("snap"),
+                                           QStringLiteral("already_at_position"),
+                                           QString(), QString(), screenName);
+    }
+}
+
 void AutotileEngine::toggleFocusedWindowFloat()
 {
     QString screenName;

@@ -369,6 +369,39 @@ public:
     Q_INVOKABLE void toggleFocusedWindowFloat();
 
     /**
+     * @brief Swap the focused window with the adjacent window in tiling order
+     *
+     * Maps directional keyboard shortcuts (move/swap window left/right/up/down)
+     * to autotile's linear tiling order. Forward swaps with the next window,
+     * backward swaps with the previous.
+     *
+     * @param direction Direction string ("left", "right", "up", "down")
+     * @param action OSD action label — "move" or "swap" (defaults to "move")
+     */
+    Q_INVOKABLE void swapFocusedInDirection(const QString& direction,
+                                            const QString& action = QStringLiteral("move"));
+
+    /**
+     * @brief Focus the adjacent window in tiling order with OSD feedback
+     *
+     * Maps directional focus/cycle shortcuts to autotile's linear order.
+     *
+     * @param direction Direction string ("left", "right", "up", "down")
+     * @param action OSD action label — "focus" or "cycle" (defaults to "focus")
+     */
+    Q_INVOKABLE void focusInDirection(const QString& direction,
+                                      const QString& action = QStringLiteral("focus"));
+
+    /**
+     * @brief Move the focused window to a specific position in the tiling order
+     *
+     * Maps "snap to zone N" shortcuts to autotile positions.
+     *
+     * @param position Target position (1-based, clamped to valid range)
+     */
+    Q_INVOKABLE void moveFocusedToPosition(int position);
+
+    /**
      * @brief Float a specific window by its ID
      *
      * Marks the window as floating (excluded from automatic tiling) and

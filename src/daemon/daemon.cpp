@@ -1237,12 +1237,16 @@ void Daemon::handleFloat()
 void Daemon::handleMove(NavigationDirection direction)
 {
     QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
-    if (!screen || (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name()))) {
+    if (!screen) {
         return;
     }
     QString dirStr = navigationDirectionToString(direction);
     if (dirStr.isEmpty()) {
         qCWarning(lcDaemon) << "Unknown move navigation direction:" << static_cast<int>(direction);
+        return;
+    }
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+        m_autotileEngine->swapFocusedInDirection(dirStr);
         return;
     }
     m_windowTrackingAdaptor->moveWindowToAdjacentZone(dirStr);
@@ -1251,12 +1255,16 @@ void Daemon::handleMove(NavigationDirection direction)
 void Daemon::handleFocus(NavigationDirection direction)
 {
     QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
-    if (!screen || (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name()))) {
+    if (!screen) {
         return;
     }
     QString dirStr = navigationDirectionToString(direction);
     if (dirStr.isEmpty()) {
         qCWarning(lcDaemon) << "Unknown focus navigation direction:" << static_cast<int>(direction);
+        return;
+    }
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+        m_autotileEngine->focusInDirection(dirStr, QStringLiteral("focus"));
         return;
     }
     m_windowTrackingAdaptor->focusAdjacentZone(dirStr);
@@ -1278,7 +1286,12 @@ void Daemon::handlePush()
 void Daemon::handleRestore()
 {
     QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
-    if (!screen || (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name()))) {
+    if (!screen) {
+        return;
+    }
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+        // In autotile mode, "restore" floats the window (equivalent to unsnapping)
+        m_autotileEngine->toggleFocusedWindowFloat();
         return;
     }
     m_windowTrackingAdaptor->restoreWindowSize();
@@ -1287,12 +1300,16 @@ void Daemon::handleRestore()
 void Daemon::handleSwap(NavigationDirection direction)
 {
     QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
-    if (!screen || (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name()))) {
+    if (!screen) {
         return;
     }
     QString dirStr = navigationDirectionToString(direction);
     if (dirStr.isEmpty()) {
         qCWarning(lcDaemon) << "Unknown swap navigation direction:" << static_cast<int>(direction);
+        return;
+    }
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+        m_autotileEngine->swapFocusedInDirection(dirStr, QStringLiteral("swap"));
         return;
     }
     m_windowTrackingAdaptor->swapWindowWithAdjacentZone(dirStr);
@@ -1306,6 +1323,7 @@ void Daemon::handleSnap(int zoneNumber)
         return;
     }
     if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+        m_autotileEngine->moveFocusedToPosition(zoneNumber);
         return;
     }
     m_windowTrackingAdaptor->snapToZoneByNumber(zoneNumber, screen->name());
@@ -1314,7 +1332,12 @@ void Daemon::handleSnap(int zoneNumber)
 void Daemon::handleCycle(bool forward)
 {
     QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
-    if (!screen || (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name()))) {
+    if (!screen) {
+        return;
+    }
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+        QString dirStr = forward ? QStringLiteral("right") : QStringLiteral("left");
+        m_autotileEngine->focusInDirection(dirStr, QStringLiteral("cycle"));
         return;
     }
     m_windowTrackingAdaptor->cycleWindowsInZone(forward);
@@ -1323,7 +1346,11 @@ void Daemon::handleCycle(bool forward)
 void Daemon::handleResnap()
 {
     QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
-    if (!screen || (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name()))) {
+    if (!screen) {
+        return;
+    }
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+        m_autotileEngine->retile(screen->name());
         return;
     }
     m_windowTrackingAdaptor->resnapToNewLayout();
@@ -1337,6 +1364,7 @@ void Daemon::handleSnapAll()
         return;
     }
     if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+        m_autotileEngine->retile(screen->name());
         return;
     }
     m_windowTrackingAdaptor->snapAllWindows(screen->name());

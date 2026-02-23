@@ -77,6 +77,17 @@ Window {
     // Get source zone number
     readonly property int sourceZoneNumber: getZoneNumber(sourceZoneId)
 
+    // Helper: direction string ("left","right","up","down") → arrow character
+    function directionArrow(dir) {
+        switch (dir) {
+        case "left":  return "←";
+        case "right": return "→";
+        case "up":    return "↑";
+        case "down":  return "↓";
+        default:      return "→";
+        }
+    }
+
     // Computed message text - informative zone-based messages
     readonly property string messageText: {
         if (!success) {
@@ -107,20 +118,23 @@ Window {
                 return arrow + " " + i18n("Rotated");
             }
         } else if (action === "move") {
+            var moveArrow = directionArrow(reason);
             if (targetZoneNumber > 0) {
-                return i18n("→ Zone %1", targetZoneNumber);
+                return moveArrow + " " + i18n("Zone %1", targetZoneNumber);
             }
-            return i18n("Moved");
+            return moveArrow + " " + i18n("Moved");
         } else if (action === "focus") {
+            var focusArrow = directionArrow(reason);
             if (targetZoneNumber > 0) {
-                return i18n("Focus: Zone %1", targetZoneNumber);
+                return focusArrow + " " + i18n("Focus: Zone %1", targetZoneNumber);
             }
-            return i18n("Focus");
+            return focusArrow + " " + i18n("Focus");
         } else if (action === "swap") {
+            var swapArrow = directionArrow(reason);
             if (sourceZoneNumber > 0 && targetZoneNumber > 0) {
-                return i18n("Zone %1 ↔ Zone %2", sourceZoneNumber, targetZoneNumber);
+                return swapArrow + " " + i18n("Zone %1 ↔ Zone %2", sourceZoneNumber, targetZoneNumber);
             }
-            return i18n("Swapped");
+            return swapArrow + " " + i18n("Swapped");
         } else if (action === "push") {
             if (targetZoneNumber > 0) {
                 return i18n("→ Zone %1", targetZoneNumber);

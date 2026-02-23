@@ -54,7 +54,7 @@ public:
     QVector<QRect> calculateZones(const TilingParams &params) const override;
 
     bool supportsMasterCount() const noexcept override { return false; }
-    bool supportsSplitRatio() const noexcept override { return true; }
+    bool supportsSplitRatio() const noexcept override { return false; }
     qreal defaultSplitRatio() const noexcept override { return 0.5; }
     int defaultMaxWindows() const noexcept override { return 5; }
 

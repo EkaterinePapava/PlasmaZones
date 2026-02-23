@@ -3,7 +3,6 @@
 
 #include "BSPAlgorithm.h"
 #include "../AlgorithmRegistry.h"
-#include "../TilingState.h"
 #include "core/constants.h"
 #include <KLocalizedString>
 #include <cmath>
@@ -47,11 +46,9 @@ QVector<QRect> BSPAlgorithm::calculateZones(const TilingParams &params) const
 
     QVector<QRect> zones;
 
-    if (windowCount <= 0 || !screenGeometry.isValid() || !params.state) {
+    if (windowCount <= 0 || !screenGeometry.isValid()) {
         return zones;
     }
-
-    const auto &state = *params.state;
 
     const QRect area = innerRect(screenGeometry, outerGap);
 
@@ -62,7 +59,9 @@ QVector<QRect> BSPAlgorithm::calculateZones(const TilingParams &params) const
         return zones;
     }
 
-    const qreal stateRatio = std::clamp(state.splitRatio(), MinSplitRatio, MaxSplitRatio);
+    // BSP always uses balanced 0.5 splits — the split ratio setting
+    // is a master-stack concept and does not apply here.
+    constexpr qreal stateRatio = 0.5;
 
     // Grow or shrink the persistent tree to match window count.
     // Uses the actual screen area (not hardcoded 1920x1080) so split
@@ -317,9 +316,8 @@ void BSPAlgorithm::applyGeometry(BSPNode *node, const QRect &rect, int innerGap,
         return;
     }
 
-    // Use state ratio for ALL nodes so the split ratio slider updates
-    // all splits uniformly. Per-node ratios (set at construction) are
-    // overridden to ensure consistent behavior when the user adjusts the slider.
+    // Use the fixed 0.5 ratio for ALL nodes so splits are balanced.
+    // Per-node ratios (set at construction) are overridden for consistency.
     qreal ratio = std::clamp(stateRatio, MinSplitRatio, MaxSplitRatio);
 
     // Clamp ratio to respect subtree minimum dimensions

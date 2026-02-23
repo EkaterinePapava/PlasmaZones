@@ -379,7 +379,7 @@ private Q_SLOTS:
         QCOMPARE(algo.name(), QStringLiteral("BSP"));
         QVERIFY(!algo.icon().isEmpty());
         QVERIFY(!algo.supportsMasterCount());
-        QVERIFY(algo.supportsSplitRatio());
+        QVERIFY(!algo.supportsSplitRatio());
         QCOMPARE(algo.masterZoneIndex(), -1); // No master concept
         QCOMPARE(algo.defaultSplitRatio(), 0.5);
     }
@@ -522,7 +522,7 @@ private Q_SLOTS:
         QCOMPARE(algo.name(), QStringLiteral("Fibonacci"));
         QVERIFY(!algo.icon().isEmpty());
         QVERIFY(!algo.supportsMasterCount());
-        QVERIFY(algo.supportsSplitRatio());
+        QVERIFY(!algo.supportsSplitRatio());
         QCOMPARE(algo.masterZoneIndex(), -1); // No master concept
         QCOMPARE(algo.defaultSplitRatio(), 0.5); // Dwindle default
     }
@@ -550,18 +550,18 @@ private Q_SLOTS:
     {
         FibonacciAlgorithm algo;
         TilingState state(QStringLiteral("test"));
-        state.setSplitRatio(0.618);
 
+        // Fibonacci always uses balanced 0.5 splits regardless of state ratio
         auto zones = algo.calculateZones({2, m_screenGeometry, &state});
         QCOMPARE(zones.size(), 2);
 
-        // Dwindle: first split is vertical — window 1 on left
-        int expectedWidth = static_cast<int>(ScreenWidth * 0.618);
+        // Dwindle: first split is vertical — window 1 on left (50%)
+        int expectedWidth = static_cast<int>(ScreenWidth * 0.5);
         QCOMPARE(zones[0].x(), 0);
         QCOMPARE(zones[0].width(), expectedWidth);
         QCOMPARE(zones[0].height(), ScreenHeight);
 
-        // Window 2 gets the remaining right portion
+        // Window 2 gets the remaining right portion (50%)
         QCOMPARE(zones[1].x(), expectedWidth);
         QCOMPARE(zones[1].width(), ScreenWidth - expectedWidth);
         QCOMPARE(zones[1].height(), ScreenHeight);
@@ -1717,15 +1717,16 @@ private Q_SLOTS:
     {
         QRect screen(0, 0, 1920, 1080);
 
-        // All algorithms that dereference state must handle nullptr gracefully
+        // BSP and Fibonacci don't use state (fixed 0.5 ratio), so they produce zones
         BSPAlgorithm bsp;
         auto bspZones = bsp.calculateZones({3, screen, nullptr});
-        QCOMPARE(bspZones.size(), 0);
+        QCOMPARE(bspZones.size(), 3);
 
         FibonacciAlgorithm fib;
         auto fibZones = fib.calculateZones({3, screen, nullptr});
-        QCOMPARE(fibZones.size(), 0);
+        QCOMPARE(fibZones.size(), 3);
 
+        // Algorithms that dereference state must handle nullptr gracefully
         MasterStackAlgorithm ms;
         auto msZones = ms.calculateZones({3, screen, nullptr});
         QCOMPARE(msZones.size(), 0);
