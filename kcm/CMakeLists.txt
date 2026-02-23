@@ -56,6 +56,7 @@ qt_add_resources(kcm_plasmazones "kcm_qml_components"
         ui/PositionPicker.qml
         ui/PreviewSizeControl.qml
         ui/ScreenComboBox.qml
+        ui/MonitorSelectorSection.qml
 )
 
 qt_add_resources(kcm_plasmazones "kcm_qml_tabs"
@@ -69,7 +70,6 @@ qt_add_resources(kcm_plasmazones "kcm_qml_tabs"
         ui/tabs/AppRulesCard.qml
         ui/tabs/AssignmentsTab.qml
         ui/tabs/AutotilingTab.qml
-        ui/tabs/DisplayTab.qml
         ui/tabs/EditorTab.qml
         ui/tabs/ExclusionListCard.qml
         ui/tabs/ExclusionsTab.qml
@@ -80,6 +80,8 @@ qt_add_resources(kcm_plasmazones "kcm_qml_tabs"
         ui/tabs/QuickLayoutSlotsCard.qml
         ui/tabs/WindowPickerDialog.qml
         ui/tabs/ZonesTab.qml
+        ui/tabs/ZoneSelectorSection.qml
+        ui/tabs/GeneralTab.qml
 )
 
 target_link_libraries(kcm_plasmazones
@@ -111,6 +113,7 @@ install(FILES
     ui/AssignmentRow.qml
     ui/ScreenComboBox.qml
     ui/FontPickerDialog.qml
+    ui/MonitorSelectorSection.qml
     DESTINATION ${KDE_INSTALL_QMLDIR}/org/kde/kcms/plasmazones
 )
 
@@ -121,7 +124,7 @@ install(FILES
     ui/tabs/EditorTab.qml
     ui/tabs/AssignmentsTab.qml
     ui/tabs/ZonesTab.qml
-    ui/tabs/DisplayTab.qml
+    ui/tabs/GeneralTab.qml
     ui/tabs/ExclusionsTab.qml
     ui/tabs/AboutTab.qml
     ui/tabs/ExclusionListCard.qml
@@ -134,5 +137,6 @@ install(FILES
     ui/tabs/LayoutGridDelegate.qml
     ui/tabs/AutotilingTab.qml
     ui/tabs/AlgorithmPreview.qml
+    ui/tabs/ZoneSelectorSection.qml
     DESTINATION ${KDE_INSTALL_QMLDIR}/org/kde/kcms/plasmazones/tabs
 )

@@ -46,7 +46,7 @@ ScrollView {
 
         // ═══════════════════════════════════════════════════════════════════
         // MODE SELECTOR (visible only when autotiling is enabled)
-        // Follows the same Card + ComboBox pattern as DisplayTab's monitor selector
+        // Follows the same Card + ComboBox pattern used in the Snapping and Tiling tabs
         // ═══════════════════════════════════════════════════════════════════
         Item {
             Layout.fillWidth: true

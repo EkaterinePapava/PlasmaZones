@@ -8,10 +8,11 @@ import org.kde.kirigami as Kirigami
 import ".."
 
 /**
- * @brief Zones tab - Consolidated appearance and behavior settings
+ * @brief Snapping tab - Zone selector popup, appearance, and behavior settings
  *
- * Merges the former Appearance and Behavior tabs into a unified card-based layout
- * for consistent UX across the KCM.
+ * Merges the former Appearance and Behavior tabs plus zone selector popup
+ * settings into a unified card-based layout. Zone selector popup configuration
+ * (with per-monitor support) is delegated to ZoneSelectorSection.
  */
 ScrollView {
     id: root
@@ -22,13 +23,8 @@ ScrollView {
     // Whether this tab is currently visible (for conditional tooltips)
     property bool isCurrentTab: false
 
-    // Shared helper for ComboBox currentIndex binding (model must have valueRole "value")
-    function comboIndexForValue(model, value) {
-        for (let i = 0; i < model.length; i++) {
-            if (model[i].value === value) return i
-        }
-        return 0
-    }
+    // Screen aspect ratio for preview calculations (passed through to ZoneSelectorSection)
+    property real screenAspectRatio: 16/9
 
     // Signals for color dialog interactions (handled by main.qml)
     signal requestHighlightColorDialog()
@@ -766,7 +762,7 @@ ScrollView {
                             { text: i18n("Restore only"), value: 1 },
                             { text: i18n("Ignore all"), value: 2 }
                         ]
-                        currentIndex: root.comboIndexForValue(model, kcm.stickyWindowHandling)
+                        currentIndex: Math.max(0, indexOfValue(kcm.stickyWindowHandling))
                         onActivated: kcm.stickyWindowHandling = currentValue
 
                         ToolTip.visible: hovered && root.isCurrentTab
@@ -774,6 +770,17 @@ ScrollView {
                     }
                 }
             }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // ZONE SELECTOR (per-monitor popup configuration)
+        // ═══════════════════════════════════════════════════════════════════════
+        ZoneSelectorSection {
+            Layout.fillWidth: true
+            kcm: root.kcm
+            constants: root.constants
+            isCurrentTab: root.isCurrentTab
+            screenAspectRatio: root.screenAspectRatio
         }
     }
 }
