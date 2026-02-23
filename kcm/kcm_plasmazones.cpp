@@ -76,8 +76,8 @@ KCMPlasmaZones::KCMPlasmaZones(QObject* parent, const KPluginMetaData& data)
         if (!m_lastDaemonState) {
             m_lastDaemonState = true;
             Q_EMIT daemonRunningChanged();
-            // Refresh data from the newly-started daemon (async — UI is already visible)
-            loadLayouts();
+            // Refresh data from the newly-started daemon (debounced — daemonReady signal may also fire)
+            scheduleLoadLayouts();
             refreshScreens();
         }
     });
@@ -2095,7 +2095,12 @@ void KCMPlasmaZones::createNewLayout()
 
 void KCMPlasmaZones::deleteLayout(const QString& layoutId)
 {
-    callDaemon(QString(DBus::Interface::LayoutManager), QStringLiteral("deleteLayout"), {layoutId});
+    QDBusMessage reply =
+        callDaemon(QString(DBus::Interface::LayoutManager), QStringLiteral("deleteLayout"), {layoutId});
+    if (reply.type() == QDBusMessage::ErrorMessage) {
+        qCWarning(lcKcm) << "deleteLayout failed:" << reply.errorMessage();
+        return;
+    }
     // The daemon emits layoutListChanged after deletion, which triggers scheduleLoadLayouts()
 }
 

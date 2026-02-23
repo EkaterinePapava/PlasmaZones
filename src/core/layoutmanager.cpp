@@ -212,29 +212,7 @@ void LayoutManager::removeLayout(Layout* layout)
     // Remove from layouts list
     m_layouts.removeOne(layout);
 
-    // Remove any assignments using stored ID (safe - ID is copied)
     const QString layoutIdStr = layoutId.toString();
-    for (auto it = m_assignments.begin(); it != m_assignments.end();) {
-        if (it.value() == layoutIdStr) {
-            it = m_assignments.erase(it);
-        } else {
-            ++it;
-        }
-    }
-
-    // Remove from quick shortcuts using stored ID
-    for (auto it = m_quickLayoutShortcuts.begin(); it != m_quickLayoutShortcuts.end();) {
-        if (it.value() == layoutIdStr) {
-            it = m_quickLayoutShortcuts.erase(it);
-        } else {
-            ++it;
-        }
-    }
-
-    // Update active layout if needed
-    if (wasActive) {
-        setActiveLayout(defaultLayout());
-    }
 
     // Delete layout file (using stored path)
     QFile::remove(filePath);
@@ -249,11 +227,12 @@ void LayoutManager::removeLayout(Layout* layout)
 
     // If this was a user override of a system layout, restore the system original.
     // Uses the stored system path — no filesystem scanning needed.
+    // NOTE: restoreSystemLayout() emits layoutAdded but not layoutsChanged;
+    // the caller (this method) emits layoutsChanged below.
     Layout* restored = restoreSystemLayout(layoutId, systemPath);
 
     if (restored) {
         // System layout restored — assignments and shortcuts stay valid (same UUID).
-        // If deleted layout was active, activate the restored system layout.
         if (wasActive) {
             setActiveLayout(restored);
         }

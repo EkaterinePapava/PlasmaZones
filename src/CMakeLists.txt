@@ -368,6 +368,7 @@ set(plasmazones_editor_SRCS
     editor/main.cpp
     editor/EditorController.cpp
     editor/EditorController.h
+    editor/helpers/BatchOperationScope.h
     editor/helpers/ZoneSerialization.cpp
     editor/helpers/ZoneSerialization.h
     editor/helpers/SettingsDbusQueries.cpp

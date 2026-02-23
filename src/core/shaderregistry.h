@@ -116,7 +116,7 @@ public:
     Q_INVOKABLE QVariantMap shaderInfo(const QString& id) const;
 
     /**
-     * Get shader .qsb URL (returns empty if not found or "none")
+     * Get shader file:// URL to the fragment shader source (returns empty if not found or "none")
      */
     Q_INVOKABLE QUrl shaderUrl(const QString& id) const;
 
