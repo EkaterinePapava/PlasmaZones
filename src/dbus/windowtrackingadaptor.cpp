@@ -935,13 +935,6 @@ void WindowTrackingAdaptor::cycleWindowsInZone(bool forward)
     Q_EMIT cycleWindowsInZoneRequested(directive, QString());
 }
 
-void WindowTrackingAdaptor::SnapActiveWindowToZone(int zoneNumber, const QString& screenName)
-{
-    qCDebug(lcDbusWindow) << "SnapActiveWindowToZone called (alias) zoneNumber:" << zoneNumber
-                          << "screen:" << screenName;
-    snapToZoneByNumber(zoneNumber, screenName);
-}
-
 void WindowTrackingAdaptor::resnapToNewLayout()
 {
     qCDebug(lcDbusWindow) << "resnapToNewLayout called";
