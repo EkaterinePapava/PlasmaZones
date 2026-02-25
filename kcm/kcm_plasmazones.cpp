@@ -1273,13 +1273,21 @@ int KCMPlasmaZones::autotileInsertPosition() const
 {
     return m_settings->autotileInsertPositionInt();
 }
-bool KCMPlasmaZones::autotileAnimationsEnabled() const
+bool KCMPlasmaZones::animationsEnabled() const
 {
-    return m_settings->autotileAnimationsEnabled();
+    return m_settings->animationsEnabled();
 }
-int KCMPlasmaZones::autotileAnimationDuration() const
+int KCMPlasmaZones::animationDuration() const
 {
-    return m_settings->autotileAnimationDuration();
+    return m_settings->animationDuration();
+}
+int KCMPlasmaZones::animationEasingCurve() const
+{
+    return m_settings->animationEasingCurve();
+}
+int KCMPlasmaZones::animationMinDistance() const
+{
+    return m_settings->animationMinDistance();
 }
 bool KCMPlasmaZones::autotileFocusFollowsMouse() const
 {
@@ -1462,21 +1470,41 @@ void KCMPlasmaZones::setAutotileInsertPosition(int position)
     }
 }
 
-void KCMPlasmaZones::setAutotileAnimationsEnabled(bool enabled)
+void KCMPlasmaZones::setAnimationsEnabled(bool enabled)
 {
-    if (m_settings->autotileAnimationsEnabled() != enabled) {
-        m_settings->setAutotileAnimationsEnabled(enabled);
-        Q_EMIT autotileAnimationsEnabledChanged();
+    if (m_settings->animationsEnabled() != enabled) {
+        m_settings->setAnimationsEnabled(enabled);
+        Q_EMIT animationsEnabledChanged();
         setNeedsSave(true);
     }
 }
 
-void KCMPlasmaZones::setAutotileAnimationDuration(int duration)
+void KCMPlasmaZones::setAnimationDuration(int duration)
 {
     duration = qBound(50, duration, 500);
-    if (m_settings->autotileAnimationDuration() != duration) {
-        m_settings->setAutotileAnimationDuration(duration);
-        Q_EMIT autotileAnimationDurationChanged();
+    if (m_settings->animationDuration() != duration) {
+        m_settings->setAnimationDuration(duration);
+        Q_EMIT animationDurationChanged();
+        setNeedsSave(true);
+    }
+}
+
+void KCMPlasmaZones::setAnimationEasingCurve(int curve)
+{
+    curve = qBound(0, curve, 12); // Must match EasingCurve::Count - 1 in windowanimator.h
+    if (m_settings->animationEasingCurve() != curve) {
+        m_settings->setAnimationEasingCurve(curve);
+        Q_EMIT animationEasingCurveChanged();
+        setNeedsSave(true);
+    }
+}
+
+void KCMPlasmaZones::setAnimationMinDistance(int distance)
+{
+    distance = qBound(0, distance, 200);
+    if (m_settings->animationMinDistance() != distance) {
+        m_settings->setAnimationMinDistance(distance);
+        Q_EMIT animationMinDistanceChanged();
         setNeedsSave(true);
     }
 }
@@ -2398,8 +2426,10 @@ void KCMPlasmaZones::defaults()
     Q_EMIT autotileSmartGapsChanged();
     Q_EMIT autotileMaxWindowsChanged();
     Q_EMIT autotileInsertPositionChanged();
-    Q_EMIT autotileAnimationsEnabledChanged();
-    Q_EMIT autotileAnimationDurationChanged();
+    Q_EMIT animationsEnabledChanged();
+    Q_EMIT animationDurationChanged();
+    Q_EMIT animationEasingCurveChanged();
+    Q_EMIT animationMinDistanceChanged();
     Q_EMIT autotileFocusFollowsMouseChanged();
     Q_EMIT autotileRespectMinimumSizeChanged();
     Q_EMIT autotileMonocleHideOthersChanged();
@@ -3256,8 +3286,10 @@ void KCMPlasmaZones::onSettingsChanged()
         Q_EMIT autotileSmartGapsChanged();
         Q_EMIT autotileMaxWindowsChanged();
         Q_EMIT autotileInsertPositionChanged();
-        Q_EMIT autotileAnimationsEnabledChanged();
-        Q_EMIT autotileAnimationDurationChanged();
+        Q_EMIT animationsEnabledChanged();
+        Q_EMIT animationDurationChanged();
+        Q_EMIT animationEasingCurveChanged();
+        Q_EMIT animationMinDistanceChanged();
         Q_EMIT autotileFocusFollowsMouseChanged();
         Q_EMIT autotileRespectMinimumSizeChanged();
         Q_EMIT autotileMonocleHideOthersChanged();

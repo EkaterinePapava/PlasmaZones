@@ -135,6 +135,16 @@ public:
     // See settings_interfaces.h for the full API.
     // ═══════════════════════════════════════════════════════════════════════════
 
+    // Animation settings (global — applies to snapping and autotiling)
+    virtual bool animationsEnabled() const = 0;
+    virtual void setAnimationsEnabled(bool enabled) = 0;
+    virtual int animationDuration() const = 0;
+    virtual void setAnimationDuration(int duration) = 0;
+    virtual int animationEasingCurve() const = 0;
+    virtual void setAnimationEasingCurve(int curve) = 0;
+    virtual int animationMinDistance() const = 0;
+    virtual void setAnimationMinDistance(int distance) = 0;
+
     // Persistence (unique to ISettings)
     virtual void load() = 0;
     virtual void save() = 0;
@@ -296,9 +306,11 @@ Q_SIGNALS:
     void autotileMonocleHideOthersChanged();
     void autotileMonocleShowTabsChanged();
 
-    // Autotile animation settings
-    void autotileAnimationsEnabledChanged();
-    void autotileAnimationDurationChanged();
+    // Animation settings (general)
+    void animationsEnabledChanged();
+    void animationDurationChanged();
+    void animationEasingCurveChanged();
+    void animationMinDistanceChanged();
 
     // Autotile shortcuts
     void autotileToggleShortcutChanged();

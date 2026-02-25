@@ -57,6 +57,7 @@ qt_add_resources(kcm_plasmazones "kcm_qml_components"
         ui/PreviewSizeControl.qml
         ui/ScreenComboBox.qml
         ui/MonitorSelectorSection.qml
+        ui/EasingPreview.qml
 )
 
 qt_add_resources(kcm_plasmazones "kcm_qml_tabs"
@@ -114,6 +115,7 @@ install(FILES
     ui/ScreenComboBox.qml
     ui/FontPickerDialog.qml
     ui/MonitorSelectorSection.qml
+    ui/EasingPreview.qml
     DESTINATION ${KDE_INSTALL_QMLDIR}/org/kde/kcms/plasmazones
 )
 

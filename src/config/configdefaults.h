@@ -182,8 +182,10 @@ public:
     static bool autotileSmartGaps() { return instance().defaultAutotileSmartGapsValue(); }
     static int autotileInsertPosition() { return instance().defaultAutotileInsertPositionValue(); }
     static int autotileMaxWindows() { return instance().defaultAutotileMaxWindowsValue(); }
-    static bool autotileAnimationsEnabled() { return instance().defaultAutotileAnimationsEnabledValue(); }
-    static int autotileAnimationDuration() { return instance().defaultAutotileAnimationDurationValue(); }
+    static bool animationsEnabled() { return instance().defaultAnimationsEnabledValue(); }
+    static int animationDuration() { return instance().defaultAnimationDurationValue(); }
+    static int animationEasingCurve() { return instance().defaultAnimationEasingCurveValue(); }
+    static int animationMinDistance() { return instance().defaultAnimationMinDistanceValue(); }
     static bool autotileFocusFollowsMouse() { return instance().defaultAutotileFocusFollowsMouseValue(); }
     static bool autotileRespectMinimumSize() { return instance().defaultAutotileRespectMinimumSizeValue(); }
     static bool autotileMonocleHideOthers() { return instance().defaultAutotileMonocleHideOthersValue(); }

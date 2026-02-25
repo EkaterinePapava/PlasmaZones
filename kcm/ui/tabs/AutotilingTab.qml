@@ -147,65 +147,6 @@ ScrollView {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // VISUAL FEEDBACK CARD (global)
-        // ═══════════════════════════════════════════════════════════════════════
-        Item {
-            Layout.fillWidth: true
-            implicitHeight: visualCard.implicitHeight
-
-            Kirigami.Card {
-                id: visualCard
-                anchors.fill: parent
-                enabled: kcm.autotileEnabled
-
-                header: Kirigami.Heading {
-                    level: 3
-                    text: i18n("Visual Feedback")
-                    padding: Kirigami.Units.smallSpacing
-                }
-
-                contentItem: Kirigami.FormLayout {
-                    Kirigami.Separator {
-                        Kirigami.FormData.isSection: true
-                        Kirigami.FormData.label: i18n("Animations")
-                    }
-
-                    CheckBox {
-                        id: animationsEnabledCheck
-                        Kirigami.FormData.label: i18n("Animations:")
-                        text: i18n("Enable smooth tiling animations")
-                        checked: kcm.autotileAnimationsEnabled
-                        onToggled: kcm.autotileAnimationsEnabled = checked
-                    }
-
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Duration:")
-                        enabled: animationsEnabledCheck.checked
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Slider {
-                            id: animationDurationSlider
-                            Layout.preferredWidth: root.constants.sliderPreferredWidth
-                            from: 50
-                            to: 500
-                            stepSize: 10
-                            value: kcm.autotileAnimationDuration
-                            onMoved: kcm.autotileAnimationDuration = Math.round(value)
-
-                            ToolTip.visible: hovered && root.isCurrentTab
-                            ToolTip.text: i18n("How long window tiling animations take to complete")
-                        }
-
-                        Label {
-                            text: Math.round(animationDurationSlider.value) + " ms"
-                            Layout.preferredWidth: root.constants.sliderValueLabelWidth + 15
-                        }
-                    }
-                }
-            }
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
         // PER-MONITOR SETTINGS (Algorithm only)
         // ═══════════════════════════════════════════════════════════════════════
 

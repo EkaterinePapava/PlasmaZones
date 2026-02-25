@@ -149,8 +149,6 @@ constexpr const char* kPerScreenAutotileKeys[] = {
     "FocusNewWindows",
     "FocusFollowsMouse",
     "RespectMinimumSize",
-    "AnimationsEnabled",
-    "AnimationDuration",
     "MonocleHideOthers",
     "MonocleShowTabs",
     "UsePerSideOuterGap",
@@ -184,8 +182,6 @@ QVariant validatePerScreenAutotileValue(const QString& key, const QVariant& valu
     if (key == QLatin1String("FocusNewWindows")) return value.toBool();
     if (key == QLatin1String("FocusFollowsMouse")) return value.toBool();
     if (key == QLatin1String("RespectMinimumSize")) return value.toBool();
-    if (key == QLatin1String("AnimationsEnabled")) return value.toBool();
-    if (key == QLatin1String("AnimationDuration")) return qBound(MinAnimationDuration, value.toInt(), MaxAnimationDuration);
     if (key == QLatin1String("MonocleHideOthers")) return value.toBool();
     if (key == QLatin1String("MonocleShowTabs")) return value.toBool();
     if (key == QLatin1String("UsePerSideOuterGap")) return value.toBool();
@@ -207,7 +203,7 @@ QVariant readPerScreenAutotileEntry(const KConfigGroup& group, const QLatin1Stri
     // Booleans defaulting to true (matching global defaults)
     if (key == QLatin1String("SmartGaps") || key == QLatin1String("FocusNewWindows")
         || key == QLatin1String("RespectMinimumSize")
-        || key == QLatin1String("AnimationsEnabled") || key == QLatin1String("MonocleHideOthers")) {
+        || key == QLatin1String("MonocleHideOthers")) {
         return group.readEntry(key, true);
     }
     // Booleans defaulting to false (matching global defaults)
@@ -828,9 +824,12 @@ SETTINGS_SETTER(const QString&, AutotileIncMasterCountShortcut, m_autotileIncMas
 SETTINGS_SETTER(const QString&, AutotileDecMasterCountShortcut, m_autotileDecMasterCountShortcut, autotileDecMasterCountShortcutChanged)
 SETTINGS_SETTER(const QString&, AutotileRetileShortcut, m_autotileRetileShortcut, autotileRetileShortcutChanged)
 
-// Autotile animation and visual setters
-SETTINGS_SETTER(bool, AutotileAnimationsEnabled, m_autotileAnimationsEnabled, autotileAnimationsEnabledChanged)
-SETTINGS_SETTER_CLAMPED(AutotileAnimationDuration, m_autotileAnimationDuration, autotileAnimationDurationChanged, 50, 500)
+// Animation setters (general — applies to snapping and autotiling)
+SETTINGS_SETTER(bool, AnimationsEnabled, m_animationsEnabled, animationsEnabledChanged)
+SETTINGS_SETTER_CLAMPED(AnimationDuration, m_animationDuration, animationDurationChanged, 50, 500)
+SETTINGS_SETTER_CLAMPED(AnimationEasingCurve, m_animationEasingCurve, animationEasingCurveChanged, 0, 12) // 12 = InOutElastic; must match EasingCurve enum in windowanimator.h
+
+SETTINGS_SETTER_CLAMPED(AnimationMinDistance, m_animationMinDistance, animationMinDistanceChanged, 0, 200)
 SETTINGS_SETTER(bool, AutotileFocusFollowsMouse, m_autotileFocusFollowsMouse, autotileFocusFollowsMouseChanged)
 SETTINGS_SETTER(bool, AutotileRespectMinimumSize, m_autotileRespectMinimumSize, autotileRespectMinimumSizeChanged)
 SETTINGS_SETTER(bool, AutotileMonocleHideOthers, m_autotileMonocleHideOthers, autotileMonocleHideOthersChanged)
@@ -1488,9 +1487,12 @@ void Settings::load()
     m_autotileInsertPosition = static_cast<AutotileInsertPosition>(
         readValidatedInt(autotiling, "AutotileInsertPosition", ConfigDefaults::autotileInsertPosition(), 0, 2, "autotile insert position"));
 
-    // Autotile Animation Settings
-    m_autotileAnimationsEnabled = autotiling.readEntry(QLatin1String("AutotileAnimationsEnabled"), ConfigDefaults::autotileAnimationsEnabled());
-    m_autotileAnimationDuration = readValidatedInt(autotiling, "AutotileAnimationDuration", ConfigDefaults::autotileAnimationDuration(), 50, 500, "autotile animation duration");
+    // Animation Settings
+    KConfigGroup animations = config->group(QStringLiteral("Animations"));
+    m_animationsEnabled = animations.readEntry(QLatin1String("AnimationsEnabled"), ConfigDefaults::animationsEnabled());
+    m_animationDuration = readValidatedInt(animations, "AnimationDuration", ConfigDefaults::animationDuration(), 50, 500, "animation duration");
+    m_animationEasingCurve = readValidatedInt(animations, "AnimationEasingCurve", ConfigDefaults::animationEasingCurve(), 0, 12, "animation easing curve");
+    m_animationMinDistance = readValidatedInt(animations, "AnimationMinDistance", ConfigDefaults::animationMinDistance(), 0, 200, "animation min distance");
 
     // Additional Autotiling Settings
     m_autotileFocusFollowsMouse = autotiling.readEntry(QLatin1String("AutotileFocusFollowsMouse"), ConfigDefaults::autotileFocusFollowsMouse());
@@ -1726,8 +1728,11 @@ void Settings::save()
     autotiling.writeEntry(QLatin1String("AutotileInsertPosition"), static_cast<int>(m_autotileInsertPosition));
 
     // Animation settings
-    autotiling.writeEntry(QLatin1String("AutotileAnimationsEnabled"), m_autotileAnimationsEnabled);
-    autotiling.writeEntry(QLatin1String("AutotileAnimationDuration"), m_autotileAnimationDuration);
+    KConfigGroup animations = config->group(QStringLiteral("Animations"));
+    animations.writeEntry(QLatin1String("AnimationsEnabled"), m_animationsEnabled);
+    animations.writeEntry(QLatin1String("AnimationDuration"), m_animationDuration);
+    animations.writeEntry(QLatin1String("AnimationEasingCurve"), m_animationEasingCurve);
+    animations.writeEntry(QLatin1String("AnimationMinDistance"), m_animationMinDistance);
 
     // Additional settings
     autotiling.writeEntry(QLatin1String("AutotileFocusFollowsMouse"), m_autotileFocusFollowsMouse);
@@ -1768,6 +1773,7 @@ void Settings::reset()
         QStringLiteral("GlobalShortcuts"),
         QStringLiteral("Autotiling"),
         QStringLiteral("AutotileShortcuts"),
+        QStringLiteral("Animations"),
         QStringLiteral("ModeTracking")
     };
 

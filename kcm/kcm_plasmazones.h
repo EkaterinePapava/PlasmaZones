@@ -172,10 +172,14 @@ class KCMPlasmaZones : public KQuickConfigModule
     Q_PROPERTY(int autotileMaxWindows READ autotileMaxWindows WRITE setAutotileMaxWindows NOTIFY autotileMaxWindowsChanged)
     Q_PROPERTY(int autotileInsertPosition READ autotileInsertPosition WRITE setAutotileInsertPosition NOTIFY
                    autotileInsertPositionChanged)
-    Q_PROPERTY(bool autotileAnimationsEnabled READ autotileAnimationsEnabled WRITE setAutotileAnimationsEnabled NOTIFY
-                   autotileAnimationsEnabledChanged)
-    Q_PROPERTY(int autotileAnimationDuration READ autotileAnimationDuration WRITE setAutotileAnimationDuration NOTIFY
-                   autotileAnimationDurationChanged)
+    Q_PROPERTY(bool animationsEnabled READ animationsEnabled WRITE setAnimationsEnabled NOTIFY
+                   animationsEnabledChanged)
+    Q_PROPERTY(int animationDuration READ animationDuration WRITE setAnimationDuration NOTIFY
+                   animationDurationChanged)
+    Q_PROPERTY(int animationEasingCurve READ animationEasingCurve WRITE setAnimationEasingCurve NOTIFY
+                   animationEasingCurveChanged)
+    Q_PROPERTY(int animationMinDistance READ animationMinDistance WRITE setAnimationMinDistance NOTIFY
+                   animationMinDistanceChanged)
     Q_PROPERTY(bool autotileFocusFollowsMouse READ autotileFocusFollowsMouse WRITE setAutotileFocusFollowsMouse NOTIFY
                    autotileFocusFollowsMouseChanged)
     Q_PROPERTY(bool autotileRespectMinimumSize READ autotileRespectMinimumSize WRITE setAutotileRespectMinimumSize NOTIFY
@@ -346,8 +350,10 @@ public:
     bool autotileSmartGaps() const;
     int autotileMaxWindows() const;
     int autotileInsertPosition() const;
-    bool autotileAnimationsEnabled() const;
-    int autotileAnimationDuration() const;
+    bool animationsEnabled() const;
+    int animationDuration() const;
+    int animationEasingCurve() const;
+    int animationMinDistance() const;
     bool autotileFocusFollowsMouse() const;
     bool autotileRespectMinimumSize() const;
     bool autotileMonocleHideOthers() const;
@@ -489,8 +495,10 @@ public:
     void setAutotileSmartGaps(bool smart);
     void setAutotileMaxWindows(int count);
     void setAutotileInsertPosition(int position);
-    void setAutotileAnimationsEnabled(bool enabled);
-    void setAutotileAnimationDuration(int duration);
+    void setAnimationsEnabled(bool enabled);
+    void setAnimationDuration(int duration);
+    void setAnimationEasingCurve(int curve);
+    void setAnimationMinDistance(int distance);
     void setAutotileFocusFollowsMouse(bool focus);
     void setAutotileRespectMinimumSize(bool respect);
     void setAutotileMonocleHideOthers(bool hide);
@@ -709,8 +717,10 @@ Q_SIGNALS:
     void autotileSmartGapsChanged();
     void autotileMaxWindowsChanged();
     void autotileInsertPositionChanged();
-    void autotileAnimationsEnabledChanged();
-    void autotileAnimationDurationChanged();
+    void animationsEnabledChanged();
+    void animationDurationChanged();
+    void animationEasingCurveChanged();
+    void animationMinDistanceChanged();
     void autotileFocusFollowsMouseChanged();
     void autotileRespectMinimumSizeChanged();
     void autotileMonocleHideOthersChanged();

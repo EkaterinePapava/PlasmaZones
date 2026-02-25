@@ -458,7 +458,7 @@ void PlasmaZonesEffect::reconfigure(ReconfigureFlags flags)
 
 bool PlasmaZonesEffect::isActive() const
 {
-    return m_dragTracker->isDragging();
+    return m_dragTracker->isDragging() || m_windowAnimator->hasActiveAnimations();
 }
 
 void PlasmaZonesEffect::grabbedKeyboardEvent(QKeyEvent* e)
@@ -1187,6 +1187,53 @@ void PlasmaZonesEffect::loadCachedSettings()
         }
     });
 
+    // Load animation settings (general — applies to both snapping and autotiling)
+    auto* animEnabledWatcher = new QDBusPendingCallWatcher(
+        makeSettingCall(QStringLiteral("animationsEnabled")), this);
+    connect(animEnabledWatcher, &QDBusPendingCallWatcher::finished, this, [this, extractVariant](QDBusPendingCallWatcher* w) {
+        w->deleteLater();
+        QDBusPendingReply<QVariant> reply = *w;
+        if (reply.isValid()) {
+            m_windowAnimator->setEnabled(extractVariant(reply).toBool());
+            qCDebug(lcEffect) << "Loaded animationsEnabled:" << m_windowAnimator->isEnabled();
+        }
+    });
+
+    auto* animDurationWatcher = new QDBusPendingCallWatcher(
+        makeSettingCall(QStringLiteral("animationDuration")), this);
+    connect(animDurationWatcher, &QDBusPendingCallWatcher::finished, this, [this, extractVariant](QDBusPendingCallWatcher* w) {
+        w->deleteLater();
+        QDBusPendingReply<QVariant> reply = *w;
+        if (reply.isValid()) {
+            m_windowAnimator->setDuration(qBound(50, extractVariant(reply).toInt(), 500));
+            qCDebug(lcEffect) << "Loaded animationDuration:" << m_windowAnimator->duration();
+        }
+    });
+
+    auto* animEasingWatcher = new QDBusPendingCallWatcher(
+        makeSettingCall(QStringLiteral("animationEasingCurve")), this);
+    connect(animEasingWatcher, &QDBusPendingCallWatcher::finished, this, [this, extractVariant](QDBusPendingCallWatcher* w) {
+        w->deleteLater();
+        QDBusPendingReply<QVariant> reply = *w;
+        if (reply.isValid()) {
+            int curve = qBound(0, extractVariant(reply).toInt(),
+                               static_cast<int>(PlasmaZones::EasingCurve::Count) - 1);
+            m_windowAnimator->setEasingCurve(static_cast<PlasmaZones::EasingCurve>(curve));
+            qCDebug(lcEffect) << "Loaded animationEasingCurve:" << curve;
+        }
+    });
+
+    auto* animMinDistWatcher = new QDBusPendingCallWatcher(
+        makeSettingCall(QStringLiteral("animationMinDistance")), this);
+    connect(animMinDistWatcher, &QDBusPendingCallWatcher::finished, this, [this, extractVariant](QDBusPendingCallWatcher* w) {
+        w->deleteLater();
+        QDBusPendingReply<QVariant> reply = *w;
+        if (reply.isValid()) {
+            m_windowAnimator->setMinDistance(qBound(0, extractVariant(reply).toInt(), 200));
+            qCDebug(lcEffect) << "Loaded animationMinDistance:" << m_windowAnimator->minDistance();
+        }
+    });
+
     // Load dragActivationTriggers (for local trigger gating — avoids 60Hz D-Bus during non-zone drags)
     auto* triggersWatcher = new QDBusPendingCallWatcher(
         makeSettingCall(QStringLiteral("dragActivationTriggers")), this);
@@ -1615,19 +1662,18 @@ void PlasmaZonesEffect::slotToggleWindowFloatRequested(bool shouldFloat)
     QString windowId = getWindowId(activeWindow);
     QString screenName = getWindowScreenName(activeWindow);
 
-    // On autotile screens, route through the autotile engine. Also catch floating
-    // autotile windows whose pre-autotile geometry restore may have moved them to a
-    // non-autotile screen — identified by having saved pre-autotile geometry.
-    // The engine's cross-screen fallback (toggleWindowFloat) finds the window
-    // in any autotile state regardless of the reported screen.
-    bool isAutotileWindow = m_autotileScreens.contains(screenName);
-    if (!isAutotileWindow) {
-        // Check if window has pre-autotile geometry on any screen (cross-screen float)
-        for (auto it = m_preAutotileGeometries.constBegin(); it != m_preAutotileGeometries.constEnd(); ++it) {
-            if (hasSavedGeometryForWindow(it.value(), windowId)) {
-                isAutotileWindow = true;
-                break;
-            }
+    // Route to the autotile engine only if this window is actually autotile-managed.
+    // We determine this by checking whether the window has pre-autotile geometry saved
+    // on ANY screen — this is set by slotAutotileWindowsTileRequested when the engine
+    // tiles a window, so it reliably identifies autotile-managed windows.
+    // Previously this checked m_autotileScreens.contains(screenName), which incorrectly
+    // routed manually-snapped windows on autotile screens to the autotile engine,
+    // where they weren't found and the float toggle silently failed.
+    bool isAutotileWindow = false;
+    for (auto it = m_preAutotileGeometries.constBegin(); it != m_preAutotileGeometries.constEnd(); ++it) {
+        if (hasSavedGeometryForWindow(it.value(), windowId)) {
+            isAutotileWindow = true;
+            break;
         }
     }
     if (isAutotileWindow) {
@@ -2295,6 +2341,21 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
             }
         });
         return;
+    }
+
+    // Start visual animation from old → new geometry. The moveResize below applies
+    // the final geometry instantly (KWin internal state), while the animator paints
+    // the smooth visual transition via paintWindow transforms. Skip animation during
+    // drag (allowDuringDrag) for instant visual feedback, and when already animating
+    // to this target (redirect handles mid-flight retargets).
+    if (!allowDuringDrag && m_windowAnimator->isEnabled()) {
+        if (m_windowAnimator->hasAnimation(window)) {
+            if (!m_windowAnimator->isAnimatingToTarget(window, geo)) {
+                m_windowAnimator->redirectAnimation(window, geo);
+            }
+        } else {
+            m_windowAnimator->startAnimation(window, oldFrame, geo);
+        }
     }
 
     // KWin 6: EffectWindow exposes window() which returns the underlying Window*
@@ -3055,17 +3116,31 @@ void PlasmaZonesEffect::prePaintWindow(KWin::RenderView* view, KWin::EffectWindo
     KWin::effects->prePaintWindow(view, w, data, presentTime);
 
     // Post-paint logic: animation completion and repaint requests (KWin has no postPaintWindow)
+    // Note: moveResize was already called when the animation started, so we only need
+    // to clean up the visual animation state — no second applySnapGeometry call.
+    //
+    // Ghost artifact fix: addRepaintFull() only covers the window's actual frame geometry
+    // (post-moveResize final position). The animation transform paints the window at a
+    // different interpolated position, so we must also repaint the full animation bounding
+    // rect (start ∪ end geometry) to ensure the compositor clears pixels from the previous
+    // frame's visual position.
     if (w && m_windowAnimator->hasAnimation(w)) {
         if (m_windowAnimator->isAnimationComplete(w)) {
-            // Animation finished - apply final geometry and clean up
-            QRect finalGeometry = m_windowAnimator->finalGeometry(w);
+            // Capture bounds before removing so we can repaint the full animation region
+            const QRectF bounds = m_windowAnimator->animationBounds(w);
             m_windowAnimator->removeAnimation(w);
-
-            qCDebug(lcEffect) << "Window animation complete, applying final geometry:" << finalGeometry;
-            applySnapGeometry(w, finalGeometry);
-        } else {
-            // Animation still running - request another repaint
             w->addRepaintFull();
+            if (bounds.isValid()) {
+                KWin::effects->addRepaint(bounds.toAlignedRect());
+            }
+            qCDebug(lcEffect) << "Window animation complete";
+        } else {
+            // Animation still running — repaint the full animation region to clear
+            // ghost artifacts from the previous frame's interpolated position
+            const QRectF bounds = m_windowAnimator->animationBounds(w);
+            if (bounds.isValid()) {
+                KWin::effects->addRepaint(bounds.toAlignedRect());
+            }
         }
     }
 }

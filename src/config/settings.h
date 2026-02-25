@@ -160,9 +160,11 @@ public:
     Q_PROPERTY(int autotileMaxWindows READ autotileMaxWindows WRITE setAutotileMaxWindows NOTIFY autotileMaxWindowsChanged)
     Q_PROPERTY(int autotileInsertPosition READ autotileInsertPositionInt WRITE setAutotileInsertPositionInt NOTIFY autotileInsertPositionChanged)
 
-    // Autotile Animation Settings (KWin effect visual transitions)
-    Q_PROPERTY(bool autotileAnimationsEnabled READ autotileAnimationsEnabled WRITE setAutotileAnimationsEnabled NOTIFY autotileAnimationsEnabledChanged)
-    Q_PROPERTY(int autotileAnimationDuration READ autotileAnimationDuration WRITE setAutotileAnimationDuration NOTIFY autotileAnimationDurationChanged)
+    // Animation Settings (applies to both snapping and autotiling geometry changes)
+    Q_PROPERTY(bool animationsEnabled READ animationsEnabled WRITE setAnimationsEnabled NOTIFY animationsEnabledChanged)
+    Q_PROPERTY(int animationDuration READ animationDuration WRITE setAnimationDuration NOTIFY animationDurationChanged)
+    Q_PROPERTY(int animationEasingCurve READ animationEasingCurve WRITE setAnimationEasingCurve NOTIFY animationEasingCurveChanged)
+    Q_PROPERTY(int animationMinDistance READ animationMinDistance WRITE setAnimationMinDistance NOTIFY animationMinDistanceChanged)
 
     // Autotile Behavior and Visual Settings
     Q_PROPERTY(bool autotileFocusFollowsMouse READ autotileFocusFollowsMouse WRITE setAutotileFocusFollowsMouse NOTIFY autotileFocusFollowsMouseChanged)
@@ -791,12 +793,18 @@ public:
     QString autotileRetileShortcut() const { return m_autotileRetileShortcut; }
     void setAutotileRetileShortcut(const QString& shortcut);
 
-    // Autotile Animation Settings (KWin effect visual transitions)
-    bool autotileAnimationsEnabled() const { return m_autotileAnimationsEnabled; }
-    void setAutotileAnimationsEnabled(bool enabled);
+    // Animation Settings (applies to both snapping and autotiling geometry changes)
+    bool animationsEnabled() const override { return m_animationsEnabled; }
+    void setAnimationsEnabled(bool enabled) override;
 
-    int autotileAnimationDuration() const { return m_autotileAnimationDuration; }
-    void setAutotileAnimationDuration(int duration);
+    int animationDuration() const override { return m_animationDuration; }
+    void setAnimationDuration(int duration) override;
+
+    int animationEasingCurve() const override { return m_animationEasingCurve; }
+    void setAnimationEasingCurve(int curve) override;
+
+    int animationMinDistance() const override { return m_animationMinDistance; }
+    void setAnimationMinDistance(int distance) override;
 
     // Additional Autotiling Settings
     bool autotileFocusFollowsMouse() const { return m_autotileFocusFollowsMouse; }
@@ -1257,9 +1265,11 @@ private:
     int m_autotileMaxWindows = 6;
     AutotileInsertPosition m_autotileInsertPosition = AutotileInsertPosition::End;
 
-    // Autotile Animation Settings (KWin effect visual transitions)
-    bool m_autotileAnimationsEnabled = true;
-    int m_autotileAnimationDuration = 150; // milliseconds
+    // Animation Settings (applies to both snapping and autotiling geometry changes)
+    bool m_animationsEnabled = true;
+    int m_animationDuration = 150; // milliseconds
+    int m_animationEasingCurve = 2; // EasingCurve::OutCubic
+    int m_animationMinDistance = 0; // pixels — skip animation for smaller changes
 
     // Additional Autotiling Settings (must match plasmazones.kcfg Autotiling defaults)
     bool m_autotileFocusFollowsMouse = false;

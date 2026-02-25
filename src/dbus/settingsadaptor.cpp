@@ -222,6 +222,13 @@ void SettingsAdaptor::initializeRegistry()
     // Zone selector
     REGISTER_BOOL_SETTING("zoneSelectorEnabled", zoneSelectorEnabled, setZoneSelectorEnabled)
 
+    // Animation settings (global — applies to snapping and autotiling)
+    REGISTER_BOOL_SETTING("animationsEnabled", animationsEnabled, setAnimationsEnabled)
+    REGISTER_INT_SETTING("animationDuration", animationDuration, setAnimationDuration)
+    REGISTER_INT_SETTING("animationEasingCurve", animationEasingCurve, setAnimationEasingCurve)
+
+    REGISTER_INT_SETTING("animationMinDistance", animationMinDistance, setAnimationMinDistance)
+
     // Exclusions
     REGISTER_STRINGLIST_SETTING("excludedApplications", excludedApplications, setExcludedApplications)
     REGISTER_STRINGLIST_SETTING("excludedWindowClasses", excludedWindowClasses, setExcludedWindowClasses)

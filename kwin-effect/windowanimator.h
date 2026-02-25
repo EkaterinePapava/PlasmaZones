@@ -8,6 +8,7 @@
 #include <QRect>
 #include <QRectF>
 #include <QElapsedTimer>
+#include <QtMath>
 
 namespace KWin {
 class EffectWindow;
@@ -15,6 +16,29 @@ class WindowPaintData;
 }
 
 namespace PlasmaZones {
+
+/**
+ * @brief Available easing curves for window animations
+ *
+ * Users can select any of these from the KCM. Custom curves
+ * could be added by extending this enum and applyEasing().
+ */
+enum class EasingCurve : int {
+    Linear = 0,
+    OutQuad,        ///< Fast start, smooth deceleration (default legacy)
+    OutCubic,       ///< Slightly more pronounced deceleration
+    InOutCubic,     ///< Smooth acceleration then deceleration
+    OutBack,        ///< Slight overshoot past target, then settle
+    OutElastic,     ///< Spring-like bounce past target
+    OutBounce,      ///< Ball-drop style bouncing settle
+    InOutBack,      ///< Overshoot on both ends
+    OutQuart,       ///< Sharper deceleration than cubic
+    OutQuint,       ///< Very sharp deceleration
+    OutExpo,        ///< Exponential deceleration — snappiest non-overshoot
+    InOutQuad,      ///< Gentle symmetric acceleration/deceleration
+    InOutElastic,   ///< Elastic spring on both ends
+    Count           ///< Sentinel for validation
+};
 
 /**
  * @brief Animation data for window geometry transitions
@@ -26,20 +50,23 @@ struct WindowAnimation {
     QRectF endGeometry;     ///< Target window geometry
     QElapsedTimer timer;    ///< Timer for animation progress calculation
     qreal duration = 150.0; ///< Animation duration in milliseconds (default 150ms)
+    EasingCurve easing = EasingCurve::OutCubic; ///< Easing curve for this animation
 
     /// Check if the animation timer has been started
     bool isValid() const {
         return timer.isValid();
     }
 
-    /// Calculate current progress (0.0 to 1.0) with OutQuad easing
+    /// Apply the selected easing function to a linear time value (0.0-1.0)
+    static qreal applyEasing(EasingCurve curve, qreal t);
+
+    /// Calculate current progress (0.0 to 1.0) with the configured easing
     qreal progress() const {
         if (!timer.isValid()) {
             return 0.0;
         }
         qreal t = qMin(1.0, timer.elapsed() / duration);
-        // OutQuad easing: fast start, smooth deceleration
-        return 1.0 - (1.0 - t) * (1.0 - t);
+        return applyEasing(easing, t);
     }
 
     /// Check if animation is complete
@@ -66,7 +93,8 @@ struct WindowAnimation {
  * @brief Manages window geometry animations
  *
  * Tracks animation state, computes interpolated geometry, and determines
- * when animations are complete. The effect applies geometry directly.
+ * when animations are complete. The effect applies geometry immediately via
+ * moveResize(), then visually interpolates from old to new using paint transforms.
  */
 class WindowAnimator : public QObject
 {
@@ -75,7 +103,18 @@ class WindowAnimator : public QObject
 public:
     explicit WindowAnimator(QObject* parent = nullptr);
 
+    // Configuration
+    void setEnabled(bool enabled) { m_enabled = enabled; }
+    bool isEnabled() const { return m_enabled; }
+    void setDuration(qreal ms) { m_duration = ms; }
+    qreal duration() const { return m_duration; }
+    void setEasingCurve(EasingCurve curve) { m_easing = curve; }
+    EasingCurve easingCurve() const { return m_easing; }
+    void setMinDistance(int pixels) { m_minDistance = qMax(0, pixels); }
+    int minDistance() const { return m_minDistance; }
+
     // Animation management
+    bool hasActiveAnimations() const { return !m_animations.isEmpty(); }
     bool hasAnimation(KWin::EffectWindow* window) const;
     bool startAnimation(KWin::EffectWindow* window, const QRectF& startGeometry, const QRect& endGeometry);
     void removeAnimation(KWin::EffectWindow* window);
@@ -89,6 +128,10 @@ public:
     // Paint helper - applies transform to paint data
     void applyTransform(KWin::EffectWindow* window, KWin::WindowPaintData& data);
 
+    // Get the bounding rect covering the full animation path (start ∪ end geometry)
+    // Used by the effect to request screen-region repaints that prevent ghost artifacts
+    QRectF animationBounds(KWin::EffectWindow* window) const;
+
     // Check if window is already animating to the same target
     bool isAnimatingToTarget(KWin::EffectWindow* window, const QRect& targetGeometry) const;
 
@@ -99,6 +142,8 @@ private:
     QHash<KWin::EffectWindow*, WindowAnimation> m_animations;
     bool m_enabled = true;
     qreal m_duration = 150.0;
+    EasingCurve m_easing = EasingCurve::OutCubic;
+    int m_minDistance = 0;
 };
 
 } // namespace PlasmaZones
