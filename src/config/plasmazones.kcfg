@@ -792,7 +792,7 @@
     </entry>
     <entry name="AutotileHideTitleBars" type="Bool">
       <label>Hide title bars on autotiled windows</label>
-      <default>false</default>
+      <default>true</default>
     </entry>
     <entry name="AutotileMaxWindows" type="Int">
       <label>Maximum windows for autotiling algorithm (also controls preview and zone count)</label>
