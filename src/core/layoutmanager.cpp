@@ -1009,14 +1009,23 @@ void LayoutManager::importLayout(const QString& filePath)
         return;
     }
 
-    auto layout = Layout::fromJson(doc.object(), this);
-    if (!layout) {
+    auto* parsed = Layout::fromJson(doc.object(), this);
+    if (!parsed) {
         qCWarning(lcLayout) << "Failed to create layout from imported JSON:" << filePath;
         return;
     }
 
+    // If a layout with the same UUID already exists, regenerate all IDs via copy
+    // constructor (new layout UUID + new zone UUIDs) to avoid collisions
+    Layout* layout = parsed;
+    if (layoutById(parsed->id())) {
+        qCInfo(lcLayout) << "Imported layout UUID collides with existing layout — regenerating IDs";
+        layout = new Layout(*parsed);
+        delete parsed;
+    }
+
     // Imported layouts have no source path - they'll be saved to user directory
-    // (sourcePath is already empty from fromJson)
+    // (sourcePath is already empty from fromJson / copy constructor)
 
     // Reset visibility restrictions since screen/desktop/activity names are machine-specific
     layout->setHiddenFromSelector(false);
