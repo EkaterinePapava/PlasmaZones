@@ -7,7 +7,6 @@
 #include <QKeySequence>
 #include <QScreen>
 #include <cmath>
-#include <limits>
 #include <KGlobalAccel>
 #include <KLocalizedString>
 #include "windowtrackingadaptor.h"
@@ -307,28 +306,9 @@ void WindowDragAdaptor::handleZoneSpanModifier(int x, int y)
         m_currentMultiZoneGeometry = QRect();
     }
 
-    // Convert cursor position to relative coordinates within the layout's geometry
-    QRectF refGeom = GeometryUtils::effectiveScreenGeometry(layout, screen);
-    if (refGeom.width() <= 0 || refGeom.height() <= 0) {
-        return;
-    }
-
-    qreal relX = static_cast<qreal>(x - refGeom.x()) / refGeom.width();
-    qreal relY = static_cast<qreal>(y - refGeom.y()) / refGeom.height();
-
-    // Find zone at cursor position — prefer smallest overlapping zone (FancyZones area-covered heuristic)
-    Zone* foundZone = nullptr;
-    qreal bestArea = std::numeric_limits<qreal>::max();
-    for (auto* zone : layout->zones()) {
-        QRectF normGeom = zone->normalizedGeometry(refGeom);
-        if (normGeom.contains(QPointF(relX, relY))) {
-            qreal area = normGeom.width() * normGeom.height();
-            if (area < bestArea) {
-                bestArea = area;
-                foundZone = zone;
-            }
-        }
-    }
+    // Find zone at cursor position using layout's smallest-area heuristic
+    // (zone geometry already recalculated to absolute coords by prepareHandlerContext)
+    Zone* foundZone = layout->zoneAtPoint(QPointF(x, y));
 
     // Accumulate painted zones (never remove during a paint drag)
     if (foundZone) {

@@ -7,6 +7,7 @@
 #include <QSet>
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace PlasmaZones {
 
@@ -84,9 +85,41 @@ ZoneDetectionResult ZoneDetector::detectZone(const QPointF& cursorPos) const
 
 namespace {
 
-// Shared raycasting algorithm: expand seed zones to include all zones that intersect
-// the bounding rectangle. Same logic used by detectMultiZone and paint-to-snap.
-QVector<Zone*> expandZonesByIntersection(Layout* layout, const QVector<Zone*>& seedZones)
+// Check if two rects share an edge (left↔right or top↔bottom) within tolerance,
+// with perpendicular overlap > 0. Used by both expandZonesByIntersection and areZonesAdjacent.
+// minOverlapFraction: minimum perpendicular overlap as fraction of the smaller dimension (0.0–1.0).
+bool sharesEdge(const QRectF& r1, const QRectF& r2, qreal tolerance, qreal minOverlapFraction = 0.0)
+{
+    // Left-Right adjacency (r1.right ≈ r2.left or r2.right ≈ r1.left)
+    if (qAbs(r1.right() - r2.left()) <= tolerance || qAbs(r2.right() - r1.left()) <= tolerance) {
+        qreal overlap = qMin(r1.bottom(), r2.bottom()) - qMax(r1.top(), r2.top());
+        if (overlap > 0 && overlap >= qMin(r1.height(), r2.height()) * minOverlapFraction) {
+            return true;
+        }
+    }
+    // Top-Bottom adjacency (r1.bottom ≈ r2.top or r2.bottom ≈ r1.top)
+    if (qAbs(r1.bottom() - r2.top()) <= tolerance || qAbs(r2.bottom() - r1.top()) <= tolerance) {
+        qreal overlap = qMin(r1.right(), r2.right()) - qMax(r1.left(), r2.left());
+        if (overlap > 0 && overlap >= qMin(r1.width(), r2.width()) * minOverlapFraction) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Check if two rects spatially overlap (intersection is thick on both axes).
+// Distinguishes true area-overlap from edge-touching.
+bool spatiallyOverlaps(const QRectF& r1, const QRectF& r2, qreal tolerance)
+{
+    QRectF intersection = r1.intersected(r2);
+    return intersection.width() > tolerance && intersection.height() > tolerance;
+}
+
+// Expand seed zones by edge-adjacency flood-fill. A zone is added only if it shares
+// an edge with an already-selected zone AND does not spatially overlap any seed zone.
+// This preserves gap-filling for non-overlapping tiling layouts while preventing
+// cascade through stacked/overlapping zones.
+QVector<Zone*> expandZonesByIntersection(Layout* layout, const QVector<Zone*>& seedZones, qreal edgeTolerance)
 {
     if (!layout || seedZones.isEmpty()) {
         return seedZones;
@@ -94,27 +127,24 @@ QVector<Zone*> expandZonesByIntersection(Layout* layout, const QVector<Zone*>& s
 
     const auto& allZones = layout->zones();
 
-    // Build initial bounding rect and selected set from seed zones (skip nulls)
-    QRectF boundingRect;
+    // Build selected set and seed set from seed zones (skip nulls)
     QSet<Zone*> selectedZones;
+    QSet<Zone*> seedSet;
 
     for (auto* zone : seedZones) {
         if (!zone) {
             continue;
         }
-        if (boundingRect.isEmpty()) {
-            boundingRect = zone->geometry();
-        } else {
-            boundingRect = boundingRect.united(zone->geometry());
-        }
         selectedZones.insert(zone);
+        seedSet.insert(zone);
     }
 
     if (selectedZones.isEmpty()) {
         return QVector<Zone*>();
     }
 
-    // Iteratively expand to include all zones that intersect the bounding rect
+    // Flood-fill: add zones that share an edge with already-selected zones
+    // but do NOT spatially overlap any seed zone
     bool foundNew = true;
     int iterations = 0;
     const int maxIterations = 100;
@@ -122,15 +152,34 @@ QVector<Zone*> expandZonesByIntersection(Layout* layout, const QVector<Zone*>& s
     while (foundNew && iterations < maxIterations) {
         foundNew = false;
         iterations++;
-        QRectF currentRect = boundingRect;
 
-        for (auto* zone : allZones) {
-            if (!zone || selectedZones.contains(zone)) {
+        for (auto* candidate : allZones) {
+            if (!candidate || selectedZones.contains(candidate)) {
                 continue;
             }
-            if (zone->geometry().intersects(currentRect)) {
-                selectedZones.insert(zone);
-                boundingRect = boundingRect.united(zone->geometry());
+
+            // Skip candidates that spatially overlap any seed zone
+            bool overlapsASeed = false;
+            for (auto* seed : seedSet) {
+                if (spatiallyOverlaps(candidate->geometry(), seed->geometry(), edgeTolerance)) {
+                    overlapsASeed = true;
+                    break;
+                }
+            }
+            if (overlapsASeed) {
+                continue;
+            }
+
+            // Check if candidate shares an edge with any already-selected zone
+            bool shouldAdd = false;
+            for (auto* selected : selectedZones) {
+                if (sharesEdge(candidate->geometry(), selected->geometry(), edgeTolerance)) {
+                    shouldAdd = true;
+                    break;
+                }
+            }
+            if (shouldAdd) {
+                selectedZones.insert(candidate);
                 foundNew = true;
             }
         }
@@ -160,50 +209,75 @@ ZoneDetectionResult ZoneDetector::detectMultiZone(const QPointF& cursorPos) cons
         return detectZone(cursorPos);
     }
 
-    // Find all zones near the cursor (within threshold or containing cursor)
-    QVector<Zone*> nearbyZones;
     const auto& allZones = m_layout->zones();
+    const qreal adjacentThreshold = m_settings->adjacentThreshold();
+
+    // Separate overlapping zones (cursor inside) from edge-adjacent zones
+    // (cursor outside but within threshold). Only edge-adjacent zones trigger multi-zone.
+    QVector<Zone*> overlappingZones;
+    QVector<Zone*> edgeAdjacentZones;
 
     for (auto* zone : allZones) {
         if (!zone) {
             continue;
         }
-        qreal distance = zone->distanceToPoint(cursorPos);
-        if (distance <= m_settings->adjacentThreshold() || zone->containsPoint(cursorPos)) {
-            nearbyZones.append(zone);
+        if (zone->containsPoint(cursorPos)) {
+            overlappingZones.append(zone);
+        } else {
+            qreal distance = zone->distanceToPoint(cursorPos);
+            if (distance <= adjacentThreshold) {
+                edgeAdjacentZones.append(zone);
+            }
         }
     }
 
-    // If we found 2+ nearby zones, use raycast algorithm
-    if (nearbyZones.size() >= 2) {
-        Zone* primaryZone = nullptr;
-        qreal minDistance = std::numeric_limits<qreal>::max();
-        for (auto* zone : nearbyZones) {
-            qreal distance = zone->distanceToPoint(cursorPos);
-            if (distance < minDistance) {
-                minDistance = distance;
-                primaryZone = zone;
-            }
+    // Get primary zone via smallest-area heuristic (handles overlap correctly)
+    Zone* primaryZone = zoneAtPoint(cursorPos);
+
+    // Store overlap info for callers
+    result.overlappingZones = overlappingZones;
+
+    // Multi-zone ONLY if there are edge-adjacent zones (cursor near a boundary between zones)
+    if (!edgeAdjacentZones.isEmpty()) {
+        // Combine primary (if any) + edge-adjacent zones as seeds for expansion
+        QVector<Zone*> seedZones = edgeAdjacentZones;
+        if (primaryZone && !seedZones.contains(primaryZone)) {
+            seedZones.prepend(primaryZone);
         }
 
-        QVector<Zone*> zonesInRect = expandZonesByIntersection(m_layout, nearbyZones);
+        QVector<Zone*> expanded = expandZonesByIntersection(m_layout, seedZones, adjacentThreshold);
 
-        if (zonesInRect.size() > 1 && primaryZone) {
+        if (expanded.size() > 1) {
+            if (!primaryZone) {
+                // No containing zone — pick closest edge-adjacent as primary
+                qreal minDistance = std::numeric_limits<qreal>::max();
+                for (auto* zone : edgeAdjacentZones) {
+                    qreal distance = zone->distanceToPoint(cursorPos);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        primaryZone = zone;
+                    }
+                }
+            }
+
             result.primaryZone = primaryZone;
-            result.adjacentZones = zonesInRect;
+            result.adjacentZones = expanded;
             result.isMultiZone = true;
-            result.snapGeometry = combineZoneGeometries(zonesInRect);
+            result.snapGeometry = combineZoneGeometries(expanded);
             result.distance = 0;
             return result;
         }
     }
 
-    return detectZone(cursorPos);
+    // Fall through to single-zone detection, preserving overlap info
+    ZoneDetectionResult singleResult = detectZone(cursorPos);
+    singleResult.overlappingZones = overlappingZones;
+    return singleResult;
 }
 
 QVector<Zone*> ZoneDetector::expandPaintedZonesToRect(const QVector<Zone*>& seedZones) const
 {
-    return expandZonesByIntersection(m_layout, seedZones);
+    return expandZonesByIntersection(m_layout, seedZones, m_settings->adjacentThreshold());
 }
 
 Zone* ZoneDetector::zoneAtPoint(const QPointF& point) const
@@ -266,37 +340,7 @@ bool ZoneDetector::areZonesAdjacent(Zone* zone1, Zone* zone2) const
         return false;
     }
 
-    const QRectF& r1 = zone1->geometry();
-    const QRectF& r2 = zone2->geometry();
-
-    // Check if zones share an edge (within threshold)
-    // Use a stricter threshold for adjacency (adjacentThreshold is for cursor proximity, not zone adjacency)
-    // Zones are adjacent if they share an edge within 5 pixels (much stricter than cursor proximity)
-    qreal adjacencyTolerance = 5.0;
-
-    // Left-Right adjacency (vertical edge between zones)
-    if (qAbs(r1.right() - r2.left()) <= adjacencyTolerance || qAbs(r2.right() - r1.left()) <= adjacencyTolerance) {
-        // Check vertical overlap - zones must overlap significantly, not just touch
-        qreal overlap = qMin(r1.bottom(), r2.bottom()) - qMax(r1.top(), r2.top());
-        qreal minHeight = qMin(r1.height(), r2.height());
-        // Require at least 10% overlap to consider zones adjacent
-        if (overlap > 0 && overlap >= minHeight * 0.1) {
-            return true;
-        }
-    }
-
-    // Top-Bottom adjacency (horizontal edge between zones)
-    if (qAbs(r1.bottom() - r2.top()) <= adjacencyTolerance || qAbs(r2.bottom() - r1.top()) <= adjacencyTolerance) {
-        // Check horizontal overlap - zones must overlap significantly, not just touch
-        qreal overlap = qMin(r1.right(), r2.right()) - qMax(r1.left(), r2.left());
-        qreal minWidth = qMin(r1.width(), r2.width());
-        // Require at least 10% overlap to consider zones adjacent
-        if (overlap > 0 && overlap >= minWidth * 0.1) {
-            return true;
-        }
-    }
-
-    return false;
+    return sharesEdge(zone1->geometry(), zone2->geometry(), m_settings->adjacentThreshold(), 0.1);
 }
 
 qreal ZoneDetector::distanceToZoneEdge(const QPointF& point, Zone* zone) const
