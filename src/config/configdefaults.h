@@ -184,6 +184,8 @@ public:
     static int autotileMaxWindows() { return instance().defaultAutotileMaxWindowsValue(); }
     static bool animationsEnabled() { return instance().defaultAnimationsEnabledValue(); }
     static int animationDuration() { return instance().defaultAnimationDurationValue(); }
+    static int animationSequenceMode() { return instance().defaultAnimationSequenceModeValue(); }
+    static int animationStaggerInterval() { return instance().defaultAnimationStaggerIntervalValue(); }
     static QString animationEasingCurve() { return instance().defaultAnimationEasingCurveValue(); }
     static int animationMinDistance() { return instance().defaultAnimationMinDistanceValue(); }
     static bool autotileFocusFollowsMouse() { return instance().defaultAutotileFocusFollowsMouseValue(); }

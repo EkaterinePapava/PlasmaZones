@@ -180,6 +180,11 @@ class KCMPlasmaZones : public KQuickConfigModule
                    animationEasingCurveChanged)
     Q_PROPERTY(int animationMinDistance READ animationMinDistance WRITE setAnimationMinDistance NOTIFY
                    animationMinDistanceChanged)
+    Q_PROPERTY(int animationSequenceMode READ animationSequenceMode WRITE setAnimationSequenceMode NOTIFY
+                   animationSequenceModeChanged)
+    Q_PROPERTY(int animationStaggerInterval READ animationStaggerInterval WRITE setAnimationStaggerInterval NOTIFY
+                   animationStaggerIntervalChanged)
+    Q_PROPERTY(int animationStaggerIntervalMax READ animationStaggerIntervalMax CONSTANT)
     Q_PROPERTY(bool autotileFocusFollowsMouse READ autotileFocusFollowsMouse WRITE setAutotileFocusFollowsMouse NOTIFY
                    autotileFocusFollowsMouseChanged)
     Q_PROPERTY(bool autotileRespectMinimumSize READ autotileRespectMinimumSize WRITE setAutotileRespectMinimumSize NOTIFY
@@ -356,6 +361,9 @@ public:
     int animationDuration() const;
     QString animationEasingCurve() const;
     int animationMinDistance() const;
+    int animationSequenceMode() const;
+    int animationStaggerInterval() const;
+    int animationStaggerIntervalMax() const;
     bool autotileFocusFollowsMouse() const;
     bool autotileRespectMinimumSize() const;
     bool autotileMonocleHideOthers() const;
@@ -502,6 +510,8 @@ public:
     void setAnimationDuration(int duration);
     void setAnimationEasingCurve(const QString& curve);
     void setAnimationMinDistance(int distance);
+    void setAnimationSequenceMode(int mode);
+    void setAnimationStaggerInterval(int ms);
     void setAutotileFocusFollowsMouse(bool focus);
     void setAutotileRespectMinimumSize(bool respect);
     void setAutotileMonocleHideOthers(bool hide);
@@ -725,6 +735,8 @@ Q_SIGNALS:
     void animationDurationChanged();
     void animationEasingCurveChanged();
     void animationMinDistanceChanged();
+    void animationSequenceModeChanged();
+    void animationStaggerIntervalChanged();
     void autotileFocusFollowsMouseChanged();
     void autotileRespectMinimumSizeChanged();
     void autotileMonocleHideOthersChanged();

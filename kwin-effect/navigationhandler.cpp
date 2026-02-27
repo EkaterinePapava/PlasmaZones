@@ -15,6 +15,7 @@
 #include <QJsonObject>
 #include <QLoggingCategory>
 #include <QPointer>
+#include <QTimer>
 
 Q_DECLARE_LOGGING_CATEGORY(lcEffect)
 
@@ -796,11 +797,27 @@ void NavigationHandler::handleSwapWindows(const QString& targetZoneId, const QSt
             m_effect->ensurePreSnapGeometryStored(safeWindow, capturedWindowId);
             m_effect->ensurePreSnapGeometryStored(targetWindow, windowId2);
 
-            m_effect->applySnapGeometry(safeWindow, geom1);
-            swapIface->asyncCall(QStringLiteral("windowSnapped"), capturedWindowId, zoneId1, resultScreenName);
-
-            m_effect->applySnapGeometry(targetWindow, geom2);
-            swapIface->asyncCall(QStringLiteral("windowSnapped"), windowId2, zoneId2, resultScreenName);
+            struct SwapSnap {
+                QPointer<KWin::EffectWindow> window;
+                QRect geometry;
+                QString windowId;
+                QString zoneId;
+            };
+            QVector<SwapSnap> swapEntries = {
+                {safeWindow, geom1, capturedWindowId, zoneId1},
+                {QPointer<KWin::EffectWindow>(targetWindow), geom2, windowId2, zoneId2},
+            };
+            m_effect->applyStaggeredOrImmediate(2, [this, swapEntries, resultScreenName](int i) {
+                const SwapSnap& s = swapEntries[i];
+                if (!s.window) {
+                    return;
+                }
+                m_effect->applySnapGeometry(s.window, s.geometry);
+                auto* iface = m_effect->windowTrackingInterface();
+                if (iface && iface->isValid()) {
+                    iface->asyncCall(QStringLiteral("windowSnapped"), s.windowId, s.zoneId, resultScreenName);
+                }
+            });
         }
     });
 }
@@ -832,6 +849,16 @@ NavigationHandler::BatchSnapResult NavigationHandler::applyBatchSnapFromJson(con
 
     QHash<QString, KWin::EffectWindow*> windowMap = m_effect->buildWindowMap();
 
+    struct PendingSnap {
+        QPointer<KWin::EffectWindow> window;
+        QRect geometry;
+        QString snapWindowId;
+        QString targetZoneId;
+        QString sourceZoneId;
+        QString windowScreen;
+    };
+    QVector<PendingSnap> pending;
+
     for (const QJsonValue& value : entries) {
         if (!value.isObject()) {
             continue;
@@ -855,28 +882,53 @@ NavigationHandler::BatchSnapResult NavigationHandler::applyBatchSnapFromJson(con
         if (!window) {
             continue;
         }
-        // User-initiated snap commands override floating state.
-        // windowSnapped() on the daemon will clear floating via clearFloatingStateForSnap().
-
         if (filterCurrentDesktop && (!window->isOnCurrentDesktop() || !window->isOnCurrentActivity())) {
             continue;
         }
 
-        // Resnap JSON may contain stableIds from pending entries; resolve full windowId from KWin
         QString snapWindowId = resolveFullWindowId ? m_effect->getWindowId(window) : windowId;
-
-        m_effect->ensurePreSnapGeometryStored(window, snapWindowId);
-        m_effect->applySnapGeometry(window, QRect(x, y, width, height));
         QString windowScreen = m_effect->getWindowScreenName(window);
-        iface->asyncCall(QStringLiteral("windowSnapped"), snapWindowId, targetZoneId, windowScreen);
-        ++result.successCount;
 
-        if (result.successCount == 1) {
-            result.firstSourceZoneId = moveObj[QLatin1String("sourceZoneId")].toString();
-            result.firstTargetZoneId = targetZoneId;
-            result.firstScreenName = windowScreen;
+        PendingSnap p;
+        p.window = QPointer<KWin::EffectWindow>(window);
+        p.geometry = QRect(x, y, width, height);
+        p.snapWindowId = snapWindowId;
+        p.targetZoneId = targetZoneId;
+        p.sourceZoneId = moveObj[QLatin1String("sourceZoneId")].toString();
+        p.windowScreen = windowScreen;
+        pending.append(p);
+    }
+
+    if (pending.isEmpty()) {
+        return result;
+    }
+
+    // successCount reflects attempted entries; windows destroyed before their
+    // stagger timer fires are skipped but still counted here.
+    result.successCount = pending.size();
+    result.firstSourceZoneId = pending.first().sourceZoneId;
+    result.firstTargetZoneId = pending.first().targetZoneId;
+    result.firstScreenName = pending.first().windowScreen;
+
+    // Store pre-snap geometries for ALL windows before any timers fire,
+    // so each records its true original geometry (not an intermediate state).
+    for (const PendingSnap& p : pending) {
+        if (p.window) {
+            m_effect->ensurePreSnapGeometryStored(p.window, p.snapWindowId);
         }
     }
+
+    m_effect->applyStaggeredOrImmediate(pending.size(), [this, pending](int i) {
+        const PendingSnap& p = pending[i];
+        if (!p.window) {
+            return;
+        }
+        m_effect->applySnapGeometry(p.window, p.geometry);
+        auto* wiface = m_effect->windowTrackingInterface();
+        if (wiface && wiface->isValid()) {
+            wiface->asyncCall(QStringLiteral("windowSnapped"), p.snapWindowId, p.targetZoneId, p.windowScreen);
+        }
+    });
 
     return result;
 }

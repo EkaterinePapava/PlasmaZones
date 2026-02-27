@@ -826,6 +826,18 @@
       <min>0</min>
       <max>200</max>
     </entry>
+    <entry name="AnimationSequenceMode" type="Int">
+      <label>When moving multiple windows (resnap, snap all, autotile, etc.): 0=Animate all at once, 1=Animate one by one in zone order</label>
+      <default>0</default>
+      <min>0</min>
+      <max>1</max>
+    </entry>
+    <entry name="AnimationStaggerInterval" type="Int">
+      <label>When animating one by one: delay in milliseconds between each window starting its animation (cascading overlap)</label>
+      <default>30</default>
+      <min>10</min>
+      <max>200</max>
+    </entry>
   </group>
 
   <!-- ═══════════════════════════════════════════════════════════════════════════════

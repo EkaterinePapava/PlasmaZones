@@ -144,6 +144,10 @@ public:
     virtual void setAnimationEasingCurve(const QString& curve) = 0;
     virtual int animationMinDistance() const = 0;
     virtual void setAnimationMinDistance(int distance) = 0;
+    virtual int animationSequenceMode() const = 0;
+    virtual void setAnimationSequenceMode(int mode) = 0;
+    virtual int animationStaggerInterval() const = 0;
+    virtual void setAnimationStaggerInterval(int ms) = 0;
 
     // Autotile decoration settings (fetched by KWin effect via D-Bus)
     virtual bool autotileHideTitleBars() const = 0;
@@ -316,6 +320,8 @@ Q_SIGNALS:
     void animationDurationChanged();
     void animationEasingCurveChanged();
     void animationMinDistanceChanged();
+    void animationSequenceModeChanged();
+    void animationStaggerIntervalChanged();
 
     // Autotile shortcuts
     void autotileToggleShortcutChanged();

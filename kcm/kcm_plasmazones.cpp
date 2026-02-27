@@ -1289,6 +1289,22 @@ int KCMPlasmaZones::animationMinDistance() const
 {
     return m_settings->animationMinDistance();
 }
+
+int KCMPlasmaZones::animationSequenceMode() const
+{
+    return m_settings->animationSequenceMode();
+}
+
+int KCMPlasmaZones::animationStaggerInterval() const
+{
+    return m_settings->animationStaggerInterval();
+}
+
+int KCMPlasmaZones::animationStaggerIntervalMax() const
+{
+    return static_cast<int>(AutotileDefaults::MaxAnimationStaggerIntervalMs);
+}
+
 bool KCMPlasmaZones::autotileFocusFollowsMouse() const
 {
     return m_settings->autotileFocusFollowsMouse();
@@ -1508,6 +1524,27 @@ void KCMPlasmaZones::setAnimationMinDistance(int distance)
     if (m_settings->animationMinDistance() != distance) {
         m_settings->setAnimationMinDistance(distance);
         Q_EMIT animationMinDistanceChanged();
+        setNeedsSave(true);
+    }
+}
+
+void KCMPlasmaZones::setAnimationSequenceMode(int mode)
+{
+    mode = qBound(0, mode, 1);
+    if (m_settings->animationSequenceMode() != mode) {
+        m_settings->setAnimationSequenceMode(mode);
+        Q_EMIT animationSequenceModeChanged();
+        setNeedsSave(true);
+    }
+}
+
+void KCMPlasmaZones::setAnimationStaggerInterval(int ms)
+{
+    ms = qBound(static_cast<int>(AutotileDefaults::MinAnimationStaggerIntervalMs),
+                ms, static_cast<int>(AutotileDefaults::MaxAnimationStaggerIntervalMs));
+    if (m_settings->animationStaggerInterval() != ms) {
+        m_settings->setAnimationStaggerInterval(ms);
+        Q_EMIT animationStaggerIntervalChanged();
         setNeedsSave(true);
     }
 }
@@ -2076,6 +2113,8 @@ void KCMPlasmaZones::load()
     Q_EMIT snapAssistFeatureEnabledChanged();
     Q_EMIT snapAssistEnabledChanged();
     Q_EMIT snapAssistTriggersChanged();
+    Q_EMIT animationSequenceModeChanged();
+    Q_EMIT animationStaggerIntervalChanged();
     loadLayoutsSync();
     refreshScreens();
 
@@ -2442,6 +2481,8 @@ void KCMPlasmaZones::defaults()
     Q_EMIT animationDurationChanged();
     Q_EMIT animationEasingCurveChanged();
     Q_EMIT animationMinDistanceChanged();
+    Q_EMIT animationSequenceModeChanged();
+    Q_EMIT animationStaggerIntervalChanged();
     Q_EMIT autotileFocusFollowsMouseChanged();
     Q_EMIT autotileRespectMinimumSizeChanged();
     Q_EMIT autotileMonocleHideOthersChanged();

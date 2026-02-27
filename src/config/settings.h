@@ -165,6 +165,8 @@ public:
     Q_PROPERTY(int animationDuration READ animationDuration WRITE setAnimationDuration NOTIFY animationDurationChanged)
     Q_PROPERTY(QString animationEasingCurve READ animationEasingCurve WRITE setAnimationEasingCurve NOTIFY animationEasingCurveChanged)
     Q_PROPERTY(int animationMinDistance READ animationMinDistance WRITE setAnimationMinDistance NOTIFY animationMinDistanceChanged)
+    Q_PROPERTY(int animationSequenceMode READ animationSequenceMode WRITE setAnimationSequenceMode NOTIFY animationSequenceModeChanged)
+    Q_PROPERTY(int animationStaggerInterval READ animationStaggerInterval WRITE setAnimationStaggerInterval NOTIFY animationStaggerIntervalChanged)
 
     // Autotile Behavior and Visual Settings
     Q_PROPERTY(bool autotileFocusFollowsMouse READ autotileFocusFollowsMouse WRITE setAutotileFocusFollowsMouse NOTIFY autotileFocusFollowsMouseChanged)
@@ -807,6 +809,12 @@ public:
     int animationMinDistance() const override { return m_animationMinDistance; }
     void setAnimationMinDistance(int distance) override;
 
+    int animationSequenceMode() const override { return m_animationSequenceMode; }
+    void setAnimationSequenceMode(int mode) override;
+
+    int animationStaggerInterval() const override { return m_animationStaggerInterval; }
+    void setAnimationStaggerInterval(int ms) override;
+
     // Additional Autotiling Settings
     bool autotileFocusFollowsMouse() const { return m_autotileFocusFollowsMouse; }
     void setAutotileFocusFollowsMouse(bool focus);
@@ -1274,6 +1282,8 @@ private:
     int m_animationDuration = 150; // milliseconds
     QString m_animationEasingCurve = QStringLiteral("0.33,1.00,0.68,1.00");
     int m_animationMinDistance = 0; // pixels — skip animation for smaller changes
+    int m_animationSequenceMode = 0; // 0=all at once, 1=one by one in zone order
+    int m_animationStaggerInterval = 30; // ms between windows when animating one by one
 
     // Additional Autotiling Settings (must match plasmazones.kcfg Autotiling defaults)
     bool m_autotileFocusFollowsMouse = false;

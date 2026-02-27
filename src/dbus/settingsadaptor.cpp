@@ -242,6 +242,8 @@ void SettingsAdaptor::initializeRegistry()
     REGISTER_STRING_SETTING("animationEasingCurve", animationEasingCurve, setAnimationEasingCurve)
 
     REGISTER_INT_SETTING("animationMinDistance", animationMinDistance, setAnimationMinDistance)
+    REGISTER_INT_SETTING("animationSequenceMode", animationSequenceMode, setAnimationSequenceMode)
+    REGISTER_INT_SETTING("animationStaggerInterval", animationStaggerInterval, setAnimationStaggerInterval)
 
     // Exclusions
     REGISTER_STRINGLIST_SETTING("excludedApplications", excludedApplications, setExcludedApplications)

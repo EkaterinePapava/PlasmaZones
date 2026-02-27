@@ -776,6 +776,12 @@ void PlasmaZonesEffect::applyWindowGeometriesFromJson(const QString& geometriesJ
         }
     }
 
+    struct ApplyEntry {
+        QPointer<KWin::EffectWindow> window;
+        QRect geometry;
+    };
+    QVector<ApplyEntry> toApply;
+
     for (const QJsonValue& value : geometries) {
         if (!value.isObject()) {
             qCDebug(lcEffect) << "Skipping non-object geometry entry";
@@ -801,7 +807,6 @@ void PlasmaZonesEffect::applyWindowGeometriesFromJson(const QString& geometriesJ
             window = windowByStableId.value(extractStableId(windowId));
         }
         if (window && shouldHandleWindow(window)) {
-            // Skip windows on autotile screens — they are managed by the autotile engine
             const QString winScreenName = getWindowScreenName(window);
             if (m_autotileScreens.contains(winScreenName)) {
                 qCDebug(lcEffect) << "Skipping autotile-managed window" << windowId << "on screen" << winScreenName;
@@ -810,10 +815,55 @@ void PlasmaZonesEffect::applyWindowGeometriesFromJson(const QString& geometriesJ
             QRect newGeometry(x, y, width, height);
             QRectF currentWindowGeometry = window->frameGeometry();
             if (QRect(currentWindowGeometry.toRect()) != newGeometry) {
-                qCInfo(lcEffect) << "Repositioning window" << windowId << "from" << currentWindowGeometry << "to"
-                                 << newGeometry;
-                applySnapGeometry(window, newGeometry);
+                toApply.append({QPointer<KWin::EffectWindow>(window), newGeometry});
             }
+        }
+    }
+
+    applyStaggeredOrImmediate(toApply.size(), [this, toApply](int i) {
+        const ApplyEntry& e = toApply[i];
+        if (e.window && shouldHandleWindow(e.window)) {
+            qCInfo(lcEffect) << "Repositioning window" << getWindowId(e.window) << "to" << e.geometry;
+            applySnapGeometry(e.window, e.geometry);
+        }
+    });
+}
+
+void PlasmaZonesEffect::applyStaggeredOrImmediate(
+    int count,
+    const std::function<void(int)>& applyFn,
+    const std::function<void()>& onComplete)
+{
+    if (count <= 0) {
+        if (onComplete) {
+            onComplete();
+        }
+        return;
+    }
+
+    const int staggerMs = m_cachedAnimationStaggerInterval;
+    const bool stagger = (m_cachedAnimationSequenceMode == 1) && (count > 1) && (staggerMs > 0);
+
+    if (stagger) {
+        // Apply first item immediately (no event loop delay), schedule rest.
+        // Stagger branch requires count > 1, so the loop always runs.
+        applyFn(0);
+        for (int i = 1; i < count; ++i) {
+            const int delay = i * staggerMs;
+            const bool isLast = (i == count - 1);
+            QTimer::singleShot(delay, this, [applyFn, onComplete, i, isLast]() {
+                applyFn(i);
+                if (isLast && onComplete) {
+                    onComplete();
+                }
+            });
+        }
+    } else {
+        for (int i = 0; i < count; ++i) {
+            applyFn(i);
+        }
+        if (onComplete) {
+            onComplete();
         }
     }
 }
@@ -1188,8 +1238,10 @@ void PlasmaZonesEffect::loadCachedSettings()
                 w->deleteLater();
                 QDBusPendingReply<QVariant> reply = *w;
                 if (reply.isValid()) {
-                    m_windowAnimator->setDuration(qBound(50, extractVariant(reply).toInt(), 500));
-                    qCDebug(lcEffect) << "Loaded animationDuration:" << m_windowAnimator->duration();
+                    const int d = qBound(50, extractVariant(reply).toInt(), 500);
+                    m_windowAnimator->setDuration(d);
+                    m_cachedAnimationDuration = d;
+                    qCDebug(lcEffect) << "Loaded animationDuration:" << d;
                 }
             });
 
@@ -1215,6 +1267,31 @@ void PlasmaZonesEffect::loadCachedSettings()
                 if (reply.isValid()) {
                     m_windowAnimator->setMinDistance(qBound(0, extractVariant(reply).toInt(), 200));
                     qCDebug(lcEffect) << "Loaded animationMinDistance:" << m_windowAnimator->minDistance();
+                }
+            });
+
+    auto* animSeqModeWatcher =
+        new QDBusPendingCallWatcher(makeSettingCall(QStringLiteral("animationSequenceMode")), this);
+    connect(animSeqModeWatcher, &QDBusPendingCallWatcher::finished, this,
+            [this, extractVariant](QDBusPendingCallWatcher* w) {
+                w->deleteLater();
+                QDBusPendingReply<QVariant> reply = *w;
+                if (reply.isValid()) {
+                    m_cachedAnimationSequenceMode = qBound(0, extractVariant(reply).toInt(), 1);
+                    qCDebug(lcEffect) << "Loaded animationSequenceMode:" << m_cachedAnimationSequenceMode;
+                }
+            });
+
+    auto* animStaggerWatcher =
+        new QDBusPendingCallWatcher(makeSettingCall(QStringLiteral("animationStaggerInterval")), this);
+    connect(animStaggerWatcher, &QDBusPendingCallWatcher::finished, this,
+            [this, extractVariant](QDBusPendingCallWatcher* w) {
+                w->deleteLater();
+                QDBusPendingReply<QVariant> reply = *w;
+                if (reply.isValid()) {
+                    // Daemon already clamps to [Min..Max]; use generous bounds here
+                    m_cachedAnimationStaggerInterval = qBound(10, extractVariant(reply).toInt(), 200);
+                    qCDebug(lcEffect) << "Loaded animationStaggerInterval:" << m_cachedAnimationStaggerInterval;
                 }
             });
 
@@ -2802,6 +2879,11 @@ void PlasmaZonesEffect::slotAutotileScreensChanged(const QStringList& screenName
         // Restore pre-autotile geometries for windows on removed screens.
         // This covers windows that weren't snapped to zones before autotile
         // (the daemon's resnapCurrentAssignments handles zone-snapped windows).
+        struct RestoreEntry {
+            QPointer<KWin::EffectWindow> window;
+            QRect geometry;
+        };
+        QVector<RestoreEntry> toRestore;
         for (const QString& screenName : removed) {
             const auto savedIt = m_preAutotileGeometries.constFind(screenName);
             if (savedIt == m_preAutotileGeometries.constEnd()) {
@@ -2819,19 +2901,24 @@ void PlasmaZonesEffect::slotAutotileScreensChanged(const QStringList& screenName
                 }
                 const QRectF& savedGeo = savedGeometries.value(savedKey);
                 if (savedGeo.isValid() && QRectF(w->frameGeometry()) != savedGeo) {
-                    qCInfo(lcEffect) << "Restoring pre-autotile geometry for" << windowId << "from"
-                                     << w->frameGeometry() << "to" << savedGeo;
                     // Edge-consistent rounding: round edges independently then derive
                     // width/height, matching snapToRect() in libplasmazones.
                     const int l = qRound(savedGeo.x());
                     const int t = qRound(savedGeo.y());
                     const int r = qRound(savedGeo.x() + savedGeo.width());
                     const int b = qRound(savedGeo.y() + savedGeo.height());
-                    applySnapGeometry(w, QRect(l, t, std::max(0, r - l), std::max(0, b - t)));
+                    toRestore.append({QPointer<KWin::EffectWindow>(w), QRect(l, t, std::max(0, r - l), std::max(0, b - t))});
                 }
             }
             m_preAutotileGeometries.remove(screenName);
         }
+        applyStaggeredOrImmediate(toRestore.size(), [this, toRestore](int i) {
+            const RestoreEntry& e = toRestore[i];
+            if (e.window && shouldHandleWindow(e.window)) {
+                qCInfo(lcEffect) << "Restoring pre-autotile geometry for" << getWindowId(e.window) << "to" << e.geometry;
+                applySnapGeometry(e.window, e.geometry);
+            }
+        });
     }
 
     // Update m_autotileScreens BEFORE the added-screens loop so that
@@ -3043,13 +3130,51 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
         }
     }
 
-    // Apply all geometries using the same path as zones (applySnapGeometry only).
+    // Build snapshot with QPointer for safe deferred access
+    struct TileSnap {
+        QPointer<KWin::EffectWindow> window;
+        QRect geometry;
+        QString windowId;
+        QString screenName;
+    };
+    QVector<TileSnap> toApply;
+    QSet<QString> tiledWindowIds;
+    QString tileScreenName;
     for (Entry& e : entries) {
         if (!e.window) {
             continue;
         }
-        if (e.window->isMinimized()) {
-            KWin::Window* kw = e.window->window();
+        tiledWindowIds.insert(e.windowId);
+        QString screenName = getWindowScreenName(e.window);
+        if (tileScreenName.isEmpty()) {
+            tileScreenName = screenName;
+        }
+        toApply.append({QPointer<KWin::EffectWindow>(e.window), e.geometry, e.windowId, screenName});
+    }
+
+    // Restore borders for borderless windows no longer in this tile request.
+    // windowsTileRequested is per-screen, so scope to windows on the same screen
+    // to avoid restoring borders on other screens' still-tiled windows.
+    // Using onComplete ensures this fires even if the last window is destroyed before its timer.
+    auto restoreBorders = [this, tiledWindowIds, tileScreenName]() {
+        if (m_autotileHideTitleBars && !m_borderlessWindows.isEmpty()) {
+            const QSet<QString> toRestore = m_borderlessWindows - tiledWindowIds;
+            for (const QString& wid : toRestore) {
+                KWin::EffectWindow* win = findWindowById(wid);
+                if (win && getWindowScreenName(win) == tileScreenName && !win->isMinimized()) {
+                    setWindowBorderless(win, wid, false);
+                }
+            }
+        }
+    };
+
+    applyStaggeredOrImmediate(toApply.size(), [this, toApply](int i) {
+        const TileSnap& snap = toApply[i];
+        if (!snap.window) {
+            return;
+        }
+        if (snap.window->isMinimized()) {
+            KWin::Window* kw = snap.window->window();
             if (kw) {
                 kw->setMinimized(false);
                 qCDebug(lcEffect) << "Autotile: unminimized window for geometry apply (ex-monocle)";
@@ -3058,41 +3183,14 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
         // Save pre-autotile geometry before applying (same pattern as zone snap).
         // NOTE: Do NOT gate on m_autotileScreens.contains() here — the tile
         // request D-Bus signal can arrive before autotileScreensChanged, so
-        // m_autotileScreens may not include this screen yet. The daemon only
-        // emits windowsTileRequested for autotile screens, so the check is
-        // redundant and would cause the pre-autotile geometry to be lost.
-        saveAndRecordPreAutotileGeometry(e.windowId, getWindowScreenName(e.window), e.window->frameGeometry());
-        qCInfo(lcEffect) << "Autotile tile request:" << e.windowId << "QRect=" << e.geometry;
-        applySnapGeometry(e.window, e.geometry);
-
-        // Hide title bar if setting is enabled
+        // m_autotileScreens may not include this screen yet.
+        saveAndRecordPreAutotileGeometry(snap.windowId, snap.screenName, snap.window->frameGeometry());
+        qCInfo(lcEffect) << "Autotile tile request:" << snap.windowId << "QRect=" << snap.geometry;
+        applySnapGeometry(snap.window, snap.geometry);
         if (m_autotileHideTitleBars) {
-            setWindowBorderless(e.window, e.windowId, true);
+            setWindowBorderless(snap.window, snap.windowId, true);
         }
-    }
-
-    // Restore borders for borderless windows no longer in this tile request.
-    // windowsTileRequested is per-screen, so scope to windows on the same screen
-    // to avoid restoring borders on other screens' still-tiled windows.
-    if (m_autotileHideTitleBars && !m_borderlessWindows.isEmpty()) {
-        QSet<QString> tiledWindowIds;
-        QString tileScreenName;
-        for (const Entry& e : std::as_const(entries)) {
-            if (e.window) {
-                tiledWindowIds.insert(e.windowId);
-                if (tileScreenName.isEmpty()) {
-                    tileScreenName = getWindowScreenName(e.window);
-                }
-            }
-        }
-        const QSet<QString> toRestore = m_borderlessWindows - tiledWindowIds;
-        for (const QString& windowId : toRestore) {
-            KWin::EffectWindow* win = findWindowById(windowId);
-            if (win && getWindowScreenName(win) == tileScreenName && !win->isMinimized()) {
-                setWindowBorderless(win, windowId, false);
-            }
-        }
-    }
+    }, restoreBorders);
 }
 
 void PlasmaZonesEffect::slotAutotileFocusWindowRequested(const QString& windowId)

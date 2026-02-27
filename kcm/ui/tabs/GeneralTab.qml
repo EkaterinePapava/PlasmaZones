@@ -173,6 +173,49 @@ ScrollView {
                             }
                         }
 
+                        // Sequence mode (all at once vs one by one)
+                        ComboBox {
+                            Kirigami.FormData.label: i18n("Multiple windows:")
+                            enabled: animationsEnabledCheck.checked
+
+                            model: [
+                                i18n("Animate all at once"),
+                                i18n("Animate one by one (zone order)")
+                            ]
+                            currentIndex: kcm.animationSequenceMode
+
+                            onActivated: (index) => kcm.animationSequenceMode = index
+
+                            ToolTip.visible: hovered
+                            ToolTip.text: i18n("When moving multiple windows (resnap, snap all, autotile, etc.), animate them all together or one after another in zone order.")
+                        }
+
+                        // Stagger interval (only relevant when one by one)
+                        RowLayout {
+                            Kirigami.FormData.label: i18n("Stagger delay:")
+                            visible: kcm.animationSequenceMode === 1
+                            enabled: animationsEnabledCheck.checked
+                            spacing: Kirigami.Units.smallSpacing
+
+                            Slider {
+                                Layout.preferredWidth: root.constants.sliderPreferredWidth
+                                from: 10
+                                to: kcm.animationStaggerIntervalMax
+                                stepSize: 10
+                                value: kcm.animationStaggerInterval
+                                onMoved: kcm.animationStaggerInterval = Math.round(value)
+                                Accessible.name: i18n("Delay between each window starting its animation")
+
+                                ToolTip.visible: hovered
+                                ToolTip.text: i18n("When animating one by one: milliseconds between each window starting. Lower values create a fast cascading effect with overlapping animations.")
+                            }
+
+                            Label {
+                                text: i18n("%1 ms", kcm.animationStaggerInterval)
+                                Layout.preferredWidth: root.constants.sliderValueLabelWidth + 15
+                            }
+                        }
+
                         // Minimum distance threshold
                         RowLayout {
                             Kirigami.FormData.label: i18n("Min. distance:")

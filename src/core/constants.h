@@ -89,6 +89,8 @@ constexpr int MinInsertPosition = 0;
 constexpr int MaxInsertPosition = 2;
 constexpr int MinAnimationDuration = 50;
 constexpr int MaxAnimationDuration = 500;
+constexpr int MinAnimationStaggerIntervalMs = 10;
+constexpr int MaxAnimationStaggerIntervalMs = 200;
 constexpr int DefaultAnimationDuration = 150;
 }
 

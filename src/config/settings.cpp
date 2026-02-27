@@ -830,6 +830,8 @@ SETTINGS_SETTER_CLAMPED(AnimationDuration, m_animationDuration, animationDuratio
 SETTINGS_SETTER(const QString&, AnimationEasingCurve, m_animationEasingCurve, animationEasingCurveChanged)
 
 SETTINGS_SETTER_CLAMPED(AnimationMinDistance, m_animationMinDistance, animationMinDistanceChanged, 0, 200)
+SETTINGS_SETTER_CLAMPED(AnimationSequenceMode, m_animationSequenceMode, animationSequenceModeChanged, 0, 1)
+SETTINGS_SETTER_CLAMPED(AnimationStaggerInterval, m_animationStaggerInterval, animationStaggerIntervalChanged, AutotileDefaults::MinAnimationStaggerIntervalMs, AutotileDefaults::MaxAnimationStaggerIntervalMs)
 SETTINGS_SETTER(bool, AutotileFocusFollowsMouse, m_autotileFocusFollowsMouse, autotileFocusFollowsMouseChanged)
 SETTINGS_SETTER(bool, AutotileRespectMinimumSize, m_autotileRespectMinimumSize, autotileRespectMinimumSizeChanged)
 SETTINGS_SETTER(bool, AutotileMonocleHideOthers, m_autotileMonocleHideOthers, autotileMonocleHideOthersChanged)
@@ -1494,6 +1496,8 @@ void Settings::load()
     m_animationDuration = readValidatedInt(animations, "AnimationDuration", ConfigDefaults::animationDuration(), 50, 500, "animation duration");
     m_animationEasingCurve = animations.readEntry(QLatin1String("AnimationEasingCurve"), ConfigDefaults::animationEasingCurve());
     m_animationMinDistance = readValidatedInt(animations, "AnimationMinDistance", ConfigDefaults::animationMinDistance(), 0, 200, "animation min distance");
+    m_animationSequenceMode = readValidatedInt(animations, "AnimationSequenceMode", ConfigDefaults::animationSequenceMode(), 0, 1, "animation sequence mode");
+    m_animationStaggerInterval = readValidatedInt(animations, "AnimationStaggerInterval", ConfigDefaults::animationStaggerInterval(), AutotileDefaults::MinAnimationStaggerIntervalMs, AutotileDefaults::MaxAnimationStaggerIntervalMs, "animation stagger interval");
 
     // Additional Autotiling Settings
     m_autotileFocusFollowsMouse = autotiling.readEntry(QLatin1String("AutotileFocusFollowsMouse"), ConfigDefaults::autotileFocusFollowsMouse());
@@ -1735,6 +1739,8 @@ void Settings::save()
     animations.writeEntry(QLatin1String("AnimationDuration"), m_animationDuration);
     animations.writeEntry(QLatin1String("AnimationEasingCurve"), m_animationEasingCurve);
     animations.writeEntry(QLatin1String("AnimationMinDistance"), m_animationMinDistance);
+    animations.writeEntry(QLatin1String("AnimationSequenceMode"), m_animationSequenceMode);
+    animations.writeEntry(QLatin1String("AnimationStaggerInterval"), m_animationStaggerInterval);
 
     // Additional settings
     autotiling.writeEntry(QLatin1String("AutotileFocusFollowsMouse"), m_autotileFocusFollowsMouse);

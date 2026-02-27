@@ -317,6 +317,28 @@ public:
     // D-Bus interface access for helpers
     QDBusInterface* windowTrackingInterface() const { return m_windowTrackingInterface.get(); }
 
+    // Animation sequence mode: 0=all at once, 1=one by one in zone order (for batch snaps)
+    int cachedAnimationSequenceMode() const { return m_cachedAnimationSequenceMode; }
+    int animationDurationMs() const { return m_cachedAnimationDuration; }
+    int cachedAnimationStaggerInterval() const { return m_cachedAnimationStaggerInterval; }
+
+    /**
+     * @brief Apply a series of operations with optional stagger timing.
+     *
+     * When sequence mode is "one by one" and stagger interval > 0, each
+     * applyFn(i) call is delayed by i * staggerInterval ms (cascading).
+     * Otherwise all calls are immediate.
+     *
+     * @param count       Number of items to process.
+     * @param applyFn     Called with index [0, count). Must capture by value
+     *                    (lambda may fire asynchronously via QTimer).
+     * @param onComplete  Optional callback after all items are processed.
+     */
+    void applyStaggeredOrImmediate(
+        int count,
+        const std::function<void(int)>& applyFn,
+        const std::function<void()>& onComplete = nullptr);
+
 private:
     // Friend classes for helpers
     friend class NavigationHandler;
@@ -441,6 +463,9 @@ private:
     bool m_triggersLoaded = false; // false until D-Bus reply arrives — permissive default bypasses trigger gating (#175)
     bool m_cachedToggleActivation = false;
     bool m_cachedZoneSelectorEnabled = true; // true until proven false — ensures dragMoved passes through at startup
+    int m_cachedAnimationSequenceMode = 0; // 0=all at once, 1=one by one in zone order
+    int m_cachedAnimationDuration = 150; // ms, fallback until loaded from daemon
+    int m_cachedAnimationStaggerInterval = 30; // ms between each window start when animating one by one (cascading)
 
     // Per-drag activation tracking: set once any activation trigger is detected
     // during the current drag. Stays true for the remainder of the drag so
