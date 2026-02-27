@@ -163,6 +163,19 @@ struct PLASMAZONES_EXPORT AutotileConfig
     bool respectMinimumSize = true;
 
     // ═══════════════════════════════════════════════════════════════════════
+    // Window Limits
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * @brief Maximum number of windows to tile
+     *
+     * Windows beyond this limit are not repositioned by the tiling algorithm.
+     * Range: 1 to 12
+     * Default: 6
+     */
+    int maxWindows = 6;
+
+    // ═══════════════════════════════════════════════════════════════════════
     // Comparison and Serialization
     // ═══════════════════════════════════════════════════════════════════════
 

@@ -229,6 +229,7 @@ public:
     EdgeGaps effectiveOuterGaps(const QString& screenName) const;
     bool effectiveSmartGaps(const QString& screenName) const;
     bool effectiveRespectMinimumSize(const QString& screenName) const;
+    int effectiveMaxWindows(const QString& screenName) const;
     QString effectiveAlgorithmId(const QString& screenName) const;
     TilingAlgorithm* effectiveAlgorithm(const QString& screenName) const;
 

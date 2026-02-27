@@ -57,7 +57,8 @@ bool AutotileConfig::operator==(const AutotileConfig &other) const
         && monocleHideOthers == other.monocleHideOthers
         && monocleShowTabs == other.monocleShowTabs
         && smartGaps == other.smartGaps
-        && respectMinimumSize == other.respectMinimumSize;
+        && respectMinimumSize == other.respectMinimumSize
+        && maxWindows == other.maxWindows;
 }
 
 bool AutotileConfig::operator!=(const AutotileConfig &other) const
@@ -85,6 +86,7 @@ QJsonObject AutotileConfig::toJson() const
     json[MonocleShowTabs] = monocleShowTabs;
     json[SmartGaps] = smartGaps;
     json[RespectMinimumSize] = respectMinimumSize;
+    json[MaxWindows] = maxWindows;
     return json;
 }
 
@@ -146,6 +148,10 @@ AutotileConfig AutotileConfig::fromJson(const QJsonObject &json)
     }
     if (json.contains(RespectMinimumSize)) {
         config.respectMinimumSize = json[RespectMinimumSize].toBool(config.respectMinimumSize);
+    }
+    if (json.contains(MaxWindows)) {
+        config.maxWindows = json[MaxWindows].toInt(config.maxWindows);
+        config.maxWindows = std::clamp(config.maxWindows, MinMaxWindows, MaxMaxWindows);
     }
     return config;
 }

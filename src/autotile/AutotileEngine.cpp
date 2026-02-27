@@ -302,6 +302,7 @@ void AutotileEngine::syncFromSettings(Settings* settings)
     m_config->respectMinimumSize = settings->autotileRespectMinimumSize();
     m_config->monocleHideOthers = settings->autotileMonocleHideOthers();
     m_config->monocleShowTabs = settings->autotileMonocleShowTabs();
+    m_config->maxWindows = settings->autotileMaxWindows();
 
     // Set algorithm on engine (won't retile since m_enabled is false)
     m_algorithmId = settings->autotileAlgorithm();
@@ -421,6 +422,47 @@ void AutotileEngine::connectToSettings(Settings* settings)
     CONNECT_SETTING_RETILE(autotileOuterGapRightChanged, outerGapRight, autotileOuterGapRight);
     CONNECT_SETTING_RETILE(autotileSmartGapsChanged, smartGaps, autotileSmartGaps);
     CONNECT_SETTING_RETILE(autotileRespectMinimumSizeChanged, respectMinimumSize, autotileRespectMinimumSize);
+
+    // MaxWindows needs a custom handler: when the limit increases, backfill
+    // windows that were previously rejected by onWindowAdded's gate check.
+    connect(settings, &Settings::autotileMaxWindowsChanged, this, [this]() {
+        if (!m_settings) {
+            return;
+        }
+        const int oldMax = m_config->maxWindows;
+        m_config->maxWindows = m_settings->autotileMaxWindows();
+
+        // When max increases, try to add windows that exist on autotile screens
+        // but were rejected when the previous limit was reached.
+        if (m_config->maxWindows > oldMax) {
+            for (const QString& screenName : m_autotileScreens) {
+                TilingState* state = stateForScreen(screenName);
+                if (!state) {
+                    continue;
+                }
+                const int newMax = effectiveMaxWindows(screenName);
+                if (state->tiledWindowCount() >= newMax) {
+                    continue; // Already at or above the new limit
+                }
+                // Collect candidates first to avoid modifying m_windowToScreen during iteration
+                // (insertWindow calls m_windowToScreen.insert which is unsafe during const iteration)
+                QStringList candidates;
+                for (auto it = m_windowToScreen.constBegin(); it != m_windowToScreen.constEnd(); ++it) {
+                    if (it.value() == screenName && !state->containsWindow(it.key())
+                        && shouldTileWindow(it.key())) {
+                        candidates.append(it.key());
+                    }
+                }
+                for (const QString& windowId : candidates) {
+                    insertWindow(windowId, screenName);
+                    if (state->tiledWindowCount() >= newMax) {
+                        break;
+                    }
+                }
+            }
+        }
+        scheduleSettingsRetile();
+    });
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // Settings that don't require retile (config update only)
@@ -592,6 +634,13 @@ bool AutotileEngine::effectiveRespectMinimumSize(const QString& screenName) cons
     if (auto v = perScreenOverride(screenName, QStringLiteral("RespectMinimumSize")))
         return v->toBool();
     return m_config->respectMinimumSize;
+}
+
+int AutotileEngine::effectiveMaxWindows(const QString& screenName) const
+{
+    if (auto v = perScreenOverride(screenName, QStringLiteral("MaxWindows")))
+        return qBound(AutotileDefaults::MinMaxWindows, v->toInt(), AutotileDefaults::MaxMaxWindows);
+    return m_config->maxWindows;
 }
 
 QString AutotileEngine::effectiveAlgorithmId(const QString& screenName) const
@@ -1331,10 +1380,11 @@ void AutotileEngine::onWindowAdded(const QString& windowId)
         return;
     }
 
-    constexpr int MaxWindowsPerScreen = 50;
     TilingState* state = stateForScreen(screenName);
-    if (state && state->tiledWindowCount() >= MaxWindowsPerScreen) {
-        qCDebug(lcAutotile) << "Max window limit reached for screen" << screenName;
+    const int maxWin = effectiveMaxWindows(screenName);
+    if (state && state->tiledWindowCount() >= maxWin) {
+        qCDebug(lcAutotile) << "Max window limit reached for screen" << screenName
+                            << "(max=" << maxWin << ")";
         return;
     }
 
@@ -1382,13 +1432,16 @@ void AutotileEngine::onWindowFocused(const QString& windowId)
     // (it was skipped in applyTiling's optimization) then update visibility.
     if (isAutotileScreen(m_activeScreen) && isMonocleHideMode(m_activeScreen)) {
         const QStringList windows = state->tiledWindows();
-        if (windows.size() > 1) {
-            const QVector<QRect> zones = state->calculatedZones();
+        const QVector<QRect> zones = state->calculatedZones();
+        const int managedCount = zones.size();
+        if (managedCount > 1) {
             const int idx = windows.indexOf(windowId);
-            if (idx >= 0 && idx < zones.size()) {
+            if (idx >= 0 && idx < managedCount) {
                 emitSingleWindowTile(windowId, zones[idx]);
             }
-            emitMonocleVisibility(state, windows);
+            // Only pass managed (non-overflow) windows to monocle visibility.
+            // Windows beyond maxWindows should not be hidden by monocle mode.
+            emitMonocleVisibility(state, windows.mid(0, managedCount));
         }
     }
 }
@@ -1489,11 +1542,14 @@ void AutotileEngine::recalculateLayout(const QString& screenName)
         return;
     }
 
-    const int windowCount = state->tiledWindowCount();
-    if (windowCount == 0) {
+    const int tiledCount = state->tiledWindowCount();
+    if (tiledCount == 0) {
         state->setCalculatedZones({}); // Clear zones when no windows
         return;
     }
+
+    // Cap to user's max windows setting — excess windows are not tiled
+    const int windowCount = std::min(tiledCount, effectiveMaxWindows(screenName));
 
     const QRect screen = screenGeometry(screenName);
     if (!screen.isValid()) {
@@ -1511,13 +1567,14 @@ void AutotileEngine::recalculateLayout(const QString& screenName)
     const int innerGap = skipGaps ? 0 : effectiveInnerGap(screenName);
     const EdgeGaps outerGaps = skipGaps ? EdgeGaps::uniform(0) : effectiveOuterGaps(screenName);
     // Build minSizes vector for the algorithm (when respectMinimumSize is enabled)
+    // Only include the first windowCount windows (capped by maxWindows above)
     QVector<QSize> minSizes;
     if (effectiveRespectMinimumSize(screenName)) {
         const QStringList windows = state->tiledWindows();
         // KWin reports min size in logical pixels (same as QScreen/zone geometry);
         // do not divide by devicePixelRatio or we under-report and steal too little.
-        minSizes.resize(windows.size());
-        for (int i = 0; i < windows.size(); ++i) {
+        minSizes.resize(windowCount);
+        for (int i = 0; i < windowCount && i < windows.size(); ++i) {
             minSizes[i] = m_windowMinSizes.value(windows[i]);
         }
     }
@@ -1558,30 +1615,40 @@ void AutotileEngine::applyTiling(const QString& screenName)
     const QStringList windows = state->tiledWindows();
     const QVector<QRect> zones = state->calculatedZones();
 
-    if (windows.size() != zones.size()) {
-        qCWarning(lcAutotile) << "AutotileEngine::applyTiling: window/zone count mismatch" << windows.size() << "vs"
+    // zones.size() may be less than windows.size() when maxWindows caps the layout.
+    // Only the first zones.size() windows receive tiled geometries; the rest are untouched.
+    if (zones.isEmpty()) {
+        qCDebug(lcAutotile) << "AutotileEngine::applyTiling: no zones calculated for screen" << screenName;
+        return;
+    }
+    if (zones.size() > windows.size()) {
+        qCWarning(lcAutotile) << "AutotileEngine::applyTiling: zone count exceeds window count" << windows.size() << "vs"
                    << zones.size();
         return;
     }
+
+    const int tileCount = zones.size();
 
     // Monocle optimization: only tile the visible (focused) window. The N-1
     // hidden windows don't need moveResize since they're minimized, avoiding
     // expensive per-window stacking-order scans, D-Bus calls, and repaints.
     // When focus changes, onWindowFocused() tiles the newly visible window.
-    if (isMonocleHideMode(screenName) && windows.size() > 1) {
+    if (isMonocleHideMode(screenName) && tileCount > 1) {
         const QString focused = state->focusedWindow();
         const int focusIdx = focused.isEmpty() ? -1 : windows.indexOf(focused);
-        const int visibleIdx = (focusIdx >= 0) ? focusIdx : 0;
+        const int visibleIdx = (focusIdx >= 0 && focusIdx < tileCount) ? focusIdx : 0;
 
         emitSingleWindowTile(windows[visibleIdx], zones[visibleIdx]);
 
-        emitMonocleVisibility(state, windows);
+        // Only pass the managed (non-overflow) windows to monocle visibility.
+        // Windows beyond maxWindows should not be hidden by monocle mode.
+        emitMonocleVisibility(state, windows.mid(0, tileCount));
         return;
     }
 
     // Build batch JSON and emit once to avoid race when effect applies many geometries
     QJsonArray arr;
-    for (int i = 0; i < windows.size(); ++i) {
+    for (int i = 0; i < tileCount; ++i) {
         const QRect& geo = zones[i];
         QJsonObject obj;
         obj[QLatin1String("windowId")] = windows[i];
