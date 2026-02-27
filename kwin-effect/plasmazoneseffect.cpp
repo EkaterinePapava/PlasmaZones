@@ -960,6 +960,20 @@ bool PlasmaZonesEffect::shouldHandleWindow(KWin::EffectWindow* w) const
     return true;
 }
 
+bool PlasmaZonesEffect::isTileableWindow(KWin::EffectWindow* w) const
+{
+    // Reject menus, popups, tooltips, modals, and transient children.
+    // Electron apps (Vesktop, VS Code, Discord) create separate windows
+    // for context menus and dropdowns that pass shouldHandleWindow() but
+    // must never enter the autotile tree.
+    if (!w->isNormalWindow() || w->isModal() || w->isPopupWindow()
+        || w->isDropdownMenu() || w->isPopupMenu()
+        || w->isTooltip() || w->isMenu() || w->transientFor()) {
+        return false;
+    }
+    return true;
+}
+
 bool PlasmaZonesEffect::shouldAutoSnapWindow(KWin::EffectWindow* w) const
 {
     // First apply basic filter
@@ -2668,6 +2682,10 @@ void PlasmaZonesEffect::notifyWindowAdded(KWin::EffectWindow* w)
         return;
     }
 
+    if (!isTileableWindow(w)) {
+        return;
+    }
+
     const QString windowId = getWindowId(w);
 
     // Window was already closed before we could notify open — skip (D-Bus ordering race)
@@ -3186,10 +3204,10 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
         // m_autotileScreens may not include this screen yet.
         saveAndRecordPreAutotileGeometry(snap.windowId, snap.screenName, snap.window->frameGeometry());
         qCInfo(lcEffect) << "Autotile tile request:" << snap.windowId << "QRect=" << snap.geometry;
-        applySnapGeometry(snap.window, snap.geometry);
         if (m_autotileHideTitleBars) {
             setWindowBorderless(snap.window, snap.windowId, true);
         }
+        applySnapGeometry(snap.window, snap.geometry);
     }, restoreBorders);
 }
 
