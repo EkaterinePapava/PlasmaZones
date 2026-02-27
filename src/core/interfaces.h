@@ -443,6 +443,7 @@ struct PLASMAZONES_EXPORT ZoneDetectionResult
 {
     Zone* primaryZone = nullptr; // Main zone to snap to
     QVector<Zone*> adjacentZones; // Adjacent zones for multi-zone snap
+    QVector<Zone*> overlappingZones; // All zones containing cursor point (overlap info)
     QRectF snapGeometry; // Combined geometry for snapping
     qreal distance = -1; // Distance to zone edge
     bool isMultiZone = false; // Whether snapping to multiple zones
