@@ -40,6 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: kdeneon/all:dev-stable
+      options: --user root
 
     steps:
       - name: Install prerequisites
