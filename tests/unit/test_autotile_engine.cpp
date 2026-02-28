@@ -674,6 +674,274 @@ private Q_SLOTS:
         // Engine should have no autotile screens
         QVERIFY(!engine.isEnabled());
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Coverage gap tests (OverflowManager integration)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void testOverflow_crossScreenMigration()
+    {
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        const QString screen1 = QStringLiteral("Screen1");
+        const QString screen2 = QStringLiteral("Screen2");
+        engine.config()->maxWindows = 10;
+
+        QSet<QString> screens{screen1, screen2};
+        engine.setAutotileScreens(screens);
+
+        engine.windowOpened(QStringLiteral("win-1"), screen1);
+        engine.windowOpened(QStringLiteral("win-2"), screen1);
+        QCoreApplication::processEvents();
+
+        TilingState* state1 = engine.stateForScreen(screen1);
+
+        // Overflow win-2 on Screen1
+        engine.config()->maxWindows = 1;
+        state1->setCalculatedZones({QRect(0, 0, 1000, 1000)});
+        engine.retile(screen1);
+        QVERIFY(state1->isFloating(QStringLiteral("win-2")));
+
+        // Simulate cross-screen focus (migration)
+        engine.windowFocused(QStringLiteral("win-2"), screen2);
+        QCoreApplication::processEvents();
+
+        // win-2 should have been migrated: removed from Screen1
+        QVERIFY(!state1->containsWindow(QStringLiteral("win-2")));
+    }
+
+    void testOverflow_backfillPriority()
+    {
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        const QString screenName = QStringLiteral("TestScreen");
+        engine.config()->maxWindows = 10;
+
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        engine.windowOpened(QStringLiteral("win-1"), screenName);
+        engine.windowOpened(QStringLiteral("win-2"), screenName);
+        engine.windowOpened(QStringLiteral("win-3"), screenName);
+        QCoreApplication::processEvents();
+
+        TilingState* state = engine.stateForScreen(screenName);
+        QCOMPARE(state->tiledWindowCount(), 3);
+
+        // Overflow: set 2 zones
+        engine.config()->maxWindows = 2;
+        state->setCalculatedZones({QRect(0, 0, 500, 500), QRect(500, 0, 500, 500)});
+        engine.retile(screenName);
+        QVERIFY(state->isFloating(QStringLiteral("win-3")));
+
+        // Increase maxWindows — overflow recovery should bring win-3 back
+        engine.config()->maxWindows = 3;
+        state->setCalculatedZones({QRect(0, 0, 333, 500), QRect(333, 0, 333, 500), QRect(666, 0, 334, 500)});
+        engine.retile(screenName);
+
+        QVERIFY(!state->isFloating(QStringLiteral("win-3")));
+    }
+
+    void testOverflow_multipleUnfloat()
+    {
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        const QString screenName = QStringLiteral("TestScreen");
+        engine.config()->maxWindows = 10;
+
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        engine.windowOpened(QStringLiteral("win-1"), screenName);
+        engine.windowOpened(QStringLiteral("win-2"), screenName);
+        engine.windowOpened(QStringLiteral("win-3"), screenName);
+        engine.windowOpened(QStringLiteral("win-4"), screenName);
+        QCoreApplication::processEvents();
+
+        TilingState* state = engine.stateForScreen(screenName);
+
+        // Overflow 2 windows: only 2 zones
+        engine.config()->maxWindows = 2;
+        state->setCalculatedZones({QRect(0, 0, 500, 500), QRect(500, 0, 500, 500)});
+        engine.retile(screenName);
+        QCOMPARE(state->tiledWindowCount(), 2);
+
+        // Increase to allow all 4 — both overflow windows should unfloat
+        engine.config()->maxWindows = 4;
+        state->setCalculatedZones({QRect(0, 0, 250, 500), QRect(250, 0, 250, 500),
+                                   QRect(500, 0, 250, 500), QRect(750, 0, 250, 500)});
+
+        QSignalSpy floatSpy(&engine, &AutotileEngine::windowFloatingChanged);
+        engine.retile(screenName);
+
+        // Count unfloat signals (floating=false)
+        int unfloatCount = 0;
+        for (int i = 0; i < floatSpy.count(); ++i) {
+            if (!floatSpy.at(i).at(1).toBool()) {
+                ++unfloatCount;
+            }
+        }
+        QCOMPARE(unfloatCount, 2);
+    }
+
+    void testOverflow_userFloatClearsTracking()
+    {
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        const QString screenName = QStringLiteral("TestScreen");
+        engine.config()->maxWindows = 10;
+
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        engine.windowOpened(QStringLiteral("win-1"), screenName);
+        engine.windowOpened(QStringLiteral("win-2"), screenName);
+        QCoreApplication::processEvents();
+
+        TilingState* state = engine.stateForScreen(screenName);
+
+        // Overflow win-2
+        engine.config()->maxWindows = 1;
+        state->setCalculatedZones({QRect(0, 0, 1000, 1000)});
+        engine.retile(screenName);
+        QVERIFY(state->isFloating(QStringLiteral("win-2")));
+
+        // Explicitly unfloat then re-float via user action to establish
+        // user-intentional floating (floatWindow no-ops on already-floating windows)
+        engine.config()->maxWindows = 2;
+        state->setCalculatedZones({QRect(0, 0, 500, 1000), QRect(500, 0, 500, 1000)});
+        engine.unfloatWindow(QStringLiteral("win-2"));  // clears overflow tracking
+        engine.floatWindow(QStringLiteral("win-2"));    // now user-floated
+
+        // Retile — win-2 should NOT auto-unfloat because it's user-floated
+        engine.retile(screenName);
+        QVERIFY(state->isFloating(QStringLiteral("win-2")));
+    }
+
+    void testOverflow_reentrantRetile()
+    {
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        const QString screenName = QStringLiteral("TestScreen");
+        engine.config()->maxWindows = 10;
+
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        engine.windowOpened(QStringLiteral("win-1"), screenName);
+        engine.windowOpened(QStringLiteral("win-2"), screenName);
+        QCoreApplication::processEvents();
+
+        TilingState* state = engine.stateForScreen(screenName);
+
+        // Overflow win-2
+        engine.config()->maxWindows = 1;
+        state->setCalculatedZones({QRect(0, 0, 1000, 1000)});
+
+        // Retile should not crash on re-entrant call
+        engine.retile(screenName);
+        engine.retile(screenName);
+
+        QVERIFY(state->isFloating(QStringLiteral("win-2")));
+    }
+
+    void testOverflow_multiScreenRemoval()
+    {
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        const QString screen1 = QStringLiteral("Screen1");
+        const QString screen2 = QStringLiteral("Screen2");
+        engine.config()->maxWindows = 10;
+
+        QSet<QString> screens{screen1, screen2};
+        engine.setAutotileScreens(screens);
+
+        engine.windowOpened(QStringLiteral("win-1"), screen1);
+        engine.windowOpened(QStringLiteral("win-2"), screen1);
+        engine.windowOpened(QStringLiteral("win-3"), screen2);
+        engine.windowOpened(QStringLiteral("win-4"), screen2);
+        QCoreApplication::processEvents();
+
+        TilingState* state1 = engine.stateForScreen(screen1);
+        TilingState* state2 = engine.stateForScreen(screen2);
+
+        // Overflow on both screens
+        engine.config()->maxWindows = 1;
+        state1->setCalculatedZones({QRect(0, 0, 1000, 1000)});
+        state2->setCalculatedZones({QRect(0, 0, 1000, 1000)});
+        engine.retile();
+        QVERIFY(state1->isFloating(QStringLiteral("win-2")));
+        QVERIFY(state2->isFloating(QStringLiteral("win-4")));
+
+        // Remove Screen1 only — Screen2's overflow should be preserved
+        engine.setAutotileScreens({screen2});
+        QVERIFY(engine.isEnabled());
+
+        // Screen2 state should still have win-4 floating
+        TilingState* state2After = engine.stateForScreen(screen2);
+        QVERIFY(state2After->isFloating(QStringLiteral("win-4")));
+    }
+
+    void testOverflow_perScreenMaxWindows()
+    {
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        const QString screenName = QStringLiteral("TestScreen");
+        engine.config()->maxWindows = 10;
+
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        engine.windowOpened(QStringLiteral("win-1"), screenName);
+        engine.windowOpened(QStringLiteral("win-2"), screenName);
+        engine.windowOpened(QStringLiteral("win-3"), screenName);
+        QCoreApplication::processEvents();
+
+        TilingState* state = engine.stateForScreen(screenName);
+        QCOMPARE(state->tiledWindowCount(), 3);
+
+        // Apply per-screen override to limit maxWindows to 2
+        QVariantMap overrides;
+        overrides[QStringLiteral("MaxWindows")] = 2;
+        engine.applyPerScreenConfig(screenName, overrides);
+
+        // Set 2 zones to match
+        state->setCalculatedZones({QRect(0, 0, 500, 500), QRect(500, 0, 500, 500)});
+        engine.retile(screenName);
+
+        QCOMPARE(state->tiledWindowCount(), 2);
+        QVERIFY(state->isFloating(QStringLiteral("win-3")));
+    }
+
+    void testOverflow_toggleFloatClearsTracking()
+    {
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        const QString screenName = QStringLiteral("TestScreen");
+        engine.config()->maxWindows = 10;
+
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        engine.windowOpened(QStringLiteral("win-1"), screenName);
+        engine.windowOpened(QStringLiteral("win-2"), screenName);
+        QCoreApplication::processEvents();
+
+        TilingState* state = engine.stateForScreen(screenName);
+        state->setFocusedWindow(QStringLiteral("win-2"));
+
+        // Overflow win-2
+        engine.config()->maxWindows = 1;
+        state->setCalculatedZones({QRect(0, 0, 1000, 1000)});
+        engine.retile(screenName);
+        QVERIFY(state->isFloating(QStringLiteral("win-2")));
+
+        // Toggle float on overflow window — should clear overflow status
+        engine.toggleWindowFloat(QStringLiteral("win-2"), screenName);
+
+        // After toggle, win-2 is now tiled (was floating -> toggled to tiled)
+        // Increase maxWindows — win-2 should remain in its current state
+        // (not re-tracked as overflow)
+        engine.config()->maxWindows = 2;
+        state->setCalculatedZones({QRect(0, 0, 500, 1000), QRect(500, 0, 500, 1000)});
+        engine.retile(screenName);
+
+        // win-2 should be tiled normally
+        QVERIFY(!state->isFloating(QStringLiteral("win-2")));
+        QCOMPARE(state->tiledWindowCount(), 2);
+    }
 };
 
 QTEST_MAIN(TestAutotileEngine)

@@ -125,6 +125,23 @@ target_link_libraries(test_tiling_state
 add_test(NAME TilingState COMMAND test_tiling_state)
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Overflow Manager Tests
+# Tests for per-screen overflow tracking, recovery, migration
+# ═══════════════════════════════════════════════════════════════════════════════
+add_executable(test_overflow_manager
+    test_overflow_manager.cpp
+)
+
+target_link_libraries(test_overflow_manager
+    PRIVATE
+        Qt6::Test
+        Qt6::Core
+        plasmazones_core
+)
+
+add_test(NAME OverflowManager COMMAND test_overflow_manager)
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Geometry Utils Tests
 # Tests for enforceWindowMinSizes(), removeZoneOverlaps() (chain stealing, gaps)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -148,6 +165,6 @@ add_test(NAME GeometryUtils COMMAND test_geometry_utils)
 set_tests_properties(
     WindowIdentity WindowTracking SessionPersistence
     TilingAlgorithms AlgorithmRegistry AutotileEngine
-    TilingState GeometryUtils
+    TilingState GeometryUtils OverflowManager
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
 )

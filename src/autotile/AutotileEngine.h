@@ -18,6 +18,8 @@
 #include <memory>
 #include <optional>
 
+#include "OverflowManager.h"
+
 namespace PlasmaZones {
 
 class AutotileConfig;
@@ -684,18 +686,14 @@ private:
     void backfillWindows();
 
     /**
-     * @brief Unfloat overflow windows when room becomes available
+     * @brief Recover overflow windows and retile a single screen
      *
-     * Checks if there are overflow-floated windows on the screen and unfloats
-     * them when tiled window count is below maxWindows. Called before
-     * recalculateLayout to re-integrate previously overflowed windows.
+     * Encapsulates the four-step retile sequence: overflow recovery,
+     * recalculate layout, apply tiling, emit tilingChanged.
      *
-     * @param screenName Screen to check for overflow recovery
+     * @param screenName Screen to retile
      */
-    void unfloatOverflowIfRoom(const QString& screenName);
-
-    /** @brief Clear overflow tracking for a window (user action or removal) */
-    void clearOverflowStatus(const QString& windowId);
+    void retileScreen(const QString& screenName);
 
     /**
      * @brief Helper to get tiled windows and state for focus operations
@@ -809,10 +807,8 @@ private:
     // re-enabling autotile restores them as floating regardless of screen.
     QSet<QString> m_savedFloatingWindows;
 
-    // Overflow windows: auto-floated when tiled window count exceeds maxWindows.
-    // Distinguished from user-floated windows so they can be auto-unfloated when
-    // room becomes available (e.g., window closed, maxWindows increased).
-    QSet<QString> m_overflowWindows;
+    // Per-screen overflow tracking with O(1) reverse-index lookups.
+    OverflowManager m_overflow;
 
     // Settings synchronization
     QPointer<Settings> m_settings; // QPointer for safe access if Settings destroyed

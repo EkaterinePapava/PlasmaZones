@@ -95,6 +95,8 @@ set(plasmazones_core_SRCS
     autotile/AutotileConfig.h
     autotile/AutotileEngine.cpp
     autotile/AutotileEngine.h
+    autotile/OverflowManager.cpp
+    autotile/OverflowManager.h
     autotile/algorithms/MasterStackAlgorithm.cpp
     autotile/algorithms/MasterStackAlgorithm.h
     autotile/algorithms/ColumnsAlgorithm.cpp

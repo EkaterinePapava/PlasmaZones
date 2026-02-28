@@ -155,11 +155,10 @@ void AutotileEngine::setAutotileScreens(const QSet<QString>& screens)
             // Save user-floated windows so they stay floating when autotile is re-enabled.
             // Exclude overflow windows — they were auto-floated by maxWindows cap and
             // should tile normally when autotile is re-enabled.
+            QSet<QString> screenOverflow = m_overflow.takeForScreen(it.key());
             const QStringList floated = it.value()->floatingWindows();
             for (const QString& fid : floated) {
-                if (m_overflowWindows.remove(fid)) {
-                    // Overflow window: don't save as intentionally floating
-                } else {
+                if (!screenOverflow.contains(fid)) {
                     m_savedFloatingWindows.insert(fid);
                 }
             }
@@ -178,13 +177,7 @@ void AutotileEngine::setAutotileScreens(const QSet<QString>& screens)
     // The floating-windows loop above handles overflow windows that are currently
     // floating in the TilingState, but entries could remain if an overflow window
     // was unfloated by a concurrent retile before reaching this point.
-    for (auto oit = m_overflowWindows.begin(); oit != m_overflowWindows.end(); ) {
-        if (!m_autotileScreens.contains(m_windowToScreen.value(*oit))) {
-            oit = m_overflowWindows.erase(oit);
-        } else {
-            ++oit;
-        }
-    }
+    m_overflow.clearForRemovedScreens(m_autotileScreens);
 
     // Clear any pending deferred retiles for removed screens
     for (auto pit = m_pendingRetileScreens.begin(); pit != m_pendingRetileScreens.end(); ) {
@@ -900,20 +893,14 @@ void AutotileEngine::retile(const QString& screenName)
         // Retile autotile screens only
         for (const QString& key : m_autotileScreens) {
             if (m_screenStates.contains(key)) {
-                unfloatOverflowIfRoom(key);
-                recalculateLayout(key);
-                applyTiling(key);
-                Q_EMIT tilingChanged(key);
+                retileScreen(key);
             }
         }
     } else {
         if (!isAutotileScreen(screenName)) {
             return;
         }
-        unfloatOverflowIfRoom(screenName);
-        recalculateLayout(screenName);
-        applyTiling(screenName);
-        Q_EMIT tilingChanged(screenName);
+        retileScreen(screenName);
     }
 }
 
@@ -1353,7 +1340,7 @@ void AutotileEngine::toggleWindowFloat(const QString& windowId, const QString& s
 void AutotileEngine::performToggleFloat(TilingState* state, const QString& windowId, const QString& screenName)
 {
     state->toggleFloating(windowId);
-    clearOverflowStatus(windowId); // User explicitly toggled, no longer overflow
+    m_overflow.clearOverflow(windowId); // User explicitly toggled, no longer overflow
     retileAfterOperation(screenName, true);
 
     const bool isNowFloating = state->isFloating(windowId);
@@ -1384,7 +1371,7 @@ void AutotileEngine::floatWindow(const QString& windowId)
     }
 
     state->setFloating(windowId, true);
-    clearOverflowStatus(windowId); // Now user-floated, not overflow
+    m_overflow.clearOverflow(windowId); // Now user-floated, not overflow
     QString screenName = m_windowToScreen.value(windowId);
     retileAfterOperation(screenName, true);
 
@@ -1410,7 +1397,7 @@ void AutotileEngine::unfloatWindow(const QString& windowId)
     }
 
     state->setFloating(windowId, false);
-    clearOverflowStatus(windowId); // No longer overflow
+    m_overflow.clearOverflow(windowId); // No longer overflow
     QString screenName = m_windowToScreen.value(windowId);
     retileAfterOperation(screenName, true);
 
@@ -1488,26 +1475,26 @@ void AutotileEngine::windowFocused(const QString& windowId, const QString& scree
         return;
     }
 
-    // Detect cross-screen move for overflow-floated windows.
-    // When a window moves screens while overflow-floated, its TilingState membership
-    // stays on the old screen but m_windowToScreen would point to the new screen,
-    // making unfloatOverflowIfRoom unable to find it on either screen.
+    // Detect cross-screen moves. When a window's focus moves to a different
+    // screen, migrate its TilingState membership so m_windowToScreen and the
+    // TilingState remain consistent. This handles both overflow-floated windows
+    // and windows that were previously migrated (preventing the Screen1->2->1
+    // rapid-migration desync where the second hop was silently skipped).
     const QString oldScreen = m_windowToScreen.value(windowId);
     if (!screenName.isEmpty()) {
         m_windowToScreen[windowId] = screenName;
     }
 
-    if (!oldScreen.isEmpty() && !screenName.isEmpty() && oldScreen != screenName
-        && m_overflowWindows.contains(windowId)) {
+    if (!oldScreen.isEmpty() && !screenName.isEmpty() && oldScreen != screenName) {
         TilingState* oldState = m_screenStates.value(oldScreen);
-        if (oldState) {
+        if (oldState && oldState->containsWindow(windowId)) {
             oldState->removeWindow(windowId);
+            m_overflow.migrateWindow(windowId);
+            qCInfo(lcAutotile) << "Window" << windowId << "moved from" << oldScreen
+                               << "to" << screenName << "- migrating";
+            // Re-add to the new screen's normal flow (will be overflow-checked on next retile)
+            onWindowAdded(windowId);
         }
-        clearOverflowStatus(windowId);
-        qCInfo(lcAutotile) << "Overflow window" << windowId << "moved from" << oldScreen
-                           << "to" << screenName << "- migrating";
-        // Re-add to the new screen's normal flow (will be overflow-checked on next retile)
-        onWindowAdded(windowId);
     }
 
     onWindowFocused(windowId);
@@ -1660,7 +1647,7 @@ bool AutotileEngine::insertWindow(const QString& windowId, const QString& screen
 void AutotileEngine::removeWindow(const QString& windowId)
 {
     m_windowMinSizes.remove(windowId);
-    clearOverflowStatus(windowId);
+    m_overflow.clearOverflow(windowId);
     const QString screenName = m_windowToScreen.take(windowId);
     if (screenName.isEmpty()) {
         return;
@@ -1783,19 +1770,10 @@ void AutotileEngine::applyTiling(const QString& screenName)
     // Auto-float overflow windows that exceed maxWindows cap.
     // Daemon's windowFloatingChanged handler restores their pre-autotile geometry.
     // Done before monocle/JSON paths to ensure overflow is handled for all algorithms.
-    // Batch: mutate state first, then emit signals to avoid re-entrant partial state.
-    QStringList newlyOverflowed;
-    for (int i = tileCount; i < windows.size(); ++i) {
-        const QString& wid = windows[i];
-        if (!m_overflowWindows.contains(wid)) {
-            state->setFloating(wid, true);
-            m_overflowWindows.insert(wid);
-            newlyOverflowed.append(wid);
-            qCInfo(lcAutotile) << "Overflow: auto-floated window" << wid << "on screen" << screenName;
-        }
-    }
+    // Batch: mutate state first, then collect signals for deferred emission.
+    QStringList newlyOverflowed = m_overflow.applyOverflow(screenName, windows, tileCount);
     for (const QString& wid : std::as_const(newlyOverflowed)) {
-        Q_EMIT windowFloatingChanged(wid, true, screenName);
+        state->setFloating(wid, true);
     }
 
     // Monocle optimization: only tile the visible (focused) window. The N-1
@@ -1812,22 +1790,27 @@ void AutotileEngine::applyTiling(const QString& screenName)
         // Only pass the managed (non-overflow) windows to monocle visibility.
         // Windows beyond maxWindows should not be hidden by monocle mode.
         emitMonocleVisibility(state, windows.mid(0, tileCount));
-        return;
+    } else {
+        // Build batch JSON and emit once to avoid race when effect applies many geometries
+        QJsonArray arr;
+        for (int i = 0; i < tileCount; ++i) {
+            const QRect& geo = zones[i];
+            QJsonObject obj;
+            obj[QLatin1String("windowId")] = windows[i];
+            obj[QLatin1String("x")] = geo.x();
+            obj[QLatin1String("y")] = geo.y();
+            obj[QLatin1String("width")] = geo.width();
+            obj[QLatin1String("height")] = geo.height();
+            arr.append(obj);
+        }
+        Q_EMIT windowsTiled(QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Compact)));
     }
 
-    // Build batch JSON and emit once to avoid race when effect applies many geometries
-    QJsonArray arr;
-    for (int i = 0; i < tileCount; ++i) {
-        const QRect& geo = zones[i];
-        QJsonObject obj;
-        obj[QLatin1String("windowId")] = windows[i];
-        obj[QLatin1String("x")] = geo.x();
-        obj[QLatin1String("y")] = geo.y();
-        obj[QLatin1String("width")] = geo.width();
-        obj[QLatin1String("height")] = geo.height();
-        arr.append(obj);
+    // Emit overflow signals AFTER geometry batch — prevents re-entrant signal
+    // handlers from triggering retile on partially-complete state.
+    for (const QString& wid : std::as_const(newlyOverflowed)) {
+        Q_EMIT windowFloatingChanged(wid, true, screenName);
     }
-    Q_EMIT windowsTiled(QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Compact)));
 }
 
 bool AutotileEngine::shouldTileWindow(const QString& windowId) const
@@ -1917,7 +1900,19 @@ void AutotileEngine::backfillWindows()
         // Prioritize recovering overflow-floated windows before inserting new ones.
         // This ensures previously-tiled windows return to tiling before brand-new
         // windows take their slots.
-        unfloatOverflowIfRoom(screenName);
+        {
+            TilingState* bfState = stateForScreen(screenName);
+            if (bfState && !m_overflow.isEmpty()) {
+                QStringList unfloated = m_overflow.recoverIfRoom(
+                    screenName, bfState->tiledWindowCount(), effectiveMaxWindows(screenName),
+                    [bfState](const QString& wid) { return bfState->isFloating(wid); },
+                    [bfState](const QString& wid) { return bfState->containsWindow(wid); });
+                for (const QString& wid : unfloated) {
+                    bfState->setFloating(wid, false);
+                    Q_EMIT windowFloatingChanged(wid, false, screenName);
+                }
+            }
+        }
 
         TilingState* state = stateForScreen(screenName);
         if (!state) {
@@ -1945,52 +1940,41 @@ void AutotileEngine::backfillWindows()
     }
 }
 
-void AutotileEngine::unfloatOverflowIfRoom(const QString& screenName)
+void AutotileEngine::retileScreen(const QString& screenName)
 {
     TilingState* state = stateForScreen(screenName);
-    if (!state || m_overflowWindows.isEmpty()) {
+    if (!state) {
         return;
     }
 
-    const int maxWin = effectiveMaxWindows(screenName);
-    const int tiledCount = state->tiledWindowCount();
-    int room = maxWin - tiledCount;
-
-    if (room <= 0) {
-        return;
-    }
-
-    // Collect overflow windows for this screen
-    QStringList overflowForScreen;
-    for (const QString& wid : std::as_const(m_overflowWindows)) {
-        if (m_windowToScreen.value(wid) == screenName && state->isFloating(wid)) {
-            overflowForScreen.append(wid);
-        }
-    }
-
-    // Batch: unfloat first, then emit signals after state is consistent
-    // to avoid re-entrant signal handlers seeing partially-modified state.
+    // Step 1: Recover overflow windows when room is available.
+    // Collect recovery list first, mutate state, then defer signal emission
+    // until after the entire retile cycle completes (prevents re-entrant
+    // signal handlers from seeing partially-modified state).
     QStringList unfloated;
-    for (const QString& wid : overflowForScreen) {
-        if (room <= 0) {
-            break;
+    if (!m_overflow.isEmpty()) {
+        unfloated = m_overflow.recoverIfRoom(
+            screenName, state->tiledWindowCount(), effectiveMaxWindows(screenName),
+            [state](const QString& wid) { return state->isFloating(wid); },
+            [state](const QString& wid) { return state->containsWindow(wid); });
+        for (const QString& wid : unfloated) {
+            state->setFloating(wid, false);
         }
-        state->setFloating(wid, false);
-        m_overflowWindows.remove(wid);
-        unfloated.append(wid);
-        qCInfo(lcAutotile) << "Overflow: auto-unfloated window" << wid << "on screen" << screenName;
-        --room;
     }
 
-    // Emit after all state mutations complete to avoid re-entrant partial state
+    // Step 2-3: Recalculate layout and apply tiling (applyTiling also handles
+    // new overflow detection and collects overflow signals internally).
+    recalculateLayout(screenName);
+    applyTiling(screenName);
+
+    // Step 4: Emit all deferred signals after state is fully consistent.
+    // Recovery signals first (unfloated windows), then overflow signals
+    // (newly floated windows) were already handled inside applyTiling's
+    // batch emit, and tilingChanged is emitted last.
     for (const QString& wid : unfloated) {
         Q_EMIT windowFloatingChanged(wid, false, screenName);
     }
-}
-
-void AutotileEngine::clearOverflowStatus(const QString& windowId)
-{
-    m_overflowWindows.remove(windowId);
+    Q_EMIT tilingChanged(screenName);
 }
 
 void AutotileEngine::retileAfterOperation(const QString& screenName, bool operationSucceeded)
@@ -2007,10 +1991,7 @@ void AutotileEngine::retileAfterOperation(const QString& screenName, bool operat
     // navigation (rotate, swap, etc.) is never dropped — user expects geometry
     // to update immediately. Do not clear m_retiling; let the outer retile() do that.
     if (m_retiling) {
-        unfloatOverflowIfRoom(screenName);
-        recalculateLayout(screenName);
-        applyTiling(screenName);
-        Q_EMIT tilingChanged(screenName);
+        retileScreen(screenName);
         return;
     }
 
@@ -2018,10 +1999,7 @@ void AutotileEngine::retileAfterOperation(const QString& screenName, bool operat
         m_retiling = false;
     });
     m_retiling = true;
-    unfloatOverflowIfRoom(screenName);
-    recalculateLayout(screenName);
-    applyTiling(screenName);
-    Q_EMIT tilingChanged(screenName);
+    retileScreen(screenName);
 }
 
 QStringList AutotileEngine::tiledWindowsForFocusedScreen(QString& outScreenName, TilingState*& outState)
