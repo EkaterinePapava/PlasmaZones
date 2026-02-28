@@ -1387,9 +1387,6 @@ QVariantList KCMPlasmaZones::generateAlgorithmPreview(const QString &algorithmId
         return {};
     }
 
-    // Note: calculateZones() is not thread-safe for concurrent calls on the
-    // same algorithm instance, but the KCM runs in a separate process from the
-    // daemon, and QML calls this from the GUI thread only, so this is safe.
     const int previewSize = 1000;
     const QRect previewRect(0, 0, previewSize, previewSize);
 

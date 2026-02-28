@@ -29,7 +29,7 @@ QString BSPAlgorithm::name() const
 
 QString BSPAlgorithm::description() const
 {
-    return i18n("Binary space partitioning - persistent tree layout");
+    return i18n("Binary space partitioning - balanced recursive splitting");
 }
 
 QString BSPAlgorithm::icon() const noexcept
@@ -53,42 +53,34 @@ QVector<QRect> BSPAlgorithm::calculateZones(const TilingParams &params) const
 
     const QRect area = innerRect(screenGeometry, outerGaps);
 
-    // Single window takes full available area — keep the tree intact so split
-    // ratios are preserved when windows return
+    // Single window takes full available area
     if (windowCount == 1) {
         zones.append(area);
         return zones;
     }
 
     // Read the user's split ratio from TilingState as the default for new nodes.
-    // Each node stores its own ratio (set at creation time), enabling per-split
-    // adjustment like bspwm.
     const qreal defaultRatio = std::clamp(params.state->splitRatio(),
                                           MinSplitRatio, MaxSplitRatio);
 
-    // Grow or shrink the persistent tree to match window count.
-    // Uses the actual screen area (not hardcoded 1920x1080) so split
-    // direction heuristics match the real screen aspect ratio.
-    ensureTreeSize(windowCount, defaultRatio, area);
+    // Build a fresh tree from scratch each time for deterministic output.
+    // Uses the actual screen area so split direction heuristics match
+    // the real screen aspect ratio.
+    std::unique_ptr<BSPNode> root;
+    int leafCount = 0;
+    buildTree(root, leafCount, windowCount, defaultRatio, area);
 
     // Apply geometry top-down with inner gaps at each split point.
-    // Each node uses its own splitRatio (per-node, like bspwm).
-    //
     // minSizes are passed so BSP clamps split ratios at each node to
-    // satisfy subtree minimum dimensions. Per-node clamping at H-splits
-    // may produce slightly different y-boundaries in sibling subtrees
-    // (expected for BSP — each subtree is independent). The root V-split
-    // uses a single aggregate clamp so the main vertical boundary stays
-    // consistent. This is preferable to deferring to post-processing,
-    // which can't correctly propagate boundary shifts across tree levels.
-    applyGeometry(m_root.get(), area, innerGap, minSizes, 0);
+    // satisfy subtree minimum dimensions.
+    applyGeometry(root.get(), area, innerGap, minSizes, 0);
 
     // Collect leaf geometries
-    collectLeaves(m_root.get(), zones);
+    collectLeaves(root.get(), zones);
 
     // Validate that all zones have positive dimensions.
     // applyGeometry() returns early on degenerate splits, leaving child leaves
-    // with stale/default geometry from construction.
+    // with default geometry from construction.
     bool hasInvalidZone = false;
     for (const QRect &zone : zones) {
         if (!zone.isValid() || zone.width() <= 0 || zone.height() <= 0) {
@@ -111,50 +103,22 @@ QVector<QRect> BSPAlgorithm::calculateZones(const TilingParams &params) const
 }
 
 // =============================================================================
-// Tree size management
+// Tree construction
 // =============================================================================
 
-void BSPAlgorithm::ensureTreeSize(int windowCount, qreal defaultRatio, const QRect &refRect) const
+void BSPAlgorithm::buildTree(std::unique_ptr<BSPNode> &root, int &leafCount,
+                              int windowCount, qreal defaultRatio, const QRect &refRect)
 {
-    // No tree yet or corrupted state — build from scratch
-    if (!m_root || m_leafCount <= 0) {
-        buildTree(windowCount, defaultRatio, refRect);
-        return;
-    }
-
-    // Incremental: add or remove one leaf at a time (with iteration guard)
-    const int maxIterations = windowCount + m_leafCount + 1;
-    int iterations = 0;
-    while (m_leafCount < windowCount && iterations++ < maxIterations) {
-        if (!growTree(defaultRatio)) {
-            // Grow failed (shouldn't happen), rebuild
-            buildTree(windowCount, defaultRatio, refRect);
-            return;
-        }
-    }
-
-    iterations = 0;
-    while (m_leafCount > windowCount && iterations++ < maxIterations) {
-        if (!shrinkTree()) {
-            // Shrink failed (shouldn't happen), rebuild
-            buildTree(windowCount, defaultRatio, refRect);
-            return;
-        }
-    }
-}
-
-void BSPAlgorithm::buildTree(int windowCount, qreal defaultRatio, const QRect &refRect) const
-{
-    m_root.reset();
-    m_leafCount = 0;
+    root.reset();
+    leafCount = 0;
 
     if (windowCount <= 0) {
         return;
     }
 
     // Start with a single leaf as root
-    m_root = std::make_unique<BSPNode>();
-    m_leafCount = 1;
+    root = std::make_unique<BSPNode>();
+    leafCount = 1;
 
     // Use actual screen geometry so split direction heuristics match the
     // real screen. Falls back to 1920x1080 if the provided rect is invalid.
@@ -163,29 +127,28 @@ void BSPAlgorithm::buildTree(int windowCount, qreal defaultRatio, const QRect &r
     // Grow one leaf at a time up to the target count
     int iterations = 0;
     constexpr int MaxIterations = 1000;
-    while (m_leafCount < windowCount && iterations++ < MaxIterations) {
+    while (leafCount < windowCount && iterations++ < MaxIterations) {
         // Apply geometry so largestLeaf can find the optimal split candidate
-        applyGeometry(m_root.get(), buildRect, 0, {}, 0);
-        if (!growTree(defaultRatio)) {
+        applyGeometry(root.get(), buildRect, 0, {}, 0);
+        if (!growTree(root.get(), leafCount, defaultRatio)) {
             break;
         }
     }
 }
 
-bool BSPAlgorithm::growTree(qreal defaultRatio) const
+bool BSPAlgorithm::growTree(BSPNode *root, int &leafCount, qreal defaultRatio)
 {
-    if (!m_root) {
+    if (!root) {
         return false;
     }
 
     // Find the largest leaf to split (produces balanced layouts)
-    BSPNode *leaf = largestLeaf(m_root.get());
+    BSPNode *leaf = largestLeaf(root);
     if (!leaf || !leaf->isLeaf()) {
         return false;
     }
 
     // Split this leaf into an internal node with two leaf children
-    // The existing leaf becomes the first child; a new leaf becomes the second
     leaf->first = std::make_unique<BSPNode>();
     leaf->first->parent = leaf;
 
@@ -193,8 +156,6 @@ bool BSPAlgorithm::growTree(qreal defaultRatio) const
     leaf->second->parent = leaf;
 
     // Choose split direction based on current geometry (if available) or default
-    // On first build, geometry hasn't been applied yet, so use a heuristic:
-    // alternate between horizontal and vertical based on tree depth
     if (leaf->geometry.isValid()) {
         leaf->splitHorizontal = chooseSplitDirection(leaf->geometry);
     } else {
@@ -207,60 +168,7 @@ bool BSPAlgorithm::growTree(qreal defaultRatio) const
     }
 
     leaf->splitRatio = defaultRatio;
-    ++m_leafCount;
-    return true;
-}
-
-bool BSPAlgorithm::shrinkTree() const
-{
-    if (!m_root || m_leafCount <= 1) {
-        return false;
-    }
-
-    // Find the deepest rightmost leaf to remove (preserves larger early splits)
-    BSPNode *leaf = deepestLeaf(m_root.get());
-    if (!leaf || !leaf->parent) {
-        return false;
-    }
-
-    BSPNode *parent = leaf->parent;
-
-    // Determine which child is the sibling (the one that stays)
-    BSPNode *sibling = nullptr;
-    bool leafIsFirst = (parent->first.get() == leaf);
-    if (leafIsFirst) {
-        sibling = parent->second.get();
-    } else {
-        sibling = parent->first.get();
-    }
-
-    if (!sibling) {
-        return false;
-    }
-
-    // Promote sibling to take parent's place
-    BSPNode *grandparent = parent->parent;
-
-    // Take ownership of the sibling subtree
-    std::unique_ptr<BSPNode> siblingOwned;
-    if (leafIsFirst) {
-        siblingOwned = std::move(parent->second);
-    } else {
-        siblingOwned = std::move(parent->first);
-    }
-
-    siblingOwned->parent = grandparent;
-
-    if (!grandparent) {
-        // Parent was root — sibling becomes new root
-        m_root = std::move(siblingOwned);
-    } else if (grandparent->first.get() == parent) {
-        grandparent->first = std::move(siblingOwned);
-    } else {
-        grandparent->second = std::move(siblingOwned);
-    }
-
-    --m_leafCount;
+    ++leafCount;
     return true;
 }
 
@@ -269,7 +177,7 @@ bool BSPAlgorithm::shrinkTree() const
 // =============================================================================
 
 QSize BSPAlgorithm::computeSubtreeMinDims(const BSPNode *node, const QVector<QSize> &minSizes,
-                                           int leafStartIdx, int innerGap, int &leafCount) const
+                                           int leafStartIdx, int innerGap, int &leafCount)
 {
     if (!node) {
         leafCount = 0;
@@ -305,7 +213,7 @@ QSize BSPAlgorithm::computeSubtreeMinDims(const BSPNode *node, const QVector<QSi
 }
 
 void BSPAlgorithm::applyGeometry(BSPNode *node, const QRect &rect, int innerGap,
-                                  const QVector<QSize> &minSizes, int leafStartIdx) const
+                                  const QVector<QSize> &minSizes, int leafStartIdx)
 {
     if (!node) {
         return;
@@ -401,7 +309,7 @@ void BSPAlgorithm::applyGeometry(BSPNode *node, const QRect &rect, int innerGap,
     }
 }
 
-void BSPAlgorithm::collectLeaves(const BSPNode *node, QVector<QRect> &zones) const
+void BSPAlgorithm::collectLeaves(const BSPNode *node, QVector<QRect> &zones)
 {
     if (!node) {
         return;
@@ -459,24 +367,6 @@ BSPAlgorithm::BSPNode *BSPAlgorithm::largestLeaf(BSPNode *node)
     }
 
     return (leftArea >= rightArea) ? left : right;
-}
-
-BSPAlgorithm::BSPNode *BSPAlgorithm::deepestLeaf(BSPNode *node)
-{
-    if (!node) {
-        return nullptr;
-    }
-    if (node->isLeaf()) {
-        return node;
-    }
-
-    // Prefer the second (right/bottom) child — this is the most recently added
-    // subtree, so removing it preserves earlier layout structure
-    BSPNode *right = deepestLeaf(node->second.get());
-    if (right) {
-        return right;
-    }
-    return deepestLeaf(node->first.get());
 }
 
 bool BSPAlgorithm::chooseSplitDirection(const QRect &geometry)

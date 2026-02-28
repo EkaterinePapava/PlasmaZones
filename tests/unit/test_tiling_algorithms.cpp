@@ -484,36 +484,23 @@ private Q_SLOTS:
         QVERIFY(zonesFillScreen(zones, squareScreen));
     }
 
-    void testBSP_persistentTreeStability()
+    void testBSP_deterministic()
     {
-        auto* algo = AlgorithmRegistry::instance()->algorithm(QStringLiteral("bsp"));
-        QVERIFY(algo);
+        BSPAlgorithm algo;
         QRect screen(0, 0, 1920, 1080);
         TilingState state(QStringLiteral("test"));
+        state.setSplitRatio(0.5);
 
-        // Calculate zones for 4 windows
-        QVector<QRect> zones4 = algo->calculateZones({4, screen, &state, 0, EdgeGaps::uniform(0)});
-        QCOMPARE(zones4.size(), 4);
+        // Same inputs must always produce the same output
+        auto zones1 = algo.calculateZones({5, screen, &state, 0, EdgeGaps::uniform(0)});
+        auto zones2 = algo.calculateZones({5, screen, &state, 0, EdgeGaps::uniform(0)});
+        QCOMPARE(zones1, zones2);
 
-        // Calculate zones for 5 windows (incremental grow)
-        QVector<QRect> zones5 = algo->calculateZones({5, screen, &state, 0, EdgeGaps::uniform(0)});
-        QCOMPARE(zones5.size(), 5);
-
-        // BSP grows by splitting the largest leaf into two children. The
-        // unsplit leaves retain their geometry, but their DFS index may shift.
-        // Check that most 4-window geometries appear somewhere in the 5-window set.
-        int preservedCount = 0;
-        for (const QRect& z4 : zones4) {
-            if (zones5.contains(z4)) {
-                preservedCount++;
-            }
-        }
-        QVERIFY2(preservedCount >= 3,
-                 qPrintable(QStringLiteral("Only %1/4 zone geometries preserved after grow").arg(preservedCount)));
-
-        // Shrink back to 4
-        QVector<QRect> zones4again = algo->calculateZones({4, screen, &state, 0, EdgeGaps::uniform(0)});
-        QCOMPARE(zones4again.size(), 4);
+        // Different call sequence must not affect the result:
+        // first go 4→5, then go directly to 5 — same output
+        algo.calculateZones({4, screen, &state, 0, EdgeGaps::uniform(0)});
+        auto zones3 = algo.calculateZones({5, screen, &state, 0, EdgeGaps::uniform(0)});
+        QCOMPARE(zones1, zones3);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

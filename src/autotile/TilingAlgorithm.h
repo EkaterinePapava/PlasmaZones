@@ -49,13 +49,9 @@ struct TilingParams {
  * - Master count adjustment
  * - Split ratio adjustment
  *
- * @note Thread Safety: Most algorithms are stateless and their const public
- *       methods can be called concurrently. However, algorithms that maintain
- *       mutable internal state (e.g., BSPAlgorithm's persistent tree) are
- *       NOT safe for concurrent calculateZones() calls on the same instance.
- *       The AutotileEngine calls algorithms from a single thread, so this is
- *       safe in practice. The TilingState parameter must not be modified
- *       during the call.
+ * @note Thread Safety: All algorithms are stateless — their const public
+ *       methods can be called concurrently on the same instance. The
+ *       TilingState parameter must not be modified during the call.
  */
 class PLASMAZONES_EXPORT TilingAlgorithm : public QObject
 {
