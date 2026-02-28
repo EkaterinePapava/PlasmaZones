@@ -62,17 +62,17 @@ Q_LOGGING_CATEGORY(lcEffect, "plasmazones.effect", QtInfoMsg)
  * we skip interface creation entirely, avoiding the blocking introspection.
  */
 template<typename InterfacePtr>
-static void ensureInterface(InterfacePtr& interface, const QString& interfaceName, const char* logName)
+static void ensureInterface(InterfacePtr& interface, const QString& interfaceName, const char* logName,
+                            bool serviceRegistered)
 {
     if (interface && interface->isValid()) {
         return;
     }
 
-    // Fast pre-check: ask the D-Bus daemon (not the target service) whether the service
-    // name has an owner. This avoids the expensive QDBusInterface introspection call when
-    // the daemon isn't running at all. The D-Bus daemon always responds immediately.
-    auto* busIface = QDBusConnection::sessionBus().interface();
-    if (!busIface || !busIface->isServiceRegistered(DBus::ServiceName).value()) {
+    // Fast pre-check: use the cached service registration state (updated via
+    // QDBusServiceWatcher signals) instead of calling isServiceRegistered() which
+    // is a synchronous D-Bus call that blocks the compositor thread.
+    if (!serviceRegistered) {
         qCDebug(lcEffect) << "Skipping" << logName << "interface - service not registered";
         return;
     }
@@ -312,21 +312,35 @@ PlasmaZonesEffect::PlasmaZonesEffect()
     connectAutotileSignals();
     loadAutotileSettings();
 
-    // Watch for daemon D-Bus service (re)registration.
+    // Cache daemon service availability to avoid synchronous isServiceRegistered()
+    // calls on the compositor thread. The initial value is set here; subsequent
+    // updates come from QDBusServiceWatcher signals (registration/unregistration).
+    {
+        auto* busIface = QDBusConnection::sessionBus().interface();
+        m_daemonServiceRegistered = busIface && busIface->isServiceRegistered(DBus::ServiceName).value();
+    }
+
+    // Watch for daemon D-Bus service registration and unregistration.
     // After a daemon restart, m_lastCursorScreenName is still valid in the effect
     // but the daemon's lastCursorScreenName/lastActiveScreenName are empty.
     // Without this, keyboard shortcuts (rotate, etc.) operate on all screens
     // because resolveShortcutScreen returns nullptr.
     //
-    // Limitations: only watches for service *registration* (new daemon start).
-    // If the daemon crashes mid-call, in-flight D-Bus calls will return errors
-    // that individual callers handle via isValid()/isError() checks.
+    // Also updates m_daemonServiceRegistered so that ensureInterface() and
+    // saveAndRecordPreAutotileGeometry() can skip synchronous D-Bus checks.
+    //
     // On Wayland, this watcher uses D-Bus monitoring (not X11 selection),
     // which works reliably across both sessions.
     auto* serviceWatcher = new QDBusServiceWatcher(DBus::ServiceName, QDBusConnection::sessionBus(),
-                                                   QDBusServiceWatcher::WatchForRegistration, this);
+                                                   QDBusServiceWatcher::WatchForRegistration
+                                                   | QDBusServiceWatcher::WatchForUnregistration, this);
+    connect(serviceWatcher, &QDBusServiceWatcher::serviceUnregistered, this, [this]() {
+        qCInfo(lcEffect) << "Daemon service unregistered";
+        m_daemonServiceRegistered = false;
+    });
     connect(serviceWatcher, &QDBusServiceWatcher::serviceRegistered, this, [this]() {
         qCInfo(lcEffect) << "Daemon service registered — scheduling state re-push";
+        m_daemonServiceRegistered = true;
 
         // Reset stale D-Bus interfaces so ensureInterface recreates them on next use
         // Note: WindowDrag interface uses QDBusMessage (no QDBusInterface to reset)
@@ -1035,7 +1049,8 @@ bool PlasmaZonesEffect::hasOtherWindowOfClassWithDifferentPid(KWin::EffectWindow
 
 void PlasmaZonesEffect::ensureWindowTrackingInterface()
 {
-    ensureInterface(m_windowTrackingInterface, DBus::Interface::WindowTracking, "WindowTracking");
+    ensureInterface(m_windowTrackingInterface, DBus::Interface::WindowTracking, "WindowTracking",
+                    m_daemonServiceRegistered);
 }
 
 bool PlasmaZonesEffect::ensureWindowTrackingReady(const char* methodName)
@@ -1050,7 +1065,8 @@ bool PlasmaZonesEffect::ensureWindowTrackingReady(const char* methodName)
 
 bool PlasmaZonesEffect::ensureOverlayInterface(const char* methodName)
 {
-    ensureInterface(m_overlayInterface, DBus::Interface::Overlay, "Overlay");
+    ensureInterface(m_overlayInterface, DBus::Interface::Overlay, "Overlay",
+                    m_daemonServiceRegistered);
     if (!m_overlayInterface || !m_overlayInterface->isValid()) {
         qCDebug(lcEffect) << "Cannot" << methodName << "- Overlay interface not available";
         return false;
@@ -2097,7 +2113,8 @@ void PlasmaZonesEffect::slotRunningWindowsRequested()
     qCDebug(lcEffect) << "Providing" << windowArray.size() << "running windows to daemon";
 
     // Send result back to daemon via D-Bus
-    ensureInterface(m_settingsInterface, DBus::Interface::Settings, "Settings");
+    ensureInterface(m_settingsInterface, DBus::Interface::Settings, "Settings",
+                    m_daemonServiceRegistered);
     if (m_settingsInterface && m_settingsInterface->isValid()) {
         m_settingsInterface->asyncCall(QStringLiteral("provideRunningWindows"), jsonString);
     } else {
@@ -2541,10 +2558,19 @@ bool PlasmaZonesEffect::saveAndRecordPreAutotileGeometry(const QString& windowId
     }
     screenGeometries[windowId] = frame;
     qCDebug(lcEffect) << "Saved pre-autotile geometry for" << windowId << "on" << screenName << ":" << frame;
-    if (ensureWindowTrackingReady("record pre-autotile geometry") && m_windowTrackingInterface) {
-        m_windowTrackingInterface->asyncCall(QStringLiteral("recordPreAutotileGeometry"), windowId, screenName,
-                                             static_cast<int>(frame.x()), static_cast<int>(frame.y()),
-                                             static_cast<int>(frame.width()), static_cast<int>(frame.height()));
+    // Use raw D-Bus message to avoid synchronous QDBusInterface introspection.
+    // ensureInterface() blocks the KWin compositor on first call after daemon restart
+    // (before the 2000ms re-creation timer fires), causing the first-activation lag.
+    // Use cached service registration state (updated via QDBusServiceWatcher signals)
+    // instead of synchronous isServiceRegistered() which blocks the compositor thread.
+    if (m_daemonServiceRegistered) {
+        QDBusMessage msg = QDBusMessage::createMethodCall(
+            DBus::ServiceName, DBus::ObjectPath,
+            DBus::Interface::WindowTracking, QStringLiteral("recordPreAutotileGeometry"));
+        msg << windowId << screenName
+            << static_cast<int>(frame.x()) << static_cast<int>(frame.y())
+            << static_cast<int>(frame.width()) << static_cast<int>(frame.height());
+        QDBusConnection::sessionBus().asyncCall(msg);
     }
     return true;
 }

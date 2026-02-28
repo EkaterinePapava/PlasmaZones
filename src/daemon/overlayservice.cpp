@@ -2447,6 +2447,30 @@ void OverlayService::hideLayoutOsd()
     }
 }
 
+void OverlayService::warmUpLayoutOsd()
+{
+    const auto screens = QGuiApplication::screens();
+    for (QScreen* screen : screens) {
+        if (!m_layoutOsdWindows.contains(screen)) {
+            createLayoutOsdWindow(screen);
+        }
+    }
+    qCInfo(lcOverlay) << "Pre-warmed Layout OSD windows for" << screens.size() << "screens";
+
+    // Also warm up screens added later (hot-plug) so the first OSD on a
+    // newly connected screen doesn't incur the ~100-300ms QML compilation delay.
+    // Note: Qt::UniqueConnection cannot be used with lambdas (causes ASSERT crash in Qt6).
+    // Use a bool guard instead to prevent duplicate connections.
+    if (!m_screenAddedConnected) {
+        connect(qGuiApp, &QGuiApplication::screenAdded, this, [this](QScreen* screen) {
+            if (!m_layoutOsdWindows.contains(screen)) {
+                createLayoutOsdWindow(screen);
+            }
+        });
+        m_screenAddedConnected = true;
+    }
+}
+
 void OverlayService::createLayoutOsdWindow(QScreen* screen)
 {
     if (m_layoutOsdWindows.contains(screen)) {

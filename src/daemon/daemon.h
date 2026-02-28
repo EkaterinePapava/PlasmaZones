@@ -134,6 +134,21 @@ private:
     void connectToKWinScript(); // Shortcuts now handled by ShortcutManager
 
     /**
+     * @brief Handle autotile feature being disabled (clear assignments, restore manual mode)
+     */
+    void handleAutotileDisabled();
+
+    /**
+     * @brief Handle snapping toggle activating autotile mode on all screens
+     */
+    void handleSnappingToAutotile();
+
+    /** @brief Show layout OSD deferred (avoids blocking on first-time QML compilation) */
+    void showLayoutOsdDeferred(const QUuid& layoutId, const QString& screenName);
+    /** @brief Show algorithm OSD deferred (avoids blocking on first-time QML compilation) */
+    void showAlgorithmOsdDeferred(const QString& algorithmId, const QString& algorithmName, const QString& screenName);
+
+    /**
      * @brief Recompute which screens use autotile from layout assignments
      *
      * Reads all screen assignments via assignmentIdForScreen(), computes
@@ -178,8 +193,22 @@ private:
     std::unique_ptr<AutotileEngine> m_autotileEngine;
     AutotileAdaptor* m_autotileAdaptor = nullptr;
 
+    // Desktop/activity resolution helpers (DRY — used by multiple handlers)
+    int currentDesktop() const;
+    QString currentActivity() const;
+
+    /** @brief Resolve algorithm ID with fallback: last used → settings → default */
+    QString resolveAlgorithmId() const;
+
     bool m_running = false;
     bool m_suppressResnapOsd = false;
+
+    // State tracking for settingsChanged delta detection (replaces individual signal handlers)
+    // Initialized from m_settings in init() before settingsChanged is connected.
+    // Header defaults are safe no-ops: both false means "no prior state" so the
+    // first settingsChanged won't detect a spurious toggle.
+    bool m_prevSnappingEnabled = false;
+    bool m_prevAutotileEnabled = false;
 
     // Geometry update debouncing to prevent cascade of redundant recalculations
     QTimer m_geometryUpdateTimer;

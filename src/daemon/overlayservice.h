@@ -131,6 +131,16 @@ public:
     void showLayoutOsd(const QString& id, const QString& name, const QVariantList& zones, int category,
                        bool autoAssign = false, const QString& screenName = QString());
 
+    /**
+     * @brief Pre-create Layout OSD QML windows for all connected screens.
+     *
+     * First-time QML compilation of LayoutOsd.qml takes ~100-300ms (component
+     * loading, scene graph creation, Wayland layer-shell registration).  Call
+     * this early (deferred from daemon start) so the first layout switch OSD
+     * appears instantly instead of blocking the event loop.
+     */
+    void warmUpLayoutOsd();
+
     // Navigation OSD (feedback for keyboard navigation)
     void showNavigationOsd(bool success, const QString& action, const QString& reason,
                            const QString& sourceZoneId = QString(), const QString& targetZoneId = QString(),
@@ -229,6 +239,8 @@ private:
     QHash<QString, QString> m_thumbnailCache; // kwinHandle -> dataUrl; reused across continuation
     // Layout Picker overlay (interactive layout browser)
     QQuickWindow* m_layoutPickerWindow = nullptr;
+
+    bool m_screenAddedConnected = false; // Guard for screenAdded connection (lambdas can't use UniqueConnection)
 
     // Track screens with failed window creation to prevent log spam
     QHash<QScreen*, bool> m_navigationOsdCreationFailed;

@@ -649,6 +649,16 @@ private:
     void resetMaxWindowsForAlgorithmSwitch(TilingAlgorithm* oldAlgo, TilingAlgorithm* newAlgo);
 
     /**
+     * @brief Propagate global split ratio to screens without per-screen overrides
+     */
+    void propagateGlobalSplitRatio();
+
+    /**
+     * @brief Propagate global master count to screens without per-screen overrides
+     */
+    void propagateGlobalMasterCount();
+
+    /**
      * @brief Backfill windows on screens where tiledWindowCount < maxWindows
      *
      * When maxWindows increases, windows previously rejected by onWindowAdded()'s
@@ -779,6 +789,13 @@ private:
     bool m_pendingSettingsRetile = false;
     bool m_retiling = false;
 
+    // Queued-connection retile coalescing: windowOpened D-Bus calls arriving in
+    // the same event loop pass are coalesced into a single retile per screen.
+    // Uses QMetaObject::invokeMethod(Qt::QueuedConnection) which fires after
+    // all currently-pending events are processed — no fixed delay needed.
+    QSet<QString> m_pendingRetileScreens;
+    bool m_retilePending = false;
+
     // Per-screen config overrides (screenName -> key-value map)
     // Stored here so effective*() helpers can resolve per-screen values
     // and connectToSettings handlers can skip screens with overrides.
@@ -799,6 +816,23 @@ private:
      * @brief Process pending settings retile after debounce timeout
      */
     void processSettingsRetile();
+
+    /**
+     * @brief Schedule a deferred retile for a screen
+     *
+     * Adds the screen to the pending set and posts a QueuedConnection call
+     * to processPendingRetiles(). Multiple calls in the same event loop pass
+     * are coalesced — only one retile fires per screen.
+     */
+    void scheduleRetileForScreen(const QString& screenName);
+
+    /**
+     * @brief Process all pending retiles (fires via QueuedConnection)
+     *
+     * Retiles all screens that had windows added or were newly activated
+     * since the last event loop pass.
+     */
+    void processPendingRetiles();
 };
 
 } // namespace PlasmaZones

@@ -482,6 +482,11 @@ private:
     QString m_pendingDragWindowId;
     QRectF m_pendingDragGeometry;
 
+    // Cached daemon D-Bus service registration state.
+    // Updated via QDBusServiceWatcher signals (registration/unregistration) to avoid
+    // synchronous isServiceRegistered() calls that block the compositor thread.
+    bool m_daemonServiceRegistered = false;
+
     // Cursor screen tracking (for daemon shortcut screen detection on Wayland)
     // Updated in slotMouseChanged() whenever the cursor crosses to a different monitor.
     // Reported to daemon via cursorScreenChanged D-Bus call.

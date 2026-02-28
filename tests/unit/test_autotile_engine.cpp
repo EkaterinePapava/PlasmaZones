@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QTest>
+#include <QCoreApplication>
 #include <QSignalSpy>
 
 #include "autotile/AutotileEngine.h"
@@ -353,6 +354,9 @@ private Q_SLOTS:
         // Open a window
         engine.windowOpened(windowId, screenName);
 
+        // Process the QueuedConnection retile
+        QCoreApplication::processEvents();
+
         // Verify the window appears in the engine's tiling state
         TilingState *state = engine.stateForScreen(screenName);
         QVERIFY(state != nullptr);
@@ -366,6 +370,9 @@ private Q_SLOTS:
         // Close the window
         tilingSpy.clear();
         engine.windowClosed(windowId);
+
+        // Process the QueuedConnection retile
+        QCoreApplication::processEvents();
 
         // Verify cleanup
         QVERIFY(!state->containsWindow(windowId));

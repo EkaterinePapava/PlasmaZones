@@ -1135,7 +1135,6 @@ void Settings::load()
                                           legacySpanMod, 0);
 
     m_toggleActivation = activation.readEntry(QLatin1String("ToggleActivation"), ConfigDefaults::toggleActivation());
-    const bool oldSnappingEnabled = m_snappingEnabled;
     m_snappingEnabled = activation.readEntry(QLatin1String("SnappingEnabled"), ConfigDefaults::snappingEnabled());
 
     // Display (defaults from .kcfg via ConfigDefaults)
@@ -1309,10 +1308,6 @@ void Settings::load()
     migrateConnectorNames(m_perScreenZoneSelectorSettings);
 
     // Per-screen autotile overrides (groups matching AutotileScreen:*)
-    // Take a mutable snapshot so we can apply migration to BOTH sides before
-    // comparison. Without this, a connector rename triggers a spurious
-    // perScreenAutotileSettingsChanged even when the actual settings are the same.
-    auto oldPerScreenAutotile = m_perScreenAutotileSettings;
     m_perScreenAutotileSettings.clear();
     const QLatin1String autotileScreenPrefix("AutotileScreen:");
     for (const QString& groupName : allGroups) {
@@ -1343,9 +1338,6 @@ void Settings::load()
     }
 
     migrateConnectorNames(m_perScreenAutotileSettings);
-    // Apply the same migration to the old snapshot so the comparison at the
-    // end uses the same key namespace (M5 fix: avoids spurious signal).
-    migrateConnectorNames(oldPerScreenAutotile);
 
     // Per-screen snapping overrides (groups matching SnappingScreen:*)
     m_perScreenSnappingSettings.clear();
@@ -1452,18 +1444,6 @@ void Settings::load()
     // ═══════════════════════════════════════════════════════════════════════════
     KConfigGroup autotiling = config->group(QStringLiteral("Autotiling"));
 
-    const bool oldAutotileEnabled = m_autotileEnabled;
-    const QString oldAutotileAlgorithm = m_autotileAlgorithm;
-    const qreal oldSplitRatio = m_autotileSplitRatio;
-    const int oldMasterCount = m_autotileMasterCount;
-    const int oldInnerGap = m_autotileInnerGap;
-    const int oldOuterGap = m_autotileOuterGap;
-    const bool oldUsePerSideOuterGap = m_autotileUsePerSideOuterGap;
-    const int oldOuterGapTop = m_autotileOuterGapTop;
-    const int oldOuterGapBottom = m_autotileOuterGapBottom;
-    const int oldOuterGapLeft = m_autotileOuterGapLeft;
-    const int oldOuterGapRight = m_autotileOuterGapRight;
-    const int oldMaxWindows = m_autotileMaxWindows;
     m_autotileEnabled = autotiling.readEntry(QLatin1String("AutotileEnabled"), ConfigDefaults::autotileEnabled());
     m_autotileAlgorithm = autotiling.readEntry(QLatin1String("AutotileAlgorithm"), ConfigDefaults::autotileAlgorithm());
 
@@ -1554,38 +1534,12 @@ void Settings::load()
         Q_EMIT audioSpectrumBarCountChanged();
     if (m_defaultLayoutId != oldDefaultLayoutId)
         Q_EMIT defaultLayoutIdChanged();
-    if (m_snappingEnabled != oldSnappingEnabled)
-        Q_EMIT snappingEnabledChanged();
-    if (m_autotileEnabled != oldAutotileEnabled)
-        Q_EMIT autotileEnabledChanged();
-    if (m_autotileAlgorithm != oldAutotileAlgorithm)
-        Q_EMIT autotileAlgorithmChanged();
-    if (!qFuzzyCompare(m_autotileSplitRatio, oldSplitRatio))
-        Q_EMIT autotileSplitRatioChanged();
-    if (m_autotileMasterCount != oldMasterCount)
-        Q_EMIT autotileMasterCountChanged();
-    if (m_autotileInnerGap != oldInnerGap)
-        Q_EMIT autotileInnerGapChanged();
-    if (m_autotileOuterGap != oldOuterGap)
-        Q_EMIT autotileOuterGapChanged();
-    if (m_autotileUsePerSideOuterGap != oldUsePerSideOuterGap)
-        Q_EMIT autotileUsePerSideOuterGapChanged();
-    if (m_autotileOuterGapTop != oldOuterGapTop)
-        Q_EMIT autotileOuterGapTopChanged();
-    if (m_autotileOuterGapBottom != oldOuterGapBottom)
-        Q_EMIT autotileOuterGapBottomChanged();
-    if (m_autotileOuterGapLeft != oldOuterGapLeft)
-        Q_EMIT autotileOuterGapLeftChanged();
-    if (m_autotileOuterGapRight != oldOuterGapRight)
-        Q_EMIT autotileOuterGapRightChanged();
-    // Ordering matters: autotileMaxWindowsChanged triggers backfillWindows()
-    // which reads per-screen overrides (already updated above). Emit it before
-    // perScreenAutotileSettingsChanged, which triggers updateAutotileScreens()
-    // that may re-derive MaxWindows from the per-screen algorithm.
-    if (m_autotileMaxWindows != oldMaxWindows)
-        Q_EMIT autotileMaxWindowsChanged();
-    if (m_perScreenAutotileSettings != oldPerScreenAutotile)
-        Q_EMIT perScreenAutotileSettingsChanged();
+    // Autotile individual signals are NOT emitted here. settingsChanged (above)
+    // triggers daemon's comprehensive handler which calls syncFromSettings() +
+    // updateAutotileScreens() + state-transition logic in a single pass.
+    // Emitting individual autotile signals from load() caused 3-4 redundant
+    // retile passes on first activation (each signal triggered its own retile).
+    // Individual autotile signals still fire from runtime setters for live updates.
 }
 
 void Settings::save()

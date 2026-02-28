@@ -46,6 +46,7 @@ AutotileEngine::AutotileEngine(LayoutManager* layoutManager, WindowTrackingServi
     m_settingsRetileTimer.setSingleShot(true);
     m_settingsRetileTimer.setInterval(100); // 100ms debounce
     connect(&m_settingsRetileTimer, &QTimer::timeout, this, &AutotileEngine::processSettingsRetile);
+
 }
 
 AutotileEngine::~AutotileEngine() = default;
@@ -137,7 +138,12 @@ void AutotileEngine::setAutotileScreens(const QSet<QString>& screens)
     // shortly after (via KWin effect re-notification) have a state ready.
     for (const QString& screenName : added) {
         stateForScreen(screenName);
-        retileAfterOperation(screenName, true);
+        // Defer retile via event-loop coalescing. On first activation, windows
+        // haven't been announced yet (KWin effect sends them after receiving
+        // autotileScreensChanged), so retiling an empty screen is wasted work.
+        // On subsequent screen additions, windows are already known — the
+        // one-event-loop-pass delay (~0ms) is negligible.
+        scheduleRetileForScreen(screenName);
     }
 
     // Collect windows from removed screens before pruning, then prune
@@ -160,6 +166,15 @@ void AutotileEngine::setAutotileScreens(const QSet<QString>& screens)
     }
     if (!releasedWindows.isEmpty()) {
         Q_EMIT windowsReleasedFromTiling(releasedWindows);
+    }
+
+    // Clear any pending deferred retiles for removed screens
+    for (auto pit = m_pendingRetileScreens.begin(); pit != m_pendingRetileScreens.end(); ) {
+        if (!m_autotileScreens.contains(*pit)) {
+            pit = m_pendingRetileScreens.erase(pit);
+        } else {
+            ++pit;
+        }
     }
 
     const bool nowEnabled = !m_autotileScreens.isEmpty();
@@ -206,12 +221,7 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
         if (qFuzzyCompare(1.0 + m_config->splitRatio, 1.0 + oldDefault)) {
             const qreal newDefault = newAlgo->defaultSplitRatio();
             m_config->splitRatio = newDefault;
-            // Only reset split ratio for screens without per-screen overrides
-            for (auto it = m_screenStates.constBegin(); it != m_screenStates.constEnd(); ++it) {
-                if (it.value() && !hasPerScreenOverride(it.key(), QLatin1String("SplitRatio"))) {
-                    it.value()->setSplitRatio(newDefault);
-                }
-            }
+            propagateGlobalSplitRatio();
         }
 
         // Same pattern for maxWindows: if the user hasn't customized it away
@@ -227,6 +237,7 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
     }
 
     m_algorithmId = newId;
+    m_config->algorithmId = newId;
     Q_EMIT algorithmChanged(m_algorithmId);
 
     // Backfill windows when the new algorithm's maxWindows is higher, then retile.
@@ -288,92 +299,85 @@ void AutotileEngine::syncFromSettings(Settings* settings)
         return;
     }
 
-    // Cancel any pending debounced retile — we are about to do a full resync
-    m_settingsRetileTimer.stop();
-    m_pendingSettingsRetile = false;
-
     m_settings = settings;
+
+    // Track whether any config field actually changed. If individual signal
+    // handlers (from runtime setters) already updated config, this detects
+    // no changes and skips the redundant retile at the end.
+    bool configChanged = false;
 
     // Capture old maxWindows before updating — used for backfill below
     const int oldMaxWindows = m_config->maxWindows;
 
-    // Temporarily clear autotile screens to prevent double-retile during configuration.
-    // setAlgorithm() triggers retile() if enabled, so we configure everything first.
-    const QSet<QString> savedScreens = m_autotileScreens;
-    m_autotileScreens.clear();
+    // Apply all settings to config, tracking changes.
+    // Note: algorithmId is excluded — it is synced to m_algorithmId (the
+    // authoritative engine field) separately below with validation.
+    // splitRatio uses qFuzzyCompare for floating-point safety.
+#define SYNC_FIELD(field, getter) \
+    do { \
+        auto newVal = settings->getter(); \
+        if (m_config->field != newVal) { m_config->field = newVal; configChanged = true; } \
+    } while (0)
 
-    // Apply all settings to config (single source of truth for mapping)
-    m_config->algorithmId = settings->autotileAlgorithm();
-    m_config->splitRatio = settings->autotileSplitRatio();
-    m_config->masterCount = settings->autotileMasterCount();
-    m_config->innerGap = settings->autotileInnerGap();
-    m_config->outerGap = settings->autotileOuterGap();
-    m_config->usePerSideOuterGap = settings->autotileUsePerSideOuterGap();
-    m_config->outerGapTop = settings->autotileOuterGapTop();
-    m_config->outerGapBottom = settings->autotileOuterGapBottom();
-    m_config->outerGapLeft = settings->autotileOuterGapLeft();
-    m_config->outerGapRight = settings->autotileOuterGapRight();
-    m_config->focusNewWindows = settings->autotileFocusNewWindows();
-    m_config->smartGaps = settings->autotileSmartGaps();
-    m_config->insertPosition = static_cast<AutotileConfig::InsertPosition>(settings->autotileInsertPositionInt());
+    SYNC_FIELD(masterCount, autotileMasterCount);
+    SYNC_FIELD(innerGap, autotileInnerGap);
+    SYNC_FIELD(outerGap, autotileOuterGap);
+    SYNC_FIELD(usePerSideOuterGap, autotileUsePerSideOuterGap);
+    SYNC_FIELD(outerGapTop, autotileOuterGapTop);
+    SYNC_FIELD(outerGapBottom, autotileOuterGapBottom);
+    SYNC_FIELD(outerGapLeft, autotileOuterGapLeft);
+    SYNC_FIELD(outerGapRight, autotileOuterGapRight);
+    SYNC_FIELD(focusNewWindows, autotileFocusNewWindows);
+    SYNC_FIELD(smartGaps, autotileSmartGaps);
+    SYNC_FIELD(focusFollowsMouse, autotileFocusFollowsMouse);
+    SYNC_FIELD(respectMinimumSize, autotileRespectMinimumSize);
+    SYNC_FIELD(monocleHideOthers, autotileMonocleHideOthers);
+    SYNC_FIELD(monocleShowTabs, autotileMonocleShowTabs);
+    SYNC_FIELD(maxWindows, autotileMaxWindows);
 
-    // Additional settings
-    m_config->focusFollowsMouse = settings->autotileFocusFollowsMouse();
-    m_config->respectMinimumSize = settings->autotileRespectMinimumSize();
-    m_config->monocleHideOthers = settings->autotileMonocleHideOthers();
-    m_config->monocleShowTabs = settings->autotileMonocleShowTabs();
-    m_config->maxWindows = settings->autotileMaxWindows();
-
-    // Set algorithm on engine (won't retile since m_autotileScreens is cleared)
-    const QString oldAlgorithmId = m_algorithmId;
-    m_algorithmId = settings->autotileAlgorithm();
-    // Validate algorithm exists
-    auto* registry = AlgorithmRegistry::instance();
-    if (!registry->hasAlgorithm(m_algorithmId)) {
-        qCWarning(lcAutotile) << "Unknown algorithm" << m_algorithmId << "- using default";
-        m_algorithmId = AlgorithmRegistry::defaultAlgorithmId();
+    // splitRatio: qreal needs fuzzy comparison to avoid spurious change detection
+    {
+        const qreal newRatio = settings->autotileSplitRatio();
+        if (!qFuzzyCompare(1.0 + m_config->splitRatio, 1.0 + newRatio)) {
+            m_config->splitRatio = newRatio;
+            configChanged = true;
+        }
     }
 
-    // When the algorithm changed, reset maxWindows if it's still at the old
-    // algorithm's default. Without this, a stale AutotileMaxWindows=4 from a
-    // previous MasterStack session persists when BSP (default 5) is active.
-    if (m_algorithmId != oldAlgorithmId) {
-        TilingAlgorithm* oldAlgo = registry->algorithm(oldAlgorithmId);
-        TilingAlgorithm* newAlgo = registry->algorithm(m_algorithmId);
-        if (oldAlgo && newAlgo) {
-            resetMaxWindowsForAlgorithmSwitch(oldAlgo, newAlgo);
+    // InsertPosition needs a cast
+    {
+        auto newInsert = static_cast<AutotileConfig::InsertPosition>(settings->autotileInsertPositionInt());
+        if (m_config->insertPosition != newInsert) {
+            m_config->insertPosition = newInsert;
+            configChanged = true;
         }
+    }
+
+#undef SYNC_FIELD
+
+    // Sync algorithm via setAlgorithm (handles validation + fallback + m_config sync)
+    const QString oldAlgorithmId = m_algorithmId;
+    setAlgorithm(settings->autotileAlgorithm());
+    if (m_algorithmId != oldAlgorithmId) {
+        configChanged = true;
     }
 
     // Propagate split ratio and master count to screens WITHOUT per-screen overrides.
-    // Screens with per-screen overrides are handled by updateAutotileScreens() via
-    // the perScreenAutotileSettingsChanged signal (emitted after settingsChanged).
-    for (auto it = m_screenStates.constBegin(); it != m_screenStates.constEnd(); ++it) {
-        if (!it.value()) continue;
-        if (!hasPerScreenOverride(it.key(), QLatin1String("SplitRatio"))) {
-            it.value()->setSplitRatio(m_config->splitRatio);
-        }
-        if (!hasPerScreenOverride(it.key(), QLatin1String("MasterCount"))) {
-            it.value()->setMasterCount(m_config->masterCount);
-        }
-    }
-
-    // Restore autotile screens and retile once
-    // Note: enabled state is derived from layout assignments, not settings.
-    // The autotileEnabled setting is a feature gate handled by the daemon.
-    m_autotileScreens = savedScreens;
+    // Screens with per-screen overrides are handled by updateAutotileScreens()
+    // (called by the daemon after syncFromSettings returns).
+    propagateGlobalSplitRatio();
+    propagateGlobalMasterCount();
 
     // Backfill windows when maxWindows increased: windows rejected by the old
     // gate check in onWindowAdded() stay untiled unless we add them here.
-    // This runs before the autotileMaxWindowsChanged signal handler (which also
-    // calls backfillWindows), but since syncFromSettings already updated
-    // m_config->maxWindows, the handler's oldMax == newMax check prevents
-    // double-backfill.
     if (m_config->maxWindows > oldMaxWindows) {
         backfillWindows();
     }
 
-    if (isEnabled()) {
+    if (configChanged && isEnabled()) {
+        // Cancel any pending debounced retile — we are doing a full resync
+        m_settingsRetileTimer.stop();
+        m_pendingSettingsRetile = false;
         retile();
     }
 
@@ -403,20 +407,20 @@ void AutotileEngine::connectToSettings(Settings* settings)
     // ═══════════════════════════════════════════════════════════════════════════════
 
     // Pattern 1: Update config field + schedule retile
+    // These handlers fire from runtime setters only (not from load() — load()
+    // only emits settingsChanged, which triggers syncFromSettings).
 #define CONNECT_SETTING_RETILE(signal, field, getter)                                                                  \
     connect(settings, &Settings::signal, this, [this]() {                                                              \
-        if (m_settings) {                                                                                              \
-            m_config->field = m_settings->getter();                                                                    \
-            scheduleSettingsRetile();                                                                                  \
-        }                                                                                                              \
+        if (!m_settings) return;                                                                                       \
+        m_config->field = m_settings->getter();                                                                        \
+        scheduleSettingsRetile();                                                                                      \
     })
 
     // Pattern 2: Update config field only (no retile)
 #define CONNECT_SETTING_NO_RETILE(signal, field, getter)                                                               \
     connect(settings, &Settings::signal, this, [this]() {                                                              \
-        if (m_settings) {                                                                                              \
-            m_config->field = m_settings->getter();                                                                    \
-        }                                                                                                              \
+        if (!m_settings) return;                                                                                       \
+        m_config->field = m_settings->getter();                                                                        \
     })
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -428,10 +432,8 @@ void AutotileEngine::connectToSettings(Settings* settings)
     // (applyEntry) and mode toggle in the daemon.
 
     connect(settings, &Settings::autotileAlgorithmChanged, this, [this]() {
-        if (m_settings) {
-            m_config->algorithmId = m_settings->autotileAlgorithm();
-            setAlgorithm(m_settings->autotileAlgorithm());
-        }
+        if (!m_settings) return;
+        setAlgorithm(m_settings->autotileAlgorithm());
     });
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -439,29 +441,17 @@ void AutotileEngine::connectToSettings(Settings* settings)
     // ═══════════════════════════════════════════════════════════════════════════════
 
     connect(settings, &Settings::autotileSplitRatioChanged, this, [this]() {
-        if (m_settings) {
-            m_config->splitRatio = m_settings->autotileSplitRatio();
-            for (auto it = m_screenStates.constBegin(); it != m_screenStates.constEnd(); ++it) {
-                // Skip screens with per-screen split ratio overrides
-                if (it.value() && !hasPerScreenOverride(it.key(), QStringLiteral("SplitRatio"))) {
-                    it.value()->setSplitRatio(m_config->splitRatio);
-                }
-            }
-            scheduleSettingsRetile();
-        }
+        if (!m_settings) return;
+        m_config->splitRatio = m_settings->autotileSplitRatio();
+        propagateGlobalSplitRatio();
+        scheduleSettingsRetile();
     });
 
     connect(settings, &Settings::autotileMasterCountChanged, this, [this]() {
-        if (m_settings) {
-            m_config->masterCount = m_settings->autotileMasterCount();
-            for (auto it = m_screenStates.constBegin(); it != m_screenStates.constEnd(); ++it) {
-                // Skip screens with per-screen master count overrides
-                if (it.value() && !hasPerScreenOverride(it.key(), QStringLiteral("MasterCount"))) {
-                    it.value()->setMasterCount(m_config->masterCount);
-                }
-            }
-            scheduleSettingsRetile();
-        }
+        if (!m_settings) return;
+        m_config->masterCount = m_settings->autotileMasterCount();
+        propagateGlobalMasterCount();
+        scheduleSettingsRetile();
     });
     CONNECT_SETTING_RETILE(autotileInnerGapChanged, innerGap, autotileInnerGap);
     CONNECT_SETTING_RETILE(autotileOuterGapChanged, outerGap, autotileOuterGap);
@@ -476,9 +466,7 @@ void AutotileEngine::connectToSettings(Settings* settings)
     // MaxWindows needs a custom handler: when the limit increases, backfill
     // windows that were previously rejected by onWindowAdded's gate check.
     connect(settings, &Settings::autotileMaxWindowsChanged, this, [this]() {
-        if (!m_settings) {
-            return;
-        }
+        if (!m_settings) return;
         const int oldMax = m_config->maxWindows;
         m_config->maxWindows = m_settings->autotileMaxWindows();
 
@@ -501,10 +489,9 @@ void AutotileEngine::connectToSettings(Settings* settings)
 
     // InsertPosition requires cast
     connect(settings, &Settings::autotileInsertPositionChanged, this, [this]() {
-        if (m_settings) {
-            m_config->insertPosition =
-                static_cast<AutotileConfig::InsertPosition>(m_settings->autotileInsertPositionInt());
-        }
+        if (!m_settings) return;
+        m_config->insertPosition =
+            static_cast<AutotileConfig::InsertPosition>(m_settings->autotileInsertPositionInt());
     });
 
 #undef CONNECT_SETTING_RETILE
@@ -833,6 +820,42 @@ void AutotileEngine::processSettingsRetile()
     if (isEnabled()) {
         retile();
         qCDebug(lcAutotile) << "Settings changed - retiled windows";
+    }
+}
+
+void AutotileEngine::scheduleRetileForScreen(const QString& screenName)
+{
+    m_pendingRetileScreens.insert(screenName);
+
+    if (!m_retilePending) {
+        m_retilePending = true;
+        // Qt::QueuedConnection (same-thread deferral, not cross-thread — see Qt docs
+        // on QMetaObject::invokeMethod) fires after all currently-pending events
+        // (including D-Bus messages from the same socket read) are processed.
+        // This naturally coalesces bursts: on first activation, the KWin effect
+        // sends N windowOpened D-Bus calls in rapid succession — they all arrive
+        // in one socket read and are dispatched before this queued call fires.
+        // Single-window opens retile on the very next event loop iteration (~0ms).
+        QMetaObject::invokeMethod(this, &AutotileEngine::processPendingRetiles,
+                                  Qt::QueuedConnection);
+    }
+}
+
+void AutotileEngine::processPendingRetiles()
+{
+    m_retilePending = false;
+
+    if (m_pendingRetileScreens.isEmpty()) {
+        return;
+    }
+
+    const QSet<QString> screens = m_pendingRetileScreens;
+    m_pendingRetileScreens.clear();
+
+    for (const QString& screenName : screens) {
+        if (isAutotileScreen(screenName) && m_screenStates.contains(screenName)) {
+            retileAfterOperation(screenName, true);
+        }
     }
 }
 
@@ -1441,7 +1464,6 @@ void AutotileEngine::onWindowAdded(const QString& windowId)
     }
 
     const bool inserted = insertWindow(windowId, screenName);
-    retileAfterOperation(screenName, inserted);
 
     // Notify listeners if the window was restored as floating (e.g., after mode toggle)
     if (inserted && state && state->isFloating(windowId)) {
@@ -1450,6 +1472,10 @@ void AutotileEngine::onWindowAdded(const QString& windowId)
 
     if (inserted && m_config && m_config->focusNewWindows) {
         Q_EMIT focusWindowRequested(windowId);
+    }
+
+    if (inserted) {
+        scheduleRetileForScreen(screenName);
     }
 }
 
@@ -1461,6 +1487,9 @@ void AutotileEngine::onWindowRemoved(const QString& windowId)
     }
 
     removeWindow(windowId);
+    // Retile immediately (not deferred like onWindowAdded). Removals need instant
+    // layout recalculation to avoid visible holes. Unlike additions, removals don't
+    // arrive in bursts, so coalescing provides no benefit.
     retileAfterOperation(screenName, true);
 }
 
@@ -1773,6 +1802,24 @@ void AutotileEngine::resetMaxWindowsForAlgorithmSwitch(TilingAlgorithm* oldAlgo,
     if (!oldAlgo || !newAlgo) return;
     if (m_config->maxWindows == oldAlgo->defaultMaxWindows()) {
         m_config->maxWindows = newAlgo->defaultMaxWindows();
+    }
+}
+
+void AutotileEngine::propagateGlobalSplitRatio()
+{
+    for (auto it = m_screenStates.constBegin(); it != m_screenStates.constEnd(); ++it) {
+        if (it.value() && !hasPerScreenOverride(it.key(), QLatin1String("SplitRatio"))) {
+            it.value()->setSplitRatio(m_config->splitRatio);
+        }
+    }
+}
+
+void AutotileEngine::propagateGlobalMasterCount()
+{
+    for (auto it = m_screenStates.constBegin(); it != m_screenStates.constEnd(); ++it) {
+        if (it.value() && !hasPerScreenOverride(it.key(), QLatin1String("MasterCount"))) {
+            it.value()->setMasterCount(m_config->masterCount);
+        }
     }
 }
 

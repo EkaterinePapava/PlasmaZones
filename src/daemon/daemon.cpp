@@ -273,12 +273,52 @@ bool Daemon::init()
                 // they work with the active layout, not per-screen layouts
             });
 
-    // Connect settings changes to overlay service and autotile engine
+    // Connect settings changes to overlay service and autotile engine.
+    // This is the SINGLE comprehensive handler for batch config reloads (Settings::load()).
+    // Individual autotile signals are NOT emitted from load() — all autotile state
+    // transitions are handled here to avoid redundant retile passes.
+    m_prevSnappingEnabled = m_settings->snappingEnabled();
+    m_prevAutotileEnabled = m_settings->autotileEnabled();
     connect(m_settings.get(), &Settings::settingsChanged, this, [this]() {
         m_overlayService->updateSettings(m_settings.get());
+
+        // Detect state transitions before syncing
+        const bool snappingNow = m_settings->snappingEnabled();
+        const bool autotileNow = m_settings->autotileEnabled();
+        const bool snappingToggled = snappingNow != m_prevSnappingEnabled;
+        const bool autotileToggled = autotileNow != m_prevAutotileEnabled;
+        m_prevSnappingEnabled = snappingNow;
+        m_prevAutotileEnabled = autotileNow;
+
+        // Sync engine config (idempotent — skips retile if nothing changed)
         if (m_autotileEngine) {
             m_autotileEngine->syncFromSettings(m_settings.get());
         }
+
+        // Handle autotile feature gate toggle
+        if (autotileToggled && !autotileNow) {
+            handleAutotileDisabled();
+        }
+
+        // Handle autotile feature gate toggle ON:
+        // When the KCM checkbox enables autotile, activate autotile on all screens
+        // using the last algorithm (same logic as snapping-to-autotile transition).
+        if (autotileToggled && autotileNow
+            && !(m_modeTracker && m_modeTracker->isAutotileMode())) {
+            handleSnappingToAutotile();
+        }
+
+        // Handle snapping toggle → autotile activation.
+        // Guard: skip if already in autotile mode to avoid resetting per-screen
+        // algorithm customizations with the global algorithm.
+        if (snappingToggled && !snappingNow && autotileNow
+            && !(m_modeTracker && m_modeTracker->isAutotileMode())) {
+            handleSnappingToAutotile();
+        }
+
+        // Re-derive autotile screens and apply per-screen overrides
+        updateAutotileScreens();
+        updateLayoutFilter();
     });
 
     // Initialize domain-specific D-Bus adaptors
@@ -652,9 +692,8 @@ void Daemon::start()
         if (m_settings->autotileEnabled() && m_layoutManager) {
             for (QScreen *screen : Utils::allScreens()) {
                 const QString screenId = Utils::screenIdentifier(screen);
-                const int desktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-                const QString activity = (m_activityManager && ActivityManager::isAvailable())
-                                         ? m_activityManager->currentActivity() : QString();
+                const int desktop = currentDesktop();
+                const QString activity = currentActivity();
                 const QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
                 if (LayoutId::isAutotile(assignmentId)) {
                     hasAutotileAssignment = true;
@@ -679,7 +718,7 @@ void Daemon::start()
             }
             // Only show OSD when actually in autotile mode — loadState() emits
             // algorithmChanged during startup even if we're in manual mode.
-            // Use layout OSD (visual zone preview) when changing algorithm, same as manual layout switch.
+            // Defer OSD display (same rationale as autotileApplied handler above).
             if (m_modeTracker && m_modeTracker->isAutotileMode()
                 && m_settings && m_settings->showOsdOnLayoutSwitch() && m_overlayService) {
                 auto *algo = AlgorithmRegistry::instance()->algorithm(algorithmId);
@@ -690,7 +729,7 @@ void Daemon::start()
                         screenName = Utils::screenIdentifier(screen);
                     }
                 }
-                showLayoutOsdForAlgorithm(algorithmId, displayName, screenName);
+                showAlgorithmOsdDeferred(algorithmId, displayName, screenName);
             }
         });
 
@@ -763,9 +802,8 @@ void Daemon::start()
                 return;
             }
             QString screenId = Utils::screenIdentifier(screen);
-            int desktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-            QString activity = (m_activityManager && ActivityManager::isAvailable())
-                               ? m_activityManager->currentActivity() : QString();
+            int desktop = currentDesktop();
+            QString activity = currentActivity();
 
             // Set the screen context so applyEntry knows which screen to assign
             m_unifiedLayoutController->setCurrentScreenName(screenId);
@@ -788,7 +826,7 @@ void Daemon::start()
                 }
             } else {
                 // Currently manual → switch to last autotile algorithm
-                QString algoId = m_modeTracker->lastAutotileAlgorithm();
+                const QString algoId = resolveAlgorithmId();
                 if (!algoId.isEmpty()) {
                     applied = m_unifiedLayoutController->applyLayoutById(LayoutId::makeAutotileId(algoId));
                 }
@@ -842,96 +880,26 @@ void Daemon::start()
     // Set initial layout filter
     updateLayoutFilter();
 
+    // Pre-warm Layout OSD QML windows unconditionally.
+    // First-time QML compilation of LayoutOsd.qml (~100-300ms) would otherwise
+    // block the event loop during the first layout switch (manual or autotile),
+    // causing perceptible lag.  Deferred so daemon init completes first.
+    if (m_overlayService) {
+        QTimer::singleShot(0, this, [this]() {
+            m_overlayService->warmUpLayoutOsd();
+        });
+    }
+
     // Update layout filter when tiling mode changes at runtime
     connect(m_modeTracker.get(), &ModeTracker::currentModeChanged, this, &Daemon::updateLayoutFilter);
 
-    // Feature gate: when KCM checkbox changes, enforce constraints
-    connect(m_settings.get(), &Settings::autotileEnabledChanged, this, [this]() {
-        if (!m_settings) {
-            return;
-        }
+    // Note: autotileEnabledChanged, snappingEnabledChanged, and perScreenAutotileSettingsChanged
+    // are handled by the settingsChanged handler above (consolidated for single-pass processing).
+    // Individual autotile signals only fire from runtime setters, where settingsChanged also
+    // fires and handles the transitions — no separate handlers needed.
 
-        if (!m_settings->autotileEnabled()) {
-            // Feature disabled: clear all autotile assignments
-            if (m_layoutManager) {
-                m_layoutManager->clearAutotileAssignments();
-            }
-            updateAutotileScreens();
-            // Restore last manual layout so windows aren't stuck in tiled positions
-            if (m_modeTracker && m_layoutManager) {
-                const QString lastLayoutId = m_modeTracker->lastManualLayoutId();
-                if (!lastLayoutId.isEmpty()) {
-                    Layout* layout = m_layoutManager->layoutById(QUuid::fromString(lastLayoutId));
-                    if (layout) {
-                        m_layoutManager->setActiveLayout(layout);
-                    }
-                }
-            }
-            // Resnap windows back to their pre-autotile zone positions (all screens)
-            if (m_windowTrackingAdaptor) {
-                m_windowTrackingAdaptor->resnapCurrentAssignments();
-            }
-        }
-
-        updateLayoutFilter();
-    });
-
-    // Symmetric handler: when snapping is disabled, switch to autotile mode
-    // (mirrors the autotileEnabledChanged handler above)
-    connect(m_settings.get(), &Settings::snappingEnabledChanged, this, [this]() {
-        if (!m_settings) {
-            return;
-        }
-
-        if (!m_settings->snappingEnabled()) {
-            // Snapping disabled: switch to autotile if the feature is available
-            if (m_settings->autotileEnabled() && m_modeTracker
-                && m_unifiedLayoutController && m_layoutManager && m_screenManager) {
-
-                QString algoId = m_modeTracker->lastAutotileAlgorithm();
-                if (algoId.isEmpty()) {
-                    algoId = m_settings->autotileAlgorithm();
-                    if (algoId.isEmpty()) {
-                        algoId = AlgorithmRegistry::defaultAlgorithmId();
-                    }
-                }
-                const QString autotileLayoutId = LayoutId::makeAutotileId(algoId);
-
-                // Set the algorithm on the engine
-                if (m_autotileEngine) {
-                    m_autotileEngine->setAlgorithm(algoId);
-                }
-
-                // Assign autotile layout to ALL screens (this is a global KCM toggle).
-                // Block signals during batch to avoid N intermediate updateAutotileScreens()
-                // calls from the layoutAssigned handler — one final call is sufficient.
-                const int desktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-                const QString activity = (m_activityManager && ActivityManager::isAvailable())
-                                         ? m_activityManager->currentActivity() : QString();
-                {
-                    QSignalBlocker blocker(m_layoutManager.get());
-                    for (QScreen* screen : m_screenManager->screens()) {
-                        QString screenId = Utils::screenIdentifier(screen);
-                        m_layoutManager->assignLayoutById(screenId, desktop, activity, autotileLayoutId);
-                    }
-                }
-                updateAutotileScreens();
-
-                // Set mode to Autotile so updateLayoutFilter shows the right layouts
-                m_modeTracker->setCurrentMode(TilingMode::Autotile);
-            }
-        }
-
-        updateLayoutFilter();
-    });
-
-    // Re-derive autotile screens when assignments change
+    // Re-derive autotile screens when assignments change (e.g., from D-Bus, layout picker)
     connect(m_layoutManager.get(), &LayoutManager::layoutAssigned, this, [this]() {
-        updateAutotileScreens();
-    });
-
-    // Re-apply per-screen autotile overrides when per-screen settings change
-    connect(m_settings.get(), &Settings::perScreenAutotileSettingsChanged, this, [this]() {
         updateAutotileScreens();
     });
 
@@ -941,8 +909,14 @@ void Daemon::start()
             m_modeTracker->setCurrentMode(TilingMode::Manual);
             m_modeTracker->recordManualLayout(layout->id());
         }
+        // Defer OSD display (same rationale as autotileApplied — first-time QML
+        // compilation of LayoutOsd.qml blocks the event loop ~100-300ms).
+        // Capture layout ID (not raw pointer) to avoid use-after-free if the
+        // layout is ever replaced between now and next event loop pass.
         if (m_settings && m_settings->showOsdOnLayoutSwitch()) {
-            showLayoutOsd(layout, m_unifiedLayoutController->currentScreenName());
+            QUuid layoutId = layout->id();
+            QString screenName = m_unifiedLayoutController->currentScreenName();
+            showLayoutOsdDeferred(layoutId, screenName);
         }
     });
 
@@ -952,11 +926,15 @@ void Daemon::start()
         if (m_modeTracker) {
             m_modeTracker->setCurrentMode(TilingMode::Autotile);
         }
-        // Use layout OSD (visual zone preview) when applying autotile, same as manual layout switch.
+        // Defer OSD display so QML window creation (first-time ~100-300ms for
+        // LayoutOsd.qml compilation + scene graph) doesn't block the daemon event
+        // loop while the effect is sending windowOpened D-Bus calls.  Without this,
+        // first toggle to autotile has perceptible lag because the daemon can't
+        // process incoming tiling requests until the OSD handler returns.
         if (m_settings && m_settings->showOsdOnLayoutSwitch() && m_autotileEngine && m_overlayService) {
             QString algorithmId = m_autotileEngine->algorithm();
             QString screenName = m_unifiedLayoutController->currentScreenName();
-            showLayoutOsdForAlgorithm(algorithmId, algorithmName, screenName);
+            showAlgorithmOsdDeferred(algorithmId, algorithmName, screenName);
         }
     });
 
@@ -1541,15 +1519,128 @@ void Daemon::updateLayoutFilter()
                        << "autotile=" << includeAutotile;
 }
 
+int Daemon::currentDesktop() const
+{
+    return m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
+}
+
+QString Daemon::currentActivity() const
+{
+    return (m_activityManager && ActivityManager::isAvailable())
+           ? m_activityManager->currentActivity() : QString();
+}
+
+QString Daemon::resolveAlgorithmId() const
+{
+    if (m_modeTracker) {
+        QString algoId = m_modeTracker->lastAutotileAlgorithm();
+        if (!algoId.isEmpty()) {
+            return algoId;
+        }
+    }
+    if (m_settings) {
+        QString algoId = m_settings->autotileAlgorithm();
+        if (!algoId.isEmpty()) {
+            return algoId;
+        }
+    }
+    return AlgorithmRegistry::defaultAlgorithmId();
+}
+
+void Daemon::showLayoutOsdDeferred(const QUuid& layoutId, const QString& screenName)
+{
+    // Defer OSD display so first-time QML compilation of LayoutOsd.qml (~100-300ms)
+    // doesn't block the daemon event loop during layout switches.
+    QTimer::singleShot(0, this, [this, layoutId, screenName]() {
+        Layout* l = m_layoutManager ? m_layoutManager->layoutById(layoutId) : nullptr;
+        if (l) {
+            showLayoutOsd(l, screenName);
+        }
+    });
+}
+
+void Daemon::showAlgorithmOsdDeferred(const QString& algorithmId, const QString& algorithmName, const QString& screenName)
+{
+    QTimer::singleShot(0, this, [this, algorithmId, algorithmName, screenName]() {
+        showLayoutOsdForAlgorithm(algorithmId, algorithmName, screenName);
+    });
+}
+
+/**
+ * @brief Deactivate autotile: clear assignments, restore manual layout, resnap windows.
+ *
+ * @note Callers MUST call updateAutotileScreens() + updateLayoutFilter()
+ *       afterward to derive per-screen state and update the layout model.
+ */
+void Daemon::handleAutotileDisabled()
+{
+    // Feature disabled: clear all autotile assignments.
+    // Block signals to avoid N intermediate updateAutotileScreens()
+    // from layoutAssigned — one final call below is sufficient.
+    if (m_layoutManager) {
+        QSignalBlocker blocker(m_layoutManager.get());
+        m_layoutManager->clearAutotileAssignments();
+    }
+    // Restore last manual layout so windows aren't stuck in tiled positions
+    if (m_modeTracker && m_layoutManager) {
+        m_modeTracker->setCurrentMode(TilingMode::Manual);
+        const QString lastLayoutId = m_modeTracker->lastManualLayoutId();
+        if (!lastLayoutId.isEmpty()) {
+            Layout* layout = m_layoutManager->layoutById(QUuid::fromString(lastLayoutId));
+            if (layout) {
+                m_layoutManager->setActiveLayout(layout);
+            }
+        }
+    }
+    // Resnap windows back to their pre-autotile zone positions
+    if (m_windowTrackingAdaptor) {
+        m_windowTrackingAdaptor->resnapCurrentAssignments();
+    }
+}
+
+/**
+ * @brief Activate autotile on all screens using the last algorithm.
+ *
+ * Assigns autotile layout to every screen and sets mode to Autotile.
+ * @note Callers MUST call updateAutotileScreens() + updateLayoutFilter()
+ *       afterward to derive per-screen state and update the layout model.
+ */
+void Daemon::handleSnappingToAutotile()
+{
+    if (!m_settings || !m_modeTracker || !m_unifiedLayoutController || !m_layoutManager || !m_screenManager) {
+        return;
+    }
+
+    const QString algoId = resolveAlgorithmId();
+    const QString autotileLayoutId = LayoutId::makeAutotileId(algoId);
+
+    if (m_autotileEngine) {
+        m_autotileEngine->setAlgorithm(algoId);
+    }
+
+    // Assign autotile layout to ALL screens (global toggle).
+    // Block signals to avoid N intermediate updateAutotileScreens()
+    // from layoutAssigned — one final call below is sufficient.
+    const int desktop = currentDesktop();
+    const QString activity = currentActivity();
+    {
+        QSignalBlocker blocker(m_layoutManager.get());
+        for (QScreen* screen : m_screenManager->screens()) {
+            QString screenId = Utils::screenIdentifier(screen);
+            m_layoutManager->assignLayoutById(screenId, desktop, activity, autotileLayoutId);
+        }
+    }
+    m_modeTracker->setCurrentMode(TilingMode::Autotile);
+}
+
 void Daemon::updateAutotileScreens()
 {
     if (!m_autotileEngine || !m_layoutManager || !m_screenManager) {
         return;
     }
 
-    const int desktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-    const QString activity = (m_activityManager && ActivityManager::isAvailable())
-                             ? m_activityManager->currentActivity() : QString();
+    const int desktop = currentDesktop();
+    const QString activity = currentActivity();
 
     QSet<QString> autotileScreens;
     QHash<QString, QString> screenAlgorithms;
