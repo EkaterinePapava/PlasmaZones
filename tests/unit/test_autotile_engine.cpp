@@ -8,8 +8,14 @@
 #include "autotile/AutotileEngine.h"
 #include "autotile/AutotileConfig.h"
 #include "autotile/TilingState.h"
+#include "autotile/TilingAlgorithm.h"
 #include "autotile/AlgorithmRegistry.h"
+#include "autotile/algorithms/MonocleAlgorithm.h"
 #include "core/constants.h"
+
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 using namespace PlasmaZones;
 
@@ -398,8 +404,6 @@ private Q_SLOTS:
         original.smartGaps = false;
         original.focusNewWindows = false;
         original.focusFollowsMouse = true;
-        original.monocleHideOthers = false;
-        original.monocleShowTabs = true;
         original.respectMinimumSize = false;
         original.insertPosition = AutotileConfig::InsertPosition::AfterFocused;
 
@@ -414,8 +418,6 @@ private Q_SLOTS:
         QCOMPARE(restored.smartGaps, original.smartGaps);
         QCOMPARE(restored.focusNewWindows, original.focusNewWindows);
         QCOMPARE(restored.focusFollowsMouse, original.focusFollowsMouse);
-        QCOMPARE(restored.monocleHideOthers, original.monocleHideOthers);
-        QCOMPARE(restored.monocleShowTabs, original.monocleShowTabs);
         QCOMPARE(restored.respectMinimumSize, original.respectMinimumSize);
         QCOMPARE(restored.insertPosition, original.insertPosition);
     }
@@ -942,6 +944,74 @@ private Q_SLOTS:
         QVERIFY(!state->isFloating(QStringLiteral("win-2")));
         QCOMPARE(state->tiledWindowCount(), 2);
     }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Monocle maximize tests
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void testMonocle_tileRequestIncludesMonocleFlag()
+    {
+        // Verify that applyTiling() emits JSON with "monocle": true for monocle algorithm
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        const QString screenName = QStringLiteral("TestScreen");
+
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+        engine.setAlgorithm(DBus::AutotileAlgorithm::Monocle);
+
+        engine.windowOpened(QStringLiteral("win-mono-1"), screenName);
+        QCoreApplication::processEvents();
+
+        // Capture the windowsTiled signal to inspect the JSON payload
+        QSignalSpy tiledSpy(&engine, &AutotileEngine::windowsTiled);
+
+        TilingState* state = engine.stateForScreen(screenName);
+        // Monocle: all windows get the same zone
+        state->setCalculatedZones({QRect(10, 42, 1900, 1038)});
+        engine.retile(screenName);
+
+        QVERIFY(tiledSpy.count() >= 1);
+        const QString json = tiledSpy.last().first().toString();
+        QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
+        QVERIFY(doc.isArray());
+        const QJsonArray arr = doc.array();
+        QVERIFY(!arr.isEmpty());
+        // Every entry in the monocle tile request should have "monocle": true
+        for (const QJsonValue& val : arr) {
+            QVERIFY(val.toObject().value(QLatin1String("monocle")).toBool(false));
+        }
+    }
+
+    void testMonocle_nonMonocleTileRequestOmitsFlag()
+    {
+        // Verify that applyTiling() does NOT include "monocle" for non-monocle algorithms
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        const QString screenName = QStringLiteral("TestScreen");
+
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+        engine.setAlgorithm(DBus::AutotileAlgorithm::MasterStack);
+
+        engine.windowOpened(QStringLiteral("win-ms-1"), screenName);
+        engine.windowOpened(QStringLiteral("win-ms-2"), screenName);
+        QCoreApplication::processEvents();
+
+        QSignalSpy tiledSpy(&engine, &AutotileEngine::windowsTiled);
+
+        TilingState* state = engine.stateForScreen(screenName);
+        state->setCalculatedZones({QRect(10, 10, 950, 1060), QRect(960, 10, 950, 1060)});
+        engine.retile(screenName);
+
+        QVERIFY(tiledSpy.count() >= 1);
+        const QString json = tiledSpy.last().first().toString();
+        QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
+        QVERIFY(doc.isArray());
+        const QJsonArray arr = doc.array();
+        for (const QJsonValue& val : arr) {
+            // "monocle" key should be absent (defaults to false)
+            QVERIFY(!val.toObject().contains(QLatin1String("monocle")));
+        }
+    }
+
 };
 
 QTEST_MAIN(TestAutotileEngine)

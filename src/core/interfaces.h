@@ -312,10 +312,7 @@ Q_SIGNALS:
     void autotileInsertPositionChanged();
     void autotileRespectMinimumSizeChanged();
     void autotileFocusFollowsMouseChanged();
-    void autotileMonocleHideOthersChanged();
-    void autotileMonocleShowTabsChanged();
     void autotileHideTitleBarsChanged();
-
     // Animation settings (general)
     void animationsEnabledChanged();
     void animationDurationChanged();

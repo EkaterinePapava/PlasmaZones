@@ -61,10 +61,8 @@ AutotileAdaptor::AutotileAdaptor(AutotileEngine* engine, QObject* parent)
     connect(m_engine, &AutotileEngine::tilingChanged, this, &AutotileAdaptor::tilingChanged);
     connect(m_engine, &AutotileEngine::windowsTiled, this, &AutotileAdaptor::onWindowsTiled);
     connect(m_engine, &AutotileEngine::focusWindowRequested, this, &AutotileAdaptor::focusWindowRequested);
-    connect(m_engine, &AutotileEngine::monocleVisibilityChanged, this, &AutotileAdaptor::monocleVisibilityChanged);
     connect(m_engine, &AutotileEngine::windowsReleasedFromTiling, this, &AutotileAdaptor::windowsReleasedFromTiling);
     connect(m_engine, &AutotileEngine::windowFloatingChanged, this, &AutotileAdaptor::windowFloatingChanged);
-
     qCDebug(lcDbusAutotile) << "AutotileAdaptor initialized";
 }
 

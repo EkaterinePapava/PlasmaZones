@@ -172,10 +172,7 @@ public:
     // Autotile Behavior and Visual Settings
     Q_PROPERTY(bool autotileFocusFollowsMouse READ autotileFocusFollowsMouse WRITE setAutotileFocusFollowsMouse NOTIFY autotileFocusFollowsMouseChanged)
     Q_PROPERTY(bool autotileRespectMinimumSize READ autotileRespectMinimumSize WRITE setAutotileRespectMinimumSize NOTIFY autotileRespectMinimumSizeChanged)
-    Q_PROPERTY(bool autotileMonocleHideOthers READ autotileMonocleHideOthers WRITE setAutotileMonocleHideOthers NOTIFY autotileMonocleHideOthersChanged)
-    Q_PROPERTY(bool autotileMonocleShowTabs READ autotileMonocleShowTabs WRITE setAutotileMonocleShowTabs NOTIFY autotileMonocleShowTabsChanged)
     Q_PROPERTY(bool autotileHideTitleBars READ autotileHideTitleBars WRITE setAutotileHideTitleBars NOTIFY autotileHideTitleBarsChanged)
-
     // Autotile Shortcuts
     Q_PROPERTY(QString autotileToggleShortcut READ autotileToggleShortcut WRITE setAutotileToggleShortcut NOTIFY autotileToggleShortcutChanged)
     Q_PROPERTY(QString autotileFocusMasterShortcut READ autotileFocusMasterShortcut WRITE setAutotileFocusMasterShortcut NOTIFY autotileFocusMasterShortcutChanged)
@@ -825,12 +822,6 @@ public:
     bool autotileRespectMinimumSize() const { return m_autotileRespectMinimumSize; }
     void setAutotileRespectMinimumSize(bool respect);
 
-    bool autotileMonocleHideOthers() const { return m_autotileMonocleHideOthers; }
-    void setAutotileMonocleHideOthers(bool hide);
-
-    bool autotileMonocleShowTabs() const { return m_autotileMonocleShowTabs; }
-    void setAutotileMonocleShowTabs(bool show);
-
     bool autotileHideTitleBars() const override { return m_autotileHideTitleBars; }
     void setAutotileHideTitleBars(bool hide) override;
 
@@ -1292,10 +1283,7 @@ private:
     // Additional Autotiling Settings (must match plasmazones.kcfg Autotiling defaults)
     bool m_autotileFocusFollowsMouse = false;
     bool m_autotileRespectMinimumSize = true;
-    bool m_autotileMonocleHideOthers = true;
-    bool m_autotileMonocleShowTabs = false;
-    bool m_autotileHideTitleBars = false;
-
+    bool m_autotileHideTitleBars = true;
     // Autotile Shortcuts (must match plasmazones.kcfg GlobalShortcuts defaults)
     QString m_autotileToggleShortcut = QStringLiteral("Meta+Shift+T");
     QString m_autotileFocusMasterShortcut = QStringLiteral("Meta+Shift+M");

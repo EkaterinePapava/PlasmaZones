@@ -152,6 +152,7 @@ ScrollView {
                         ToolTip.visible: hovered && root.isCurrentTab
                         ToolTip.text: i18n("Remove window title bars while autotiled. Restored when floating or leaving autotile mode.")
                     }
+
                 }
             }
         }
@@ -537,47 +538,6 @@ ScrollView {
                         }
                     }
 
-                    // ─────────────────────────────────────────────────────────────
-                    // Algorithm-specific settings (monocle)
-                    // ─────────────────────────────────────────────────────────────
-                    ColumnLayout {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: Math.min(Kirigami.Units.gridUnit * 20, parent.width)
-                        spacing: Kirigami.Units.smallSpacing
-                        visible: root.effectiveAlgorithm === "monocle"
-
-                        Kirigami.Separator {
-                            Layout.fillWidth: true
-                            Layout.topMargin: Kirigami.Units.smallSpacing
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: i18n("Monocle Options")
-                            font.bold: true
-                        }
-
-                        CheckBox {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: i18n("Minimize non-focused windows")
-                            checked: root.settingValue("MonocleHideOthers", kcm.autotileMonocleHideOthers)
-                            onToggled: root.writeSetting("MonocleHideOthers", checked, function(v) { kcm.autotileMonocleHideOthers = v })
-
-                            ToolTip.visible: hovered && root.isCurrentTab
-                            ToolTip.text: i18n("When enabled, windows not in focus are minimized. Otherwise they remain behind the focused window.")
-                        }
-
-                        CheckBox {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: i18n("Show tab bar for window switching")
-                            checked: root.settingValue("MonocleShowTabs", kcm.autotileMonocleShowTabs)
-                            onToggled: root.writeSetting("MonocleShowTabs", checked, function(v) { kcm.autotileMonocleShowTabs = v })
-
-                            ToolTip.visible: hovered && root.isCurrentTab
-                            ToolTip.text: i18n("Display a tab bar to quickly switch between monocle windows")
-                        }
-                    }
                 }
             }
         }

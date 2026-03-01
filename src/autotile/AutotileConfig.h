@@ -125,25 +125,6 @@ struct PLASMAZONES_EXPORT AutotileConfig
     bool focusNewWindows = true;
 
     // ═══════════════════════════════════════════════════════════════════════
-    // Monocle Mode Settings
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * @brief Hide other windows when in monocle mode
-     *
-     * If true, non-focused windows are minimized.
-     * If false, they remain visible but behind the focused window.
-     */
-    bool monocleHideOthers = true;
-
-    /**
-     * @brief Show tab bar in monocle mode
-     *
-     * Displays a bar showing all windows for easy switching.
-     */
-    bool monocleShowTabs = false;
-
-    // ═══════════════════════════════════════════════════════════════════════
     // Smart Features
     // ═══════════════════════════════════════════════════════════════════════
 

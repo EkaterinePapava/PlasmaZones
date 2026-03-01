@@ -318,17 +318,6 @@ Q_SIGNALS:
     void focusWindowRequested(const QString& windowId);
 
     /**
-     * @brief Emitted when monocle mode visibility changes are needed
-     *
-     * The KWin effect listens to this signal to minimize/unminimize
-     * windows in monocle mode.
-     *
-     * @param focusedWindowId Window to unminimize/show
-     * @param windowsToHide List of window IDs to minimize
-     */
-    void monocleVisibilityChanged(const QString& focusedWindowId, const QStringList& windowsToHide);
-
-    /**
      * @brief Emitted when windows are released from autotile management
      *
      * Fired when screens are removed from autotile (e.g., switching from

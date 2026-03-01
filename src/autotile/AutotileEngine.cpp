@@ -342,10 +342,7 @@ void AutotileEngine::syncFromSettings(Settings* settings)
     SYNC_FIELD(smartGaps, autotileSmartGaps);
     SYNC_FIELD(focusFollowsMouse, autotileFocusFollowsMouse);
     SYNC_FIELD(respectMinimumSize, autotileRespectMinimumSize);
-    SYNC_FIELD(monocleHideOthers, autotileMonocleHideOthers);
-    SYNC_FIELD(monocleShowTabs, autotileMonocleShowTabs);
     SYNC_FIELD(maxWindows, autotileMaxWindows);
-
     // splitRatio: qreal needs fuzzy comparison to avoid spurious change detection
     {
         const qreal newRatio = settings->autotileSplitRatio();
@@ -495,8 +492,6 @@ void AutotileEngine::connectToSettings(Settings* settings)
 
     CONNECT_SETTING_NO_RETILE(autotileFocusNewWindowsChanged, focusNewWindows, autotileFocusNewWindows);
     CONNECT_SETTING_NO_RETILE(autotileFocusFollowsMouseChanged, focusFollowsMouse, autotileFocusFollowsMouse);
-    CONNECT_SETTING_NO_RETILE(autotileMonocleHideOthersChanged, monocleHideOthers, autotileMonocleHideOthers);
-    CONNECT_SETTING_NO_RETILE(autotileMonocleShowTabsChanged, monocleShowTabs, autotileMonocleShowTabs);
 
     // InsertPosition requires cast
     connect(settings, &Settings::autotileInsertPositionChanged, this, [this]() {
@@ -1498,6 +1493,7 @@ void AutotileEngine::windowFocused(const QString& windowId, const QString& scree
     }
 
     onWindowFocused(windowId);
+
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1527,7 +1523,10 @@ void AutotileEngine::onWindowAdded(const QString& windowId)
     }
 
     if (inserted && m_config && m_config->focusNewWindows) {
-        Q_EMIT focusWindowRequested(windowId);
+        // Defer focus until after applyTiling emits windowsTiled. The KWin effect's
+        // onComplete raises windows in tiling order; emitting focus before retile
+        // causes the raise loop to bury the new window behind existing ones.
+        m_pendingFocusWindowId = windowId;
     }
 
     if (inserted) {
@@ -1564,23 +1563,6 @@ void AutotileEngine::onWindowFocused(const QString& windowId)
     m_activeScreen = m_windowToScreen.value(windowId);
 
     state->setFocusedWindow(windowId);
-
-    // In monocle mode with monocleHideOthers, tile the newly focused window
-    // (it was skipped in applyTiling's optimization) then update visibility.
-    if (isAutotileScreen(m_activeScreen) && isMonocleHideMode(m_activeScreen)) {
-        const QStringList windows = state->tiledWindows();
-        const QVector<QRect> zones = state->calculatedZones();
-        const int managedCount = zones.size();
-        if (managedCount > 1) {
-            const int idx = windows.indexOf(windowId);
-            if (idx >= 0 && idx < managedCount) {
-                emitSingleWindowTile(windowId, zones[idx]);
-            }
-            // Only pass managed (non-overflow) windows to monocle visibility.
-            // Windows beyond maxWindows should not be hidden by monocle mode.
-            emitMonocleVisibility(state, windows.mid(0, managedCount));
-        }
-    }
 }
 
 void AutotileEngine::onScreenGeometryChanged(const QString& screenName)
@@ -1695,15 +1677,18 @@ void AutotileEngine::recalculateLayout(const QString& screenName)
         return;
     }
 
+    const QString algoId = effectiveAlgorithmId(screenName);
+
     qCDebug(lcAutotile) << "recalculateLayout: screen=" << screenName << "geometry=" << screen
-                        << "windows=" << windowCount << "algo=" << effectiveAlgorithmId(screenName);
+                        << "windows=" << windowCount << "algo=" << algoId;
 
     // Calculate zone geometries using the algorithm, with gap-aware zones.
     // Algorithms apply gaps directly using their topology knowledge, eliminating
     // the fragile post-processing step that previously guessed adjacency.
     const bool skipGaps = effectiveSmartGaps(screenName) && windowCount == 1;
     const int innerGap = skipGaps ? 0 : effectiveInnerGap(screenName);
-    const EdgeGaps outerGaps = skipGaps ? EdgeGaps::uniform(0) : effectiveOuterGaps(screenName);
+    EdgeGaps outerGaps = skipGaps ? EdgeGaps::uniform(0) : effectiveOuterGaps(screenName);
+
     // Build minSizes vector for the algorithm (when respectMinimumSize is enabled)
     // Only include the first windowCount windows (capped by maxWindows above)
     QVector<QSize> minSizes;
@@ -1734,7 +1719,7 @@ void AutotileEngine::recalculateLayout(const QString& screenName)
     // Skip for Monocle: zones intentionally overlap (stacked windows), and
     // removeZoneOverlaps would separate them into side-by-side columns.
     if (effectiveRespectMinimumSize(screenName) && !minSizes.isEmpty()
-        && effectiveAlgorithmId(screenName) != DBus::AutotileAlgorithm::Monocle) {
+        && algoId != DBus::AutotileAlgorithm::Monocle) {
         const int threshold = effectiveInnerGap(screenName) + qMax(AutotileDefaults::GapEdgeThresholdPx, 12);
         GeometryUtils::enforceWindowMinSizes(zones, minSizes, threshold, innerGap);
     }
@@ -1769,41 +1754,39 @@ void AutotileEngine::applyTiling(const QString& screenName)
 
     // Auto-float overflow windows that exceed maxWindows cap.
     // Daemon's windowFloatingChanged handler restores their pre-autotile geometry.
-    // Done before monocle/JSON paths to ensure overflow is handled for all algorithms.
     // Batch: mutate state first, then collect signals for deferred emission.
     QStringList newlyOverflowed = m_overflow.applyOverflow(screenName, windows, tileCount);
     for (const QString& wid : std::as_const(newlyOverflowed)) {
         state->setFloating(wid, true);
     }
 
-    // Monocle optimization: only tile the visible (focused) window. The N-1
-    // hidden windows don't need moveResize since they're minimized, avoiding
-    // expensive per-window stacking-order scans, D-Bus calls, and repaints.
-    // When focus changes, onWindowFocused() tiles the newly visible window.
-    if (isMonocleHideMode(screenName) && tileCount > 1) {
-        const QString focused = state->focusedWindow();
-        const int focusIdx = focused.isEmpty() ? -1 : windows.indexOf(focused);
-        const int visibleIdx = (focusIdx >= 0 && focusIdx < tileCount) ? focusIdx : 0;
-
-        emitSingleWindowTile(windows[visibleIdx], zones[visibleIdx]);
-
-        // Only pass the managed (non-overflow) windows to monocle visibility.
-        // Windows beyond maxWindows should not be hidden by monocle mode.
-        emitMonocleVisibility(state, windows.mid(0, tileCount));
-    } else {
-        // Build batch JSON and emit once to avoid race when effect applies many geometries
-        QJsonArray arr;
-        for (int i = 0; i < tileCount; ++i) {
-            const QRect& geo = zones[i];
-            QJsonObject obj;
-            obj[QLatin1String("windowId")] = windows[i];
-            obj[QLatin1String("x")] = geo.x();
-            obj[QLatin1String("y")] = geo.y();
-            obj[QLatin1String("width")] = geo.width();
-            obj[QLatin1String("height")] = geo.height();
-            arr.append(obj);
+    // Build batch JSON and emit once to avoid race when effect applies many geometries.
+    // Monocle tiles all windows to the same geometry (stacked); KWin's stacking
+    // order handles visibility — no minimize/unminimize needed.
+    const bool isMonocle = (effectiveAlgorithmId(screenName) == DBus::AutotileAlgorithm::Monocle);
+    QJsonArray arr;
+    for (int i = 0; i < tileCount; ++i) {
+        const QRect& geo = zones[i];
+        QJsonObject obj;
+        obj[QLatin1String("windowId")] = windows[i];
+        obj[QLatin1String("x")] = geo.x();
+        obj[QLatin1String("y")] = geo.y();
+        obj[QLatin1String("width")] = geo.width();
+        obj[QLatin1String("height")] = geo.height();
+        // Flag monocle entries so the effect can set KWin maximize state,
+        // which makes Plasma panels recognize the window and unfloat.
+        if (isMonocle) {
+            obj[QLatin1String("monocle")] = true;
         }
-        Q_EMIT windowsTiled(QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Compact)));
+        arr.append(obj);
+    }
+    Q_EMIT windowsTiled(QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Compact)));
+
+    // Emit deferred focus AFTER windowsTiled so KWin processes tiles first
+    // (including the onComplete raise loop), then focuses the new window on top.
+    if (!m_pendingFocusWindowId.isEmpty()) {
+        Q_EMIT focusWindowRequested(m_pendingFocusWindowId);
+        m_pendingFocusWindowId.clear();
     }
 
     // Emit overflow signals AFTER geometry batch — prevents re-entrant signal
@@ -2120,49 +2103,6 @@ void AutotileEngine::setFocusNewWindows(bool enabled)
     if (m_config) {
         m_config->focusNewWindows = enabled;
     }
-}
-
-bool AutotileEngine::isMonocleHideMode(const QString& screenName) const
-{
-    return effectiveAlgorithmId(screenName) == DBus::AutotileAlgorithm::Monocle
-        && m_config && m_config->monocleHideOthers;
-}
-
-void AutotileEngine::emitSingleWindowTile(const QString& windowId, const QRect& geo)
-{
-    QJsonArray arr;
-    QJsonObject obj;
-    obj[QLatin1String("windowId")] = windowId;
-    obj[QLatin1String("x")] = geo.x();
-    obj[QLatin1String("y")] = geo.y();
-    obj[QLatin1String("width")] = geo.width();
-    obj[QLatin1String("height")] = geo.height();
-    arr.append(obj);
-    Q_EMIT windowsTiled(QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Compact)));
-}
-
-void AutotileEngine::emitMonocleVisibility(const TilingState* state, const QStringList& tiledWindows)
-{
-    if (!state || tiledWindows.isEmpty()) {
-        return;
-    }
-
-    // Determine which window should be visible: focused, or first if none focused
-    QString focused = state->focusedWindow();
-    if (focused.isEmpty() || !tiledWindows.contains(focused)) {
-        focused = tiledWindows.first();
-    }
-
-    // Build list of windows to hide (all tiled except focused)
-    QStringList toHide;
-    toHide.reserve(tiledWindows.size() - 1);
-    for (const QString& wid : tiledWindows) {
-        if (wid != focused) {
-            toHide.append(wid);
-        }
-    }
-
-    Q_EMIT monocleVisibilityChanged(focused, toHide);
 }
 
 } // namespace PlasmaZones

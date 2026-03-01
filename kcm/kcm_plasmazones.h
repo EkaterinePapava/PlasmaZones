@@ -190,10 +190,6 @@ class KCMPlasmaZones : public KQuickConfigModule
                    autotileFocusFollowsMouseChanged)
     Q_PROPERTY(bool autotileRespectMinimumSize READ autotileRespectMinimumSize WRITE setAutotileRespectMinimumSize NOTIFY
                    autotileRespectMinimumSizeChanged)
-    Q_PROPERTY(bool autotileMonocleHideOthers READ autotileMonocleHideOthers WRITE setAutotileMonocleHideOthers NOTIFY
-                   autotileMonocleHideOthersChanged)
-    Q_PROPERTY(bool autotileMonocleShowTabs READ autotileMonocleShowTabs WRITE setAutotileMonocleShowTabs NOTIFY
-                   autotileMonocleShowTabsChanged)
     Q_PROPERTY(bool autotileHideTitleBars READ autotileHideTitleBars WRITE setAutotileHideTitleBars NOTIFY
                    autotileHideTitleBarsChanged)
     Q_PROPERTY(bool autotileUsePerSideOuterGap READ autotileUsePerSideOuterGap WRITE setAutotileUsePerSideOuterGap NOTIFY
@@ -368,8 +364,6 @@ public:
     int animationStaggerIntervalMax() const;
     bool autotileFocusFollowsMouse() const;
     bool autotileRespectMinimumSize() const;
-    bool autotileMonocleHideOthers() const;
-    bool autotileMonocleShowTabs() const;
     bool autotileHideTitleBars() const;
     bool autotileUsePerSideOuterGap() const;
     int autotileOuterGapTop() const;
@@ -517,8 +511,6 @@ public:
     void setAnimationStaggerInterval(int ms);
     void setAutotileFocusFollowsMouse(bool focus);
     void setAutotileRespectMinimumSize(bool respect);
-    void setAutotileMonocleHideOthers(bool hide);
-    void setAutotileMonocleShowTabs(bool show);
     void setAutotileHideTitleBars(bool hide);
     void setAutotileUsePerSideOuterGap(bool enabled);
     void setAutotileOuterGapTop(int gap);
@@ -743,8 +735,6 @@ Q_SIGNALS:
     void animationStaggerIntervalChanged();
     void autotileFocusFollowsMouseChanged();
     void autotileRespectMinimumSizeChanged();
-    void autotileMonocleHideOthersChanged();
-    void autotileMonocleShowTabsChanged();
     void autotileHideTitleBarsChanged();
     void autotileUsePerSideOuterGapChanged();
     void autotileOuterGapTopChanged();

@@ -149,8 +149,6 @@ constexpr const char* kPerScreenAutotileKeys[] = {
     "FocusNewWindows",
     "FocusFollowsMouse",
     "RespectMinimumSize",
-    "MonocleHideOthers",
-    "MonocleShowTabs",
     "UsePerSideOuterGap",
     "OuterGapTop",
     "OuterGapBottom",
@@ -182,8 +180,6 @@ QVariant validatePerScreenAutotileValue(const QString& key, const QVariant& valu
     if (key == QLatin1String("FocusNewWindows")) return value.toBool();
     if (key == QLatin1String("FocusFollowsMouse")) return value.toBool();
     if (key == QLatin1String("RespectMinimumSize")) return value.toBool();
-    if (key == QLatin1String("MonocleHideOthers")) return value.toBool();
-    if (key == QLatin1String("MonocleShowTabs")) return value.toBool();
     if (key == QLatin1String("UsePerSideOuterGap")) return value.toBool();
     if (key == QLatin1String("OuterGapTop")) return qBound(MinGap, value.toInt(), MaxGap);
     if (key == QLatin1String("OuterGapBottom")) return qBound(MinGap, value.toInt(), MaxGap);
@@ -202,12 +198,11 @@ QVariant readPerScreenAutotileEntry(const KConfigGroup& group, const QLatin1Stri
 {
     // Booleans defaulting to true (matching global defaults)
     if (key == QLatin1String("SmartGaps") || key == QLatin1String("FocusNewWindows")
-        || key == QLatin1String("RespectMinimumSize")
-        || key == QLatin1String("MonocleHideOthers")) {
+        || key == QLatin1String("RespectMinimumSize")) {
         return group.readEntry(key, true);
     }
     // Booleans defaulting to false (matching global defaults)
-    if (key == QLatin1String("FocusFollowsMouse") || key == QLatin1String("MonocleShowTabs")
+    if (key == QLatin1String("FocusFollowsMouse")
         || key == QLatin1String("UsePerSideOuterGap")) {
         return group.readEntry(key, false);
     }
@@ -835,10 +830,7 @@ SETTINGS_SETTER_CLAMPED(AnimationSequenceMode, m_animationSequenceMode, animatio
 SETTINGS_SETTER_CLAMPED(AnimationStaggerInterval, m_animationStaggerInterval, animationStaggerIntervalChanged, AutotileDefaults::MinAnimationStaggerIntervalMs, AutotileDefaults::MaxAnimationStaggerIntervalMs)
 SETTINGS_SETTER(bool, AutotileFocusFollowsMouse, m_autotileFocusFollowsMouse, autotileFocusFollowsMouseChanged)
 SETTINGS_SETTER(bool, AutotileRespectMinimumSize, m_autotileRespectMinimumSize, autotileRespectMinimumSizeChanged)
-SETTINGS_SETTER(bool, AutotileMonocleHideOthers, m_autotileMonocleHideOthers, autotileMonocleHideOthersChanged)
-SETTINGS_SETTER(bool, AutotileMonocleShowTabs, m_autotileMonocleShowTabs, autotileMonocleShowTabsChanged)
 SETTINGS_SETTER(bool, AutotileHideTitleBars, m_autotileHideTitleBars, autotileHideTitleBarsChanged)
-
 // Shader Effects implementations
 SETTINGS_SETTER(bool, EnableShaderEffects, m_enableShaderEffects, enableShaderEffectsChanged)
 SETTINGS_SETTER_CLAMPED(ShaderFrameRate, m_shaderFrameRate, shaderFrameRateChanged, 30, 144)
@@ -1493,10 +1485,7 @@ void Settings::load()
     // Additional Autotiling Settings
     m_autotileFocusFollowsMouse = autotiling.readEntry(QLatin1String("AutotileFocusFollowsMouse"), ConfigDefaults::autotileFocusFollowsMouse());
     m_autotileRespectMinimumSize = autotiling.readEntry(QLatin1String("AutotileRespectMinimumSize"), ConfigDefaults::autotileRespectMinimumSize());
-    m_autotileMonocleHideOthers = autotiling.readEntry(QLatin1String("AutotileMonocleHideOthers"), ConfigDefaults::autotileMonocleHideOthers());
-    m_autotileMonocleShowTabs = autotiling.readEntry(QLatin1String("AutotileMonocleShowTabs"), ConfigDefaults::autotileMonocleShowTabs());
     m_autotileHideTitleBars = autotiling.readEntry(QLatin1String("AutotileHideTitleBars"), ConfigDefaults::autotileHideTitleBars());
-
     // Autotiling Shortcuts
     // Note: These are stored in a separate "AutotileShortcuts" config group
     // (not the .kcfg "GlobalShortcuts" group) for organizational clarity.
@@ -1721,10 +1710,7 @@ void Settings::save()
     // Additional settings
     autotiling.writeEntry(QLatin1String("AutotileFocusFollowsMouse"), m_autotileFocusFollowsMouse);
     autotiling.writeEntry(QLatin1String("AutotileRespectMinimumSize"), m_autotileRespectMinimumSize);
-    autotiling.writeEntry(QLatin1String("AutotileMonocleHideOthers"), m_autotileMonocleHideOthers);
-    autotiling.writeEntry(QLatin1String("AutotileMonocleShowTabs"), m_autotileMonocleShowTabs);
     autotiling.writeEntry(QLatin1String("AutotileHideTitleBars"), m_autotileHideTitleBars);
-
     // Autotile Shortcuts
     KConfigGroup autotileShortcuts = config->group(QStringLiteral("AutotileShortcuts"));
     autotileShortcuts.writeEntry(QLatin1String("ToggleShortcut"), m_autotileToggleShortcut);

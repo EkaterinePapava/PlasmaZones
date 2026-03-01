@@ -25,18 +25,16 @@ namespace PlasmaZones {
  * +------------------------+
  * ```
  *
- * All windows get the same geometry (full screen), and window
- * visibility is controlled by the autotiling engine based on
- * monocleHideOthers setting in AutotileConfig.
+ * All windows get the same geometry (full screen area) and are stacked
+ * on top of each other. KWin's stacking order controls visibility —
+ * the focused window is naturally on top.
  *
  * Features:
  * - All windows use full screen geometry
  * - No master/stack concept
  * - No split ratio (all windows same size)
  * - Ideal for focused single-window workflow
- *
- * @see AutotileConfig::monocleHideOthers for visibility behavior
- * @see AutotileConfig::monocleShowTabs for tab bar display
+ * - Use focusNext/focusPrevious to cycle through stacked windows
  */
 class PLASMAZONES_EXPORT MonocleAlgorithm : public TilingAlgorithm
 {

@@ -1546,6 +1546,8 @@ void WindowTrackingAdaptor::resnapCurrentAssignments(const QString& screenFilter
     QVector<RotationEntry> entries = m_service->calculateResnapFromCurrentAssignments(screenFilter);
     if (entries.isEmpty()) {
         qCDebug(lcDbusWindow) << "No windows to resnap from current assignments";
+        Q_EMIT navigationFeedback(false, QStringLiteral("resnap"), QStringLiteral("no_windows_to_resnap"),
+                                 QString(), QString(), QString());
         return;
     }
 

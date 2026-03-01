@@ -7,7 +7,6 @@
 #include <effect/effecthandler.h>
 #include <effect/effectwindow.h>
 #include <effect/globals.h> // For ElectricBorder enum
-
 #include <QJsonArray>
 #include <QObject>
 #include <QVector>
@@ -108,10 +107,13 @@ private Q_SLOTS:
     // Autotile D-Bus signal handlers
     void slotAutotileWindowsTileRequested(const QString& tileRequestsJson);
     void slotAutotileFocusWindowRequested(const QString& windowId);
-    void slotMonocleVisibilityChanged(const QString& focusedWindowId, const QStringList& windowsToHide);
     void slotAutotileEnabledChanged(bool enabled);
     void slotAutotileScreensChanged(const QStringList& screenNames);
     void slotAutotileWindowFloatingChanged(const QString& windowId, bool isFloating, const QString& screenName);
+    // Monocle maximize state tracking
+    void slotWindowMaximizedStateChanged(KWin::EffectWindow* w, bool horizontal, bool vertical);
+    void slotWindowFullScreenChanged(KWin::EffectWindow* w);
+
 private:
     // Window management
     void setupWindowConnections(KWin::EffectWindow* w);
@@ -481,6 +483,40 @@ private:
     bool m_dragStartedSent = false;
     QString m_pendingDragWindowId;
     QRectF m_pendingDragGeometry;
+
+    // Windows we've set KWin-maximized for monocle mode (so Plasma panels unfloat).
+    // Tracked for cleanup when leaving monocle / autotile.
+    QSet<QString> m_monocleMaximizedWindows;
+
+    // Deferred focus for monocle: when stagger animation is active, onComplete's
+    // raise loop fires AFTER focusWindowRequested, burying the new window.
+    // slotAutotileFocusWindowRequested stores the ID here; onComplete re-raises it.
+    QString m_pendingAutotileFocusWindowId;
+
+    // Guard to suppress our own maximize() calls from triggering
+    // slotWindowMaximizedStateChanged (avoids feedback loop).
+    // Counter instead of bool to handle concurrent stagger batches correctly.
+    int m_suppressMaximizeChanged = 0;
+
+    /**
+     * @brief Unmaximize a single monocle-maximized window and remove from tracking.
+     * No-op if the window is not tracked or not found. Uses m_suppressMaximizeChanged guard.
+     */
+    void unmaximizeMonocleWindow(const QString& windowId);
+
+    /**
+     * @brief Unmaximize all monocle-maximized windows and clear tracking set.
+     * Uses m_suppressMaximizeChanged guard.
+     */
+    void restoreAllMonocleMaximized();
+
+    /**
+     * @brief Encode a QIcon as a data:image/png;base64 URL string.
+     * @param icon The icon to encode
+     * @param size The pixel size to render
+     * @return Data URL string, or empty string on failure
+     */
+    static QString iconToDataUrl(const QIcon& icon, int size);
 
     // Cached daemon D-Bus service registration state.
     // Updated via QDBusServiceWatcher signals (registration/unregistration) to avoid

@@ -2400,8 +2400,6 @@ void OverlayService::showLayoutOsd(Layout* layout, const QString& screenName)
 
     sizeAndCenterOsd(window, screenGeom, aspectRatio);
     QMetaObject::invokeMethod(window, "show");
-    m_lastLayoutOsdTime.restart();
-
     qCInfo(lcOverlay) << "Showing layout OSD for:" << layout->name() << "on screen:" << screenName;
 }
 
@@ -2433,8 +2431,6 @@ void OverlayService::showLayoutOsd(const QString& id, const QString& name, const
 
     sizeAndCenterOsd(window, screenGeom, aspectRatio);
     QMetaObject::invokeMethod(window, "show");
-    m_lastLayoutOsdTime.restart();
-
     qCInfo(lcOverlay) << "Showing layout OSD for:" << name << "category:" << category << "on screen:" << screenName;
 }
 
@@ -2518,13 +2514,6 @@ void OverlayService::showNavigationOsd(bool success, const QString& action, cons
     // Only show OSD for successful actions - failures (no windows, no zones, etc.) don't need feedback
     if (!success) {
         qCDebug(lcOverlay) << "Skipping navigation OSD for failure:" << action << reason;
-        return;
-    }
-
-    // Suppress resnap OSD when it follows layout OSD (autotile→zones toggle shows both otherwise)
-    if (action == QStringLiteral("resnap") && m_lastLayoutOsdTime.isValid()
-        && m_lastLayoutOsdTime.elapsed() < 600) {
-        qCDebug(lcOverlay) << "Skipping resnap OSD (recently showed layout OSD)";
         return;
     }
 

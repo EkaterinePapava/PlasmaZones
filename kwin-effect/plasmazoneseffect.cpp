@@ -24,7 +24,6 @@
 #include <QtMath>
 #include <QPixmap>
 #include <QPointer>
-
 #include <window.h>
 #include <workspace.h>
 #include <core/output.h> // For Output::name() for multi-monitor support
@@ -89,6 +88,61 @@ static void ensureInterface(InterfacePtr& interface, const QString& interfaceNam
 // ═══════════════════════════════════════════════════════════════════════════════
 // Helper Method Implementations
 // ═══════════════════════════════════════════════════════════════════════════════
+
+void PlasmaZonesEffect::unmaximizeMonocleWindow(const QString& windowId)
+{
+    if (!m_monocleMaximizedWindows.remove(windowId)) {
+        return;
+    }
+    KWin::EffectWindow* w = findWindowById(windowId);
+    if (!w) {
+        return;
+    }
+    KWin::Window* kw = w->window();
+    if (!kw) {
+        return;
+    }
+    ++m_suppressMaximizeChanged;
+    kw->maximize(KWin::MaximizeRestore);
+    --m_suppressMaximizeChanged;
+}
+
+void PlasmaZonesEffect::restoreAllMonocleMaximized()
+{
+    if (m_monocleMaximizedWindows.isEmpty()) {
+        return;
+    }
+    ++m_suppressMaximizeChanged;
+    for (const QString& wid : std::as_const(m_monocleMaximizedWindows)) {
+        KWin::EffectWindow* w = findWindowById(wid);
+        if (w) {
+            KWin::Window* kw = w->window();
+            if (kw) {
+                kw->maximize(KWin::MaximizeRestore);
+            }
+        }
+    }
+    --m_suppressMaximizeChanged;
+    m_monocleMaximizedWindows.clear();
+}
+
+QString PlasmaZonesEffect::iconToDataUrl(const QIcon& icon, int size)
+{
+    if (icon.isNull()) {
+        return QString();
+    }
+    QPixmap pix = icon.pixmap(size, size);
+    if (pix.isNull()) {
+        return QString();
+    }
+    QByteArray ba;
+    QBuffer buffer(&ba);
+    buffer.open(QIODevice::WriteOnly);
+    if (!pix.toImage().save(&buffer, "PNG")) {
+        return QString();
+    }
+    return QStringLiteral("data:image/png;base64,") + QString::fromUtf8(ba.toBase64());
+}
 
 QRect PlasmaZonesEffect::parseZoneGeometry(const QString& json) const
 {
@@ -338,6 +392,11 @@ PlasmaZonesEffect::PlasmaZonesEffect()
     connect(serviceWatcher, &QDBusServiceWatcher::serviceUnregistered, this, [this]() {
         qCInfo(lcEffect) << "Daemon service unregistered";
         m_daemonServiceRegistered = false;
+
+        // Unmaximize monocle-maximized windows — daemon state is gone
+        restoreAllMonocleMaximized();
+
+        KWin::effects->addRepaintFull();
     });
     connect(serviceWatcher, &QDBusServiceWatcher::serviceRegistered, this, [this]() {
         qCInfo(lcEffect) << "Daemon service registered — scheduling state re-push";
@@ -378,6 +437,7 @@ PlasmaZonesEffect::PlasmaZonesEffect()
             // unique bus name in match rules, causing signals from the restarted daemon
             // to not be delivered. Re-calling connect() refreshes the match rules.
             connectNavigationSignals();
+            connectAutotileSignals();
 
             // Clear stale window tracking — the new daemon has no knowledge of our windows
             m_notifiedWindows.clear();
@@ -441,6 +501,12 @@ PlasmaZonesEffect::PlasmaZonesEffect()
 
 PlasmaZonesEffect::~PlasmaZonesEffect()
 {
+    // Unmaximize any monocle-maximized windows so they restore properly.
+    // Guard against compositor teardown — effects may outlive the stacking order.
+    if (KWin::effects) {
+        restoreAllMonocleMaximized();
+    }
+
     if (m_keyboardGrabbed) {
         KWin::effects->ungrabKeyboard();
         m_keyboardGrabbed = false;
@@ -535,8 +601,10 @@ void PlasmaZonesEffect::slotWindowClosed(KWin::EffectWindow* w)
 
     m_windowAnimator->removeAnimation(w);
 
-    // Clean up borderless tracking (no need to restore — window is closing)
-    m_borderlessWindows.remove(getWindowId(w));
+    // Clean up borderless and monocle-maximize tracking (no need to restore — window is closing)
+    const QString closedWindowId = getWindowId(w);
+    m_borderlessWindows.remove(closedWindowId);
+    m_monocleMaximizedWindows.remove(closedWindowId);
 
     // Notify daemon for cleanup
     notifyWindowClosed(w);
@@ -573,6 +641,14 @@ void PlasmaZonesEffect::setupWindowConnections(KWin::EffectWindow* w)
     connect(w, &KWin::EffectWindow::windowFinishUserMovedResized, this, [this](KWin::EffectWindow* window) {
         m_dragTracker->handleWindowFinishMoveResize(window);
     });
+
+    // C2: Track when user manually unmaximizes a monocle-maximized window
+    connect(w, &KWin::EffectWindow::windowMaximizedStateChanged, this,
+            &PlasmaZonesEffect::slotWindowMaximizedStateChanged);
+
+    // M1: Track when a monocle-maximized window goes fullscreen
+    connect(w, &KWin::EffectWindow::windowFullScreenChanged, this,
+            &PlasmaZonesEffect::slotWindowFullScreenChanged);
 }
 
 void PlasmaZonesEffect::slotMouseChanged(const QPointF& pos, const QPointF& oldpos, Qt::MouseButtons buttons,
@@ -1141,18 +1217,9 @@ QJsonArray PlasmaZonesEffect::buildSnapAssistCandidates(const QString& excludeWi
         obj[QLatin1String("caption")] = w->caption();
 
         // Use EffectWindow::icon() for proper app icon (KWin resolves from .desktop)
-        QIcon winIcon = w->icon();
-        if (!winIcon.isNull()) {
-            QPixmap pix = winIcon.pixmap(64, 64);
-            if (!pix.isNull()) {
-                QByteArray ba;
-                QBuffer buffer(&ba);
-                buffer.open(QIODevice::WriteOnly);
-                if (pix.toImage().save(&buffer, "PNG")) {
-                    QString dataUrl = QStringLiteral("data:image/png;base64,") + QString::fromUtf8(ba.toBase64());
-                    obj[QLatin1String("iconPng")] = dataUrl;
-                }
-            }
+        const QString dataUrl = iconToDataUrl(w->icon(), 64);
+        if (!dataUrl.isEmpty()) {
+            obj[QLatin1String("iconPng")] = dataUrl;
         }
 
         candidates.append(obj);
@@ -2776,10 +2843,6 @@ void PlasmaZonesEffect::connectAutotileSignals()
     bus.connect(DBus::ServiceName, DBus::ObjectPath, DBus::Interface::Autotile, QStringLiteral("focusWindowRequested"),
                 this, SLOT(slotAutotileFocusWindowRequested(QString)));
 
-    bus.connect(DBus::ServiceName, DBus::ObjectPath, DBus::Interface::Autotile,
-                QStringLiteral("monocleVisibilityChanged"), this,
-                SLOT(slotMonocleVisibilityChanged(QString, QStringList)));
-
     bus.connect(DBus::ServiceName, DBus::ObjectPath, DBus::Interface::Autotile, QStringLiteral("enabledChanged"), this,
                 SLOT(slotAutotileEnabledChanged(bool)));
 
@@ -2867,9 +2930,12 @@ void PlasmaZonesEffect::setWindowBorderless(KWin::EffectWindow* w, const QString
 
 void PlasmaZonesEffect::slotAutotileEnabledChanged(bool enabled)
 {
-    // enabledChanged is still emitted for backward compat; the real state
-    // is tracked via autotileScreensChanged. Just log for diagnostics.
     qCInfo(lcEffect) << "Autotile enabled state changed:" << enabled;
+    if (!enabled) {
+        // Restore monocle-maximized windows so they don't stay stuck in
+        // KWin-maximized state with no daemon to manage them.
+        restoreAllMonocleMaximized();
+    }
 }
 
 void PlasmaZonesEffect::slotAutotileScreensChanged(const QStringList& screenNames)
@@ -2902,25 +2968,6 @@ void PlasmaZonesEffect::slotAutotileScreensChanged(const QStringList& screenName
             }
         }
 
-        // Unminimize windows on removed screens that Monocle may have hidden.
-        // Must happen before geometry restore so applySnapGeometry operates on
-        // visible windows and KWin processes the geometry change immediately.
-        for (KWin::EffectWindow* w : windows) {
-            if (!w || !shouldHandleWindow(w)) {
-                continue;
-            }
-            if (!removed.contains(getWindowScreenName(w))) {
-                continue;
-            }
-            if (w->isMinimized()) {
-                KWin::Window* kw = w->window();
-                if (kw) {
-                    kw->setMinimized(false);
-                    qCDebug(lcEffect) << "Autotile restore: unminimized window" << getWindowId(w);
-                }
-            }
-        }
-
         // Restore pre-autotile geometries for windows on removed screens.
         // This covers windows that weren't snapped to zones before autotile
         // (the daemon's resnapCurrentAssignments handles zone-snapped windows).
@@ -2940,12 +2987,16 @@ void PlasmaZonesEffect::slotAutotileScreensChanged(const QStringList& screenName
                     continue;
                 }
                 const QString windowId = getWindowId(w);
+
+                // Unmaximize monocle-maximized windows before restoring geometry
+                unmaximizeMonocleWindow(windowId);
+
                 const QString savedKey = findSavedGeometryKey(savedGeometries, windowId);
                 if (savedKey.isEmpty()) {
                     continue;
                 }
                 const QRectF& savedGeo = savedGeometries.value(savedKey);
-                if (savedGeo.isValid() && QRectF(w->frameGeometry()) != savedGeo) {
+                if (savedGeo.isValid()) {
                     // Edge-consistent rounding: round edges independently then derive
                     // width/height, matching snapToRect() in libplasmazones.
                     const int l = qRound(savedGeo.x());
@@ -3013,12 +3064,55 @@ void PlasmaZonesEffect::slotAutotileWindowFloatingChanged(const QString& windowI
     //   The engine retiles via windowsTileRequested → slotAutotileWindowsTileRequested.
     m_navigationHandler->setWindowFloating(windowId, isFloating);
 
-    // Restore title bar when window becomes floating
-    if (isFloating && m_borderlessWindows.contains(windowId)) {
-        KWin::EffectWindow* w = findWindowById(windowId);
-        if (w) {
-            setWindowBorderless(w, windowId, false);
+    // Restore title bar and unmaximize when window becomes floating
+    if (isFloating) {
+        if (m_borderlessWindows.contains(windowId)) {
+            KWin::EffectWindow* w = findWindowById(windowId);
+            if (w) {
+                setWindowBorderless(w, windowId, false);
+            }
         }
+        // Unmaximize monocle-maximized windows when floated
+        unmaximizeMonocleWindow(windowId);
+    }
+}
+
+void PlasmaZonesEffect::slotWindowMaximizedStateChanged(KWin::EffectWindow* w, bool horizontal, bool vertical)
+{
+    if (m_suppressMaximizeChanged || !w) {
+        return;
+    }
+    const QString windowId = getWindowId(w);
+    if (!m_monocleMaximizedWindows.contains(windowId)) {
+        return;
+    }
+    // User manually unmaximized a monocle window (e.g., double-click title bar).
+    // Only act on full un-maximize (both false). Partial maximize transitions
+    // (e.g., horizontal-only) should not trigger floating.
+    if (horizontal || vertical) {
+        return; // Still partially or fully maximized — nothing to do
+    }
+    m_monocleMaximizedWindows.remove(windowId);
+    qCInfo(lcEffect) << "Monocle window manually unmaximized:" << windowId << "— floating";
+
+    // Tell daemon to float so the next retile doesn't re-tile this window
+    if (m_daemonServiceRegistered) {
+        QDBusMessage msg = QDBusMessage::createMethodCall(
+            DBus::ServiceName, DBus::ObjectPath, DBus::Interface::Autotile,
+            QStringLiteral("floatWindow"));
+        msg << windowId;
+        QDBusConnection::sessionBus().asyncCall(msg);
+    }
+}
+
+void PlasmaZonesEffect::slotWindowFullScreenChanged(KWin::EffectWindow* w)
+{
+    if (!w || !w->isFullScreen()) {
+        return;
+    }
+    const QString windowId = getWindowId(w);
+    if (m_monocleMaximizedWindows.remove(windowId)) {
+        qCInfo(lcEffect) << "Monocle window went fullscreen:" << windowId << "— removed from tracking";
     }
 }
 
@@ -3087,6 +3181,7 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
         QRect geometry;
         KWin::EffectWindow* window = nullptr;
         QVector<KWin::EffectWindow*> candidates; // when size() > 1, window is assigned in disambiguation pass
+        bool isMonocle = false; // true when daemon sends monocle flag (triggers KWin maximize)
     };
     QVector<Entry> entries;
 
@@ -3118,6 +3213,7 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
         entry.windowId = windowId;
         entry.geometry = normalizedGeometry;
         entry.window = w;
+        entry.isMonocle = obj.value(QLatin1String("monocle")).toBool(false);
         if (candidates.size() > 1) {
             entry.candidates = candidates;
         }
@@ -3181,6 +3277,7 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
         QRect geometry;
         QString windowId;
         QString screenName;
+        bool isMonocle = false;
     };
     QVector<TileSnap> toApply;
     QSet<QString> tiledWindowIds;
@@ -3194,7 +3291,7 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
         if (tileScreenName.isEmpty()) {
             tileScreenName = screenName;
         }
-        toApply.append({QPointer<KWin::EffectWindow>(e.window), e.geometry, e.windowId, screenName});
+        toApply.append({QPointer<KWin::EffectWindow>(e.window), e.geometry, e.windowId, screenName, e.isMonocle});
     }
 
     // onComplete: restore borders for borderless windows no longer tiled, then
@@ -3225,6 +3322,21 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
                     ws->raiseWindow(kw);
                 }
             }
+            // Re-raise the pending focus window last so it stays on top.
+            // In stagger mode, focusWindowRequested fires before onComplete,
+            // so the raise loop above buries the newly focused window.
+            // Re-raising it here ensures new windows appear in front (monocle)
+            // and focus is preserved for all algorithms.
+            if (!m_pendingAutotileFocusWindowId.isEmpty()) {
+                KWin::EffectWindow* focusWin = findWindowById(m_pendingAutotileFocusWindowId);
+                m_pendingAutotileFocusWindowId.clear();
+                if (focusWin) {
+                    KWin::Window* kw = focusWin->window();
+                    if (kw) {
+                        ws->raiseWindow(kw);
+                    }
+                }
+            }
         }
     };
 
@@ -3232,13 +3344,6 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
         const TileSnap& snap = toApply[i];
         if (!snap.window) {
             return;
-        }
-        if (snap.window->isMinimized()) {
-            KWin::Window* kw = snap.window->window();
-            if (kw) {
-                kw->setMinimized(false);
-                qCDebug(lcEffect) << "Autotile: unminimized window for geometry apply (ex-monocle)";
-            }
         }
         // Save pre-autotile geometry before applying (same pattern as zone snap).
         // NOTE: Do NOT gate on m_autotileScreens.contains() here — the tile
@@ -3249,7 +3354,33 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
         if (m_autotileHideTitleBars) {
             setWindowBorderless(snap.window, snap.windowId, true);
         }
-        applySnapGeometry(snap.window, snap.geometry);
+
+        if (snap.isMonocle) {
+            // Monocle: set KWin maximize state so Plasma panels recognize the
+            // window as maximized and unfloat (become flush with screen edges).
+            KWin::Window* kw = snap.window->window();
+            if (kw) {
+                // C3: Only track if WE changed the state (wasn't already maximized).
+                // This prevents cleanup from destroying pre-existing maximize state.
+                const bool wasAlreadyMaximized = (kw->maximizeMode() == KWin::MaximizeFull);
+                ++m_suppressMaximizeChanged;
+                kw->maximize(KWin::MaximizeFull);
+                if (!wasAlreadyMaximized) {
+                    m_monocleMaximizedWindows.insert(snap.windowId);
+                }
+                // C1: Apply daemon's gap-aware geometry after maximize().
+                // moveResize() does NOT clear the maximize flag, so the window
+                // retains isMaximized() == true at the correct gap-inset size.
+                // Keep suppress guard active — moveResize() can trigger
+                // windowMaximizedStateChanged which would otherwise float the window.
+                applySnapGeometry(snap.window, snap.geometry);
+                --m_suppressMaximizeChanged;
+            }
+        } else {
+            // Non-monocle: unmaximize if previously monocle-maximized, then snap
+            unmaximizeMonocleWindow(snap.windowId);
+            applySnapGeometry(snap.window, snap.geometry);
+        }
     }, onComplete);
 }
 
@@ -3261,33 +3392,12 @@ void PlasmaZonesEffect::slotAutotileFocusWindowRequested(const QString& windowId
         return;
     }
 
+    // Track pending focus so onComplete's raise loop can re-raise this window
+    // last. Without this, stagger-mode onComplete fires AFTER activateWindow
+    // and buries the newly focused window behind the tiling-order raise.
+    m_pendingAutotileFocusWindowId = windowId;
+
     KWin::effects->activateWindow(w);
-}
-
-void PlasmaZonesEffect::slotMonocleVisibilityChanged(const QString& focusedWindowId, const QStringList& windowsToHide)
-{
-    // Unminimize the focused window
-    KWin::EffectWindow* focusedW = findWindowById(focusedWindowId);
-    if (focusedW && shouldHandleWindow(focusedW)) {
-        KWin::Window* kw = focusedW->window();
-        if (kw && focusedW->isMinimized()) {
-            kw->setMinimized(false);
-            qCDebug(lcEffect) << "Monocle: unminimized focused window" << focusedWindowId;
-        }
-    }
-
-    // Minimize all other tiled windows
-    for (const QString& windowId : windowsToHide) {
-        KWin::EffectWindow* w = findWindowById(windowId);
-        if (!w || !shouldHandleWindow(w)) {
-            continue;
-        }
-        KWin::Window* kw = w->window();
-        if (kw && !w->isMinimized()) {
-            kw->setMinimized(true);
-            qCDebug(lcEffect) << "Monocle: minimized window" << windowId;
-        }
-    }
 }
 
 void PlasmaZonesEffect::prePaintScreen(KWin::ScreenPrePaintData& data, std::chrono::milliseconds presentTime)

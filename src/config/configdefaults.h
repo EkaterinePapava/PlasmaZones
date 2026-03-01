@@ -191,10 +191,7 @@ public:
     static int animationMinDistance() { return instance().defaultAnimationMinDistanceValue(); }
     static bool autotileFocusFollowsMouse() { return instance().defaultAutotileFocusFollowsMouseValue(); }
     static bool autotileRespectMinimumSize() { return instance().defaultAutotileRespectMinimumSizeValue(); }
-    static bool autotileMonocleHideOthers() { return instance().defaultAutotileMonocleHideOthersValue(); }
-    static bool autotileMonocleShowTabs() { return instance().defaultAutotileMonocleShowTabsValue(); }
     static bool autotileHideTitleBars() { return instance().defaultAutotileHideTitleBarsValue(); }
-
     // ═══════════════════════════════════════════════════════════════════════════
     // Mode Tracking Settings
     // ═══════════════════════════════════════════════════════════════════════════

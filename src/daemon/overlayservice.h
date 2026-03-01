@@ -248,8 +248,6 @@ private:
     QString m_lastNavigationAction;
     QString m_lastNavigationReason;
     QElapsedTimer m_lastNavigationTime;
-    // When layout OSD was last shown (suppress resnap OSD when toggling autotile→zones)
-    QElapsedTimer m_lastLayoutOsdTime;
 
     void createZoneSelectorWindow(QScreen* screen);
     void destroyZoneSelectorWindow(QScreen* screen);

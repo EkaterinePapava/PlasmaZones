@@ -195,16 +195,6 @@
             <annotation name="org.gtk.GDBus.DocString" value="Emitted when any autotile configuration property changes."/>
         </signal>
 
-        <signal name="monocleVisibilityChanged">
-            <annotation name="org.gtk.GDBus.DocString" value="Emitted when monocle mode needs to show/hide windows."/>
-            <arg name="focusedWindowId" type="s">
-                <annotation name="org.gtk.GDBus.DocString" value="Window ID to show (unminimize)."/>
-            </arg>
-            <arg name="windowsToHide" type="as">
-                <annotation name="org.gtk.GDBus.DocString" value="Window IDs to hide (minimize)."/>
-            </arg>
-        </signal>
-
         <signal name="windowsReleasedFromTiling">
             <annotation name="org.gtk.GDBus.DocString" value="Emitted when windows are released from autotile management (e.g., screen removed from autotile). KWin effect should restore these windows to pre-autotile geometry."/>
             <arg name="windowIds" type="as">

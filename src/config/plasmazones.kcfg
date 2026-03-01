@@ -786,14 +786,6 @@
       <label>Focus follows mouse in tiled mode</label>
       <default>false</default>
     </entry>
-    <entry name="AutotileMonocleHideOthers" type="Bool">
-      <label>Hide other windows in monocle mode</label>
-      <default>true</default>
-    </entry>
-    <entry name="AutotileMonocleShowTabs" type="Bool">
-      <label>Show tab bar in monocle mode</label>
-      <default>false</default>
-    </entry>
     <entry name="AutotileHideTitleBars" type="Bool">
       <label>Hide title bars on autotiled windows</label>
       <default>true</default>

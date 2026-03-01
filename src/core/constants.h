@@ -252,10 +252,7 @@ inline constexpr QLatin1String FocusNewWindows{"focusNewWindows"};
 inline constexpr QLatin1String FocusFollowsMouse{"focusFollowsMouse"};
 inline constexpr QLatin1String InsertPosition{"insertPosition"};
 inline constexpr QLatin1String RespectMinimumSize{"respectMinimumSize"};
-inline constexpr QLatin1String MonocleHideOthers{"monocleHideOthers"};
-inline constexpr QLatin1String MonocleShowTabs{"monocleShowTabs"};
 inline constexpr QLatin1String MaxWindows{"maxWindows"};
-
 // InsertPosition values
 inline constexpr QLatin1String InsertEnd{"end"};
 inline constexpr QLatin1String InsertAfterFocused{"afterFocused"};

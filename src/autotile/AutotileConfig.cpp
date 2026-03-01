@@ -54,8 +54,6 @@ bool AutotileConfig::operator==(const AutotileConfig &other) const
         && insertPosition == other.insertPosition
         && focusFollowsMouse == other.focusFollowsMouse
         && focusNewWindows == other.focusNewWindows
-        && monocleHideOthers == other.monocleHideOthers
-        && monocleShowTabs == other.monocleShowTabs
         && smartGaps == other.smartGaps
         && respectMinimumSize == other.respectMinimumSize
         && maxWindows == other.maxWindows;
@@ -82,8 +80,6 @@ QJsonObject AutotileConfig::toJson() const
     json[AutotileJsonKeys::InsertPosition] = insertPositionToString(insertPosition);
     json[FocusFollowsMouse] = focusFollowsMouse;
     json[FocusNewWindows] = focusNewWindows;
-    json[MonocleHideOthers] = monocleHideOthers;
-    json[MonocleShowTabs] = monocleShowTabs;
     json[SmartGaps] = smartGaps;
     json[RespectMinimumSize] = respectMinimumSize;
     json[MaxWindows] = maxWindows;
@@ -136,12 +132,6 @@ AutotileConfig AutotileConfig::fromJson(const QJsonObject &json)
     }
     if (json.contains(FocusNewWindows)) {
         config.focusNewWindows = json[FocusNewWindows].toBool(config.focusNewWindows);
-    }
-    if (json.contains(MonocleHideOthers)) {
-        config.monocleHideOthers = json[MonocleHideOthers].toBool(config.monocleHideOthers);
-    }
-    if (json.contains(MonocleShowTabs)) {
-        config.monocleShowTabs = json[MonocleShowTabs].toBool(config.monocleShowTabs);
     }
     if (json.contains(SmartGaps)) {
         config.smartGaps = json[SmartGaps].toBool(config.smartGaps);

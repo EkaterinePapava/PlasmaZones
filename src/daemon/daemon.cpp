@@ -316,9 +316,17 @@ bool Daemon::init()
             handleSnappingToAutotile();
         }
 
-        // Re-derive autotile screens and apply per-screen overrides
+        // Re-derive autotile screens and apply per-screen overrides.
+        // windowsReleasedFromTiling clears floating state for released windows.
         updateAutotileScreens();
         updateLayoutFilter();
+
+        // Resnap after autotile disabled: restore windows to manual-mode zones.
+        // Must run after updateAutotileScreens so floating state is cleared first.
+        if (autotileToggled && !autotileNow && m_windowTrackingAdaptor) {
+            m_suppressResnapOsd = true;
+            m_windowTrackingAdaptor->resnapCurrentAssignments();
+        }
     });
 
     // Initialize domain-specific D-Bus adaptors
@@ -606,7 +614,13 @@ void Daemon::start()
             qCDebug(lcDaemon) << "No screen info for quickLayout shortcut — skipping";
             return;
         }
-        m_unifiedLayoutController->applyLayoutByNumber(number);
+        if (!m_unifiedLayoutController->applyLayoutByNumber(number)) {
+            return;
+        }
+        if (m_windowTrackingAdaptor) {
+            m_suppressResnapOsd = true;
+            m_windowTrackingAdaptor->resnapToNewLayout();
+        }
     });
 
     // Cycle layout shortcuts (Meta+[/])
@@ -622,6 +636,10 @@ void Daemon::start()
             return;
         }
         m_unifiedLayoutController->cyclePrevious();
+        if (m_windowTrackingAdaptor) {
+            m_suppressResnapOsd = true;
+            m_windowTrackingAdaptor->resnapToNewLayout();
+        }
     });
     connect(m_shortcutManager.get(), &ShortcutManager::nextLayoutRequested, this, [this]() {
         if (!m_unifiedLayoutController) {
@@ -635,6 +653,10 @@ void Daemon::start()
             return;
         }
         m_unifiedLayoutController->cycleNext();
+        if (m_windowTrackingAdaptor) {
+            m_suppressResnapOsd = true;
+            m_windowTrackingAdaptor->resnapToNewLayout();
+        }
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -674,10 +696,14 @@ void Daemon::start()
             return;
         }
         // Screen name was already set when the picker opened.
-        m_unifiedLayoutController->applyLayoutById(layoutId);
+        if (!m_unifiedLayoutController->applyLayoutById(layoutId)) {
+            return;
+        }
         // Suppress resnap OSD — the layout switch OSD already provides feedback
-        m_suppressResnapOsd = true;
-        m_windowTrackingAdaptor->resnapToNewLayout();
+        if (m_windowTrackingAdaptor) {
+            m_suppressResnapOsd = true;
+            m_windowTrackingAdaptor->resnapToNewLayout();
+        }
     });
 
     // Initialize mode tracker for last-used layout
@@ -764,21 +790,17 @@ void Daemon::start()
             }
         });
 
-        // When windows are released from autotile (screens removed from autotile
-        // via assignment change, not just toggle shortcut), resnap them back to
-        // their pre-autotile zone positions so they don't remain stuck at tiled geometry.
+        // When windows are released from autotile, clear their floating state
+        // so they can be resnapped to manual-mode zones. The actual resnap is the
+        // caller's responsibility (toggle shortcut, layout picker, KCM disable).
         connect(m_autotileEngine.get(), &AutotileEngine::windowsReleasedFromTiling,
                 this, [this](const QStringList& windowIds) {
             if (m_windowTrackingAdaptor) {
-                // Clear autotile floating state for released windows so they can be
-                // resnapped to their manual-mode zones. Without this, windows that
-                // were floating in autotile remain marked floating in WTS.
                 for (const QString& windowId : windowIds) {
                     if (m_windowTrackingAdaptor->service()->isWindowFloating(windowId)) {
                         m_windowTrackingAdaptor->setWindowFloating(windowId, false);
                     }
                 }
-                m_windowTrackingAdaptor->resnapCurrentAssignments();
             }
         });
 
@@ -837,14 +859,11 @@ void Daemon::start()
                 updateLayoutFilter();
             }
 
-            // When switching autotile→manual, windows need to be moved back to
-            // their pre-autotile zone positions. Autotile bypasses the normal
-            // windowSnapped tracking, so m_windowZoneAssignments still holds
-            // the zone assignments from before autotile was enabled.
-            // Filter by connector name (screen->name()) to match what KWin
-            // stores in m_windowScreenAssignments — only resnap windows on the
-            // screen that was actually toggled.
+            // Resnap windows back to their pre-autotile zone positions.
+            // windowsReleasedFromTiling (fired by the assignLayout signal chain)
+            // clears floating state; we handle the actual resnap here.
             if (applied && wasAutotile && m_windowTrackingAdaptor) {
+                m_suppressResnapOsd = true;
                 m_windowTrackingAdaptor->resnapCurrentAssignments(screen->name());
             }
         });
@@ -1009,7 +1028,8 @@ void Daemon::start()
     connect(m_windowTrackingAdaptor, &WindowTrackingAdaptor::navigationFeedback, this,
             [this](bool success, const QString& action, const QString& reason,
                    const QString& sourceZoneId, const QString& targetZoneId, const QString& screenName) {
-                // Suppress resnap OSD when triggered from layout picker (layout switch OSD is sufficient)
+                // Suppress resnap OSD when triggered by a mode/layout change
+                // (layout switch OSD already provides feedback)
                 if (m_suppressResnapOsd && action == QStringLiteral("resnap")) {
                     m_suppressResnapOsd = false;
                     return;
@@ -1592,10 +1612,8 @@ void Daemon::handleAutotileDisabled()
             }
         }
     }
-    // Resnap windows back to their pre-autotile zone positions
-    if (m_windowTrackingAdaptor) {
-        m_windowTrackingAdaptor->resnapCurrentAssignments();
-    }
+    // Note: resnap happens at the call site AFTER updateAutotileScreens() so that
+    // windowsReleasedFromTiling clears floating state before windows are resnapped.
 }
 
 /**

@@ -586,19 +586,6 @@ Q_SIGNALS:
     void focusWindowRequested(const QString& windowId);
 
     /**
-     * @brief Emitted when monocle mode visibility changes are needed
-     *
-     * In monocle mode with monocleHideOthers enabled, the focused window
-     * should be shown and all other tiled windows on the same screen
-     * should be minimized. The KWin effect handles the actual minimize/
-     * unminimize via KWin::Window::setMinimized().
-     *
-     * @param focusedWindowId Window to unminimize/show
-     * @param windowsToHide List of window IDs to minimize
-     */
-    void monocleVisibilityChanged(const QString& focusedWindowId, const QStringList& windowsToHide);
-
-    /**
      * @brief Emitted when an autotile navigation operation completes (for OSD)
      *
      * Same signature as WindowTrackingAdaptor::navigationFeedback so the daemon
@@ -739,45 +726,11 @@ private:
     bool warnIfEmptyWindowId(const QString& windowId, const char* operation) const;
 
     /**
-     * @brief Emit monocle visibility signal for hide/show behavior
-     *
-     * Determines which window should be visible (focused or first) and
-     * emits monocleVisibilityChanged with the focused window and list
-     * of windows to hide.
-     *
-     * @param state TilingState for the screen
-     * @param tiledWindows List of tiled window IDs
-     */
-    void emitMonocleVisibility(const TilingState* state, const QStringList& tiledWindows);
-
-    /**
-     * @brief Check if a screen is in monocle-hide mode
-     *
-     * Convenience helper that combines the per-screen algorithm check with
-     * the monocleHideOthers config flag.
-     *
-     * @param screenName Connector name of the screen
-     * @return true if the screen uses the Monocle algorithm and hide-others is enabled
-     */
-    bool isMonocleHideMode(const QString& screenName) const;
-
-    /**
      * @brief Shared toggle-float implementation for toggleFocusedWindowFloat/toggleWindowFloat
      *
      * Toggles the floating state, retiles, and emits windowFloatingChanged.
      */
     void performToggleFloat(TilingState* state, const QString& windowId, const QString& screenName);
-
-    /**
-     * @brief Emit a windowsTiled signal for a single window
-     *
-     * Used by monocle mode to tile only the visible (focused) window
-     * without building a full batch for all tiled windows.
-     *
-     * @param windowId Window to tile
-     * @param geo Target geometry for the window
-     */
-    void emitSingleWindowTile(const QString& windowId, const QRect& geo);
 
     /**
      * @brief Get TilingState for a window by looking up its screen
@@ -822,6 +775,11 @@ private:
     // all currently-pending events are processed — no fixed delay needed.
     QSet<QString> m_pendingRetileScreens;
     bool m_retilePending = false;
+
+    // Deferred focus: set by onWindowAdded, emitted after applyTiling so the
+    // focus request arrives at KWin AFTER windowsTiled (whose onComplete raises
+    // windows in tiling order). Without this, the raise loop buries the new window.
+    QString m_pendingFocusWindowId;
 
     // Per-screen config overrides (screenName -> key-value map)
     // Stored here so effective*() helpers can resolve per-screen values
