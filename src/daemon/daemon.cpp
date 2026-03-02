@@ -17,6 +17,7 @@
 #include <QFile>
 #include <QThread>
 #include <QProcess>
+#include <algorithm>
 
 #include <KGlobalAccel>
 #include <KLocalizedString>
@@ -840,14 +841,24 @@ void Daemon::start()
 
             bool applied = false;
             const bool wasAutotile = LayoutId::isAutotile(currentAssignment);
+
+            // Capture transition data BEFORE applying the new layout, since
+            // applyLayoutById destroys the source state.
+            QStringList autotileOrder; // autotile → snapping: capture tiled window order
+            QStringList zoneOrder;     // snapping → autotile: capture zone-ordered windows
+
             if (wasAutotile) {
-                // Currently autotile → switch to last manual layout
+                // Autotile → Snapping: capture autotile window order before switch
+                if (m_autotileEngine) {
+                    autotileOrder = m_autotileEngine->tiledWindowOrder(screen->name());
+                }
                 QString layoutId = m_modeTracker->lastManualLayoutId();
                 if (!layoutId.isEmpty()) {
                     applied = m_unifiedLayoutController->applyLayoutById(layoutId);
                 }
             } else {
-                // Currently manual → switch to last autotile algorithm
+                // Snapping → Autotile: pre-seed autotile engine with zone-ordered windows
+                seedAutotileOrderForScreen(screen->name());
                 const QString algoId = resolveAlgorithmId();
                 if (!algoId.isEmpty()) {
                     applied = m_unifiedLayoutController->applyLayoutById(LayoutId::makeAutotileId(algoId));
@@ -859,12 +870,18 @@ void Daemon::start()
                 updateLayoutFilter();
             }
 
-            // Resnap windows back to their pre-autotile zone positions.
+            // Resnap windows back to zone positions using deterministic autotile order.
             // windowsReleasedFromTiling (fired by the assignLayout signal chain)
             // clears floating state; we handle the actual resnap here.
             if (applied && wasAutotile && m_windowTrackingAdaptor) {
                 m_suppressResnapOsd = true;
-                m_windowTrackingAdaptor->resnapCurrentAssignments(screen->name());
+                if (!autotileOrder.isEmpty()) {
+                    // Deterministic resnap: map autotile positions to zone numbers
+                    m_windowTrackingAdaptor->resnapFromAutotileOrder(autotileOrder, screen->name());
+                } else {
+                    // Fallback: no autotile order available (empty state)
+                    m_windowTrackingAdaptor->resnapCurrentAssignments(screen->name());
+                }
             }
         });
 
@@ -1586,6 +1603,21 @@ void Daemon::showAlgorithmOsdDeferred(const QString& algorithmId, const QString&
     });
 }
 
+void Daemon::seedAutotileOrderForScreen(const QString& screenName)
+{
+    if (!m_autotileEngine || !m_windowTrackingAdaptor) {
+        return;
+    }
+    WindowTrackingService* wts = m_windowTrackingAdaptor->service();
+    if (!wts) {
+        return;
+    }
+    QStringList zoneOrder = wts->buildZoneOrderedWindowList(screenName);
+    if (!zoneOrder.isEmpty()) {
+        m_autotileEngine->setInitialWindowOrder(screenName, zoneOrder);
+    }
+}
+
 /**
  * @brief Deactivate autotile: clear assignments, restore manual layout, resnap windows.
  *
@@ -1634,6 +1666,12 @@ void Daemon::handleSnappingToAutotile()
 
     if (m_autotileEngine) {
         m_autotileEngine->setAlgorithm(algoId);
+    }
+
+    // Pre-seed autotile engine with zone-ordered windows BEFORE layout switch.
+    // This ensures deterministic window ordering: zone 1 → master, zone 2 → second, etc.
+    for (QScreen* screen : m_screenManager->screens()) {
+        seedAutotileOrderForScreen(screen->name());
     }
 
     // Assign autotile layout to ALL screens (global toggle).

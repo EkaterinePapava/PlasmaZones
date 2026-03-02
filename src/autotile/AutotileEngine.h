@@ -484,6 +484,37 @@ public:
     Q_INVOKABLE void unfloatWindow(const QString& windowId);
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // Zone-ordered window transitions (snapping ↔ autotile)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * @brief Pre-seed initial window order for deterministic snapping → autotile transitions
+     *
+     * When toggling from manual snapping to autotile, windows arrive in KWin stacking
+     * order (focus-based). This method stores a zone-ordered list so that insertWindow()
+     * can place windows in the correct autotile positions (zone 1 → master, etc.).
+     *
+     * Only takes effect when the screen's TilingState is empty (no prior windows from
+     * session restore). The pending order is consumed as windows are inserted.
+     *
+     * @param screenName Screen to set initial order for
+     * @param windowIds Window IDs in desired order (zone-number ascending)
+     */
+    void setInitialWindowOrder(const QString& screenName, const QStringList& windowIds);
+
+    /**
+     * @brief Get the current tiled window order for a screen
+     *
+     * Returns the autotile engine's tiled window list for deterministic
+     * autotile → snapping transitions. Call BEFORE switching layouts so
+     * the TilingState still exists.
+     *
+     * @param screenName Screen to query
+     * @return Ordered list of tiled window IDs (master first), or empty if no state
+     */
+    QStringList tiledWindowOrder(const QString& screenName) const;
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // Window event handlers (public API for external notification)
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -759,6 +790,12 @@ private:
     // When autotile is deactivated, floated windows are saved here so that
     // re-enabling autotile restores them as floating regardless of screen.
     QSet<QString> m_savedFloatingWindows;
+
+    // Pre-seeded window order for snapping → autotile transitions.
+    // Keyed by screen connector name (screen->name()), NOT stable screen ID.
+    // Consumed by insertWindow() as windows arrive; also cleaned up by
+    // removeWindow() if a pre-seeded window closes before arriving.
+    QHash<QString, QStringList> m_pendingInitialOrders;
 
     // Per-screen overflow tracking with O(1) reverse-index lookups.
     OverflowManager m_overflow;

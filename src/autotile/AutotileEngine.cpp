@@ -165,6 +165,7 @@ void AutotileEngine::setAutotileScreens(const QSet<QString>& screens)
             releasedWindows.append(it.value()->tiledWindows());
             releasedWindows.append(it.value()->floatingWindows());
             m_perScreenOverrides.remove(it.key());
+            m_pendingInitialOrders.remove(it.key());
             it.value()->deleteLater();
             it.remove();
         }
@@ -298,6 +299,41 @@ TilingState* AutotileEngine::stateForScreen(const QString& screenName)
 AutotileConfig* AutotileEngine::config() const noexcept
 {
     return m_config.get();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Zone-ordered window transitions
+// ═══════════════════════════════════════════════════════════════════════════════
+
+void AutotileEngine::setInitialWindowOrder(const QString& screenName, const QStringList& windowIds)
+{
+    if (windowIds.isEmpty()) {
+        return;
+    }
+    // Only take effect when the screen's TilingState is empty (no prior windows —
+    // including floating — from session restore). Uses windowCount() instead of
+    // tiledWindows() to also detect floating-only states.
+    TilingState* state = m_screenStates.value(screenName);
+    if (state && state->windowCount() > 0) {
+        qCDebug(lcAutotile) << "setInitialWindowOrder: screen" << screenName
+                            << "already has" << state->windowCount() << "windows, ignoring pre-seeded order";
+        return;
+    }
+    // Warn (but allow) if overwriting a pending order that hasn't been fully consumed
+    if (m_pendingInitialOrders.contains(screenName)) {
+        qCWarning(lcAutotile) << "setInitialWindowOrder: overwriting existing pending order for" << screenName;
+    }
+    m_pendingInitialOrders[screenName] = windowIds;
+    qCInfo(lcAutotile) << "Pre-seeded window order for screen" << screenName << ":" << windowIds;
+}
+
+QStringList AutotileEngine::tiledWindowOrder(const QString& screenName) const
+{
+    TilingState* state = m_screenStates.value(screenName);
+    if (!state) {
+        return {};
+    }
+    return state->tiledWindows();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1512,6 +1548,11 @@ void AutotileEngine::onWindowAdded(const QString& windowId)
     if (state && state->tiledWindowCount() >= maxWin) {
         qCDebug(lcAutotile) << "Max window limit reached for screen" << screenName
                             << "(max=" << maxWin << ")";
+        // Purge this window from pending initial orders so the order doesn't
+        // leak waiting for a window that will never be inserted.
+        for (auto pit = m_pendingInitialOrders.begin(); pit != m_pendingInitialOrders.end(); ++pit) {
+            pit.value().removeAll(windowId);
+        }
         return;
     }
 
@@ -1602,18 +1643,59 @@ bool AutotileEngine::insertWindow(const QString& windowId, const QString& screen
         return false;
     }
 
-    // Insert based on config preference
-    switch (m_config->insertPosition) {
-    case AutotileConfig::InsertPosition::End:
-        state->addWindow(windowId);
-        break;
-    case AutotileConfig::InsertPosition::AfterFocused:
-        state->insertAfterFocused(windowId);
-        break;
-    case AutotileConfig::InsertPosition::AsMaster:
-        state->addWindow(windowId);
-        state->moveToFront(windowId);
-        break;
+    // Check if this window has a pre-seeded position from zone-ordered transition.
+    // Take a value copy of the pending list — the erase below invalidates iterators/refs.
+    bool inserted = false;
+    auto pendingIt = m_pendingInitialOrders.find(screenName);
+    if (pendingIt != m_pendingInitialOrders.end()) {
+        const QStringList pendingOrder = pendingIt.value(); // copy, not reference (BUG-1 fix)
+        int desiredPos = pendingOrder.indexOf(windowId);
+        if (desiredPos >= 0) {
+            // Count ALL pre-seeded windows (including floating) with lower desired position
+            // already in state. addWindow() inserts into m_windowOrder which includes both
+            // tiled and floating windows, so the offset must account for all of them.
+            int insertAt = 0;
+            for (int i = 0; i < desiredPos; ++i) {
+                const QString& earlier = pendingOrder.at(i);
+                if (state->containsWindow(earlier)) {
+                    ++insertAt;
+                }
+            }
+            state->addWindow(windowId, insertAt);
+            inserted = true;
+            qCDebug(lcAutotile) << "Inserted pre-seeded window" << windowId
+                                << "at position" << insertAt << "(desired:" << desiredPos << ")";
+        }
+        // Clean up pending order when all pre-seeded windows have been inserted (or closed)
+        if (inserted) {
+            bool allResolved = true;
+            for (const QString& pendingWin : pendingOrder) {
+                if (pendingWin != windowId && !state->containsWindow(pendingWin)) {
+                    allResolved = false;
+                    break;
+                }
+            }
+            if (allResolved) {
+                m_pendingInitialOrders.remove(screenName);
+                qCDebug(lcAutotile) << "All pre-seeded windows resolved for screen" << screenName;
+            }
+        }
+    }
+
+    if (!inserted) {
+        // Insert based on config preference
+        switch (m_config->insertPosition) {
+        case AutotileConfig::InsertPosition::End:
+            state->addWindow(windowId);
+            break;
+        case AutotileConfig::InsertPosition::AfterFocused:
+            state->insertAfterFocused(windowId);
+            break;
+        case AutotileConfig::InsertPosition::AsMaster:
+            state->addWindow(windowId);
+            state->moveToFront(windowId);
+            break;
+        }
     }
 
     // Restore floating state if this window was floating before autotile was deactivated
@@ -1642,6 +1724,35 @@ void AutotileEngine::removeWindow(const QString& windowId)
 
     // Clean up saved floating state for closed windows
     m_savedFloatingWindows.remove(windowId);
+
+    // Purge closed window from pending initial orders.
+    // If a pre-seeded window closes before arriving at the autotile engine,
+    // the pending order would leak indefinitely without this cleanup.
+    for (auto pit = m_pendingInitialOrders.begin(); pit != m_pendingInitialOrders.end(); ) {
+        QStringList& pendingList = pit.value();
+        pendingList.removeAll(windowId);
+        if (pendingList.isEmpty()) {
+            pit = m_pendingInitialOrders.erase(pit);
+        } else {
+            // Check if remaining pending windows are all resolved (in state or removed)
+            TilingState* pendingState = m_screenStates.value(pit.key());
+            bool allResolved = true;
+            if (pendingState) {
+                for (const QString& pendingWin : std::as_const(pendingList)) {
+                    if (!pendingState->containsWindow(pendingWin)) {
+                        allResolved = false;
+                        break;
+                    }
+                }
+            }
+            if (allResolved && pendingState) {
+                qCDebug(lcAutotile) << "Pending order resolved after window removal for screen" << pit.key();
+                pit = m_pendingInitialOrders.erase(pit);
+            } else {
+                ++pit;
+            }
+        }
+    }
 }
 
 void AutotileEngine::recalculateLayout(const QString& screenName)

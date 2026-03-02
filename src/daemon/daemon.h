@@ -134,6 +134,17 @@ private:
     void connectToKWinScript(); // Shortcuts now handled by ShortcutManager
 
     /**
+     * @brief Pre-seed autotile engine with zone-ordered windows for one screen
+     *
+     * Builds the zone-ordered window list from WTS and passes it to the autotile
+     * engine's setInitialWindowOrder(). Used by both per-screen toggle and global
+     * snapping→autotile transition.
+     *
+     * @param screenName Screen connector name
+     */
+    void seedAutotileOrderForScreen(const QString& screenName);
+
+    /**
      * @brief Handle autotile feature being disabled (clear assignments, restore manual mode)
      */
     void handleAutotileDisabled();

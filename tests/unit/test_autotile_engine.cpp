@@ -1012,6 +1012,189 @@ private Q_SLOTS:
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Zone-ordered window transition tests
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void testSetInitialWindowOrder_preSeededInsertion()
+    {
+        const QString screenName = QStringLiteral("DP-1");
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        // Pre-seed: zone 1 = win-A, zone 2 = win-B, zone 3 = win-C
+        QStringList preSeeded = {
+            QStringLiteral("win-A"),
+            QStringLiteral("win-B"),
+            QStringLiteral("win-C")
+        };
+        engine.setInitialWindowOrder(screenName, preSeeded);
+
+        // Simulate windows arriving in KWin stacking (focus) order: C, A, B
+        engine.windowOpened(QStringLiteral("win-C"), screenName);
+        engine.windowOpened(QStringLiteral("win-A"), screenName);
+        engine.windowOpened(QStringLiteral("win-B"), screenName);
+        QCoreApplication::processEvents();
+
+        // Verify they ended up in pre-seeded order, not arrival order
+        TilingState* state = engine.stateForScreen(screenName);
+        QVERIFY(state);
+        QStringList tiledWindows = state->tiledWindows();
+        QCOMPARE(tiledWindows.size(), 3);
+        QCOMPARE(tiledWindows.at(0), QStringLiteral("win-A")); // zone 1 → master
+        QCOMPARE(tiledWindows.at(1), QStringLiteral("win-B")); // zone 2
+        QCOMPARE(tiledWindows.at(2), QStringLiteral("win-C")); // zone 3
+    }
+
+    void testSetInitialWindowOrder_ignoresWhenStateHasWindows()
+    {
+        const QString screenName = QStringLiteral("DP-1");
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        // Add a window first (simulating session restore)
+        engine.windowOpened(QStringLiteral("win-existing"), screenName);
+        QCoreApplication::processEvents();
+
+        // Now try to pre-seed — should be ignored
+        QStringList preSeeded = {
+            QStringLiteral("win-A"),
+            QStringLiteral("win-B")
+        };
+        engine.setInitialWindowOrder(screenName, preSeeded);
+
+        // Add more windows — they should use normal insertion, not pre-seeded
+        engine.windowOpened(QStringLiteral("win-A"), screenName);
+        QCoreApplication::processEvents();
+
+        TilingState* state = engine.stateForScreen(screenName);
+        QVERIFY(state);
+        QStringList tiledWindows = state->tiledWindows();
+        // win-existing should be first (arrived first, normal insertion)
+        QCOMPARE(tiledWindows.at(0), QStringLiteral("win-existing"));
+    }
+
+    void testSetInitialWindowOrder_unknownWindowsFallThrough()
+    {
+        const QString screenName = QStringLiteral("DP-1");
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        // Pre-seed only 2 windows
+        QStringList preSeeded = {
+            QStringLiteral("win-A"),
+            QStringLiteral("win-B")
+        };
+        engine.setInitialWindowOrder(screenName, preSeeded);
+
+        // Add pre-seeded windows plus an unknown window
+        engine.windowOpened(QStringLiteral("win-A"), screenName);
+        engine.windowOpened(QStringLiteral("win-unknown"), screenName); // not in pre-seeded
+        engine.windowOpened(QStringLiteral("win-B"), screenName);
+        QCoreApplication::processEvents();
+
+        TilingState* state = engine.stateForScreen(screenName);
+        QVERIFY(state);
+        QStringList tiledWindows = state->tiledWindows();
+        QCOMPARE(tiledWindows.size(), 3);
+        // Pre-seeded windows maintain their relative order (A before B)
+        QCOMPARE(tiledWindows.at(0), QStringLiteral("win-A"));
+        QCOMPARE(tiledWindows.at(1), QStringLiteral("win-B"));
+        // Unknown window falls through to normal insertion (End), pushed after pre-seeded
+        QCOMPARE(tiledWindows.at(2), QStringLiteral("win-unknown"));
+    }
+
+    void testTiledWindowOrder_returnsOrderedList()
+    {
+        const QString screenName = QStringLiteral("DP-1");
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        engine.windowOpened(QStringLiteral("win-1"), screenName);
+        engine.windowOpened(QStringLiteral("win-2"), screenName);
+        engine.windowOpened(QStringLiteral("win-3"), screenName);
+        QCoreApplication::processEvents();
+
+        QStringList order = engine.tiledWindowOrder(screenName);
+        QCOMPARE(order.size(), 3);
+        QCOMPARE(order.at(0), QStringLiteral("win-1"));
+        QCOMPARE(order.at(1), QStringLiteral("win-2"));
+        QCOMPARE(order.at(2), QStringLiteral("win-3"));
+    }
+
+    void testTiledWindowOrder_emptyForUnknownScreen()
+    {
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        QStringList order = engine.tiledWindowOrder(QStringLiteral("nonexistent"));
+        QVERIFY(order.isEmpty());
+    }
+
+    void testRemoveWindow_cleansPendingInitialOrders()
+    {
+        const QString screenName = QStringLiteral("DP-1");
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        // Pre-seed 3 windows
+        QStringList preSeeded = {
+            QStringLiteral("win-A"),
+            QStringLiteral("win-B"),
+            QStringLiteral("win-C")
+        };
+        engine.setInitialWindowOrder(screenName, preSeeded);
+
+        // Insert win-A, then close win-B before it arrives
+        engine.windowOpened(QStringLiteral("win-A"), screenName);
+        QCoreApplication::processEvents();
+        engine.windowClosed(QStringLiteral("win-B")); // never inserted, but closes
+
+        // Now insert win-C — the pending order should resolve (win-B was purged)
+        engine.windowOpened(QStringLiteral("win-C"), screenName);
+        QCoreApplication::processEvents();
+
+        TilingState* state = engine.stateForScreen(screenName);
+        QVERIFY(state);
+        QStringList tiledWindows = state->tiledWindows();
+        QCOMPARE(tiledWindows.size(), 2);
+        QCOMPARE(tiledWindows.at(0), QStringLiteral("win-A"));
+        QCOMPARE(tiledWindows.at(1), QStringLiteral("win-C"));
+    }
+
+    void testSetInitialWindowOrder_guardChecksAllWindows()
+    {
+        const QString screenName = QStringLiteral("DP-1");
+        AutotileEngine engine(nullptr, nullptr, nullptr);
+        QSet<QString> screens{screenName};
+        engine.setAutotileScreens(screens);
+
+        // Add a window and float it — tiledWindows() would be empty but windowCount() > 0
+        engine.windowOpened(QStringLiteral("win-floating"), screenName);
+        QCoreApplication::processEvents();
+
+        TilingState* state = engine.stateForScreen(screenName);
+        QVERIFY(state);
+        state->setFloating(QStringLiteral("win-floating"), true);
+        QVERIFY(state->tiledWindows().isEmpty()); // floating-only
+        QCOMPARE(state->windowCount(), 1);        // still tracked
+
+        // Try to pre-seed — should be rejected because windowCount > 0
+        QStringList preSeeded = {QStringLiteral("win-A")};
+        engine.setInitialWindowOrder(screenName, preSeeded);
+
+        // Add win-A — it should use normal insertion (End), not pre-seeded position
+        engine.windowOpened(QStringLiteral("win-A"), screenName);
+        QCoreApplication::processEvents();
+
+        QStringList tiledWindows = state->tiledWindows();
+        QCOMPARE(tiledWindows.size(), 1);
+        QCOMPARE(tiledWindows.at(0), QStringLiteral("win-A"));
+    }
+
 };
 
 QTEST_MAIN(TestAutotileEngine)

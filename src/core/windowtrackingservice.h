@@ -426,6 +426,33 @@ public:
      */
     QVector<RotationEntry> calculateResnapFromCurrentAssignments(const QString& screenFilter = QString()) const;
 
+    /**
+     * @brief Calculate resnap data from an explicit autotile window order
+     *
+     * Maps autotile position to manual zone number: windowOrder[0] → zone 1,
+     * [1] → zone 2, etc. If there are more windows than zones, excess windows
+     * are not resnapped (they stay where they are) — no cycling.
+     * Uses the current (manual) layout's zones for geometry calculation.
+     *
+     * @param autotileWindowOrder Ordered list of window IDs from autotile (master first)
+     * @param screenName Screen for layout/geometry resolution
+     * @return List of rotation entries for KWin to apply
+     */
+    QVector<RotationEntry> calculateResnapFromAutotileOrder(const QStringList& autotileWindowOrder,
+                                                             const QString& screenName) const;
+
+    /**
+     * @brief Build a zone-ordered window list for a screen from current zone assignments
+     *
+     * Iterates all window-zone assignments for the given screen, resolves each window's
+     * primary zone number from the active layout, and returns the window IDs sorted by
+     * zone number ascending. Used to pre-seed autotile window order during transitions.
+     *
+     * @param screenName Screen connector name to filter windows by
+     * @return Window IDs sorted by zone number ascending
+     */
+    QStringList buildZoneOrderedWindowList(const QString& screenName) const;
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Resolution Change Handling
     // ═══════════════════════════════════════════════════════════════════════════

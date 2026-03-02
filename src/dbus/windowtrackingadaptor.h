@@ -419,6 +419,17 @@ public Q_SLOTS:
     void resnapCurrentAssignments(const QString& screenFilter = QString());
 
     /**
+     * @brief Resnap windows from autotile to manual zones using explicit window order
+     *
+     * Maps autotile positions to zone numbers: windowOrder[0] → zone 1, etc.
+     * Falls back to resnapCurrentAssignments if the order is empty.
+     *
+     * @param autotileWindowOrder Ordered list from AutotileEngine::tiledWindowOrder()
+     * @param screenName Screen for layout/geometry resolution
+     */
+    void resnapFromAutotileOrder(const QStringList& autotileWindowOrder, const QString& screenName);
+
+    /**
      * @brief Calculate snap assignments for all provided windows
      * @param windowIds List of unsnapped window IDs
      * @param screenName Screen for layout/geometry resolution
