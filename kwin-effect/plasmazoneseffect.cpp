@@ -344,6 +344,14 @@ PlasmaZonesEffect::PlasmaZonesEffect()
     connect(KWin::effects, &KWin::EffectsHandler::windowAdded, this, &PlasmaZonesEffect::slotWindowAdded);
     connect(KWin::effects, &KWin::EffectsHandler::windowClosed, this, &PlasmaZonesEffect::slotWindowClosed);
 
+    // Belt-and-suspenders: windowClosed removes animations, but if a deferred
+    // timer re-adds one between windowClosed and windowDeleted, the Item tree
+    // will be torn down while an animation entry still references the window.
+    // Purge here to prevent SIGSEGV in animationBounds → expandedGeometry.
+    connect(KWin::effects, &KWin::EffectsHandler::windowDeleted, this, [this](KWin::EffectWindow* w) {
+        m_windowAnimator->removeAnimation(w);
+    });
+
     connect(KWin::effects, &KWin::EffectsHandler::windowActivated, this, &PlasmaZonesEffect::slotWindowActivated);
 
     // mouseChanged is the only reliable way to get modifier state in a KWin effect on Wayland;
@@ -367,13 +375,34 @@ PlasmaZonesEffect::PlasmaZonesEffect()
     connectAutotileSignals();
     loadAutotileSettings();
 
-    // Cache daemon service availability to avoid synchronous isServiceRegistered()
-    // calls on the compositor thread. This initial check is safe: if the daemon is
-    // already registered at this point, it's fully operational (event loop running),
-    // so QDBusInterface introspection won't block.
+    // Verify daemon availability asynchronously to avoid blocking the compositor.
+    // CRITICAL: Do NOT use synchronous isServiceRegistered() here. The daemon
+    // registers its D-Bus service name in init() BEFORE start() runs heavy
+    // initialization and BEFORE the event loop begins (main.cpp:88→94→102).
+    // During that window, isServiceRegistered() returns true but the daemon
+    // can't process messages. Any synchronous QDBusInterface creation would
+    // trigger Introspect, blocking KWin for up to the D-Bus timeout (~25s).
+    //
+    // Instead, send an async Introspect — if the daemon responds, it's fully
+    // operational and we trigger slotDaemonReady(). If it can't respond (still
+    // initializing), the call times out harmlessly and we wait for the
+    // daemonReady D-Bus signal instead.
     {
-        auto* busIface = QDBusConnection::sessionBus().interface();
-        m_daemonServiceRegistered = busIface && busIface->isServiceRegistered(DBus::ServiceName).value();
+        QDBusMessage introspect = QDBusMessage::createMethodCall(
+            DBus::ServiceName, DBus::ObjectPath,
+            QStringLiteral("org.freedesktop.DBus.Introspectable"),
+            QStringLiteral("Introspect"));
+        auto* watcher = new QDBusPendingCallWatcher(
+            QDBusConnection::sessionBus().asyncCall(introspect, 3000), this);
+        connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* w) {
+            w->deleteLater();
+            QDBusPendingReply<QString> reply = *w;
+            if (reply.isValid() && !m_daemonServiceRegistered) {
+                // Daemon responded — it's fully operational.
+                // Trigger the same ready flow as the daemonReady signal.
+                slotDaemonReady();
+            }
+        });
     }
 
     // Connect to daemon's daemonReady signal — emitted at the end of Daemon::start()
@@ -439,11 +468,10 @@ PlasmaZonesEffect::PlasmaZonesEffect()
                                               SLOT(slotDaemonReady()));
     });
 
-    // Sync floating window state from daemon's persisted state
-    syncFloatingWindowsFromDaemon();
-
-    // Load exclusion settings from daemon
-    loadCachedSettings();
+    // NOTE: syncFloatingWindowsFromDaemon() and loadCachedSettings() are NOT
+    // called here. m_daemonServiceRegistered is false at this point (set only by
+    // slotDaemonReady), so any ensureInterface() call would bail out immediately.
+    // All daemon state sync is deferred to slotDaemonReady().
 
     // Setup screen geometry change debounce timer
     // This prevents rapid-fire updates from causing windows to be resnapped unnecessarily
@@ -469,19 +497,13 @@ PlasmaZonesEffect::PlasmaZonesEffect()
     // the daemon has a valid cursor screen even if no mouse movement occurs after login.
     // slotMouseChanged will overwrite this as soon as the cursor moves.
     //
-    // Two startup paths:
-    //   1. Daemon already running: m_daemonServiceRegistered is true (set above),
-    //      so push the cursor screen immediately. slotDaemonReady won't fire
-    //      (daemonReady was already emitted before the effect loaded).
-    //   2. Daemon starts later: slotDaemonReady handles the push when the daemon
-    //      signals readiness.
+    // The actual D-Bus push to the daemon happens in slotDaemonReady(), which fires
+    // either from the async Introspect callback above (daemon already running) or
+    // from the daemonReady D-Bus signal (daemon starts later). We do NOT push here
+    // to avoid synchronous QDBusInterface creation on the compositor thread.
     auto* initialScreen = KWin::effects->activeScreen();
     if (initialScreen) {
         m_lastCursorScreenName = initialScreen->name();
-        if (m_daemonServiceRegistered && ensureWindowTrackingReady("initial cursor screen")) {
-            m_windowTrackingInterface->asyncCall(QStringLiteral("cursorScreenChanged"), m_lastCursorScreenName);
-            qCDebug(lcEffect) << "Sent initial cursor screen:" << m_lastCursorScreenName;
-        }
     }
 
     qCInfo(lcEffect) << "Initialized - C++ effect with D-Bus support and mouseChanged connection";
@@ -589,10 +611,11 @@ void PlasmaZonesEffect::slotWindowClosed(KWin::EffectWindow* w)
 
     m_windowAnimator->removeAnimation(w);
 
-    // Clean up borderless and monocle-maximize tracking (no need to restore — window is closing)
+    // Clean up borderless, monocle-maximize, and deferred-centering tracking
     const QString closedWindowId = getWindowId(w);
     m_borderlessWindows.remove(closedWindowId);
     m_monocleMaximizedWindows.remove(closedWindowId);
+    m_autotileTargetZones.remove(closedWindowId);
 
     // Notify daemon for cleanup
     notifyWindowClosed(w);
@@ -905,7 +928,7 @@ void PlasmaZonesEffect::applyWindowGeometriesFromJson(const QString& geometriesJ
 
     applyStaggeredOrImmediate(toApply.size(), [this, toApply](int i) {
         const ApplyEntry& e = toApply[i];
-        if (e.window && shouldHandleWindow(e.window)) {
+        if (e.window && !e.window->isDeleted() && shouldHandleWindow(e.window)) {
             qCInfo(lcEffect) << "Repositioning window" << getWindowId(e.window) << "to" << e.geometry;
             applySnapGeometry(e.window, e.geometry);
         }
@@ -960,20 +983,71 @@ void PlasmaZonesEffect::slotDaemonReady()
     m_daemonServiceRegistered = true;
     qCInfo(lcEffect) << "Daemon ready — re-pushing state";
 
+    // CRITICAL: Do NOT call ensureWindowTrackingReady() or any method that
+    // creates QDBusInterface here. The daemonReady signal is emitted at the
+    // end of Daemon::start(), BEFORE app.exec() starts the event loop
+    // (main.cpp:94 vs 102). QDBusInterface's constructor performs synchronous
+    // D-Bus Introspect — if the daemon can't process messages yet, KWin
+    // blocks for ~25s (D-Bus timeout), freezing the compositor on login.
+    //
+    // Instead, use QDBusMessage::createMethodCall + asyncCall for all
+    // immediate state pushes. QDBusInterface will be created lazily on the
+    // first user-initiated action (window drag, activation, etc.), by which
+    // time the daemon's event loop is guaranteed to be running.
+
     // Re-push cursor screen
-    if (!m_lastCursorScreenName.isEmpty() && ensureWindowTrackingReady("daemon ready cursor screen")) {
-        m_windowTrackingInterface->asyncCall(QStringLiteral("cursorScreenChanged"), m_lastCursorScreenName);
+    if (!m_lastCursorScreenName.isEmpty()) {
+        QDBusMessage msg = QDBusMessage::createMethodCall(
+            DBus::ServiceName, DBus::ObjectPath,
+            DBus::Interface::WindowTracking, QStringLiteral("cursorScreenChanged"));
+        msg << m_lastCursorScreenName;
+        QDBusConnection::sessionBus().asyncCall(msg);
         qCDebug(lcEffect) << "Re-sent cursor screen:" << m_lastCursorScreenName;
     }
 
     // Re-notify active window (gives daemon lastActiveScreenName)
     KWin::EffectWindow* activeWindow = getActiveWindow();
-    if (activeWindow) {
-        notifyWindowActivated(activeWindow);
+    if (activeWindow && shouldHandleWindow(activeWindow)) {
+        QString windowId = getWindowId(activeWindow);
+        QString screenName = getWindowScreenName(activeWindow);
+        QDBusMessage msg = QDBusMessage::createMethodCall(
+            DBus::ServiceName, DBus::ObjectPath,
+            DBus::Interface::WindowTracking, QStringLiteral("windowActivated"));
+        msg << windowId << screenName;
+        QDBusConnection::sessionBus().asyncCall(msg);
+        qCDebug(lcEffect) << "Re-notified active window:" << windowId << "on" << screenName;
+
+        // Also notify autotile engine of focus
+        if (m_autotileScreens.contains(screenName)) {
+            QDBusMessage atMsg = QDBusMessage::createMethodCall(
+                DBus::ServiceName, DBus::ObjectPath,
+                DBus::Interface::Autotile, QStringLiteral("notifyWindowFocused"));
+            atMsg << windowId << screenName;
+            QDBusConnection::sessionBus().asyncCall(atMsg);
+        }
     }
 
-    // Re-sync floating state and settings from daemon
-    syncFloatingWindowsFromDaemon();
+    // Re-sync floating windows (async, no QDBusInterface needed)
+    {
+        QDBusMessage msg = QDBusMessage::createMethodCall(
+            DBus::ServiceName, DBus::ObjectPath,
+            DBus::Interface::WindowTracking, QStringLiteral("getFloatingWindows"));
+        auto* watcher = new QDBusPendingCallWatcher(
+            QDBusConnection::sessionBus().asyncCall(msg), this);
+        connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* w) {
+            w->deleteLater();
+            QDBusPendingReply<QStringList> reply = *w;
+            if (reply.isValid()) {
+                QStringList floatingIds = reply.value();
+                for (const QString& id : floatingIds) {
+                    m_navigationHandler->setWindowFloating(id, true);
+                }
+                qCDebug(lcEffect) << "Synced" << floatingIds.size() << "floating windows from daemon";
+            }
+        });
+    }
+
+    // These already use QDBusMessage::createMethodCall (no QDBusInterface)
     loadCachedSettings();
     loadAutotileSettings();
 
@@ -988,6 +1062,7 @@ void PlasmaZonesEffect::slotDaemonReady()
     m_pendingCloses.clear();
 
     // Re-announce all existing windows on autotile screens
+    // (notifyWindowAdded uses QDBusMessage::createMethodCall, not QDBusInterface)
     const auto windows = KWin::effects->stackingOrder();
     for (KWin::EffectWindow* w : windows) {
         if (w && shouldHandleWindow(w)) {
@@ -2506,7 +2581,7 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
     }
 
     // Normalize so width/height are non-negative; reject invalid rects
-    const QRect geo = geometry.normalized();
+    QRect geo = geometry.normalized();
     if (!geo.isValid() || geo.width() <= 0 || geo.height() <= 0) {
         qCWarning(lcEffect) << "Cannot apply geometry - geometry is invalid or empty:" << geometry;
         return;
@@ -2517,6 +2592,33 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
     if (window->isFullScreen()) {
         qCDebug(lcEffect) << "Skipping geometry change - window is fullscreen";
         return;
+    }
+
+    // For X11/XWayland windows, KWin constrains the frame size to align with
+    // WM_SIZE_HINTS (size increments for terminals like Ghostty, Kitty, etc.).
+    // Pre-compute the constrained size and center the window in its zone so the
+    // gap is distributed evenly instead of all at the bottom-right.
+    // This applies to all snap operations (zone snap, autotile, resnap, etc.).
+    // Wayland-native clients negotiate size async (constrainFrameSize only
+    // checks min/max, not char-cell grid), so they're handled by the deferred
+    // check in centerUndersizedAutotileWindows().
+    if (window->isX11Client()) {
+        KWin::Window* kw = window->window();
+        if (kw) {
+            const QSizeF constrained = kw->constrainFrameSize(QSizeF(geo.size()));
+            const int cw = qRound(constrained.width());
+            const int ch = qRound(constrained.height());
+            if (cw < geo.width() || ch < geo.height()) {
+                // Clamp to non-negative: if min-size exceeds the zone in one
+                // dimension, don't shift the window beyond the zone's edge.
+                const int dx = qMax(0, geo.width() - cw) / 2;
+                const int dy = qMax(0, geo.height() - ch) / 2;
+                geo = QRect(geo.x() + dx, geo.y() + dy, cw, ch);
+                qCDebug(lcEffect) << "Pre-centered X11 window with size constraints:"
+                                  << "zone=" << geometry.size() << "constrained=" << constrained
+                                  << "adjusted=" << geo;
+            }
+        }
     }
 
     qCDebug(lcEffect) << "Setting window geometry from" << window->frameGeometry() << "to" << geo;
@@ -2541,7 +2643,7 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
         // handled earlier in callDragStopped via cancelInteractiveMoveResize.
         QPointer<KWin::EffectWindow> safeWindow = window;
         QTimer::singleShot(100, this, [this, safeWindow, geo, retriesLeft, skipAnimation]() {
-            if (safeWindow && !safeWindow->isFullScreen()) {
+            if (safeWindow && !safeWindow->isDeleted() && !safeWindow->isFullScreen()) {
                 applySnapGeometry(safeWindow, geo, false, retriesLeft - 1, skipAnimation);
             }
         });
@@ -3060,13 +3162,14 @@ void PlasmaZonesEffect::slotAutotileScreensChanged(const QStringList& screenName
         // before scheduling restore. Prevents rapid mode-switching from causing
         // stale tile timers to overwrite the restore positions.
         ++m_autotileStaggerGeneration;
+        m_autotileTargetZones.clear(); // Discard stale deferred-centering entries
         const uint64_t gen = m_autotileStaggerGeneration;
         applyStaggeredOrImmediate(toRestore.size(), [this, toRestore, gen](int i) {
             if (m_autotileStaggerGeneration != gen) {
                 return; // Stale batch superseded by newer operation
             }
             const RestoreEntry& e = toRestore[i];
-            if (e.window && shouldHandleWindow(e.window)) {
+            if (e.window && !e.window->isDeleted() && shouldHandleWindow(e.window)) {
                 qCInfo(lcEffect) << "Restoring pre-autotile geometry for" << getWindowId(e.window) << "to" << e.geometry;
                 applySnapGeometry(e.window, e.geometry);
             }
@@ -3327,6 +3430,7 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
     // mode-transition restores. Without this, rapid algorithm switching causes
     // stale timers to apply wrong geometries (overlapping windows, wrong sizes).
     ++m_autotileStaggerGeneration;
+    m_autotileTargetZones.clear(); // Discard stale deferred-centering entries
 
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(tileRequestsJson.toUtf8(), &parseError);
@@ -3505,6 +3609,33 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
                 }
             }
         }
+
+        // Deferred centering for Wayland windows with character-cell grid alignment
+        // (terminals like Ghostty, Kitty). On Wayland, the client asynchronously
+        // commits a buffer that may be smaller than the configured size. Wait for
+        // the client to commit, then center any undersized windows.
+        // Two-stage check: 150ms covers most clients (~9 frames at 60Hz);
+        // 250ms retry (400ms cumulative) catches slow clients (Electron, heavy
+        // GTK apps) that haven't committed yet by the first check.
+        if (!m_autotileTargetZones.isEmpty()) {
+            QTimer::singleShot(150, this, [this, gen]() {
+                if (m_autotileStaggerGeneration != gen) {
+                    return; // Stale — a newer tile batch superseded this one
+                }
+                centerUndersizedAutotileWindows();
+                // Retry: if any targets remain (re-added by centerUndersized
+                // because frameGeometry still matched the zone — client hasn't
+                // committed yet), schedule one more check.
+                if (!m_autotileTargetZones.isEmpty()) {
+                    QTimer::singleShot(250, this, [this, gen]() {
+                        if (m_autotileStaggerGeneration != gen) {
+                            return;
+                        }
+                        centerUndersizedAutotileWindows();
+                    });
+                }
+            });
+        }
     };
 
     applyStaggeredOrImmediate(toApply.size(), [this, toApply, gen](int i) {
@@ -3512,7 +3643,7 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
             return; // Stale batch superseded by newer tile request or mode change
         }
         const TileSnap& snap = toApply[i];
-        if (!snap.window) {
+        if (!snap.window || snap.window->isDeleted()) {
             return;
         }
         // Save pre-autotile geometry before applying (same pattern as zone snap).
@@ -3551,7 +3682,84 @@ void PlasmaZonesEffect::slotAutotileWindowsTileRequested(const QString& tileRequ
             unmaximizeMonocleWindow(snap.windowId);
             applySnapGeometry(snap.window, snap.geometry);
         }
+
+        // Track the target zone for deferred centering of undersized Wayland windows.
+        // X11/XWayland windows are already pre-centered in applySnapGeometry() via
+        // constrainFrameSize(), but native Wayland clients negotiate their size async
+        // so we must check after the client commits its buffer.
+        // Skip monocle: those windows are KWin-maximized and shouldn't be repositioned.
+        if (!snap.isMonocle && snap.window->isWaylandClient()) {
+            m_autotileTargetZones[snap.windowId] = snap.geometry;
+        }
     }, onComplete);
+}
+
+void PlasmaZonesEffect::centerUndersizedAutotileWindows()
+{
+    // Consume all pending target zones — each window is checked exactly once.
+    QHash<QString, QRect> targets;
+    targets.swap(m_autotileTargetZones);
+
+    // Minimum size difference (px) to trigger centering — filters out subpixel
+    // rounding artifacts from frameGeometry() ↔ QRect conversions.
+    constexpr qreal MinCenteringDelta = 3.0;
+    // Maximum size difference (px) to act on — guards against stale target data
+    // when a window is replaced (closed + reopened with same ID) between tile
+    // application and this deferred check. The generation guard handles stale
+    // *batches*; this cap handles stale *entries within a valid batch*.
+    constexpr qreal MaxCenteringDelta = 64.0;
+
+    for (auto it = targets.constBegin(); it != targets.constEnd(); ++it) {
+        const QString& windowId = it.key();
+        const QRect& targetZone = it.value();
+
+        KWin::EffectWindow* w = findWindowById(windowId);
+        if (!w || w->isDeleted() || w->isFullScreen()) {
+            continue;
+        }
+
+        // NOTE: For Wayland clients, frameGeometry() is updated by KWin when the
+        // client commits a buffer with a size different from the configured geometry.
+        // This is current KWin 6 behavior but not a documented API contract.
+        const QRectF actual = w->frameGeometry();
+        const qreal dw = targetZone.width() - actual.width();
+        const qreal dh = targetZone.height() - actual.height();
+
+        // Client hasn't committed a resized buffer yet — frameGeometry still
+        // matches the configured zone size. Re-add the entry so the retry
+        // timer can check again after the client has had more time.
+        if (qAbs(dw) <= MinCenteringDelta && qAbs(dh) <= MinCenteringDelta) {
+            m_autotileTargetZones[windowId] = targetZone;
+            continue;
+        }
+
+        // Only adjust if the window is meaningfully smaller than its zone
+        // in at least one dimension, and the absolute delta is within the
+        // staleness cap. Using qAbs prevents negative deltas (window larger
+        // than zone due to min-size constraints) from silently bypassing the
+        // cap and triggering unnecessary removeAnimation + moveResize calls.
+        if ((dw > MinCenteringDelta || dh > MinCenteringDelta)
+            && qAbs(dw) < MaxCenteringDelta && qAbs(dh) < MaxCenteringDelta) {
+            // Clamp to non-negative: if the window is larger than its zone in
+            // one dimension (min-size constraint), don't shift it beyond the edge.
+            const qreal dx = qMax(0.0, dw) / 2.0;
+            const qreal dy = qMax(0.0, dh) / 2.0;
+            const QRectF centered(targetZone.x() + dx, targetZone.y() + dy,
+                                  actual.width(), actual.height());
+
+            KWin::Window* kw = w->window();
+            if (kw) {
+                qCInfo(lcEffect) << "Centering undersized autotile window" << windowId
+                                 << "actual=" << actual.size() << "zone=" << targetZone.size()
+                                 << "offset=(" << dx << "," << dy << ")";
+                // Cancel any in-flight slide animation so its target doesn't
+                // conflict with the centered position (would cause a visual jump
+                // when the animation completes at the old un-centered target).
+                m_windowAnimator->removeAnimation(w);
+                kw->moveResize(centered);
+            }
+        }
+    }
 }
 
 void PlasmaZonesEffect::slotAutotileFocusWindowRequested(const QString& windowId)

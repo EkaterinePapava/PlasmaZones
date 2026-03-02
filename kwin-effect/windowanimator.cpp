@@ -10,9 +10,9 @@
 #include <QStringList>
 #include <QLineF>
 
-Q_DECLARE_LOGGING_CATEGORY(lcEffect)
-
 namespace PlasmaZones {
+
+Q_DECLARE_LOGGING_CATEGORY(lcEffect)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Cubic bezier evaluation
@@ -161,7 +161,7 @@ void WindowAnimator::advanceAnimations()
             continue;
         }
 
-        if (!it->isValid()) {
+        if (!it->isValid() || window->isDeleted()) {
             m_animations.erase(it);
             continue;
         }
@@ -216,7 +216,12 @@ QRectF WindowAnimator::animationBounds(KWin::EffectWindow* window) const
 
     // The window's expanded geometry (includes shadow/decoration padding)
     // at its real post-moveResize position.
-    QRectF expanded = window ? window->expandedGeometry() : QRectF(it->targetGeometry);
+    // Guard: once a window enters the "deleted" state, its Item tree may be
+    // torn down and expandedGeometry() would dereference a null Item pointer
+    // (SIGSEGV in KWin::Item::boundingRect).  Fall back to the stored target.
+    QRectF expanded = (window && !window->isDeleted())
+        ? window->expandedGeometry()
+        : QRectF(it->targetGeometry);
 
     // The same visual footprint translated to the animation start position
     const QPointF maxOffset(it->startPosition.x() - it->targetGeometry.x(),

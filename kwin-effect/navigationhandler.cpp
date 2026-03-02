@@ -17,9 +17,9 @@
 #include <QPointer>
 #include <QTimer>
 
-Q_DECLARE_LOGGING_CATEGORY(lcEffect)
-
 namespace PlasmaZones {
+
+Q_DECLARE_LOGGING_CATEGORY(lcEffect)
 
 // Navigation directive prefixes
 static const QString NavigateDirectivePrefix = QStringLiteral("navigate:");

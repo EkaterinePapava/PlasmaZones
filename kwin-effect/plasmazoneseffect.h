@@ -510,6 +510,21 @@ private:
     // across mode transitions when stale timers overwrite correct geometries.
     uint64_t m_autotileStaggerGeneration = 0;
 
+    // Autotile: target zone geometry per window, used for deferred centering of
+    // windows that render smaller than their zone (terminals with char-cell grid).
+    // Populated during tile application, consumed by centerUndersizedAutotileWindows().
+    QHash<QString, QRect> m_autotileTargetZones;
+
+    /**
+     * @brief Deferred check for autotile windows that rendered smaller than their zone.
+     *
+     * Terminals (Ghostty, Kitty, etc.) snap their size to a character-cell grid,
+     * so the client buffer may be shorter/narrower than the requested zone geometry.
+     * This method detects the mismatch and repositions the window to center it in
+     * its zone, distributing the gap evenly rather than leaving it all at one edge.
+     */
+    void centerUndersizedAutotileWindows();
+
     // Guard to suppress our own maximize() calls from triggering
     // slotWindowMaximizedStateChanged (avoids feedback loop).
     // Counter instead of bool to handle concurrent stagger batches correctly.
