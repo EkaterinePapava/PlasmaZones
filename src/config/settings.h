@@ -6,6 +6,7 @@
 #include "../core/interfaces.h"
 #include "../core/constants.h"
 #include <KConfigGroup>
+#include <KSharedConfig>
 #include <optional>
 #include <QFont>
 #include <QHash>
@@ -1159,6 +1160,37 @@ private:
      */
     static void saveTriggerList(KConfigGroup& group, const QString& key,
                                 const QVariantList& triggers);
+
+    /** @brief Shared dispatcher for indexed shortcut arrays (quick-layout, snap-to-zone) */
+    using ShortcutSignalFn = void (Settings::*)();
+    void setIndexedShortcut(QString (&arr)[9], int index, const QString& shortcut,
+                            const ShortcutSignalFn (&signals)[9]);
+
+    // ─── load() helpers (decomposed for SRP) ─────────────────────────────
+    void loadActivationConfig(KConfigGroup& activation);
+    void loadDisplayConfig(const KConfigGroup& display);
+    void loadAppearanceConfig(const KConfigGroup& appearance);
+    void loadZoneGeometryConfig(const KConfigGroup& zones);
+    void loadBehaviorConfig(const KConfigGroup& behavior, const KConfigGroup& exclusions,
+                            const KConfigGroup& activation);
+    void loadZoneSelectorConfig(const KConfigGroup& zoneSelector);
+    void loadPerScreenOverrides(KSharedConfigPtr config);
+    void loadShortcutConfig(const KConfigGroup& globalShortcuts);
+    void loadAutotilingConfig(const KConfigGroup& autotiling, const KConfigGroup& animations,
+                              const KConfigGroup& autotileShortcuts);
+
+    // ─── save() helpers (decomposed for SRP) ────────────────────────────
+    void saveActivationConfig(KConfigGroup& activation);
+    void saveDisplayConfig(KConfigGroup& display);
+    void saveAppearanceConfig(KConfigGroup& appearance);
+    void saveZoneGeometryConfig(KConfigGroup& zones);
+    void saveBehaviorConfig(KConfigGroup& behavior, KConfigGroup& exclusions, KConfigGroup& activation);
+    void saveZoneSelectorConfig(KConfigGroup& zoneSelector);
+    void saveAllPerScreenOverrides(KSharedConfigPtr config);
+    void saveShortcutConfig(KConfigGroup& globalShortcuts);
+    void saveAutotilingConfig(KConfigGroup& autotiling, KConfigGroup& animations,
+                              KConfigGroup& autotileShortcuts);
+    static QString normalizeUuidString(const QString& uuidStr);
 
     // Activation
     bool m_shiftDragToActivate = true; // Deprecated - kept for migration

@@ -64,6 +64,9 @@ set(plasmazones_core_SRCS
     core/modifierutils.cpp
     core/modifierutils.h
     config/settings.cpp
+    config/settings_loadsave.cpp
+    config/settings_setters.cpp
+    config/settings_perscreen.cpp
     config/settings.h
     config/colorimporter.cpp
     config/colorimporter.h
