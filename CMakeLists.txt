@@ -217,6 +217,16 @@ file(GLOB PLASMAZONESD_QML "${CMAKE_SOURCE_DIR}/src/ui/*.qml")
 file(GLOB PLASMAZONES_EDITOR_CPP
     "${CMAKE_SOURCE_DIR}/src/editor/main.cpp"
     "${CMAKE_SOURCE_DIR}/src/editor/EditorController.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/EditorController_gaps.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/EditorController_shader.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/EditorController_layout.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/EditorController_selection.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/EditorController_multiselect.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/EditorController_visibility.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/EditorController_clipboard.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/EditorController_zones.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/EditorController_zoneops.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/EditorController_settings.cpp"
     "${CMAKE_SOURCE_DIR}/src/editor/undo/commands/*.cpp"
 )
 file(GLOB PLASMAZONES_EDITOR_QML "${CMAKE_SOURCE_DIR}/src/editor/qml/*.qml")

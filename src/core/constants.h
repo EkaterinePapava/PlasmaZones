@@ -116,6 +116,14 @@ constexpr int DuplicateOffsetPixels = 20; // 20px offset when duplicating fixed 
 // Keyboard step for fixed geometry zones
 constexpr int KeyboardStepPixels = 10; // 10px step for keyboard move/resize of fixed zones
 
+// Floating-point tolerances (relative coordinates 0.0-1.0)
+constexpr qreal OverlapThreshold = 0.002; // Epsilon for zone overlap detection
+constexpr qreal CoordDedupeThreshold = 0.001; // Coordinate deduplication tolerance
+constexpr qreal MinExpansionThreshold = 0.005; // Minimum expansion to accept
+constexpr qreal AdjacencyThreshold = 0.02; // Default adjacency detection threshold
+constexpr qreal ExpansionStep = 0.01; // 1% increment for fill expansion
+constexpr qreal GeometryBoundsTolerance = 0.001; // Tolerance for coordinate bounds checking
+
 // Default zone colors (hex strings for QML compatibility)
 inline constexpr const char* DefaultHighlightColor = "#800078D4";
 inline constexpr const char* DefaultInactiveColor = "#40808080";

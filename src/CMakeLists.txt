@@ -435,6 +435,16 @@ configure_file(
 set(plasmazones_editor_SRCS
     editor/main.cpp
     editor/EditorController.cpp
+    editor/EditorController_gaps.cpp
+    editor/EditorController_shader.cpp
+    editor/EditorController_layout.cpp
+    editor/EditorController_selection.cpp
+    editor/EditorController_multiselect.cpp
+    editor/EditorController_visibility.cpp
+    editor/EditorController_clipboard.cpp
+    editor/EditorController_zones.cpp
+    editor/EditorController_zoneops.cpp
+    editor/EditorController_settings.cpp
     editor/EditorController.h
     editor/helpers/BatchOperationScope.h
     editor/helpers/ZoneSerialization.cpp
@@ -447,6 +457,9 @@ set(plasmazones_editor_SRCS
     editor/services/DBusLayoutService.cpp
     editor/services/DBusLayoutService.h
     editor/services/ZoneManager.cpp
+    editor/services/ZoneManager_divider.cpp
+    editor/services/ZoneManager_zorder.cpp
+    editor/services/ZoneManager_serialization.cpp
     editor/services/ZoneManager.h
     editor/services/ZoneAutoFiller.cpp
     editor/services/ZoneAutoFiller.h

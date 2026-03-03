@@ -32,7 +32,7 @@ void ZoneAutoFiller::applyRelativeGeometry(const QString& zoneId, qreal rx, qrea
 
 bool ZoneAutoFiller::isRectangleEmpty(const QRectF& rect, const QString& excludeZoneId) const
 {
-    const qreal threshold = 0.002; // Small epsilon for floating point comparison
+    const qreal threshold = EditorConstants::OverlapThreshold;
     const QVariantList& zones = m_manager->zones();
 
     for (const QVariant& zoneVar : zones) {
@@ -65,7 +65,7 @@ qreal ZoneAutoFiller::findMaxExpansion(const QString& zoneId, int direction) con
     }
 
     QRectF zoneRect = m_manager->extractZoneGeometry(*zoneOpt);
-    const qreal step = 0.01; // 1% increments
+    const qreal step = EditorConstants::ExpansionStep;
     qreal maxExpansion = 0.0;
 
     switch (direction) {
@@ -187,7 +187,7 @@ QRectF ZoneAutoFiller::findBestEmptyRegion(qreal targetX, qreal targetY, int exc
     // Helper to check if coordinate already exists (with tolerance)
     auto coordExists = [](const QList<qreal>& list, qreal val) {
         for (qreal v : list) {
-            if (qAbs(v - val) < 0.001)
+            if (qAbs(v - val) < EditorConstants::CoordDedupeThreshold)
                 return true;
         }
         return false;
@@ -309,27 +309,27 @@ bool ZoneAutoFiller::expandToFillSpace(const QString& zoneId, qreal mouseX, qrea
 
     // Try expanding in each direction
     qreal leftExpansion = findMaxExpansion(zoneId, 0);
-    if (leftExpansion > 0.005) {
+    if (leftExpansion > EditorConstants::MinExpansionThreshold) {
         x -= leftExpansion;
         w += leftExpansion;
         changed = true;
     }
 
     qreal rightExpansion = findMaxExpansion(zoneId, 1);
-    if (rightExpansion > 0.005) {
+    if (rightExpansion > EditorConstants::MinExpansionThreshold) {
         w += rightExpansion;
         changed = true;
     }
 
     qreal upExpansion = findMaxExpansion(zoneId, 2);
-    if (upExpansion > 0.005) {
+    if (upExpansion > EditorConstants::MinExpansionThreshold) {
         y -= upExpansion;
         h += upExpansion;
         changed = true;
     }
 
     qreal downExpansion = findMaxExpansion(zoneId, 3);
-    if (downExpansion > 0.005) {
+    if (downExpansion > EditorConstants::MinExpansionThreshold) {
         h += downExpansion;
         changed = true;
     }
@@ -401,7 +401,7 @@ QVariantMap ZoneAutoFiller::calculateFillRegion(const QString& zoneId, qreal mou
 
 void ZoneAutoFiller::expandAdjacentZonesToFill(const QRectF& deletedGeom, const QVariantMap& adjacentZones)
 {
-    const qreal threshold = 0.02;
+    const qreal threshold = EditorConstants::AdjacencyThreshold;
 
     QVariantList rightZones = adjacentZones[QStringLiteral("right")].toList();
     QVariantList leftZones = adjacentZones[QStringLiteral("left")].toList();
@@ -419,7 +419,8 @@ void ZoneAutoFiller::expandAdjacentZonesToFill(const QRectF& deletedGeom, const 
         if (rightRect.y() >= deletedGeom.y() - threshold
             && rightRect.bottom() <= deletedGeom.bottom() + threshold) {
             qreal expansion = rightRect.x() - deletedGeom.x();
-            if (expansion > 0) {
+            QRectF testRect(deletedGeom.x(), rightRect.y(), expansion, rightRect.height());
+            if (expansion > 0 && isRectangleEmpty(testRect, rightZoneId)) {
                 applyRelativeGeometry(rightZoneId, deletedGeom.x(), rightRect.y(),
                                       rightRect.width() + expansion, rightRect.height());
             }
