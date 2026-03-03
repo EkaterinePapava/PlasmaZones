@@ -95,6 +95,12 @@ set(plasmazones_core_SRCS
     autotile/AutotileConfig.h
     autotile/AutotileEngine.cpp
     autotile/AutotileEngine.h
+    autotile/PerScreenConfigResolver.cpp
+    autotile/PerScreenConfigResolver.h
+    autotile/NavigationController.cpp
+    autotile/NavigationController.h
+    autotile/SettingsBridge.cpp
+    autotile/SettingsBridge.h
     autotile/OverflowManager.cpp
     autotile/OverflowManager.h
     autotile/algorithms/MasterStackAlgorithm.cpp

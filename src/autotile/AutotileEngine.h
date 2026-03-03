@@ -7,16 +7,12 @@
 #include "core/constants.h"
 #include <QHash>
 #include <QObject>
-#include <QPointer>
 #include <QRect>
 #include <QSet>
 #include <QSize>
 #include <QString>
 #include <QStringList>
-#include <QTimer>
-#include <functional>
 #include <memory>
-#include <optional>
 
 #include "OverflowManager.h"
 
@@ -25,8 +21,11 @@ namespace PlasmaZones {
 class AutotileConfig;
 class Layout;
 class LayoutManager;
+class NavigationController;
+class PerScreenConfigResolver;
 class ScreenManager;
 class Settings;
+class SettingsBridge;
 class TilingAlgorithm;
 class TilingState;
 class WindowTrackingService;
@@ -62,6 +61,10 @@ class PLASMAZONES_EXPORT AutotileEngine : public QObject
     Q_OBJECT
     Q_PROPERTY(bool enabled READ isEnabled NOTIFY enabledChanged)
     Q_PROPERTY(QString algorithm READ algorithm WRITE setAlgorithm NOTIFY algorithmChanged)
+
+    friend class NavigationController;
+    friend class PerScreenConfigResolver;
+    friend class SettingsBridge;
 
 public:
     /**
@@ -194,38 +197,13 @@ public:
      */
     void syncFromSettings(Settings* settings);
 
-    /**
-     * @brief Apply per-screen configuration overrides
-     *
-     * Merges per-screen autotile settings into the TilingState for a screen.
-     * Overrides take precedence over global config for that screen.
-     *
-     * @param screenName Screen to configure
-     * @param overrides Key-value map of autotile settings
-     */
+    // Per-screen config — forwarded to PerScreenConfigResolver
     void applyPerScreenConfig(const QString& screenName, const QVariantMap& overrides);
-
-    /**
-     * @brief Clear per-screen configuration overrides
-     *
-     * Removes all overrides for the screen and restores global defaults
-     * on its TilingState.
-     *
-     * @param screenName Screen to clear overrides for
-     */
     void clearPerScreenConfig(const QString& screenName);
-
-    /**
-     * @brief Get currently applied per-screen overrides for comparison
-     */
     QVariantMap perScreenOverrides(const QString& screenName) const;
-
-    /**
-     * @brief Check if a screen has a per-screen override for a specific key
-     */
     bool hasPerScreenOverride(const QString& screenName, const QString& key) const;
 
-    // Effective per-screen values (per-screen override → global fallback)
+    // Effective per-screen values — forwarded to PerScreenConfigResolver
     int effectiveInnerGap(const QString& screenName) const;
     int effectiveOuterGap(const QString& screenName) const;
     EdgeGaps effectiveOuterGaps(const QString& screenName) const;
@@ -463,23 +441,24 @@ public:
     Q_INVOKABLE void moveFocusedToPosition(int position);
 
     /**
-     * @brief Float a specific window by its ID
+     * @brief Set the floating state of a specific window
      *
-     * Marks the window as floating (excluded from automatic tiling) and
-     * retiles the remaining windows. Used by KWin effect when a window
-     * is dragged during autotile mode (drag-to-float).
+     * When shouldFloat is true, marks the window as floating (excluded from
+     * automatic tiling) and retiles the remaining windows. When false,
+     * removes the floating flag and re-inserts the window into the tiling layout.
      *
      * @param windowId Window identifier from KWin
+     * @param shouldFloat True to float, false to unfloat
+     */
+    Q_INVOKABLE void setWindowFloat(const QString& windowId, bool shouldFloat);
+
+    /**
+     * @brief Float a specific window by its ID (convenience forwarder)
      */
     Q_INVOKABLE void floatWindow(const QString& windowId);
 
     /**
-     * @brief Unfloat a specific window by its ID
-     *
-     * Removes the floating flag and re-inserts the window into the tiling
-     * layout. Counterpart to floatWindow().
-     *
-     * @param windowId Window identifier from KWin
+     * @brief Unfloat a specific window by its ID (convenience forwarder)
      */
     Q_INVOKABLE void unfloatWindow(const QString& windowId);
 
@@ -563,6 +542,30 @@ public:
      * @param screenName Screen where the window is located
      */
     void windowFocused(const QString& windowId, const QString& screenName);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Retile helpers (public — used by extracted classes)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * @brief Schedule a deferred retile for a screen
+     *
+     * Adds the screen to the pending set and posts a QueuedConnection call
+     * to processPendingRetiles(). Multiple calls in the same event loop pass
+     * are coalesced — only one retile fires per screen.
+     */
+    void scheduleRetileForScreen(const QString& screenName);
+
+    /**
+     * @brief Helper to retile a screen after a window operation
+     *
+     * Recalculates layout and applies tiling if enabled, then emits tilingChanged.
+     * Only emits signal if operationSucceeded is true.
+     *
+     * @param screenName Screen to retile
+     * @param operationSucceeded Whether the triggering operation actually changed something
+     */
+    void retileAfterOperation(const QString& screenName, bool operationSucceeded);
 
 Q_SIGNALS:
     /**
@@ -661,17 +664,6 @@ private:
     QRect screenGeometry(const QString& screenName) const;
 
     /**
-     * @brief Helper to retile a screen after a window operation
-     *
-     * Recalculates layout and applies tiling if enabled, then emits tilingChanged.
-     * Only emits signal if operationSucceeded is true.
-     *
-     * @param screenName Screen to retile
-     * @param operationSucceeded Whether the triggering operation actually changed something
-     */
-    void retileAfterOperation(const QString& screenName, bool operationSucceeded);
-
-    /**
      * @brief Reset maxWindows when switching algorithms (DRY helper)
      *
      * If the current maxWindows matches the old algorithm's default, reset
@@ -713,40 +705,22 @@ private:
      */
     void retileScreen(const QString& screenName);
 
-    /**
-     * @brief Helper to get tiled windows and state for focus operations
-     *
-     * Gets the focused window, validates screen, retrieves state and windows.
-     * Returns empty list if any step fails.
-     *
-     * @param[out] outScreenName Screen name of the focused window
-     * @param[out] outState Pointer to the TilingState (may be nullptr)
-     * @return List of tiled windows, or empty list if unavailable
-     */
-    QStringList tiledWindowsForFocusedScreen(QString& outScreenName, TilingState*& outState);
-
-    /**
-     * @brief Helper to emit focus request for a window at calculated index
-     *
-     * Consolidates common focus operation logic: get windows, calculate index, emit signal.
-     *
-     * @param indexOffset Offset from current focus (-1 for previous, +1 for next, 0 for current)
-     * @param useFirst If true, always focus first window (for focusMaster)
-     */
-    void emitFocusRequestAtIndex(int indexOffset, bool useFirst = false);
-
-    /**
-     * @brief Helper to apply an operation to all screen states
-     *
-     * Iterates all screen states and applies the given operation, then retiles if enabled.
-     *
-     * @param operation Function to apply to each TilingState
-     */
-    void applyToAllStates(const std::function<void(TilingState*)>& operation);
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // Helper Methods
     // ═══════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * @brief Check if all pending initial-order windows are resolved for a screen
+     *
+     * Returns true if every window in the pending order for the given screen
+     * is already present in the screen's TilingState. If all resolved,
+     * removes the pending order entry. Used by insertWindow() and removeWindow().
+     *
+     * @param screenName Screen whose pending order to check
+     * @return true if the pending order was fully resolved and removed
+     */
+    bool cleanupPendingOrderIfResolved(const QString& screenName);
 
     /**
      * @brief Validate that a windowId is not empty, logging a warning if it is
@@ -778,6 +752,9 @@ private:
     WindowTrackingService* m_windowTracker = nullptr;
     ScreenManager* m_screenManager = nullptr;
     std::unique_ptr<AutotileConfig> m_config;
+    std::unique_ptr<PerScreenConfigResolver> m_configResolver;
+    std::unique_ptr<NavigationController> m_navigation;
+    std::unique_ptr<SettingsBridge> m_settingsBridge;
 
     QSet<QString> m_autotileScreens;
     QString m_algorithmId;
@@ -800,10 +777,6 @@ private:
     // Per-screen overflow tracking with O(1) reverse-index lookups.
     OverflowManager m_overflow;
 
-    // Settings synchronization
-    QPointer<Settings> m_settings; // QPointer for safe access if Settings destroyed
-    QTimer m_settingsRetileTimer; // Debounce timer for settings changes
-    bool m_pendingSettingsRetile = false;
     bool m_retiling = false;
 
     // Queued-connection retile coalescing: windowOpened D-Bus calls arriving in
@@ -817,36 +790,6 @@ private:
     // focus request arrives at KWin AFTER windowsTiled (whose onComplete raises
     // windows in tiling order). Without this, the raise loop buries the new window.
     QString m_pendingFocusWindowId;
-
-    // Per-screen config overrides (screenName -> key-value map)
-    // Stored here so effective*() helpers can resolve per-screen values
-    // and connectToSettings handlers can skip screens with overrides.
-    QHash<QString, QVariantMap> m_perScreenOverrides;
-
-    // Helper: look up a per-screen override value, returns std::nullopt if not found
-    std::optional<QVariant> perScreenOverride(const QString& screenName, const QString& key) const;
-
-    /**
-     * @brief Schedule a debounced retile after settings change
-     *
-     * Sets pending flag and starts/restarts the debounce timer.
-     * When timer fires, retile() is called if enabled.
-     */
-    void scheduleSettingsRetile();
-
-    /**
-     * @brief Process pending settings retile after debounce timeout
-     */
-    void processSettingsRetile();
-
-    /**
-     * @brief Schedule a deferred retile for a screen
-     *
-     * Adds the screen to the pending set and posts a QueuedConnection call
-     * to processPendingRetiles(). Multiple calls in the same event loop pass
-     * are coalesced — only one retile fires per screen.
-     */
-    void scheduleRetileForScreen(const QString& screenName);
 
     /**
      * @brief Process all pending retiles (fires via QueuedConnection)
