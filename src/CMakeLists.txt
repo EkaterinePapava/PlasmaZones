@@ -310,14 +310,31 @@ kconfig_add_kcfg_files(plasmazones_daemon_kcfg_SRCS
 set(plasmazones_daemon_SRCS
     daemon/main.cpp
     daemon/daemon.cpp
+    daemon/daemon_start.cpp
+    daemon/daemon_signals.cpp
+    daemon/daemon_navigation.cpp
+    daemon/daemon_autotile.cpp
+    daemon/daemon_osd.cpp
     daemon/daemon.h
+    daemon/daemon_helpers.h
+    daemon/daemon_macros.h
     daemon/cavaservice.cpp
     daemon/cavaservice.h
     daemon/overlayservice.cpp
+    daemon/overlayservice_settings.cpp
+    daemon/overlayservice_overlay.cpp
+    daemon/overlayservice_overlay_data.cpp
+    daemon/overlayservice_osd.cpp
+    daemon/overlayservice_selector.cpp
+    daemon/overlayservice_selector_update.cpp
+    daemon/overlayservice_shader.cpp
+    daemon/overlayservice_snapassist.cpp
     daemon/overlayservice.h
+    daemon/overlayservice_internal.h
     daemon/windowthumbnailservice.cpp
     daemon/windowthumbnailservice.h
     daemon/shortcutmanager.cpp
+    daemon/shortcutmanager_handlers.cpp
     daemon/shortcutmanager.h
     daemon/zoneselectorcontroller.cpp
     daemon/zoneselectorcontroller.h

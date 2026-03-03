@@ -133,6 +133,16 @@ private:
     void handleRetile();
     void connectToKWinScript(); // Shortcuts now handled by ShortcutManager
 
+    // Start-up sub-methods (defined in daemon_start.cpp)
+    void connectScreenSignals();
+    void connectDesktopActivity();
+    void connectShortcutSignals();
+    void initializeAutotile();
+    void initializeUnifiedController();
+    void connectLayoutSignals();
+    void connectOverlaySignals();
+    void finalizeStartup();
+
     /**
      * @brief Pre-seed autotile engine with zone-ordered windows for one screen
      *

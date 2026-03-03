@@ -206,8 +206,10 @@ find_program(GETTEXT_MSGCAT_EXECUTABLE NAMES msgcat)
 set(PLASMAZONESD_CPP
     ${CMAKE_SOURCE_DIR}/src/daemon/main.cpp
     ${CMAKE_SOURCE_DIR}/src/daemon/daemon.cpp
+    ${CMAKE_SOURCE_DIR}/src/daemon/daemon_osd.cpp
     ${CMAKE_SOURCE_DIR}/src/daemon/overlayservice.cpp
     ${CMAKE_SOURCE_DIR}/src/daemon/shortcutmanager.cpp
+    ${CMAKE_SOURCE_DIR}/src/daemon/shortcutmanager_handlers.cpp
     ${CMAKE_SOURCE_DIR}/src/dbus/windowdragadaptor.cpp
 )
 file(GLOB PLASMAZONESD_QML "${CMAKE_SOURCE_DIR}/src/ui/*.qml")
