@@ -211,6 +211,7 @@ set(PLASMAZONESD_CPP
     ${CMAKE_SOURCE_DIR}/src/daemon/shortcutmanager.cpp
     ${CMAKE_SOURCE_DIR}/src/daemon/shortcutmanager_handlers.cpp
     ${CMAKE_SOURCE_DIR}/src/dbus/windowdragadaptor.cpp
+    ${CMAKE_SOURCE_DIR}/src/dbus/windowdragadaptor_drag.cpp
 )
 file(GLOB PLASMAZONESD_QML "${CMAKE_SOURCE_DIR}/src/ui/*.qml")
 file(GLOB PLASMAZONES_EDITOR_CPP

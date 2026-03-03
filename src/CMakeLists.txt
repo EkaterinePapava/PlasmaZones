@@ -87,6 +87,8 @@ set(plasmazones_core_SRCS
     config/updatechecker.cpp
     config/updatechecker.h
     dbus/layoutadaptor.cpp
+    dbus/layoutadaptor_assignment.cpp
+    dbus/layoutadaptor_editor.cpp
     dbus/layoutadaptor.h
     dbus/settingsadaptor.cpp
     dbus/settingsadaptor.h
@@ -95,12 +97,22 @@ set(plasmazones_core_SRCS
     dbus/zonedetectionadaptor.cpp
     dbus/zonedetectionadaptor.h
     dbus/windowtrackingadaptor.cpp
+    dbus/windowtrackingadaptor_navigation.cpp
+    dbus/windowtrackingadaptor_targets.cpp
+    dbus/windowtrackingadaptor_float.cpp
+    dbus/windowtrackingadaptor_persistence.cpp
+    dbus/windowtrackingadaptor_saveload.cpp
+    dbus/windowtrackingadaptor_snaprestore.cpp
     dbus/windowtrackingadaptor.h
+    dbus/windowtrackingadaptor_internal.h
     dbus/screenadaptor.cpp
     dbus/screenadaptor.h
     dbus/windowdragadaptor.cpp
+    dbus/windowdragadaptor_drag.cpp
+    dbus/windowdragadaptor_drop.cpp
     dbus/windowdragadaptor.h
     dbus/autotileadaptor.cpp
+    dbus/autotileadaptor_config.cpp
     dbus/autotileadaptor.h
     autotile/TilingAlgorithm.cpp
     autotile/TilingAlgorithm.h
