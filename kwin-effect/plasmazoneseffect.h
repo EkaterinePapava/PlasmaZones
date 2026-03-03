@@ -195,9 +195,15 @@ private:
     void ensurePreSnapGeometryStored(KWin::EffectWindow* w, const QString& windowId, const QRectF& preCapturedGeometry = QRectF());
 
     /**
-     * @brief Build a map of stable window IDs to EffectWindow pointers
+     * @brief Build a map of full window IDs to EffectWindow pointers
+     *
+     * Keys are full window IDs (including pointer address) from getWindowId(),
+     * so two windows of the same app class get separate entries. Callers that
+     * receive daemon data keyed by stableId should do a linear scan fallback
+     * when the exact full ID is not found.
+     *
      * @param filterHandleable If true, only include windows passing shouldHandleWindow()
-     * @return Hash map of stableId -> EffectWindow*
+     * @return Hash map of fullWindowId -> EffectWindow*
      */
     QHash<QString, KWin::EffectWindow*> buildWindowMap(bool filterHandleable = true) const;
 

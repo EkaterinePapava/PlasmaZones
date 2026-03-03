@@ -876,8 +876,26 @@ NavigationHandler::BatchSnapResult NavigationHandler::applyBatchSnapFromJson(con
             continue;
         }
 
-        QString stableId = m_effect->extractStableId(windowId);
-        KWin::EffectWindow* window = windowMap.value(stableId);
+        // Try exact full windowId match first (current daemon data uses full IDs)
+        KWin::EffectWindow* window = windowMap.value(windowId);
+        if (!window) {
+            // Fall back to stableId linear scan for backward compat
+            QString stableId = m_effect->extractStableId(windowId);
+            KWin::EffectWindow* candidate = nullptr;
+            int matchCount = 0;
+            for (auto it = windowMap.constBegin(); it != windowMap.constEnd(); ++it) {
+                if (m_effect->extractStableId(it.key()) == stableId) {
+                    candidate = it.value();
+                    if (++matchCount > 1) {
+                        break; // ambiguous — multiple windows share this stableId
+                    }
+                }
+            }
+            // Only use fallback if exactly one window matched (unambiguous)
+            if (matchCount == 1) {
+                window = candidate;
+            }
+        }
 
         if (!window) {
             continue;

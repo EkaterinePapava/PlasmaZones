@@ -23,44 +23,21 @@ ScrollView {
     // Whether this tab is currently visible (for conditional tooltips)
     property bool isCurrentTab: false
 
-    // Per-screen monitor selector state (applies to Algorithm card only)
-    property string selectedScreenName: ""
-    readonly property bool isPerScreen: selectedScreenName !== ""
-    readonly property bool hasOverrides: isPerScreen && Object.keys(perScreenOverrides).length > 0
+    // Per-screen override helper (applies to Algorithm card only)
+    property alias selectedScreenName: psHelper.selectedScreenName
+    readonly property alias isPerScreen: psHelper.isPerScreen
+    readonly property alias hasOverrides: psHelper.hasOverrides
 
-    onSelectedScreenNameChanged: reloadPerScreenOverrides()
-
-    // Per-screen override cache (loaded from C++ when screen selection changes)
-    property var perScreenOverrides: ({})
-
-    function reloadPerScreenOverrides() {
-        if (isPerScreen && selectedScreenName !== "") {
-            perScreenOverrides = kcm.getPerScreenAutotileSettings(selectedScreenName)
-        } else {
-            perScreenOverrides = {}
-        }
+    PerScreenOverrideHelper {
+        id: psHelper
+        kcm: root.kcm
+        getterMethod: "getPerScreenAutotileSettings"
+        setterMethod: "setPerScreenAutotileSetting"
+        clearerMethod: "clearPerScreenAutotileSettings"
     }
 
-    // Read a setting value: per-screen override if editing a specific screen, otherwise global
-    function settingValue(key, globalValue) {
-        if (isPerScreen && perScreenOverrides.hasOwnProperty(key)) {
-            return perScreenOverrides[key]
-        }
-        return globalValue
-    }
-
-    // Write a setting value: per-screen override if editing a specific screen, otherwise global
-    function writeSetting(key, value, globalSetter) {
-        if (isPerScreen) {
-            kcm.setPerScreenAutotileSetting(selectedScreenName, key, value)
-            // Reassign the property (shallow copy) so QML detects the change
-            var updated = Object.assign({}, perScreenOverrides)
-            updated[key] = value
-            perScreenOverrides = updated
-        } else {
-            globalSetter(value)
-        }
-    }
+    function settingValue(key, globalValue) { return psHelper.settingValue(key, globalValue) }
+    function writeSetting(key, value, globalSetter) { psHelper.writeSetting(key, value, globalSetter) }
 
     // Convenience property for algorithm-specific visibility
     readonly property string effectiveAlgorithm: settingValue("Algorithm", kcm.autotileAlgorithm)
@@ -168,10 +145,7 @@ ScrollView {
             selectedScreenName: root.selectedScreenName
             hasOverrides: root.hasOverrides
             onSelectedScreenNameChanged: root.selectedScreenName = selectedScreenName
-            onResetClicked: {
-                kcm.clearPerScreenAutotileSettings(root.selectedScreenName)
-                root.reloadPerScreenOverrides()
-            }
+            onResetClicked: psHelper.clearOverrides()
         }
 
         // ═══════════════════════════════════════════════════════════════════════

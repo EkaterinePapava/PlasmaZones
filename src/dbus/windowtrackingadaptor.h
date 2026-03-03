@@ -848,6 +848,18 @@ private:
     QString resolveScreenForSnap(const QString& callerScreen, const QString& zoneId) const;
 
     /**
+     * @brief Apply a successful SnapResult: assign outputs, mark auto-snapped,
+     *        clear floating state, and track the zone assignment.
+     *
+     * Shared by snapToLastZone, snapToAppRule, snapToEmptyZone,
+     * restoreToPersistedZone, and resolveWindowRestore to eliminate
+     * ~13 lines of identical boilerplate per call site.
+     */
+    void applySnapResult(const SnapResult& result, const QString& windowId,
+                         int& snapX, int& snapY, int& snapWidth, int& snapHeight,
+                         bool& shouldSnap);
+
+    /**
      * @brief Clear floating state when a window is being snapped
      * @param windowId Window ID being snapped
      */

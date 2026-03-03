@@ -208,8 +208,7 @@ QHash<QString, KWin::EffectWindow*> PlasmaZonesEffect::buildWindowMap(bool filte
     const auto windows = KWin::effects->stackingOrder();
     for (KWin::EffectWindow* w : windows) {
         if (w && (!filterHandleable || shouldHandleWindow(w))) {
-            QString stableId = extractStableId(getWindowId(w));
-            windowMap[stableId] = w;
+            windowMap[getWindowId(w)] = w;
         }
     }
     return windowMap;

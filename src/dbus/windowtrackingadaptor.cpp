@@ -624,30 +624,12 @@ void WindowTrackingAdaptor::snapToLastZone(const QString& windowId, const QStrin
     snapX = snapY = snapWidth = snapHeight = 0;
     shouldSnap = false;
 
-    // Delegate calculation to service
     SnapResult result = m_service->calculateSnapToLastZone(windowId, windowScreenName, sticky);
     if (!result.shouldSnap) {
         return;
     }
 
-    snapX = result.geometry.x();
-    snapY = result.geometry.y();
-    snapWidth = result.geometry.width();
-    snapHeight = result.geometry.height();
-    shouldSnap = true;
-
-    // Mark as auto-snapped so windowSnapped() won't update last-used zone or clear pending
-    m_service->markAsAutoSnapped(windowId);
-    clearFloatingStateForSnap(windowId);
-
-    // Track the assignment (support multi-zone results)
-    int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-    if (result.zoneIds.size() > 1) {
-        m_service->assignWindowToZones(windowId, result.zoneIds, result.screenName, currentDesktop);
-    } else {
-        m_service->assignWindowToZone(windowId, result.zoneId, result.screenName, currentDesktop);
-    }
-
+    applySnapResult(result, windowId, snapX, snapY, snapWidth, snapHeight, shouldSnap);
     qCInfo(lcDbusWindow) << "Snapping new window" << windowId << "to last used zone" << result.zoneId;
 }
 
@@ -661,30 +643,12 @@ void WindowTrackingAdaptor::snapToAppRule(const QString& windowId, const QString
         return;
     }
 
-    // Delegate calculation to service
     SnapResult result = m_service->calculateSnapToAppRule(windowId, windowScreenName, sticky);
     if (!result.shouldSnap) {
         return;
     }
 
-    snapX = result.geometry.x();
-    snapY = result.geometry.y();
-    snapWidth = result.geometry.width();
-    snapHeight = result.geometry.height();
-    shouldSnap = true;
-
-    // Mark as auto-snapped so windowSnapped() won't update last-used zone or clear pending
-    m_service->markAsAutoSnapped(windowId);
-    clearFloatingStateForSnap(windowId);
-
-    // Track the assignment (support multi-zone results)
-    int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-    if (result.zoneIds.size() > 1) {
-        m_service->assignWindowToZones(windowId, result.zoneIds, result.screenName, currentDesktop);
-    } else {
-        m_service->assignWindowToZone(windowId, result.zoneId, result.screenName, currentDesktop);
-    }
-
+    applySnapResult(result, windowId, snapX, snapY, snapWidth, snapHeight, shouldSnap);
     qCInfo(lcDbusWindow) << "App rule snapping window" << windowId << "to zone" << result.zoneId;
 }
 
@@ -705,24 +669,7 @@ void WindowTrackingAdaptor::snapToEmptyZone(const QString& windowId, const QStri
         return;
     }
 
-    snapX = result.geometry.x();
-    snapY = result.geometry.y();
-    snapWidth = result.geometry.width();
-    snapHeight = result.geometry.height();
-    shouldSnap = true;
-
-    // Mark as auto-snapped so windowSnapped() won't update last-used zone or clear pending
-    m_service->markAsAutoSnapped(windowId);
-    clearFloatingStateForSnap(windowId);
-
-    // Track the assignment (support multi-zone results)
-    int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-    if (result.zoneIds.size() > 1) {
-        m_service->assignWindowToZones(windowId, result.zoneIds, result.screenName, currentDesktop);
-    } else {
-        m_service->assignWindowToZone(windowId, result.zoneId, result.screenName, currentDesktop);
-    }
-
+    applySnapResult(result, windowId, snapX, snapY, snapWidth, snapHeight, shouldSnap);
     qCInfo(lcDbusWindow) << "Auto-assign snapping window" << windowId << "to empty zone" << result.zoneId;
 }
 
@@ -742,34 +689,15 @@ void WindowTrackingAdaptor::restoreToPersistedZone(const QString& windowId, cons
         return;
     }
 
-    // Delegate calculation to service
     SnapResult result = m_service->calculateRestoreFromSession(windowId, screenName, sticky);
     if (!result.shouldSnap) {
         return;
     }
 
-    snapX = result.geometry.x();
-    snapY = result.geometry.y();
-    snapWidth = result.geometry.width();
-    snapHeight = result.geometry.height();
-    shouldRestore = true;
-
-    // Mark as auto-snapped so windowSnapped() won't update last-used zone or clear pending
-    m_service->markAsAutoSnapped(windowId);
-    clearFloatingStateForSnap(windowId);
-
+    applySnapResult(result, windowId, snapX, snapY, snapWidth, snapHeight, shouldRestore);
     // Consume the pending assignment so other windows of the same class won't restore to this zone
     m_service->consumePendingAssignment(windowId);
-
-    // Track the assignment (support multi-zone results)
-    int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-    if (result.zoneIds.size() > 1) {
-        m_service->assignWindowToZones(windowId, result.zoneIds, result.screenName, currentDesktop);
-    } else {
-        m_service->assignWindowToZone(windowId, result.zoneId, result.screenName, currentDesktop);
-    }
-
-    qCInfo(lcDbusWindow) << "Restoring window window= " << windowId << " zone(s)= " << result.zoneIds;
+    qCInfo(lcDbusWindow) << "Restoring window" << windowId << "to zone(s)" << result.zoneIds;
 }
 
 void WindowTrackingAdaptor::resolveWindowRestore(const QString& windowId, const QString& screenName, bool sticky,
@@ -786,34 +714,13 @@ void WindowTrackingAdaptor::resolveWindowRestore(const QString& windowId, const 
         return;
     }
 
-    int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-
-    // Helper to apply common side effects for a successful snap
-    auto applySnap = [&](const SnapResult& result, const QString& strategy) {
-        snapX = result.geometry.x();
-        snapY = result.geometry.y();
-        snapWidth = result.geometry.width();
-        snapHeight = result.geometry.height();
-        shouldSnap = true;
-
-        m_service->markAsAutoSnapped(windowId);
-        clearFloatingStateForSnap(windowId);
-
-        if (result.zoneIds.size() > 1) {
-            m_service->assignWindowToZones(windowId, result.zoneIds, result.screenName, currentDesktop);
-        } else {
-            m_service->assignWindowToZone(windowId, result.zoneId, result.screenName, currentDesktop);
-        }
-
-        qCInfo(lcDbusWindow) << "resolveWindowRestore:" << strategy << "matched for" << windowId
-                             << "zone=" << result.zoneId;
-    };
-
     // 1. App rules (highest priority)
     {
         SnapResult result = m_service->calculateSnapToAppRule(windowId, screenName, sticky);
         if (result.shouldSnap) {
-            applySnap(result, QStringLiteral("appRule"));
+            applySnapResult(result, windowId, snapX, snapY, snapWidth, snapHeight, shouldSnap);
+            qCInfo(lcDbusWindow) << "resolveWindowRestore: appRule matched for" << windowId
+                                 << "zone=" << result.zoneId;
             return;
         }
     }
@@ -822,8 +729,10 @@ void WindowTrackingAdaptor::resolveWindowRestore(const QString& windowId, const 
     if (m_settings && m_settings->restoreWindowsToZonesOnLogin()) {
         SnapResult result = m_service->calculateRestoreFromSession(windowId, screenName, sticky);
         if (result.shouldSnap) {
-            applySnap(result, QStringLiteral("persisted"));
+            applySnapResult(result, windowId, snapX, snapY, snapWidth, snapHeight, shouldSnap);
             m_service->consumePendingAssignment(windowId);
+            qCInfo(lcDbusWindow) << "resolveWindowRestore: persisted matched for" << windowId
+                                 << "zone=" << result.zoneId;
             return;
         }
     }
@@ -832,7 +741,9 @@ void WindowTrackingAdaptor::resolveWindowRestore(const QString& windowId, const 
     {
         SnapResult result = m_service->calculateSnapToEmptyZone(windowId, screenName, sticky);
         if (result.shouldSnap) {
-            applySnap(result, QStringLiteral("emptyZone"));
+            applySnapResult(result, windowId, snapX, snapY, snapWidth, snapHeight, shouldSnap);
+            qCInfo(lcDbusWindow) << "resolveWindowRestore: emptyZone matched for" << windowId
+                                 << "zone=" << result.zoneId;
             return;
         }
     }
@@ -841,7 +752,9 @@ void WindowTrackingAdaptor::resolveWindowRestore(const QString& windowId, const 
     {
         SnapResult result = m_service->calculateSnapToLastZone(windowId, screenName, sticky);
         if (result.shouldSnap) {
-            applySnap(result, QStringLiteral("lastZone"));
+            applySnapResult(result, windowId, snapX, snapY, snapWidth, snapHeight, shouldSnap);
+            qCInfo(lcDbusWindow) << "resolveWindowRestore: lastZone matched for" << windowId
+                                 << "zone=" << result.zoneId;
             return;
         }
     }
@@ -2293,6 +2206,27 @@ QString WindowTrackingAdaptor::resolveScreenForSnap(const QString& callerScreen,
         return m_lastCursorScreenName;
     }
     return m_lastActiveScreenName;
+}
+
+void WindowTrackingAdaptor::applySnapResult(const SnapResult& result, const QString& windowId,
+                                             int& snapX, int& snapY, int& snapWidth, int& snapHeight,
+                                             bool& shouldSnap)
+{
+    snapX = result.geometry.x();
+    snapY = result.geometry.y();
+    snapWidth = result.geometry.width();
+    snapHeight = result.geometry.height();
+    shouldSnap = true;
+
+    m_service->markAsAutoSnapped(windowId);
+    clearFloatingStateForSnap(windowId);
+
+    int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
+    if (result.zoneIds.size() > 1) {
+        m_service->assignWindowToZones(windowId, result.zoneIds, result.screenName, currentDesktop);
+    } else {
+        m_service->assignWindowToZone(windowId, result.zoneId, result.screenName, currentDesktop);
+    }
 }
 
 void WindowTrackingAdaptor::clearFloatingStateForSnap(const QString& windowId)

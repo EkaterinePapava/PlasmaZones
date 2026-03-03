@@ -28,45 +28,21 @@ ColumnLayout {
     property real screenAspectRatio: 16/9
     readonly property real safeAspectRatio: screenAspectRatio > 0 ? screenAspectRatio : (16/9)
 
-    // Per-screen monitor selector state
-    property string selectedScreenName: ""
-    readonly property bool isPerScreen: selectedScreenName !== ""
-    // Derived from perScreenOverrides so QML re-evaluates when writeSetting() updates it
-    readonly property bool hasOverrides: isPerScreen && Object.keys(perScreenOverrides).length > 0
+    // Per-screen override helper
+    property alias selectedScreenName: psHelper.selectedScreenName
+    readonly property alias isPerScreen: psHelper.isPerScreen
+    readonly property alias hasOverrides: psHelper.hasOverrides
 
-    onSelectedScreenNameChanged: reloadPerScreenOverrides()
-
-    // Per-screen override cache (loaded from C++ when screen selection changes)
-    property var perScreenOverrides: ({})
-
-    function reloadPerScreenOverrides() {
-        if (isPerScreen && selectedScreenName !== "") {
-            perScreenOverrides = kcm.getPerScreenZoneSelectorSettings(selectedScreenName)
-        } else {
-            perScreenOverrides = {}
-        }
+    PerScreenOverrideHelper {
+        id: psHelper
+        kcm: root.kcm
+        getterMethod: "getPerScreenZoneSelectorSettings"
+        setterMethod: "setPerScreenZoneSelectorSetting"
+        clearerMethod: "clearPerScreenZoneSelectorSettings"
     }
 
-    // Read a setting value: per-screen override if editing a specific screen, otherwise global
-    function settingValue(key, globalValue) {
-        if (isPerScreen && perScreenOverrides.hasOwnProperty(key)) {
-            return perScreenOverrides[key]
-        }
-        return globalValue
-    }
-
-    // Write a setting value: per-screen override if editing a specific screen, otherwise global
-    function writeSetting(key, value, globalSetter) {
-        if (isPerScreen) {
-            kcm.setPerScreenZoneSelectorSetting(selectedScreenName, key, value)
-            // Reassign the property (shallow copy) so QML detects the change
-            var updated = Object.assign({}, perScreenOverrides)
-            updated[key] = value
-            perScreenOverrides = updated
-        } else {
-            globalSetter(value)
-        }
-    }
+    function settingValue(key, globalValue) { return psHelper.settingValue(key, globalValue) }
+    function writeSetting(key, value, globalSetter) { psHelper.writeSetting(key, value, globalSetter) }
 
     // Effective values that resolve per-screen > global
     readonly property int effectivePosition: settingValue("Position", kcm.zoneSelectorPosition)
@@ -120,10 +96,7 @@ ColumnLayout {
         selectedScreenName: root.selectedScreenName
         hasOverrides: root.hasOverrides
         onSelectedScreenNameChanged: root.selectedScreenName = selectedScreenName
-        onResetClicked: {
-            kcm.clearPerScreenZoneSelectorSettings(root.selectedScreenName)
-            root.reloadPerScreenOverrides()
-        }
+        onResetClicked: psHelper.clearOverrides()
     }
 
     // Position & Trigger card - wrapped in Item for stable sizing

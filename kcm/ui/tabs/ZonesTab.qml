@@ -26,40 +26,21 @@ ScrollView {
     // Screen aspect ratio for preview calculations (passed through to ZoneSelectorSection)
     property real screenAspectRatio: 16/9
 
-    // Per-screen snapping gap/padding state
-    property string selectedSnappingScreenName: ""
-    readonly property bool isPerScreenSnapping: selectedSnappingScreenName !== ""
-    readonly property bool hasSnappingOverrides: isPerScreenSnapping && Object.keys(snappingPerScreenOverrides).length > 0
+    // Per-screen snapping gap/padding helper
+    property alias selectedSnappingScreenName: snappingHelper.selectedScreenName
+    readonly property alias isPerScreenSnapping: snappingHelper.isPerScreen
+    readonly property alias hasSnappingOverrides: snappingHelper.hasOverrides
 
-    onSelectedSnappingScreenNameChanged: reloadSnappingPerScreenOverrides()
-
-    property var snappingPerScreenOverrides: ({})
-
-    function reloadSnappingPerScreenOverrides() {
-        if (isPerScreenSnapping && selectedSnappingScreenName !== "") {
-            snappingPerScreenOverrides = kcm.getPerScreenSnappingSettings(selectedSnappingScreenName)
-        } else {
-            snappingPerScreenOverrides = {}
-        }
+    PerScreenOverrideHelper {
+        id: snappingHelper
+        kcm: root.kcm
+        getterMethod: "getPerScreenSnappingSettings"
+        setterMethod: "setPerScreenSnappingSetting"
+        clearerMethod: "clearPerScreenSnappingSettings"
     }
 
-    function snappingSettingValue(key, globalValue) {
-        if (isPerScreenSnapping && snappingPerScreenOverrides.hasOwnProperty(key)) {
-            return snappingPerScreenOverrides[key]
-        }
-        return globalValue
-    }
-
-    function writeSnappingSetting(key, value, globalSetter) {
-        if (isPerScreenSnapping) {
-            kcm.setPerScreenSnappingSetting(selectedSnappingScreenName, key, value)
-            var updated = Object.assign({}, snappingPerScreenOverrides)
-            updated[key] = value
-            snappingPerScreenOverrides = updated
-        } else {
-            globalSetter(value)
-        }
-    }
+    function snappingSettingValue(key, globalValue) { return snappingHelper.settingValue(key, globalValue) }
+    function writeSnappingSetting(key, value, globalSetter) { snappingHelper.writeSetting(key, value, globalSetter) }
 
     // Signals for color dialog interactions (handled by main.qml)
     signal requestHighlightColorDialog()
@@ -731,10 +712,7 @@ ScrollView {
             selectedScreenName: root.selectedSnappingScreenName
             hasOverrides: root.hasSnappingOverrides
             onSelectedScreenNameChanged: root.selectedSnappingScreenName = selectedScreenName
-            onResetClicked: {
-                kcm.clearPerScreenSnappingSettings(root.selectedSnappingScreenName)
-                root.reloadSnappingPerScreenOverrides()
-            }
+            onResetClicked: snappingHelper.clearOverrides()
         }
 
         // ═══════════════════════════════════════════════════════════════════════
