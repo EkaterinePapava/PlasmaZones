@@ -57,6 +57,23 @@ struct PLASMAZONES_EXPORT AutotileConfig
      */
     int masterCount = 1;
 
+    /**
+     * @brief Per-algorithm split ratio for centered-master
+     *
+     * Semantically different from splitRatio (center column width vs master area width).
+     * Range: 0.1 to 0.9
+     * Default: 0.5
+     */
+    qreal centeredMasterSplitRatio = 0.5;
+
+    /**
+     * @brief Per-algorithm master count for centered-master
+     *
+     * Range: 1 to 5
+     * Default: 1
+     */
+    int centeredMasterMasterCount = 1;
+
     // ═══════════════════════════════════════════════════════════════════════
     // Gap Settings
     // ═══════════════════════════════════════════════════════════════════════

@@ -724,6 +724,18 @@
       <min>1</min>
       <max>5</max>
     </entry>
+    <entry name="AutotileCenteredMasterSplitRatio" type="Double">
+      <label>Center column width ratio for Centered Master (0.1-0.9)</label>
+      <default>0.5</default>
+      <min>0.1</min>
+      <max>0.9</max>
+    </entry>
+    <entry name="AutotileCenteredMasterMasterCount" type="Int">
+      <label>Number of center windows for Centered Master (1-5)</label>
+      <default>1</default>
+      <min>1</min>
+      <max>5</max>
+    </entry>
     <entry name="AutotileInnerGap" type="Int">
       <label>Gap between tiled windows in pixels</label>
       <default>8</default>

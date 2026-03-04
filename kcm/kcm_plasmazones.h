@@ -167,6 +167,10 @@ class KCMPlasmaZones : public KQuickConfigModule
                    autotileSplitRatioChanged)
     Q_PROPERTY(
         int autotileMasterCount READ autotileMasterCount WRITE setAutotileMasterCount NOTIFY autotileMasterCountChanged)
+    Q_PROPERTY(qreal autotileCenteredMasterSplitRatio READ autotileCenteredMasterSplitRatio WRITE setAutotileCenteredMasterSplitRatio NOTIFY
+                   autotileCenteredMasterSplitRatioChanged)
+    Q_PROPERTY(int autotileCenteredMasterMasterCount READ autotileCenteredMasterMasterCount WRITE setAutotileCenteredMasterMasterCount NOTIFY
+                   autotileCenteredMasterMasterCountChanged)
     Q_PROPERTY(int autotileInnerGap READ autotileInnerGap WRITE setAutotileInnerGap NOTIFY autotileInnerGapChanged)
     Q_PROPERTY(int autotileOuterGap READ autotileOuterGap WRITE setAutotileOuterGap NOTIFY autotileOuterGapChanged)
     Q_PROPERTY(bool autotileFocusNewWindows READ autotileFocusNewWindows WRITE setAutotileFocusNewWindows NOTIFY
@@ -357,6 +361,8 @@ public:
     QString autotileAlgorithm() const;
     qreal autotileSplitRatio() const;
     int autotileMasterCount() const;
+    qreal autotileCenteredMasterSplitRatio() const;
+    int autotileCenteredMasterMasterCount() const;
     int autotileInnerGap() const;
     int autotileOuterGap() const;
     bool autotileFocusNewWindows() const;
@@ -508,6 +514,8 @@ public:
     void setAutotileAlgorithm(const QString& algorithm);
     void setAutotileSplitRatio(qreal ratio);
     void setAutotileMasterCount(int count);
+    void setAutotileCenteredMasterSplitRatio(qreal ratio);
+    void setAutotileCenteredMasterMasterCount(int count);
     void setAutotileInnerGap(int gap);
     void setAutotileOuterGap(int gap);
     void setAutotileFocusNewWindows(bool focus);
@@ -735,6 +743,8 @@ Q_SIGNALS:
     void autotileAlgorithmChanged();
     void autotileSplitRatioChanged();
     void autotileMasterCountChanged();
+    void autotileCenteredMasterSplitRatioChanged();
+    void autotileCenteredMasterMasterCountChanged();
     void autotileInnerGapChanged();
     void autotileOuterGapChanged();
     void autotileFocusNewWindowsChanged();

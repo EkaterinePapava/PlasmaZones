@@ -250,6 +250,18 @@ void Settings::loadAutotilingConfig(const KConfigGroup& autotiling, const KConfi
     }
     m_autotileMasterCount = masterCount;
 
+    qreal cmSplitRatio = autotiling.readEntry(QLatin1String("AutotileCenteredMasterSplitRatio"), ConfigDefaults::autotileCenteredMasterSplitRatio());
+    if (cmSplitRatio < AutotileDefaults::MinSplitRatio || cmSplitRatio > AutotileDefaults::MaxSplitRatio) {
+        cmSplitRatio = qBound(AutotileDefaults::MinSplitRatio, cmSplitRatio, AutotileDefaults::MaxSplitRatio);
+    }
+    m_autotileCenteredMasterSplitRatio = cmSplitRatio;
+
+    int cmMasterCount = autotiling.readEntry(QLatin1String("AutotileCenteredMasterMasterCount"), ConfigDefaults::autotileCenteredMasterMasterCount());
+    if (cmMasterCount < AutotileDefaults::MinMasterCount || cmMasterCount > AutotileDefaults::MaxMasterCount) {
+        cmMasterCount = qBound(AutotileDefaults::MinMasterCount, cmMasterCount, AutotileDefaults::MaxMasterCount);
+    }
+    m_autotileCenteredMasterMasterCount = cmMasterCount;
+
     m_autotileInnerGap = readValidatedInt(autotiling, "AutotileInnerGap", ConfigDefaults::autotileInnerGap(),
                                           AutotileDefaults::MinGap, AutotileDefaults::MaxGap, "autotile inner gap");
     m_autotileOuterGap = readValidatedInt(autotiling, "AutotileOuterGap", ConfigDefaults::autotileOuterGap(),
@@ -438,6 +450,8 @@ void Settings::saveAutotilingConfig(KConfigGroup& autotiling, KConfigGroup& anim
     autotiling.writeEntry(QLatin1String("AutotileAlgorithm"), m_autotileAlgorithm);
     autotiling.writeEntry(QLatin1String("AutotileSplitRatio"), m_autotileSplitRatio);
     autotiling.writeEntry(QLatin1String("AutotileMasterCount"), m_autotileMasterCount);
+    autotiling.writeEntry(QLatin1String("AutotileCenteredMasterSplitRatio"), m_autotileCenteredMasterSplitRatio);
+    autotiling.writeEntry(QLatin1String("AutotileCenteredMasterMasterCount"), m_autotileCenteredMasterMasterCount);
     autotiling.writeEntry(QLatin1String("AutotileInnerGap"), m_autotileInnerGap);
     autotiling.writeEntry(QLatin1String("AutotileOuterGap"), m_autotileOuterGap);
     autotiling.writeEntry(QLatin1String("AutotileUsePerSideOuterGap"), m_autotileUsePerSideOuterGap);

@@ -276,6 +276,8 @@ void Settings::setAutotileAlgorithm(const QString& algorithm)
 
 SETTINGS_SETTER_CLAMPED_QREAL(AutotileSplitRatio, m_autotileSplitRatio, autotileSplitRatioChanged, AutotileDefaults::MinSplitRatio, AutotileDefaults::MaxSplitRatio)
 SETTINGS_SETTER_CLAMPED(AutotileMasterCount, m_autotileMasterCount, autotileMasterCountChanged, AutotileDefaults::MinMasterCount, AutotileDefaults::MaxMasterCount)
+SETTINGS_SETTER_CLAMPED_QREAL(AutotileCenteredMasterSplitRatio, m_autotileCenteredMasterSplitRatio, autotileCenteredMasterSplitRatioChanged, AutotileDefaults::MinSplitRatio, AutotileDefaults::MaxSplitRatio)
+SETTINGS_SETTER_CLAMPED(AutotileCenteredMasterMasterCount, m_autotileCenteredMasterMasterCount, autotileCenteredMasterMasterCountChanged, AutotileDefaults::MinMasterCount, AutotileDefaults::MaxMasterCount)
 SETTINGS_SETTER_CLAMPED(AutotileInnerGap, m_autotileInnerGap, autotileInnerGapChanged, AutotileDefaults::MinGap, AutotileDefaults::MaxGap)
 SETTINGS_SETTER_CLAMPED(AutotileOuterGap, m_autotileOuterGap, autotileOuterGapChanged, AutotileDefaults::MinGap, AutotileDefaults::MaxGap)
 SETTINGS_SETTER(bool, AutotileUsePerSideOuterGap, m_autotileUsePerSideOuterGap, autotileUsePerSideOuterGapChanged)

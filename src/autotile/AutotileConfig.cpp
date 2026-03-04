@@ -44,6 +44,8 @@ bool AutotileConfig::operator==(const AutotileConfig &other) const
     return algorithmId == other.algorithmId
         && qFuzzyCompare(1.0 + splitRatio, 1.0 + other.splitRatio)
         && masterCount == other.masterCount
+        && qFuzzyCompare(1.0 + centeredMasterSplitRatio, 1.0 + other.centeredMasterSplitRatio)
+        && centeredMasterMasterCount == other.centeredMasterMasterCount
         && innerGap == other.innerGap
         && outerGap == other.outerGap
         && usePerSideOuterGap == other.usePerSideOuterGap
@@ -70,6 +72,8 @@ QJsonObject AutotileConfig::toJson() const
     json[AlgorithmId] = algorithmId;
     json[SplitRatio] = splitRatio;
     json[MasterCount] = masterCount;
+    json[QStringLiteral("centeredMasterSplitRatio")] = centeredMasterSplitRatio;
+    json[QStringLiteral("centeredMasterMasterCount")] = centeredMasterMasterCount;
     json[InnerGap] = innerGap;
     json[OuterGap] = outerGap;
     json[AutotileJsonKeys::UsePerSideOuterGap] = usePerSideOuterGap;
@@ -100,6 +104,14 @@ AutotileConfig AutotileConfig::fromJson(const QJsonObject &json)
     if (json.contains(MasterCount)) {
         config.masterCount = json[MasterCount].toInt(config.masterCount);
         config.masterCount = std::clamp(config.masterCount, MinMasterCount, MaxMasterCount);
+    }
+    if (json.contains(QStringLiteral("centeredMasterSplitRatio"))) {
+        config.centeredMasterSplitRatio = json[QStringLiteral("centeredMasterSplitRatio")].toDouble(config.centeredMasterSplitRatio);
+        config.centeredMasterSplitRatio = std::clamp(config.centeredMasterSplitRatio, MinSplitRatio, MaxSplitRatio);
+    }
+    if (json.contains(QStringLiteral("centeredMasterMasterCount"))) {
+        config.centeredMasterMasterCount = json[QStringLiteral("centeredMasterMasterCount")].toInt(config.centeredMasterMasterCount);
+        config.centeredMasterMasterCount = std::clamp(config.centeredMasterMasterCount, MinMasterCount, MaxMasterCount);
     }
     if (json.contains(InnerGap)) {
         config.innerGap = json[InnerGap].toInt(config.innerGap);

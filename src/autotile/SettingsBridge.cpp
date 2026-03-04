@@ -64,6 +64,7 @@ void SettingsBridge::syncFromSettings(Settings* settings)
     } while (0)
 
     SYNC_FIELD(masterCount, autotileMasterCount);
+    SYNC_FIELD(centeredMasterMasterCount, autotileCenteredMasterMasterCount);
     SYNC_FIELD(innerGap, autotileInnerGap);
     SYNC_FIELD(outerGap, autotileOuterGap);
     SYNC_FIELD(usePerSideOuterGap, autotileUsePerSideOuterGap);
@@ -84,6 +85,14 @@ void SettingsBridge::syncFromSettings(Settings* settings)
             configChanged = true;
         }
     }
+    // centeredMasterSplitRatio: same fuzzy comparison
+    {
+        const qreal newRatio = settings->autotileCenteredMasterSplitRatio();
+        if (!qFuzzyCompare(1.0 + cfg->centeredMasterSplitRatio, 1.0 + newRatio)) {
+            cfg->centeredMasterSplitRatio = newRatio;
+            configChanged = true;
+        }
+    }
 
     // InsertPosition needs a cast
     {
@@ -101,6 +110,15 @@ void SettingsBridge::syncFromSettings(Settings* settings)
     m_engine->setAlgorithm(settings->autotileAlgorithm());
     if (m_engine->m_algorithmId != oldAlgorithmId) {
         configChanged = true;
+    }
+
+    // When the active algorithm is centered-master and setAlgorithm() early-returned
+    // (no algorithm change), the generic SYNC_FIELD above wrote cfg->splitRatio from
+    // the shared autotileSplitRatio (master-stack's value). Correct that by applying
+    // the centered-master-specific values, which were already synced above.
+    if (m_engine->m_algorithmId == QLatin1String("centered-master")) {
+        cfg->splitRatio = cfg->centeredMasterSplitRatio;
+        cfg->masterCount = cfg->centeredMasterMasterCount;
     }
 
     // Propagate split ratio and master count to screens WITHOUT per-screen overrides.
@@ -199,6 +217,27 @@ void SettingsBridge::connectToSettings(Settings* settings)
         m_engine->propagateGlobalMasterCount();
         scheduleSettingsRetile();
     });
+
+    QObject::connect(settings, &Settings::autotileCenteredMasterSplitRatioChanged, m_engine, [this]() {
+        if (!m_settings) return;
+        m_engine->config()->centeredMasterSplitRatio = m_settings->autotileCenteredMasterSplitRatio();
+        if (m_engine->m_algorithmId == QLatin1String("centered-master")) {
+            m_engine->config()->splitRatio = m_engine->config()->centeredMasterSplitRatio;
+            m_engine->propagateGlobalSplitRatio();
+            scheduleSettingsRetile();
+        }
+    });
+
+    QObject::connect(settings, &Settings::autotileCenteredMasterMasterCountChanged, m_engine, [this]() {
+        if (!m_settings) return;
+        m_engine->config()->centeredMasterMasterCount = m_settings->autotileCenteredMasterMasterCount();
+        if (m_engine->m_algorithmId == QLatin1String("centered-master")) {
+            m_engine->config()->masterCount = m_engine->config()->centeredMasterMasterCount;
+            m_engine->propagateGlobalMasterCount();
+            scheduleSettingsRetile();
+        }
+    });
+
     CONNECT_SETTING_RETILE(autotileInnerGapChanged, innerGap, autotileInnerGap);
     CONNECT_SETTING_RETILE(autotileOuterGapChanged, outerGap, autotileOuterGap);
     CONNECT_SETTING_RETILE(autotileUsePerSideOuterGapChanged, usePerSideOuterGap, autotileUsePerSideOuterGap);
@@ -255,6 +294,10 @@ void SettingsBridge::syncAlgorithmToSettings(const QString& algoId, qreal splitR
     }
     m_settings->setAutotileAlgorithm(algoId);
     m_settings->setAutotileSplitRatio(splitRatio);
+    m_settings->setAutotileMasterCount(m_engine->config()->masterCount);
+    // Persist centered-master per-algorithm values so they survive save/reload
+    m_settings->setAutotileCenteredMasterSplitRatio(m_engine->config()->centeredMasterSplitRatio);
+    m_settings->setAutotileCenteredMasterMasterCount(m_engine->config()->centeredMasterMasterCount);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

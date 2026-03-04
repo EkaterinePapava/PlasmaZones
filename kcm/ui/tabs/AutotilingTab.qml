@@ -366,8 +366,12 @@ ScrollView {
                                     showLabel: false
                                     algorithmId: root.effectiveAlgorithm
                                     windowCount: previewWindowSlider.value
-                                    splitRatio: root.settingValue("SplitRatio", root.kcm.autotileSplitRatio)
-                                    masterCount: root.settingValue("MasterCount", root.kcm.autotileMasterCount)
+                                    splitRatio: root.effectiveAlgorithm === "centered-master"
+                                        ? root.settingValue("SplitRatio", root.kcm.autotileCenteredMasterSplitRatio)
+                                        : root.settingValue("SplitRatio", root.kcm.autotileSplitRatio)
+                                    masterCount: root.effectiveAlgorithm === "centered-master"
+                                        ? root.settingValue("MasterCount", root.kcm.autotileCenteredMasterMasterCount)
+                                        : root.settingValue("MasterCount", root.kcm.autotileMasterCount)
                                 }
                             }
 
@@ -485,14 +489,16 @@ ScrollView {
                     }
 
                     // ─────────────────────────────────────────────────────────────
-                    // Algorithm-specific settings (master-stack, three-column)
+                    // Algorithm-specific settings (master-stack, three-column, centered-master)
                     // ─────────────────────────────────────────────────────────────
                     ColumnLayout {
                         Layout.alignment: Qt.AlignHCenter
                         Layout.fillWidth: true
                         Layout.maximumWidth: Math.min(Kirigami.Units.gridUnit * 20, parent.width)
                         spacing: Kirigami.Units.smallSpacing
-                        visible: root.effectiveAlgorithm === "master-stack" || root.effectiveAlgorithm === "three-column"
+                        visible: root.effectiveAlgorithm === "master-stack"
+                             || root.effectiveAlgorithm === "three-column"
+                             || root.effectiveAlgorithm === "centered-master"
 
                         Kirigami.Separator {
                             Layout.fillWidth: true
@@ -503,6 +509,7 @@ ScrollView {
                         Label {
                             Layout.alignment: Qt.AlignHCenter
                             text: root.effectiveAlgorithm === "three-column"
+                                    || root.effectiveAlgorithm === "centered-master"
                                 ? i18n("Center Ratio")
                                 : i18n("Master Ratio")
                             font.bold: true
@@ -519,14 +526,23 @@ ScrollView {
                                 to: 0.9
                                 stepSize: 0.05
                                 Binding on value {
-                                    value: root.settingValue("SplitRatio", kcm.autotileSplitRatio)
+                                    value: root.effectiveAlgorithm === "centered-master"
+                                        ? root.settingValue("SplitRatio", kcm.autotileCenteredMasterSplitRatio)
+                                        : root.settingValue("SplitRatio", kcm.autotileSplitRatio)
                                     when: !splitRatioSlider.pressed
                                     restoreMode: Binding.RestoreNone
                                 }
-                                onMoved: root.writeSetting("SplitRatio", value, function(v) { kcm.autotileSplitRatio = v })
+                                onMoved: {
+                                    if (root.effectiveAlgorithm === "centered-master") {
+                                        root.writeSetting("SplitRatio", value, function(v) { kcm.autotileCenteredMasterSplitRatio = v })
+                                    } else {
+                                        root.writeSetting("SplitRatio", value, function(v) { kcm.autotileSplitRatio = v })
+                                    }
+                                }
 
                                 ToolTip.visible: hovered && root.isCurrentTab
                                 ToolTip.text: root.effectiveAlgorithm === "three-column"
+                                        || root.effectiveAlgorithm === "centered-master"
                                     ? i18n("Proportion of screen width for the center column")
                                     : i18n("Proportion of screen width for the master area")
                             }
@@ -539,24 +555,42 @@ ScrollView {
                             }
                         }
 
-                        // Master count - only for master-stack
+                        // Master count - for master-stack and centered-master
                         RowLayout {
                             Layout.alignment: Qt.AlignHCenter
                             spacing: Kirigami.Units.smallSpacing
                             visible: root.effectiveAlgorithm === "master-stack"
+                                 || root.effectiveAlgorithm === "centered-master"
 
                             Label {
-                                text: i18n("Master count:")
+                                text: root.effectiveAlgorithm === "centered-master"
+                                    ? i18n("Center count:")
+                                    : i18n("Master count:")
                             }
 
                             SpinBox {
+                                id: masterCountSpinBox
                                 from: 1
                                 to: 5
-                                value: root.settingValue("MasterCount", kcm.autotileMasterCount)
-                                onValueModified: root.writeSetting("MasterCount", value, function(v) { kcm.autotileMasterCount = v })
+                                Binding on value {
+                                    value: root.effectiveAlgorithm === "centered-master"
+                                        ? root.settingValue("MasterCount", kcm.autotileCenteredMasterMasterCount)
+                                        : root.settingValue("MasterCount", kcm.autotileMasterCount)
+                                    when: !masterCountSpinBox.activeFocus
+                                    restoreMode: Binding.RestoreNone
+                                }
+                                onValueModified: {
+                                    if (root.effectiveAlgorithm === "centered-master") {
+                                        root.writeSetting("MasterCount", value, function(v) { kcm.autotileCenteredMasterMasterCount = v })
+                                    } else {
+                                        root.writeSetting("MasterCount", value, function(v) { kcm.autotileMasterCount = v })
+                                    }
+                                }
 
                                 ToolTip.visible: hovered && root.isCurrentTab
-                                ToolTip.text: i18n("Number of windows in the master area")
+                                ToolTip.text: root.effectiveAlgorithm === "centered-master"
+                                    ? i18n("Number of windows in the center area")
+                                    : i18n("Number of windows in the master area")
                             }
                         }
                     }

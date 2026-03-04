@@ -150,6 +150,8 @@ public:
     Q_PROPERTY(QString autotileAlgorithm READ autotileAlgorithm WRITE setAutotileAlgorithm NOTIFY autotileAlgorithmChanged)
     Q_PROPERTY(qreal autotileSplitRatio READ autotileSplitRatio WRITE setAutotileSplitRatio NOTIFY autotileSplitRatioChanged)
     Q_PROPERTY(int autotileMasterCount READ autotileMasterCount WRITE setAutotileMasterCount NOTIFY autotileMasterCountChanged)
+    Q_PROPERTY(qreal autotileCenteredMasterSplitRatio READ autotileCenteredMasterSplitRatio WRITE setAutotileCenteredMasterSplitRatio NOTIFY autotileCenteredMasterSplitRatioChanged)
+    Q_PROPERTY(int autotileCenteredMasterMasterCount READ autotileCenteredMasterMasterCount WRITE setAutotileCenteredMasterMasterCount NOTIFY autotileCenteredMasterMasterCountChanged)
     Q_PROPERTY(int autotileInnerGap READ autotileInnerGap WRITE setAutotileInnerGap NOTIFY autotileInnerGapChanged)
     Q_PROPERTY(int autotileOuterGap READ autotileOuterGap WRITE setAutotileOuterGap NOTIFY autotileOuterGapChanged)
     Q_PROPERTY(bool autotileUsePerSideOuterGap READ autotileUsePerSideOuterGap WRITE setAutotileUsePerSideOuterGap NOTIFY autotileUsePerSideOuterGapChanged)
@@ -739,6 +741,12 @@ public:
     int autotileMasterCount() const { return m_autotileMasterCount; }
     void setAutotileMasterCount(int count);
 
+    qreal autotileCenteredMasterSplitRatio() const { return m_autotileCenteredMasterSplitRatio; }
+    void setAutotileCenteredMasterSplitRatio(qreal ratio);
+
+    int autotileCenteredMasterMasterCount() const { return m_autotileCenteredMasterMasterCount; }
+    void setAutotileCenteredMasterMasterCount(int count);
+
     int autotileInnerGap() const { return m_autotileInnerGap; }
     void setAutotileInnerGap(int gap);
 
@@ -1305,6 +1313,8 @@ private:
     QString m_autotileAlgorithm = QString(DBus::AutotileAlgorithm::MasterStack);
     qreal m_autotileSplitRatio = 0.6;
     int m_autotileMasterCount = 1;
+    qreal m_autotileCenteredMasterSplitRatio = 0.5;
+    int m_autotileCenteredMasterMasterCount = 1;
     int m_autotileInnerGap = 8;
     int m_autotileOuterGap = 8;
     bool m_autotileUsePerSideOuterGap = false;

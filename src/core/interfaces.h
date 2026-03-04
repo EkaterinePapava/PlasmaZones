@@ -231,6 +231,8 @@ Q_SIGNALS:
     void autotileAlgorithmChanged();
     void autotileSplitRatioChanged();
     void autotileMasterCountChanged();
+    void autotileCenteredMasterSplitRatioChanged();
+    void autotileCenteredMasterMasterCountChanged();
     void autotileInnerGapChanged();
     void autotileOuterGapChanged();
     void autotileUsePerSideOuterGapChanged();

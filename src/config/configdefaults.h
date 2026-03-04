@@ -172,6 +172,8 @@ public:
     static QString autotileAlgorithm() { return instance().defaultAutotileAlgorithmValue(); }
     static double autotileSplitRatio() { return instance().defaultAutotileSplitRatioValue(); }
     static int autotileMasterCount() { return instance().defaultAutotileMasterCountValue(); }
+    static double autotileCenteredMasterSplitRatio() { return instance().defaultAutotileCenteredMasterSplitRatioValue(); }
+    static int autotileCenteredMasterMasterCount() { return instance().defaultAutotileCenteredMasterMasterCountValue(); }
     static int autotileInnerGap() { return instance().defaultAutotileInnerGapValue(); }
     static int autotileOuterGap() { return instance().defaultAutotileOuterGapValue(); }
     static bool autotileUsePerSideOuterGap() { return instance().defaultAutotileUsePerSideOuterGapValue(); }

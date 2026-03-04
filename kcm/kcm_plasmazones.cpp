@@ -1235,6 +1235,14 @@ int KCMPlasmaZones::autotileMasterCount() const
 {
     return m_settings->autotileMasterCount();
 }
+qreal KCMPlasmaZones::autotileCenteredMasterSplitRatio() const
+{
+    return m_settings->autotileCenteredMasterSplitRatio();
+}
+int KCMPlasmaZones::autotileCenteredMasterMasterCount() const
+{
+    return m_settings->autotileCenteredMasterMasterCount();
+}
 int KCMPlasmaZones::autotileInnerGap() const
 {
     return m_settings->autotileInnerGap();
@@ -1415,6 +1423,26 @@ void KCMPlasmaZones::setAutotileMasterCount(int count)
     if (m_settings->autotileMasterCount() != count) {
         m_settings->setAutotileMasterCount(count);
         Q_EMIT autotileMasterCountChanged();
+        setNeedsSave(true);
+    }
+}
+
+void KCMPlasmaZones::setAutotileCenteredMasterSplitRatio(qreal ratio)
+{
+    ratio = qBound(0.1, ratio, 0.9);
+    if (!qFuzzyCompare(m_settings->autotileCenteredMasterSplitRatio(), ratio)) {
+        m_settings->setAutotileCenteredMasterSplitRatio(ratio);
+        Q_EMIT autotileCenteredMasterSplitRatioChanged();
+        setNeedsSave(true);
+    }
+}
+
+void KCMPlasmaZones::setAutotileCenteredMasterMasterCount(int count)
+{
+    count = qBound(1, count, 5);
+    if (m_settings->autotileCenteredMasterMasterCount() != count) {
+        m_settings->setAutotileCenteredMasterMasterCount(count);
+        Q_EMIT autotileCenteredMasterMasterCountChanged();
         setNeedsSave(true);
     }
 }
@@ -2294,6 +2322,8 @@ void KCMPlasmaZones::emitAllSettingsPropertyChanged()
     Q_EMIT autotileAlgorithmChanged();
     Q_EMIT autotileSplitRatioChanged();
     Q_EMIT autotileMasterCountChanged();
+    Q_EMIT autotileCenteredMasterSplitRatioChanged();
+    Q_EMIT autotileCenteredMasterMasterCountChanged();
     Q_EMIT autotileInnerGapChanged();
     Q_EMIT autotileOuterGapChanged();
     Q_EMIT autotileFocusNewWindowsChanged();
