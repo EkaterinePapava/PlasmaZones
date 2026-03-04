@@ -118,6 +118,7 @@ vec4 renderPrismataZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCo
 
     float energy = hasAudio ? overall * audioReact : 0.0;
     float idleAnim = hasAudio ? 0.0 : (0.5 + 0.5 * sin(iTime * 1.2 * PI)) * idlePulse;
+    float vitality = zoneVitality(isHighlighted);
 
     vec3 accent = colorWithFallback(customColors[0].rgb, vec3(0.0, 0.83, 1.0));
     vec3 hlTint = colorWithFallback(customColors[1].rgb, vec3(1.0));
@@ -219,48 +220,44 @@ vec4 renderPrismataZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCo
             base += accent * cursorGlow;
         }
 
-        // === NOVEL HIGHLIGHT EFFECTS (not just color change) ===
-        if (isHighlighted) {
-            // 1) Caustic pooling — treble creates brief crystal fracture lines between facets
+        // === VITALITY-SCALED EFFECTS (rich when highlighted, subtle when dormant) ===
+        {
+            // 1) Caustic pooling — light patterns inside zones
             float cau = caustics(globalUV, time);
             float cauMask = smoothstep(0.3, 0.7, cau);
-            // Crystal fracture: treble spikes flash thin bright crack-lines at facet edges
             float fractureEdge = smoothstep(0.08, 0.02, edgeDist);
             float trebleSpike = hasAudio ? pow(treble * audioReact, 2.0) : 0.0;
             float fractureBright = fractureEdge * trebleSpike * 1.5;
             float cauBoost = 1.0 + (hasAudio ? fractureBright * 0.4 : idleAnim * 0.4);
-            base += accent * cauMask * causticStr * 0.35 * cauBoost;
-            base += hlTint * cauMask * causticStr * 0.15 * cauBoost;
-            // Fracture flash overlay on edges
-            base += vec3(1.0) * fractureBright * 0.2;
+            base += accent * cauMask * causticStr * vitalityScale(0.08, 0.35, vitality) * cauBoost;
+            base += hlTint * cauMask * causticStr * vitalityScale(0.03, 0.15, vitality) * cauBoost;
+            base += vec3(1.0) * fractureBright * vitalityScale(0.04, 0.2, vitality);
 
             // 2) Chromatic fracture — RGB dispersion on facet edges
             vec3 chroma = chromaticSample(1.0, edgeDist, chromaStr);
-            base *= mix(vec3(1.0), chroma, edgeFactor * chromaStr);
+            base *= mix(vec3(1.0), chroma, edgeFactor * chromaStr * vitalityScale(0.3, 1.0, vitality));
 
-            // 3) Resonant node glow — facet vertices pulse with per-node bass rhythms
-            // Each facet pulses at its own frequency derived from cellId
+            // 3) Resonant node glow — facet vertices pulse with bass
             float nodeFreq = 1.5 + cellId * 2.0;
             float nodePhase = cellId * TAU;
             float nodePulse = hasAudio
                 ? (0.6 + 0.4 * sin(iTime * nodeFreq + nodePhase) * bass * audioReact)
                 : (0.7 + 0.3 * sin(time * 3.0) + idleAnim * 0.2);
-            // Glow concentrates at cell center (vertex proxy)
             float cellCenterGlow = exp(-cellDist * cellDist * 8.0);
-            float resonance = cellCenterGlow * nodePulse * resonanceStr * 0.35;
+            float resonance = cellCenterGlow * nodePulse * resonanceStr * vitalityScale(0.08, 0.35, vitality);
             base += accent * resonance;
-            base += hlTint * resonance * 0.5;
+            base += hlTint * resonance * vitalityScale(0.15, 0.5, vitality);
 
-            // 4) Traveling crystallite — sharper diamond sparkle when light passes through
-            spec *= 1.5 + resonanceStr;
-            base += specular * 0.6;
-
-            // Slight overall brighten
-            base *= 1.08;
+            // 4) Traveling crystallite — sharper sparkle when highlighted
+            base += specular * vitalityScale(0.1, 0.6, vitality);
         }
 
+        // Dormant desaturation and vitality brightness
+        base = vitalityDesaturate(base, vitality);
+        base *= vitalityScale(0.8, 1.08, vitality);
+
         result.rgb = base;
-        result.a = fillOpacity;
+        result.a = mix(fillOpacity * 0.7, fillOpacity, vitality);
     }
 
     // Border — prismatic traveling light with bass-driven facet flash
@@ -281,29 +278,26 @@ vec4 renderPrismataZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCo
             borderClr += accent * harmonic;
         }
         borderClr = mix(borderClr, accent, flow * 0.3);
-        if (isHighlighted) {
-            borderClr = mix(borderClr, accent, 0.4);
-            borderClr *= 1.1;
-        }
+        borderClr = mix(borderClr, accent, vitalityScale(0.05, 0.4, vitality));
+        borderClr *= vitalityScale(0.8, 1.1, vitality);
+        borderClr = vitalityDesaturate(borderClr, vitality);
         result.rgb = mix(result.rgb, borderClr, border * 0.9);
         result.a = max(result.a, border * 0.95);
     }
 
-    // Outer glow for highlighted zones — crystalline pulsing nodes around perimeter
-    if (isHighlighted && d > 0.0) {
-        float glowR = 28.0 + idleAnim * 8.0;
-        if (hasAudio) {
-            // Resonant expansion: glow breathes with bass rhythm, phase-shifted by angle
-            float angle = atan(p.y, p.x);
-            float nodePattern = 0.5 + 0.5 * sin(angle * 6.0 + iTime * 1.8);
-            glowR += nodePattern * bass * audioReact * 18.0;
-        }
-        if (d < glowR) {
-            float glowStr = 0.5 + (hasAudio ? mids * audioReact * 0.3 : 0.0);
-            float glow = expGlow(d, 9.0, glowStr);
-            result.rgb += accent * glow * 0.4;
-            result.a = max(result.a, glow * 0.55);
-        }
+    // Outer glow (both states, vitality-modulated)
+    float outerGlowR = vitalityScale(10.0, 28.0, vitality) + idleAnim * vitalityScale(3.0, 8.0, vitality);
+    if (hasAudio) {
+        float glowAngle = atan(p.y, p.x);
+        float nodePattern = 0.5 + 0.5 * sin(glowAngle * 6.0 + iTime * 1.8);
+        outerGlowR += nodePattern * bass * audioReact * vitalityScale(5.0, 18.0, vitality);
+    }
+    if (d > 0.0 && d < outerGlowR) {
+        float outerStr = vitalityScale(0.15, 0.5, vitality) + (hasAudio ? mids * audioReact * vitalityScale(0.08, 0.3, vitality) : 0.0);
+        float glow = expGlow(d, vitalityScale(5.0, 9.0, vitality), outerStr);
+        vec3 glowCol = vitalityDesaturate(accent, vitality);
+        result.rgb += glowCol * glow * vitalityScale(0.15, 0.4, vitality);
+        result.a = max(result.a, glow * vitalityScale(0.2, 0.55, vitality));
     }
 
     return result;

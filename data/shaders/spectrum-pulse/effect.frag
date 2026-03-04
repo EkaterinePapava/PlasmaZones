@@ -85,10 +85,13 @@ vec4 renderZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor,
     vec3 primary = colorWithFallback(customColors[0].rgb, fillColor.rgb);
     primary      = colorWithFallback(primary, vec3(0.0, 1.0, 1.0));
     vec3 accent  = colorWithFallback(customColors[1].rgb, vec3(1.0, 0.0, 1.0));
-    if (isHighlighted) {
-        primary = accent;
-        glowIntensity *= 1.3;
-    }
+    float vitality = zoneVitality(isHighlighted);
+    primary = vitalityDesaturate(primary, vitality);
+    accent = vitalityDesaturate(accent, vitality);
+    glowIntensity *= vitalityScale(0.5, 1.5, vitality);
+    reactivity *= vitalityScale(0.6, 1.3, vitality);
+    flowSpeed *= vitalityScale(0.6, 1.0, vitality);
+    plasmaDetail *= vitalityScale(0.4, 1.0, vitality);
 
     // Derived modifiers
     float energy     = hasAudio ? overall * reactivity : 0.0;

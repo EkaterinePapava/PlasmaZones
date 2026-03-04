@@ -579,6 +579,7 @@ vec4 renderArethaZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColo
                       float bass, float mids, float treble, float overall, bool hasAudio)
 {
     float SPEED = getSpeed();
+    float vitality = zoneVitality(isHighlighted);
 
     float borderRadius = max(params.x, 4.0);
     float borderWidth  = max(params.y, 1.0);
@@ -639,25 +640,26 @@ vec4 renderArethaZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColo
         // Glitch
         fx += glitch(globalUV, iTime, treble);
 
-        // Shimmer on highlighted zones
-        if (isHighlighted) {
+        // Shimmer (vitality-modulated: subtle when dormant, vivid when highlighted)
+        {
             float lum = luminance(baseColor + fx);
-            fx += arethaCyan * shimmer(globalUV, t * 10.0, lum) * 2.0;
+            float shimmerAmt = shimmer(globalUV, t * 10.0, lum) * vitalityScale(0.3, 2.0, vitality);
+            fx += arethaCyan * shimmerAmt;
         }
+
+        // Vitality: modulate layer intensity (dormant = subdued layers)
+        fx *= vitalityScale(0.55, 1.0, vitality);
 
         // Vignette and compose
         float vig = vignette(globalUV);
         result.rgb = baseColor + fx * vig;
         result.a = bgAlpha;
 
-        // Brighten highlighted zones
-        if (isHighlighted) {
-            result.rgb *= 1.15;
-            result.a = min(result.a + 0.1, 1.0);
-        }
+        // Dormant desaturation
+        result.rgb = vitalityDesaturate(result.rgb, vitality);
     }
 
-    // Border
+    // Border (vitality-modulated)
     float border = softBorder(d, borderWidth);
     if (border > 0.0) {
         vec3 edgeColor = borderColor.rgb;
@@ -666,18 +668,23 @@ vec4 renderArethaZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColo
         }
 
         float bt = iTime * getSpeed() * 5.0;
-        float pulse = sin(bt * 2.0) * 0.15 + 0.85;
+        float pulse = sin(bt * 2.0) * vitalityScale(0.05, 0.15, vitality) + vitalityScale(0.7, 0.85, vitality);
         edgeColor *= pulse;
+        edgeColor = vitalityDesaturate(edgeColor, vitality);
 
-        result.rgb = mix(result.rgb, edgeColor, border * 0.8);
+        result.rgb = mix(result.rgb, edgeColor, border * vitalityScale(0.5, 0.8, vitality));
         result.a = max(result.a, border * borderColor.a);
     }
 
-    // Outer glow for highlighted zones
-    if (isHighlighted && d > 0.0 && d < 20.0) {
-        float glow = expGlow(d, 8.0, 0.4);
-        result.rgb += getArethaCyan() * glow;
-        result.a = max(result.a, glow * 0.6);
+    // Outer glow (both states, vitality-modulated)
+    float glowExtent = vitalityScale(10.0, 28.0, vitality);
+    if (d > 0.0 && d < glowExtent) {
+        float glowSize = vitalityScale(4.0, 8.0, vitality);
+        float glowStr = vitalityScale(0.12, 0.4, vitality);
+        float glow = expGlow(d, glowSize, glowStr);
+        vec3 glowColor = vitalityDesaturate(getArethaCyan(), vitality);
+        result.rgb += glowColor * glow;
+        result.a = max(result.a, glow * vitalityScale(0.25, 0.6, vitality));
     }
 
     return result;

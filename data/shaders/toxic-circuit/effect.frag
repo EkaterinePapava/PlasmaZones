@@ -281,24 +281,22 @@ vec4 renderToxicCircuitZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 bord
 
     float time = iTime * pulseSpeed;
 
-    // Highlighted state - dramatic color swap and intensity boost
-    float highlightBoost = 1.0;
-    if (isHighlighted) {
-        // Swap primary colors - purple becomes dominant, green becomes accent
-        vec3 temp = primaryColor;
-        primaryColor = accentColor;
-        secondaryColor = mix(temp, vec3(1.0, 1.0, 0.0), 0.3);  // Yellow-green accent
-        bgColor = vec3(0.15, 0.0, 0.25);  // Lighter purple base
+    // Vitality system: highlighted = vivid/energetic, dormant = desaturated/dim
+    float vitality = zoneVitality(isHighlighted);
 
-        // Dramatic parameter boosts
-        glowStrength *= 2.2;
-        chromaShift *= 1.8;
-        dripIntensity *= 2.0;
-        circuitDensity *= 0.8;  // Slightly larger circuits
-        pulseSpeed *= 1.5;  // Faster animation
-        fillOpacity = min(fillOpacity + 0.15, 0.95);
-        highlightBoost = 1.4;  // Overall brightness multiplier
-    }
+    // Highlighted: blend toward accent; dormant: desaturate
+    primaryColor = mix(primaryColor, accentColor, vitalityScale(0.0, 0.4, vitality));
+    primaryColor = vitalityDesaturate(primaryColor, vitality);
+    secondaryColor = vitalityDesaturate(secondaryColor, vitality);
+    bgColor = mix(bgColor, vec3(0.15, 0.0, 0.25), vitalityScale(0.0, 1.0, vitality));
+
+    glowStrength *= vitalityScale(0.5, 2.2, vitality);
+    chromaShift *= vitalityScale(0.6, 1.8, vitality);
+    dripIntensity *= vitalityScale(0.5, 2.0, vitality);
+    circuitDensity *= vitalityScale(1.0, 0.8, vitality);
+    pulseSpeed *= vitalityScale(0.7, 1.5, vitality);
+    fillOpacity = mix(fillOpacity, min(fillOpacity + 0.15, 0.95), vitality);
+    float highlightBoost = vitalityScale(0.75, 1.4, vitality);
 
     vec4 result = vec4(0.0);
     vec2 localUV = zoneLocalUV(fragCoord, rectPos, rectSize);  // zone-local for edge effects
@@ -571,26 +569,26 @@ vec4 renderToxicCircuitZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 bord
         }
         baseColor *= max(flicker, 0.0);
 
-        // Apply highlight brightness boost
+        // Vitality brightness
         baseColor *= highlightBoost;
 
-        // Highlighted: add pulsing inner bloom
-        if (isHighlighted) {
-            float bloom = sin(iTime * 4.0) * 0.15 + 0.85;
+        // Pulsing inner bloom (vitality-modulated)
+        {
+            float bloom = sin(iTime * vitalityScale(2.0, 4.0, vitality)) * vitalityScale(0.03, 0.15, vitality) + vitalityScale(0.97, 0.85, vitality);
             baseColor *= bloom;
-            baseColor += accentColor * 0.15;
+            baseColor += accentColor * vitalityScale(0.02, 0.15, vitality);
         }
 
         result.rgb = baseColor;
         result.a = fillOpacity;
     }
 
-    // Neon toxic border with chromatic split
-    float effectiveBorderWidth = isHighlighted ? borderWidth * 1.5 : borderWidth;
+    // Neon toxic border with chromatic split (vitality-modulated)
+    float effectiveBorderWidth = borderWidth * vitalityScale(1.0, 1.5, vitality);
     float border = softBorder(d, effectiveBorderWidth);
     if (abs(d) < effectiveBorderWidth + chromaShift + 5.0) {
         // Chromatic border split
-        float chromaAmount = isHighlighted ? chromaShift * 0.6 : chromaShift * 0.4;
+        float chromaAmount = chromaShift * vitalityScale(0.4, 0.6, vitality);
         float dR = sdRoundedBox(p + vec2(chromaAmount, 0.0), rectSize * 0.5, borderRadius);
         float dB = sdRoundedBox(p - vec2(chromaAmount, 0.0), rectSize * 0.5, borderRadius);
 
@@ -598,34 +596,32 @@ vec4 renderToxicCircuitZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 bord
         float bG = border;
         float bB = softBorder(dB, effectiveBorderWidth);
 
-        // Animated border color - faster and brighter when highlighted
-        float pulseRate = isHighlighted ? 5.0 : 3.0;
+        // Animated border color (vitality-modulated pulse rate)
+        float pulseRate = vitalityScale(3.0, 5.0, vitality);
         float borderPulse = sin(iTime * pulseSpeed * pulseRate) * 0.5 + 0.5;
         vec3 borderBase = mix(primaryColor, secondaryColor, borderPulse);
 
-        // Highlighted: use brighter, more saturated colors
-        if (isHighlighted) {
-            borderBase = mix(borderBase, accentColor, 0.4);
-            borderBase *= 1.3;
-        }
+        // Vitality-scaled accent blend and brightness
+        borderBase = mix(borderBase, accentColor, vitalityScale(0.0, 0.4, vitality));
+        borderBase *= vitalityScale(0.8, 1.3, vitality);
 
         vec3 borderRGB;
-        float intensityMult = isHighlighted ? 2.8 : 2.0;
+        float intensityMult = vitalityScale(2.0, 2.8, vitality);
         borderRGB.r = borderBase.r * bR * intensityMult;
         borderRGB.g = borderBase.g * bG * intensityMult;
         borderRGB.b = borderBase.b * bB * intensityMult;
 
-        // White-hot core - brighter when highlighted
+        // White-hot core (vitality-modulated)
         float coreIntensity = pow(border, 2.0);
-        float whiteMix = isHighlighted ? 0.8 : 0.6;
+        float whiteMix = vitalityScale(0.6, 0.8, vitality);
         borderRGB = mix(borderRGB, vec3(1.0), coreIntensity * whiteMix);
 
-        // Traveling energy along border - faster when highlighted
+        // Traveling energy along border (vitality-modulated speed)
         float angle = atan(p.y, p.x);
-        float travelSpeed = isHighlighted ? 8.0 : 4.0;
+        float travelSpeed = vitalityScale(4.0, 8.0, vitality);
         float energyTravel = sin(angle * 8.0 - iTime * travelSpeed) * 0.5 + 0.5;
         energyTravel = pow(energyTravel, 3.0);
-        borderRGB += primaryColor * energyTravel * border * (isHighlighted ? 0.8 : 0.5);
+        borderRGB += primaryColor * energyTravel * border * vitalityScale(0.5, 0.8, vitality);
 
         // Mouse intensifies nearby border section
         if (mouseInfluence > 0.01) {
@@ -638,28 +634,29 @@ vec4 renderToxicCircuitZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 bord
         result.a = max(result.a, borderAlpha * 0.98);
     }
 
-    // Outer toxic glow
-    float outerGlowRange = isHighlighted ? 60.0 : 25.0;
+    // Outer toxic glow (vitality-modulated)
+    float outerGlowRange = vitalityScale(25.0, 60.0, vitality);
     if (d > 0.0 && d < outerGlowRange) {
-        float glowFalloff1 = isHighlighted ? 20.0 : 10.0;
-        float glowFalloff2 = isHighlighted ? 40.0 : 20.0;
+        float glowFalloff1 = vitalityScale(10.0, 20.0, vitality);
+        float glowFalloff2 = vitalityScale(20.0, 40.0, vitality);
 
-        float glow1 = expGlow(d, glowFalloff1, isHighlighted ? 0.7 : 0.3);
-        float glow2 = expGlow(d, glowFalloff2, isHighlighted ? 0.4 : 0.15);
+        float glow1 = expGlow(d, glowFalloff1, vitalityScale(0.3, 0.7, vitality));
+        float glow2 = expGlow(d, glowFalloff2, vitalityScale(0.15, 0.4, vitality));
 
         float glowPulse = sin(iTime * pulseSpeed * 2.0) * 0.2 + 0.8;
         vec3 glowColor = mix(primaryColor, secondaryColor, glow1) * glowPulse;
 
-        // Highlighted: add pulsing ring effect
-        if (isHighlighted) {
+        // Pulsing ring effect (vitality-modulated)
+        float ringStr = vitalityScale(0.0, 1.0, vitality);
+        if (ringStr > 0.01) {
             float ringDist = mod(d - iTime * 25.0, 20.0);
             float ring = smoothstep(2.5, 0.0, ringDist) * smoothstep(0.0, 1.0, ringDist);
-            glowColor += accentColor * ring * 1.2;
-            glow1 += ring * 0.3;
+            glowColor += accentColor * ring * 1.2 * ringStr;
+            glow1 += ring * 0.3 * ringStr;
         }
 
-        result.rgb += glowColor * (glow1 + glow2) * glowStrength * (isHighlighted ? 0.7 : 0.4);
-        result.a = max(result.a, (glow1 + glow2 * 0.5) * (isHighlighted ? 0.6 : 0.25));
+        result.rgb += glowColor * (glow1 + glow2) * glowStrength * vitalityScale(0.4, 0.7, vitality);
+        result.a = max(result.a, (glow1 + glow2 * 0.5) * vitalityScale(0.25, 0.6, vitality));
     }
 
     // Corner corruption glitches + TREBLE SHORT-CIRCUIT SPARKS at junctions

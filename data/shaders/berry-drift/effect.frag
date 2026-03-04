@@ -182,6 +182,7 @@ vec4 renderBerryZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
     float bassAmt = hasAudio ? bass * audioSens : idlePulse;
     float midsAmt = hasAudio ? mids * audioSens : idlePulse * 0.5;
     float trebleAmt = hasAudio ? treble * audioSens : idlePulse * 0.3;
+    float vitality = zoneVitality(isHighlighted);
 
     float time = iTime * speed;
 
@@ -264,10 +265,8 @@ vec4 renderBerryZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
             // Audio brightens interiors
             blobColor += berryPink * energy * 0.15;
 
-            if (isHighlighted) {
-                blobColor *= 1.2;
-                blobColor += lavender * 0.08;
-            }
+            blobColor *= vitalityScale(0.7, 1.2, vitality);
+            blobColor += lavender * vitalityScale(0.0, 0.08, vitality);
 
             result.rgb = mix(result.rgb, blobColor, 0.9);
         }
@@ -281,10 +280,10 @@ vec4 renderBerryZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
             rimTotal *= 0.8 + trebleAmt * 0.4;
 
             vec3 rimColor = mix(bubblegum, lavender, 0.4 + 0.3 * sin(iTime * 1.5));
-            if (isHighlighted) {
+            {
                 float shimmer = 0.7 + 0.3 * sin(iTime * 4.0 + globalUV.x * 15.0 + globalUV.y * 10.0);
-                rimTotal *= shimmer * 1.3;
-                rimColor = mix(rimColor, vec3(1.0), 0.15);
+                rimTotal *= vitalityScale(0.5, shimmer * 1.3, vitality);
+                rimColor = mix(rimColor, vec3(1.0), vitalityScale(0.0, 0.15, vitality));
             }
             result.rgb += rimColor * rimTotal;
         }
@@ -302,11 +301,9 @@ vec4 renderBerryZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
 
             vec3 innerColor = bubblegum;
             vec3 outerColor = mix(deepViolet, berryPink, 0.3);
-            if (isHighlighted) {
-                innerGlow *= 1.5;
-                outerGlow *= 1.3;
-                innerColor = mix(innerColor, berryPink, 0.3);
-            }
+            innerGlow *= vitalityScale(0.5, 1.5, vitality);
+            outerGlow *= vitalityScale(0.5, 1.3, vitality);
+            innerColor = mix(innerColor, berryPink, vitalityScale(0.0, 0.3, vitality));
             result.rgb += innerColor * innerGlow + outerColor * outerGlow;
             result.a = max(result.a, innerGlow * 0.6);
         }
@@ -348,7 +345,7 @@ vec4 renderBerryZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
                     twinkle *= 1.0 + nearEdge;
 
                     float intensity = sparkle * twinkle * sparkleStr;
-                    if (isHighlighted) intensity *= 1.5;
+                    intensity *= vitalityScale(0.5, 1.5, vitality);
 
                     // Mint with white-hot core
                     vec3 sColor = mix(mintGreen * mintIntensity + lavender * (1.0 - mintIntensity),
@@ -375,6 +372,8 @@ vec4 renderBerryZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
             result.rgb *= 1.0 - vignette;
         }
 
+        // Dormant desaturation
+        result.rgb = vitalityDesaturate(result.rgb, vitality);
         result.a = fillOpacity;
     }
 
@@ -385,11 +384,11 @@ vec4 renderBerryZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
         float flow = 0.5 + 0.5 * sin(atan(p.y, p.x) * 4.0 + iTime * 1.5 + energy * 2.0);
         borderClr = mix(borderClr, lavender, flow * 0.25);
 
-        if (isHighlighted) {
-            // Pulsing border in berryPink
-            float pulse = 0.8 + 0.2 * sin(iTime * 3.0);
-            borderClr = mix(borderClr, berryPink, 0.5 * pulse);
-            borderClr *= 1.1;
+        {
+            float pulse = 0.8 + 0.2 * sin(iTime * vitalityScale(1.5, 3.0, vitality));
+            borderClr = mix(borderClr, berryPink, vitalityScale(0.1, 0.5, vitality) * pulse);
+            borderClr *= vitalityScale(0.8, 1.1, vitality);
+            borderClr = vitalityDesaturate(borderClr, vitality);
         }
 
         if (hasAudio && bass > 0.4) {
@@ -401,16 +400,18 @@ vec4 renderBerryZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
         result.a = max(result.a, border * 0.95);
     }
 
-    // === Outer glow for highlighted zones ===
-    if (isHighlighted && d > 0.0) {
-        float glowR = 24.0 + (hasAudio ? bass * audioSens * 16.0 : idlePulse * 8.0);
-        // Breathing animation
-        float breathe = 1.0 + 0.15 * sin(iTime * 2.0);
+    // === Outer glow (both states, vitality-modulated) ===
+    if (d > 0.0) {
+        float glowR = vitalityScale(12.0, 24.0, vitality) + (hasAudio ? bass * audioSens * vitalityScale(6.0, 16.0, vitality) : idlePulse * vitalityScale(3.0, 8.0, vitality));
+        float breathe = 1.0 + vitalityScale(0.05, 0.15, vitality) * sin(iTime * 2.0);
         glowR *= breathe;
         if (d < glowR) {
-            float glow = expGlow(d, 8.0, 0.45 * (1.0 + energy * 0.4));
-            result.rgb += bubblegum * glow * 0.35;
-            result.a = max(result.a, glow * 0.5);
+            float glowFalloff = vitalityScale(4.0, 8.0, vitality);
+            float glowAmt = vitalityScale(0.15, 0.45, vitality) * (1.0 + energy * 0.4);
+            float glow = expGlow(d, glowFalloff, glowAmt);
+            vec3 glowColor = vitalityDesaturate(bubblegum, vitality);
+            result.rgb += glowColor * glow * vitalityScale(0.15, 0.35, vitality);
+            result.a = max(result.a, glow * vitalityScale(0.2, 0.5, vitality));
         }
     }
 

@@ -240,11 +240,13 @@ vec4 renderMagneticZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCo
     vec3 highlightColor = customColors[1].rgb;
     if (length(highlightColor) < 0.01) highlightColor = vec3(0.98, 0.8, 0.082);  // Yellow #facc15
 
-    if (isHighlighted) {
-        fieldColor = mix(fieldColor, highlightColor, 0.5);
-        fieldStrength *= 1.5;
-        glowIntensity *= 1.3;
-    }
+    float vitality = zoneVitality(isHighlighted);
+    fieldColor = vitalityDesaturate(fieldColor, vitality);
+    highlightColor = vitalityDesaturate(highlightColor, vitality);
+    fieldStrength *= vitalityScale(0.6, 1.5, vitality);
+    glowIntensity *= vitalityScale(0.4, 1.3, vitality);
+    particleCount *= vitalityScale(0.5, 1.0, vitality);
+    distortionAmount *= vitalityScale(0.5, 1.0, vitality);
 
     float t = iTime * waveSpeed;
 

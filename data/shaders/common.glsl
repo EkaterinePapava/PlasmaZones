@@ -160,4 +160,23 @@ float angularNoise(float angle, float freq, float seed) {
     return noise2D(circlePos + seed);
 }
 
+// ─── Highlight / vitality helpers ────────────────────────────────────────
+
+// Standard vitality factor for highlight vs dormant state.
+// Returns 1.0 when highlighted, 0.3 (subdued) otherwise.
+float zoneVitality(bool isHighlighted) {
+    return isHighlighted ? 1.0 : 0.3;
+}
+
+// Desaturate toward grayscale proportional to dormancy (1=full color, 0=gray).
+vec3 vitalityDesaturate(vec3 col, float vitality) {
+    float lum = luminance(col);
+    return mix(vec3(lum), col, 0.4 + 0.6 * vitality);
+}
+
+// Interpolate a parameter between dormant and active values.
+float vitalityScale(float dormant, float alive, float vitality) {
+    return mix(dormant, alive, vitality);
+}
+
 #endif // PLASMAZONES_COMMON_GLSL
