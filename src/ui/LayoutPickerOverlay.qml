@@ -32,6 +32,12 @@ Window {
     property color textColor: Kirigami.Theme.textColor
     property color highlightColor: Kirigami.Theme.highlightColor
 
+    // Zone appearance (set from C++ settings for consistency with zone selector)
+    property color inactiveColor: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.4)
+    property color borderColor: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.9)
+    property real activeOpacity: 0.5
+    property real inactiveOpacity: 0.3
+
     // Font properties for zone number labels
     property string fontFamily: ""
     property real fontSizeScale: 1.0
@@ -278,6 +284,16 @@ Window {
                             showCardBackground: true
                             interactive: false
 
+                            // Zone appearance (consistent with zone selector)
+                            zonePadding: 1
+                            edgeGap: 1
+                            minZoneSize: 8
+                            zoneHighlightColor: root.highlightColor
+                            zoneInactiveColor: root.inactiveColor
+                            zoneBorderColor: root.borderColor
+                            activeOpacity: root.activeOpacity
+                            inactiveOpacity: root.inactiveOpacity
+
                             // Theme
                             highlightColor: root.highlightColor
                             textColor: root.textColor
@@ -291,7 +307,6 @@ Window {
                             fontUnderline: root.fontUnderline
                             fontStrikeout: root.fontStrikeout
 
-                            activeOpacity: 0.6
                             animationDuration: Kirigami.Units.shortDuration
                         }
 

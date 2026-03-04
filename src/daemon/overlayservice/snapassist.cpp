@@ -340,9 +340,13 @@ void OverlayService::showLayoutPicker(const QString& screenName)
     writeQmlProperty(m_layoutPickerWindow, QStringLiteral("screenAspectRatio"), aspectRatio);
     writeFontProperties(m_layoutPickerWindow, m_settings);
 
-    // Theme colors
+    // Theme colors and zone appearance (consistent with zone selector)
     if (m_settings) {
         writeQmlProperty(m_layoutPickerWindow, QStringLiteral("highlightColor"), m_settings->highlightColor());
+        writeQmlProperty(m_layoutPickerWindow, QStringLiteral("inactiveColor"), m_settings->inactiveColor());
+        writeQmlProperty(m_layoutPickerWindow, QStringLiteral("borderColor"), m_settings->borderColor());
+        writeQmlProperty(m_layoutPickerWindow, QStringLiteral("activeOpacity"), m_settings->activeOpacity());
+        writeQmlProperty(m_layoutPickerWindow, QStringLiteral("inactiveOpacity"), m_settings->inactiveOpacity());
     }
 
     // Full-screen layer shell with keyboard interactivity

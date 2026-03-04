@@ -61,6 +61,8 @@ Window {
     property int labelTopMargin: 8 // Margin between preview and label
     property int labelHeight: 20 // Approximate label height
     property int labelSpace: 28 // Total space for label below preview
+    property int cardPadding: 26 // Extra vertical space for card chrome
+    property int cardSidePadding: 18 // Extra horizontal space for card chrome
     property int containerWidth: 216
     property int containerHeight: 165
     property int barHeight: 175
@@ -406,8 +408,8 @@ Window {
                         property bool isActive: layoutId === root.activeLayoutId
                         property bool hasSelectedZone: root.selectedLayoutId === layoutId
 
-                        width: root.indicatorWidth
-                        height: root.indicatorHeight + root.labelSpace
+                        width: root.indicatorWidth + root.cardSidePadding * 2
+                        height: root.indicatorHeight + root.labelSpace + root.cardPadding
                         Layout.preferredWidth: width
                         Layout.preferredHeight: height
 
@@ -421,13 +423,13 @@ Window {
 
                             // Zone selector features
                             showIndicatorBar: true
-                            showCardBackground: false
+                            showCardBackground: true
                             interactive: true
                             selectedZoneIndex: indicator.hasSelectedZone ? root.selectedZoneIndex : -1
 
                             // Zone appearance
-                            zonePadding: 1
-                            edgeGap: 1
+                            zonePadding: root.scaledPadding
+                            edgeGap: root.scaledPadding
                             minZoneSize: 8
                             zoneHighlightColor: root.highlightColor
                             zoneInactiveColor: root.inactiveColor
@@ -439,6 +441,7 @@ Window {
                             // Theme
                             highlightColor: root.highlightColor
                             textColor: root.textColor
+                            backgroundColor: root.backgroundColor
 
                             // Font
                             fontFamily: root.fontFamily

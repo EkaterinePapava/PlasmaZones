@@ -75,6 +75,8 @@ void applyZoneSelectorLayout(QQuickWindow* window, const ZoneSelectorLayout& lay
     writeQmlProperty(window, QStringLiteral("labelTopMargin"), layout.labelTopMargin);
     writeQmlProperty(window, QStringLiteral("labelHeight"), layout.labelHeight);
     writeQmlProperty(window, QStringLiteral("labelSpace"), layout.labelSpace);
+    writeQmlProperty(window, QStringLiteral("cardPadding"), layout.cardPadding);
+    writeQmlProperty(window, QStringLiteral("cardSidePadding"), layout.cardSidePadding);
     writeQmlProperty(window, QStringLiteral("layoutColumns"), layout.columns);
     writeQmlProperty(window, QStringLiteral("layoutRows"), layout.rows);
     writeQmlProperty(window, QStringLiteral("totalRows"), layout.totalRows);

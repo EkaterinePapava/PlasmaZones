@@ -131,9 +131,11 @@ void OverlayService::updateSelectorPosition(int cursorX, int cursorY)
         for (int i = 0; i < layouts.size(); ++i) {
             int row = (layout.columns > 0) ? (i / layout.columns) : 0;
             int col = (layout.columns > 0) ? (i % layout.columns) : 0;
-            int indicatorX = contentGridX + col * (layout.indicatorWidth + layout.indicatorSpacing);
+            // Cell origin includes card chrome; preview is offset by cardSidePadding horizontally
+            // and cardTopMargin vertically (matches Kirigami.Units.gridUnit in LayoutCard.qml)
+            int indicatorX = contentGridX + col * (layout.cellWidth + layout.indicatorSpacing) + layout.cardSidePadding;
             int indicatorY =
-                contentGridY + row * (layout.indicatorHeight + layout.labelSpace + layout.indicatorSpacing);
+                contentGridY + row * (layout.cellHeight + layout.indicatorSpacing) + layout.cardTopMargin;
 
             // Check if cursor is over this indicator
             if (localX >= indicatorX && localX < indicatorX + layout.indicatorWidth && localY >= indicatorY
