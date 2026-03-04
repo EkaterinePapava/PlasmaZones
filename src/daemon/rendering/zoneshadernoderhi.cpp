@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "zoneshadernoderhi.h"
-#include "zoneshadernoderhi_internal.h"
+#include "zoneshadernoderhi/internal.h"
 
 #include <QFile>
 #include <QFileInfo>

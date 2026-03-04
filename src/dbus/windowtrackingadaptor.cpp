@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "windowtrackingadaptor.h"
-#include "windowtrackingadaptor_internal.h"
+#include "windowtrackingadaptor/internal.h"
 #include "zonedetectionadaptor.h"
 #include "../core/interfaces.h"
 #include "../core/layoutmanager.h"

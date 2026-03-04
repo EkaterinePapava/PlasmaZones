@@ -35,33 +35,33 @@ set(plasmazones_core_SRCS
     core/layoutfactory.cpp
     core/windowtrackingservice.h
     core/windowtrackingservice.cpp
-    core/wts_snap.cpp
-    core/wts_navigation.cpp
-    core/wts_resnap.cpp
-    core/wts_lifecycle.cpp
+    core/windowtrackingservice/snap.cpp
+    core/windowtrackingservice/navigation.cpp
+    core/windowtrackingservice/resnap.cpp
+    core/windowtrackingservice/lifecycle.cpp
     core/platform.cpp
     core/platform.h
     core/geometryutils.cpp
-    core/geometryutils_constraints.cpp
-    core/geometryutils_overlaps.cpp
+    core/geometryutils/constraints.cpp
+    core/geometryutils/overlaps.cpp
     core/geometryutils.h
     core/dbusvariantutils.cpp
     core/dbusvariantutils.h
     core/zone.cpp
     core/zone.h
     core/layout.cpp
-    core/layout_serialization.cpp
-    core/layout_factories.cpp
+    core/layout/serialization.cpp
+    core/layout/factories.cpp
     core/layout.h
     core/layoutmanager.cpp
-    core/layoutmanager_persistence.cpp
-    core/layoutmanager_assignments.cpp
+    core/layoutmanager/persistence.cpp
+    core/layoutmanager/assignments.cpp
     core/layoutmanager.h
     core/layoututils.cpp
     core/layoututils.h
-    core/shaderregistry_params.cpp
+    core/shaderregistry/params.cpp
     core/screenmanager.cpp
-    core/screenmanager_panels.cpp
+    core/screenmanager/panels.cpp
     core/screenmanager.h
     core/virtualdesktopmanager.cpp
     core/virtualdesktopmanager.h
@@ -78,17 +78,17 @@ set(plasmazones_core_SRCS
     core/modifierutils.cpp
     core/modifierutils.h
     config/settings.cpp
-    config/settings_loadsave.cpp
-    config/settings_setters.cpp
-    config/settings_perscreen.cpp
+    config/settings/loadsave.cpp
+    config/settings/setters.cpp
+    config/settings/perscreen.cpp
     config/settings.h
     config/colorimporter.cpp
     config/colorimporter.h
     config/updatechecker.cpp
     config/updatechecker.h
     dbus/layoutadaptor.cpp
-    dbus/layoutadaptor_assignment.cpp
-    dbus/layoutadaptor_editor.cpp
+    dbus/layoutadaptor/assignment.cpp
+    dbus/layoutadaptor/editor.cpp
     dbus/layoutadaptor.h
     dbus/settingsadaptor.cpp
     dbus/settingsadaptor.h
@@ -97,22 +97,22 @@ set(plasmazones_core_SRCS
     dbus/zonedetectionadaptor.cpp
     dbus/zonedetectionadaptor.h
     dbus/windowtrackingadaptor.cpp
-    dbus/windowtrackingadaptor_navigation.cpp
-    dbus/windowtrackingadaptor_targets.cpp
-    dbus/windowtrackingadaptor_float.cpp
-    dbus/windowtrackingadaptor_persistence.cpp
-    dbus/windowtrackingadaptor_saveload.cpp
-    dbus/windowtrackingadaptor_snaprestore.cpp
+    dbus/windowtrackingadaptor/navigation.cpp
+    dbus/windowtrackingadaptor/targets.cpp
+    dbus/windowtrackingadaptor/float.cpp
+    dbus/windowtrackingadaptor/persistence.cpp
+    dbus/windowtrackingadaptor/saveload.cpp
+    dbus/windowtrackingadaptor/snaprestore.cpp
     dbus/windowtrackingadaptor.h
-    dbus/windowtrackingadaptor_internal.h
+    dbus/windowtrackingadaptor/internal.h
     dbus/screenadaptor.cpp
     dbus/screenadaptor.h
     dbus/windowdragadaptor.cpp
-    dbus/windowdragadaptor_drag.cpp
-    dbus/windowdragadaptor_drop.cpp
+    dbus/windowdragadaptor/drag.cpp
+    dbus/windowdragadaptor/drop.cpp
     dbus/windowdragadaptor.h
     dbus/autotileadaptor.cpp
-    dbus/autotileadaptor_config.cpp
+    dbus/autotileadaptor/config.cpp
     dbus/autotileadaptor.h
     autotile/TilingAlgorithm.cpp
     autotile/TilingAlgorithm.h
@@ -269,15 +269,15 @@ set(plasmazones_rendering_SRCS
     daemon/rendering/zoneshadercommon.h
     daemon/rendering/rendering_macros.h
     daemon/rendering/zoneshadernodebase.h
-    daemon/rendering/zoneshadernoderhi_internal.h
+    daemon/rendering/zoneshadernoderhi/internal.h
     daemon/rendering/zoneshadernoderhi.h
     daemon/rendering/zoneshadernoderhi.cpp
-    daemon/rendering/zoneshadernoderhi_setters.cpp
-    daemon/rendering/zoneshadernoderhi_pipeline.cpp
-    daemon/rendering/zoneshadernoderhi_uniforms.cpp
+    daemon/rendering/zoneshadernoderhi/setters.cpp
+    daemon/rendering/zoneshadernoderhi/pipeline.cpp
+    daemon/rendering/zoneshadernoderhi/uniforms.cpp
     daemon/rendering/zoneshaderitem.h
     daemon/rendering/zoneshaderitem.cpp
-    daemon/rendering/zoneshaderitem_setters.cpp
+    daemon/rendering/zoneshaderitem/setters.cpp
     daemon/rendering/zonelabeltexturebuilder.h
     daemon/rendering/zonelabeltexturebuilder.cpp
 )
@@ -322,31 +322,31 @@ kconfig_add_kcfg_files(plasmazones_daemon_kcfg_SRCS
 set(plasmazones_daemon_SRCS
     daemon/main.cpp
     daemon/daemon.cpp
-    daemon/daemon_start.cpp
-    daemon/daemon_signals.cpp
-    daemon/daemon_navigation.cpp
-    daemon/daemon_autotile.cpp
-    daemon/daemon_osd.cpp
+    daemon/daemon/start.cpp
+    daemon/daemon/signals.cpp
+    daemon/daemon/navigation.cpp
+    daemon/daemon/autotile.cpp
+    daemon/daemon/osd.cpp
     daemon/daemon.h
-    daemon/daemon_helpers.h
-    daemon/daemon_macros.h
+    daemon/daemon/helpers.h
+    daemon/daemon/macros.h
     daemon/cavaservice.cpp
     daemon/cavaservice.h
     daemon/overlayservice.cpp
-    daemon/overlayservice_settings.cpp
-    daemon/overlayservice_overlay.cpp
-    daemon/overlayservice_overlay_data.cpp
-    daemon/overlayservice_osd.cpp
-    daemon/overlayservice_selector.cpp
-    daemon/overlayservice_selector_update.cpp
-    daemon/overlayservice_shader.cpp
-    daemon/overlayservice_snapassist.cpp
+    daemon/overlayservice/settings.cpp
+    daemon/overlayservice/overlay.cpp
+    daemon/overlayservice/overlay_data.cpp
+    daemon/overlayservice/osd.cpp
+    daemon/overlayservice/selector.cpp
+    daemon/overlayservice/selector_update.cpp
+    daemon/overlayservice/shader.cpp
+    daemon/overlayservice/snapassist.cpp
     daemon/overlayservice.h
-    daemon/overlayservice_internal.h
+    daemon/overlayservice/internal.h
     daemon/windowthumbnailservice.cpp
     daemon/windowthumbnailservice.h
     daemon/shortcutmanager.cpp
-    daemon/shortcutmanager_handlers.cpp
+    daemon/shortcutmanager/handlers.cpp
     daemon/shortcutmanager.h
     daemon/zoneselectorcontroller.cpp
     daemon/zoneselectorcontroller.h
@@ -435,16 +435,16 @@ configure_file(
 set(plasmazones_editor_SRCS
     editor/main.cpp
     editor/EditorController.cpp
-    editor/EditorController_gaps.cpp
-    editor/EditorController_shader.cpp
-    editor/EditorController_layout.cpp
-    editor/EditorController_selection.cpp
-    editor/EditorController_multiselect.cpp
-    editor/EditorController_visibility.cpp
-    editor/EditorController_clipboard.cpp
-    editor/EditorController_zones.cpp
-    editor/EditorController_zoneops.cpp
-    editor/EditorController_settings.cpp
+    editor/controller/gaps.cpp
+    editor/controller/shader.cpp
+    editor/controller/layout.cpp
+    editor/controller/selection.cpp
+    editor/controller/multiselect.cpp
+    editor/controller/visibility.cpp
+    editor/controller/clipboard.cpp
+    editor/controller/zones.cpp
+    editor/controller/zoneops.cpp
+    editor/controller/settings.cpp
     editor/EditorController.h
     editor/helpers/BatchOperationScope.h
     editor/helpers/ZoneSerialization.cpp
@@ -457,9 +457,9 @@ set(plasmazones_editor_SRCS
     editor/services/DBusLayoutService.cpp
     editor/services/DBusLayoutService.h
     editor/services/ZoneManager.cpp
-    editor/services/ZoneManager_divider.cpp
-    editor/services/ZoneManager_zorder.cpp
-    editor/services/ZoneManager_serialization.cpp
+    editor/services/zonemanager/divider.cpp
+    editor/services/zonemanager/zorder.cpp
+    editor/services/zonemanager/serialization.cpp
     editor/services/ZoneManager.h
     editor/services/ZoneAutoFiller.cpp
     editor/services/ZoneAutoFiller.h

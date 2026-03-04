@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 fuddlesworth
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "overlayservice_internal.h"
+#include "overlayservice/internal.h"
 #include "overlayservice.h"
 #include "cavaservice.h"
 #include "windowthumbnailservice.h"
