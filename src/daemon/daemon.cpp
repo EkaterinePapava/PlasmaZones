@@ -310,8 +310,11 @@ bool Daemon::init()
         return false;
     }
 
-    // Retry D-Bus service registration (with exponential backoff)
-    const int maxRetries = 3;
+    // Retry D-Bus service registration with exponential backoff.
+    // Synchronous retry is required here because init() runs before QGuiApplication::exec(),
+    // so QTimer-based async approaches won't fire. Delays are kept short (700ms total max).
+    constexpr int maxRetries = 3;
+    constexpr int baseDelayMs = 100; // 100ms, 200ms, 400ms exponential backoff
     bool serviceRegistered = false;
     for (int attempt = 0; attempt < maxRetries; ++attempt) {
         if (bus.registerService(QString(DBus::ServiceName))) {
@@ -321,9 +324,9 @@ bool Daemon::init()
 
         QDBusError error = bus.lastError();
         if (error.type() == QDBusError::ServiceUnknown || error.type() == QDBusError::NoReply) {
-            // Transient error - retry
+            // Transient error - retry with exponential backoff
             if (attempt < maxRetries - 1) {
-                int delayMs = 1000 * (attempt + 1); // Linear backoff: 1s, 2s, 3s
+                const int delayMs = baseDelayMs * (1 << attempt);
                 qCWarning(lcDaemon) << "Failed to register D-Bus service (attempt" << (attempt + 1) << "/" << maxRetries
                                     << "):" << error.message() << "- retrying in" << delayMs << "ms";
                 QThread::msleep(delayMs);

@@ -192,7 +192,7 @@ void LayoutAdaptor::assignLayoutToScreenDesktop(const QString& screenName, int v
     if (m_virtualDesktopManager) {
         int currentDesktop = m_virtualDesktopManager->currentDesktop();
         if (virtualDesktop == 0 || virtualDesktop == currentDesktop) {
-            QMetaObject::invokeMethod(m_virtualDesktopManager, "updateActiveLayout", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(m_virtualDesktopManager, &VirtualDesktopManager::updateActiveLayout, Qt::QueuedConnection);
         }
     }
 }
@@ -483,7 +483,7 @@ void LayoutAdaptor::assignLayoutToScreenDesktopActivity(const QString& screenNam
 
     if (affectsCurrentDesktop && affectsCurrentActivity) {
         if (m_virtualDesktopManager) {
-            QMetaObject::invokeMethod(m_virtualDesktopManager, "updateActiveLayout", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(m_virtualDesktopManager, &VirtualDesktopManager::updateActiveLayout, Qt::QueuedConnection);
         }
     }
 }

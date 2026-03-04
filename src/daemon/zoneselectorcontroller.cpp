@@ -14,16 +14,19 @@
 
 namespace PlasmaZones {
 
+namespace {
+constexpr int CollapseDelayMs = 300;    // Delay before collapsing selector after cursor leaves
+constexpr int ProximityCheckMs = 16;    // ~60fps polling; TODO: derive from screen refresh rate
+} // namespace
+
 ZoneSelectorController::ZoneSelectorController(QObject* parent)
     : QObject(parent)
 {
-    // Configure collapse timer
     m_collapseTimer.setSingleShot(true);
-    m_collapseTimer.setInterval(300); // 300ms delay before collapse
+    m_collapseTimer.setInterval(CollapseDelayMs);
     connect(&m_collapseTimer, &QTimer::timeout, this, &ZoneSelectorController::onCollapseTimerTimeout);
 
-    // Configure proximity check timer (only active during drag)
-    m_proximityCheckTimer.setInterval(16); // ~60fps updates
+    m_proximityCheckTimer.setInterval(ProximityCheckMs);
     connect(&m_proximityCheckTimer, &QTimer::timeout, this, &ZoneSelectorController::onProximityCheckTimeout);
 }
 

@@ -29,6 +29,13 @@
 
 namespace PlasmaZones {
 
+namespace {
+// Safety timeout for pending initial window orders that never arrive via D-Bus.
+// If windows fail to open (e.g., app crash during startup), this prevents
+// m_pendingInitialOrders from leaking state indefinitely.
+constexpr int PendingOrderTimeoutMs = 10000;
+} // namespace
+
 AutotileEngine::AutotileEngine(LayoutManager* layoutManager, WindowTrackingService* windowTracker,
                                ScreenManager* screenManager, QObject* parent)
     : QObject(parent)
@@ -351,12 +358,11 @@ void AutotileEngine::setInitialWindowOrder(const QString& screenName, const QStr
     m_pendingInitialOrders[screenName] = windowIds;
     qCInfo(lcAutotile) << "Pre-seeded window order for screen" << screenName << ":" << windowIds;
 
-    // Safety timeout: if the pending order is never fully consumed (e.g., windows
-    // failed to arrive via D-Bus), clean it up to avoid leaking state indefinitely.
-    QTimer::singleShot(10000, this, [this, screenName]() {
+    // Safety timeout: clean up if windows never arrive (e.g., app crash during startup)
+    QTimer::singleShot(PendingOrderTimeoutMs, this, [this, screenName]() {
         if (m_pendingInitialOrders.remove(screenName)) {
             qCWarning(lcAutotile) << "Pending initial order for screen" << screenName
-                                  << "timed out after 10s — cleaning up stale entry";
+                                  << "timed out after" << PendingOrderTimeoutMs << "ms — cleaning up stale entry";
         }
     });
 }

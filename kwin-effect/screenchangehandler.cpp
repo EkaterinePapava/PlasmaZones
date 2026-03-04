@@ -21,12 +21,19 @@ Q_LOGGING_CATEGORY(lcScreenChange, "kwin.effect.plasmazones.screenchange", QtWar
 
 namespace PlasmaZones {
 
+namespace {
+// Debounce interval for virtualScreenGeometryChanged signals. KWin fires this
+// multiple times per screen connect/disconnect/resolution change. 500ms lets
+// all signals from a single user action settle before we process.
+constexpr int ScreenChangeDebounceMs = 500;
+} // namespace
+
 ScreenChangeHandler::ScreenChangeHandler(PlasmaZonesEffect* effect, QObject* parent)
     : QObject(parent)
     , m_effect(effect)
 {
     m_screenChangeDebounce.setSingleShot(true);
-    m_screenChangeDebounce.setInterval(500); // 500ms debounce
+    m_screenChangeDebounce.setInterval(ScreenChangeDebounceMs);
     connect(&m_screenChangeDebounce, &QTimer::timeout, this, &ScreenChangeHandler::applyScreenGeometryChange);
 
     m_lastVirtualScreenGeometry = KWin::effects->virtualScreenGeometry();

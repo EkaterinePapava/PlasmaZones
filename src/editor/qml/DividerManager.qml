@@ -12,9 +12,8 @@ import org.kde.kirigami as Kirigami
  * Handles divider dragging and zone geometry updates.
  */
 Item {
-    // Note: editorController is a required property, so it should always be set when component is created
-    // If it's null, that means it wasn't passed correctly from parent
-    // If failed, initRetryTimer will keep trying
+    // Note: editorController is a required property, so it should always be set when component is created.
+    // Initialization defers until drawingArea has valid dimensions (width/height > 0).
 
     id: dividerManager
 
@@ -309,20 +308,9 @@ Item {
         }
     }
 
-    // Retry timer for initialization
-    Timer {
-        id: initRetryTimer
-
-        interval: 100
-        repeat: true
-        running: !initialUpdateDone
-        onTriggered: {
-            if (tryUpdateDividers()) {
-                initialUpdateDone = true;
-                running = false;
-            }
-        }
-    }
+    // Initialization gate: drawingArea onWidthChanged/onHeightChanged (below)
+    // retries tryUpdateDividers() when dimensions become valid, eliminating the
+    // need for a polling timer.
 
     // Watch for drawing area size changes - but only after editorController is set
     Connections {
@@ -485,40 +473,40 @@ Item {
                 // Trigger divider recalculation
                 dividerManager.scheduleUpdate();
 
-                // Validate that the resize was actually applied
+                // Validate that the resize was actually applied.
+                // Single deferred call: C++ model updates synchronously on resizeZonesAtDivider,
+                // so one frame is enough for QML property bindings to propagate.
                 var capturedHandle = dividerHandleItem;
                 var capturedOriginalPos = originalPosition;
                 var capturedKey = key;
                 var capturedDividerKey = dividerKey;
                 Qt.callLater(function() {
-                    Qt.callLater(function() {
-                        var zonesMoved = false;
-                        var zonesAfter = dividerManager.editorController.zones;
-                        var capturedZonesBefore = dividerRepeater.zonesBefore;
-                        for (var i = 0; i < zonesAfter.length; i++) {
-                            var zone = zonesAfter[i];
-                            if (capturedAffectedZones.indexOf(zone.id) >= 0) {
-                                var before = capturedZonesBefore[zone.id];
-                                if (before) {
-                                    var xDiff = Math.abs(zone.x - before.x);
-                                    var yDiff = Math.abs(zone.y - before.y);
-                                    var wDiff = Math.abs(zone.width - before.width);
-                                    var hDiff = Math.abs(zone.height - before.height);
-                                    if (xDiff > 0.001 || yDiff > 0.001 || wDiff > 0.001 || hDiff > 0.001) {
-                                        zonesMoved = true;
-                                        break;
-                                    }
+                    var zonesMoved = false;
+                    var zonesAfter = dividerManager.editorController.zones;
+                    var capturedZonesBefore = dividerRepeater.zonesBefore;
+                    for (var i = 0; i < zonesAfter.length; i++) {
+                        var zone = zonesAfter[i];
+                        if (capturedAffectedZones.indexOf(zone.id) >= 0) {
+                            var before = capturedZonesBefore[zone.id];
+                            if (before) {
+                                var xDiff = Math.abs(zone.x - before.x);
+                                var yDiff = Math.abs(zone.y - before.y);
+                                var wDiff = Math.abs(zone.width - before.width);
+                                var hDiff = Math.abs(zone.height - before.height);
+                                if (xDiff > 0.001 || yDiff > 0.001 || wDiff > 0.001 || hDiff > 0.001) {
+                                    zonesMoved = true;
+                                    break;
                                 }
                             }
                         }
-                        if (!zonesMoved && capturedHandle) {
-                            capturedHandle.resetDragPosition();
-                            if (dividerManager.recentDividerPositions[capturedKey] && dividerManager.recentDividerPositions[capturedKey][capturedDividerKey])
-                                delete dividerManager.recentDividerPositions[capturedKey][capturedDividerKey];
-                            capturedHandle.restoreZoneVisuals();
-                            dividerManager.scheduleUpdate();
-                        }
-                    });
+                    }
+                    if (!zonesMoved && capturedHandle) {
+                        capturedHandle.resetDragPosition();
+                        if (dividerManager.recentDividerPositions[capturedKey] && dividerManager.recentDividerPositions[capturedKey][capturedDividerKey])
+                            delete dividerManager.recentDividerPositions[capturedKey][capturedDividerKey];
+                        capturedHandle.restoreZoneVisuals();
+                        dividerManager.scheduleUpdate();
+                    }
                 });
             }
 

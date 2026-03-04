@@ -424,8 +424,12 @@ QString SettingsAdaptor::getRunningWindows()
     QEventLoop loop;
     m_windowListLoop = &loop;
 
-    // Timeout after 2 seconds if KWin effect doesn't respond
-    QTimer::singleShot(2000, &loop, &QEventLoop::quit);
+    // Blocking call: waits for KWin effect to respond via provideRunningWindows().
+    // The 2s timeout prevents indefinite blocking if the effect is unloaded or
+    // unresponsive. This is called from the KCM settings UI (not the daemon hot
+    // path), so briefly blocking the caller thread is acceptable.
+    constexpr int WindowListTimeoutMs = 2000;
+    QTimer::singleShot(WindowListTimeoutMs, &loop, &QEventLoop::quit);
 
     // Signal the KWin effect to enumerate windows
     Q_EMIT runningWindowsRequested();

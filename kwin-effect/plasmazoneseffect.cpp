@@ -2064,7 +2064,8 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
     // When allowDuringDrag is true: apply immediately (FancyZones-style during drag)
     if (!allowDuringDrag && (window->isUserMove() || window->isUserResize())) {
         if (retriesLeft <= 0) {
-            qCWarning(lcEffect) << "Giving up snap geometry — window still in user move after max retries";
+            qCWarning(lcEffect) << "Giving up snap geometry — window still in user move after"
+                                << "20 retries (2s). This may indicate a KWin state bug.";
             return;
         }
         qCDebug(lcEffect) << "Window still in user move/resize state, deferring geometry change"
@@ -2075,9 +2076,9 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
         // isUserMove yet (takes ~1 frame). The activation-button-held case is
         // handled earlier in callDragStopped via cancelInteractiveMoveResize.
         QPointer<KWin::EffectWindow> safeWindow = window;
-        QTimer::singleShot(100, this, [this, safeWindow, geo, retriesLeft, skipAnimation]() {
+        QTimer::singleShot(100, this, [this, safeWindow, geo, remaining = retriesLeft - 1, skipAnimation]() {
             if (safeWindow && !safeWindow->isDeleted() && !safeWindow->isFullScreen()) {
-                applySnapGeometry(safeWindow, geo, false, retriesLeft - 1, skipAnimation);
+                applySnapGeometry(safeWindow, geo, false, remaining, skipAnimation);
             }
         });
         return;

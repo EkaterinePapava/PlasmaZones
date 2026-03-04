@@ -189,20 +189,14 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
             }
         }
 
+        // Wayland clients may not respect geometry constraints immediately after
+        // moveResize. Retry centering with a single deferred pass at 200ms.
         if (!m_autotileTargetZones.isEmpty()) {
-            QTimer::singleShot(150, this, [this, gen]() {
+            QTimer::singleShot(200, this, [this, gen]() {
                 if (m_autotileStaggerGeneration != gen) {
                     return;
                 }
                 centerUndersizedAutotileWindows();
-                if (!m_autotileTargetZones.isEmpty()) {
-                    QTimer::singleShot(250, this, [this, gen]() {
-                        if (m_autotileStaggerGeneration != gen) {
-                            return;
-                        }
-                        centerUndersizedAutotileWindows();
-                    });
-                }
             });
         }
     };
