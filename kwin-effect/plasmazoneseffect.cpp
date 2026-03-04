@@ -848,6 +848,57 @@ void PlasmaZonesEffect::slotDaemonReady()
         }
     }
 
+    // Restore snap state for non-autotile windows.
+    // pendingRestoresAvailable may have fired BEFORE daemonReady, causing
+    // slotPendingRestoresAvailable to bail out (m_daemonServiceRegistered was false).
+    // Now that the daemon is confirmed ready, retry the restore flow using raw
+    // QDBusMessage (no QDBusInterface) to avoid synchronous introspection.
+    {
+        QDBusMessage msg = QDBusMessage::createMethodCall(
+            DBus::ServiceName, DBus::ObjectPath,
+            DBus::Interface::WindowTracking, QStringLiteral("getSnappedWindows"));
+        auto* watcher = new QDBusPendingCallWatcher(
+            QDBusConnection::sessionBus().asyncCall(msg), this);
+        connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* w) {
+            w->deleteLater();
+            QDBusPendingReply<QStringList> reply = *w;
+            QSet<QString> trackedStableIds;
+            if (reply.isValid()) {
+                const QStringList trackedWindows = reply.value();
+                for (const QString& windowId : trackedWindows) {
+                    QString stableId = extractStableId(windowId);
+                    if (!stableId.isEmpty()) {
+                        trackedStableIds.insert(stableId);
+                    }
+                }
+            }
+
+            const auto allWindows = KWin::effects->stackingOrder();
+            int restored = 0;
+            for (KWin::EffectWindow* window : allWindows) {
+                if (!window || !shouldHandleWindow(window)) {
+                    continue;
+                }
+                if (window->isMinimized()) {
+                    continue;
+                }
+                // Skip autotile screens — they're handled by notifyWindowAdded above
+                if (m_autotileHandler->isAutotileScreen(getWindowScreenName(window))) {
+                    continue;
+                }
+                QString windowId = getWindowId(window);
+                QString stableId = extractStableId(windowId);
+                if (trackedStableIds.contains(stableId)) {
+                    continue;
+                }
+                callResolveWindowRestore(window);
+                ++restored;
+            }
+            if (restored > 0) {
+                qCInfo(lcEffect) << "Triggered snap restore for" << restored << "untracked windows after daemon ready";
+            }
+        });
+    }
 }
 
 void PlasmaZonesEffect::slotSettingsChanged()
