@@ -375,7 +375,7 @@ Item {
                 id: curveCanvas
 
                 // Control point handles
-                function drawHandle(cx, cy, active) {
+                function drawHandle(ctx, cx, cy, active) {
                     ctx.beginPath();
                     ctx.arc(cx, cy, root.handleRadius, 0, 2 * Math.PI);
                     ctx.fillStyle = active ? Kirigami.Theme.highlightColor : Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.6);
@@ -457,8 +457,8 @@ Item {
                         ctx.moveTo(p0x, p0y);
                         ctx.bezierCurveTo(h1x, h1y, h2x, h2y, p3x, p3y);
                         ctx.stroke();
-                        drawHandle(h1x, h1y, dragArea.activeHandle === 1);
-                        drawHandle(h2x, h2y, dragArea.activeHandle === 2);
+                        drawHandle(ctx, h1x, h1y, dragArea.activeHandle === 1);
+                        drawHandle(ctx, h2x, h2y, dragArea.activeHandle === 2);
                         // Anchor dots at P0 and P3
                         ctx.fillStyle = Kirigami.Theme.disabledTextColor;
                         ctx.beginPath();
