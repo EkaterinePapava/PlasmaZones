@@ -90,22 +90,10 @@ Window {
         return -1;
     }
 
-    // Zones with isHighlighted patched for Repeater (basic zones fallback only).
-    readonly property var zonesForDisplay: {
-        var zones = root.zones || [];
-        if (root.highlightedCount > 0) return zones;
-        var idx = root.hoveredZoneIndex;
-        if (idx < 0) return zones;
-        var result = [];
-        for (var i = 0; i < zones.length; i++) {
-            var z = zones[i];
-            var zone = {};
-            for (var k in z) zone[k] = z[k];
-            zone.isHighlighted = (i === idx);
-            result.push(zone);
-        }
-        return result;
-    }
+    // Note: zonesForDisplay was removed to fix a SIGSEGV crash (QTBUG use-after-free).
+    // Previously, hoveredZoneIndex changes rebuilt the array, causing the Repeater to
+    // destroy delegates mid-hover-event delivery. Now the Repeater uses root.zones
+    // (stable model) and each delegate checks hoveredZoneIndex directly.
 
     // Window flags - LayerShellQt handles the overlay behavior on Wayland
     flags: Qt.FramelessWindowHint | Qt.WindowDoesNotAcceptFocus
@@ -175,7 +163,7 @@ Window {
         // BASIC ZONES - When no shader or shader not ready
         // ===================================================================
         Repeater {
-            model: root.zonesForDisplay
+            model: root.zones
             // Note: 'visible' on Repeater has no effect - delegate visibility is controlled below
 
             delegate: ZoneItem {
@@ -191,7 +179,10 @@ Window {
 
                 zoneNumber: modelData.zoneNumber || (index + 1)
                 zoneName: modelData.name || ""
-                isHighlighted: modelData.isHighlighted || false
+                // Combine C++ highlight (zone selector) with local hover highlight.
+                // Uses hoveredZoneIndex binding instead of model-level patching to avoid
+                // Repeater model churn that causes delegate destruction during hover events.
+                isHighlighted: modelData.isHighlighted || (root.hoveredZoneIndex === index)
                 showNumber: root.showNumbers
 
                 highlightColor: (modelData.useCustomColors && modelData.highlightColor) ? modelData.highlightColor : root.highlightColor
