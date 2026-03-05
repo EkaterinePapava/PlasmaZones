@@ -220,7 +220,7 @@ vec4 renderBerryZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
 
         // === LAYER 2: Organic Blob Field ===
         float blobTime = iTime * driftSpeed;
-        float softK = blobSoftness * 0.05;
+        float softK = max(blobSoftness * 0.05, 0.001);
         int blobCount = clamp(int(blobScale), 3, 16);
 
         // Mids-driven UV swirl: gentle rotational warp instead of generic speed change
@@ -273,7 +273,8 @@ vec4 renderBerryZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
 
         // Fresnel rim: wide inner glow at blob edges (not just a thin line)
         {
-            float rim = smoothstep(-rimGlowWidth, 0.0, blobDist) * smoothstep(rimGlowWidth * 0.5, 0.0, blobDist);
+            float rim = smoothstep(-rimGlowWidth, 0.0, blobDist)
+                      * (1.0 - smoothstep(0.0, rimGlowWidth * 0.5, blobDist));
             // Also add thin bright edge
             float thinEdge = exp(-abs(blobDist) / 0.002);
             float rimTotal = rim * 0.8 + thinEdge * 0.5;

@@ -27,7 +27,7 @@ float getFillOpacity()    { return customParams[3].y >= 0.0 ? customParams[3].y 
 float getChannelMix()     { return customParams[3].z >= 0.0 ? customParams[3].z : 0.5; }
 float getZoneFillTint()  { return customParams[3].w >= 0.0 ? customParams[3].w : 0.0; }
 float getAudioReact()    { return customParams[0].z >= 0.0 ? customParams[0].z : 1.0; }
-float getBassChromaMul() { return customParams[2].w >= 0.0 ? customParams[2].w : 1.5; }
+float getBassChromaMul() { return customParams[2].w >= 0.0 ? customParams[2].w : 3.0; }
 
 
 vec4 sampleNexus(vec2 fragCoord, vec2 uv, float chroma) {
@@ -262,7 +262,7 @@ vec4 compositeNexusLabels(vec4 color, vec2 fragCoord,
     if (outline > 0.01) {
         float angle = atan(uv.y - 0.5, uv.x - 0.5);
         float signal = smoothstep(0.8, 1.0, sin(angle * 12.0 - iTime * signalSpeed));
-        vec3 traceCol = vec3(0.5, 0.6, 1.0);
+        vec3 traceCol = colorWithFallback(customColors[0].rgb, vec3(0.5, 0.6, 1.0));
         float traceBright = outline * (0.3 + signal * 0.7) * (hasAudio ? 1.0 + treble * labelAudioReact : 1.0);
         color.rgb += traceCol * traceBright;
         color.a = max(color.a, outline * 0.5);

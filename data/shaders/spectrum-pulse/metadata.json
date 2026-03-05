@@ -3,7 +3,7 @@
     "name": "Spectrum Pulse",
     "description": "Reactive neon energy — bass expands the glow, energy pulses race around borders, spectrum paints a flowing aurora, treble fires off sparks. Enable CAVA audio visualization in settings.",
     "author": "PlasmaZones",
-    "version": "2.0",
+    "version": "2.1",
     "fragmentShader": "effect.frag",
     "vertexShader": "zone.vert",
     "parameters": [

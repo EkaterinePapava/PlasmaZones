@@ -164,7 +164,7 @@ float toxicDrip(vec2 uv, float time, float intensity) {
         float dripHead = smoothstep(0.04, 0.0, dist);
         float trail = smoothstep(0.02, 0.0, abs(uv.x - dripX)) *
                       smoothstep(dripPos.y, dripPos.y + 0.3, uv.y) *
-                      smoothstep(1.0, dripPos.y + 0.1, uv.y);
+                      smoothstep(1.0, min(dripPos.y + 0.1, 0.999), uv.y);
 
         drip += (dripHead + trail * 0.5) * (0.5 + 0.5 * sin(time * 3.0 + phase));
     }
@@ -293,7 +293,7 @@ vec4 renderToxicCircuitZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 bord
     glowStrength *= vitalityScale(0.5, 2.2, vitality);
     chromaShift *= vitalityScale(0.6, 1.8, vitality);
     dripIntensity *= vitalityScale(0.5, 2.0, vitality);
-    circuitDensity *= vitalityScale(1.0, 0.8, vitality);
+    circuitDensity *= vitalityScale(0.8, 1.0, vitality);
     pulseSpeed *= vitalityScale(0.7, 1.5, vitality);
     fillOpacity = mix(fillOpacity, min(fillOpacity + 0.15, 0.95), vitality);
     float highlightBoost = vitalityScale(0.75, 1.4, vitality);
@@ -702,10 +702,7 @@ vec4 renderToxicCircuitZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 bord
                     // red shifts one way, blue the other, creating a sharp split
                     float sparkChroma = trebleSpike * 4.0;
                     vec2 sparkOffset = vec2(sparkChroma / rectSize.x, 0.0);
-                    vec3 sparkColor;
-                    sparkColor.r = sparkBright * 1.2;  // Red channel overshoots
-                    sparkColor.g = sparkBright * 0.7;  // Green is dimmer
-                    sparkColor.b = sparkBright * 1.4;  // Blue channel overshoots more
+                    vec3 sparkColor = arcColorParam * sparkBright * 1.3 + vec3(0.15) * sparkBright;
                     // Slight spatial offset for R vs B to simulate chroma split
                     float rShift = smoothstep(0.06, 0.0, abs(cellFrac.x - 0.5 + sparkOffset.x * 20.0));
                     float bShift = smoothstep(0.06, 0.0, abs(cellFrac.x - 0.5 - sparkOffset.x * 20.0));

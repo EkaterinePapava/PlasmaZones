@@ -320,7 +320,7 @@ vec4 renderZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor,
                     float specVal = audioBarSmooth(barU) * reactivity;
 
                     // Bar fill: grows inward from the wall proportional to amplitude
-                    float barFill = smoothstep(0.0, specVal, edgeProximity);
+                    float barFill = smoothstep(0.0, max(specVal, 0.001), edgeProximity);
 
                     // Color: map bar position across the spectrum
                     vec3 barColor = mix(primary, accent, barU);
@@ -498,10 +498,10 @@ void main() {
 
     // Audio analysis (computed once for all zones)
     bool  hasAudio = iAudioSpectrumSize > 0;
-    float bass    = getBass();
-    float mids    = getMids();
-    float treble  = getTreble();
-    float overall = getOverall();
+    float bass    = getBassSoft();
+    float mids    = getMidsSoft();
+    float treble  = getTrebleSoft();
+    float overall = getOverallSoft();
 
     for (int i = 0; i < zoneCount && i < 64; i++) {
         vec4 rect = zoneRects[i];

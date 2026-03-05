@@ -105,7 +105,7 @@ void main() {
 
     // Encode: RG = flow direction (remapped to 0-1), B = flow magnitude, A = 1
     float mag = length(flow);
-    vec2 dir = flow / max(mag, 0.001);
+    vec2 dir = mag > 0.001 ? flow / mag : vec2(0.0);
     fragColor = vec4(
         dir * 0.5 + 0.5,   // RG: direction remapped from [-1,1] to [0,1]
         mag * 0.5,          // B: magnitude (scaled for storage)

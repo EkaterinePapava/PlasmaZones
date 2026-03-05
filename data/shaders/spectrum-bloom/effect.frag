@@ -217,6 +217,7 @@ vec4 renderZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor,
 
             // Glow at the contour edge
             float glow = exp(-abs(distToContour) / glowWidth) * mix(0.25, 0.7, vitality) + specVal * mix(0.2, 0.5, vitality);
+            glow = clamp(glow, 0.0, 1.0);
             // Glow follows the same 5-color contour gradient
             vec3 glowColor;
             if (ct5 < 1.0) glowColor = mix(primary, midCol, ct5);
@@ -273,7 +274,7 @@ vec4 renderZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor,
                     vec2 sPos = vec2(cos(sAngleJ), sin(sAngleJ)) * sR * refSize;
                     float sDist = length(sp - sPos) / max(refSize, 1.0);
                     // Sharp bright point
-                    float sparkle = exp(-sDist * sDist / (0.0004 * mix(0.5, 1.5, vitality)));
+                    float sparkle = exp(-sDist * sDist / (0.0004 * sparkleScale * mix(0.5, 1.5, vitality)));
                     // Brightness driven by local spectrum peak
                     float brightness = sSpec * mix(0.3, 1.2, vitality);
                     // Twinkle
@@ -427,10 +428,10 @@ void main() {
 
     // Audio analysis (computed once for all zones)
     bool  hasAudio = iAudioSpectrumSize > 0;
-    float bass    = getBass();
-    float mids    = getMids();
-    float treble  = getTreble();
-    float overall = getOverall();
+    float bass    = getBassSoft();
+    float mids    = getMidsSoft();
+    float treble  = getTrebleSoft();
+    float overall = getOverallSoft();
 
     for (int i = 0; i < zoneCount && i < 64; i++) {
         vec4 rect = zoneRects[i];

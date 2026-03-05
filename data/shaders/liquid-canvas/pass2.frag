@@ -36,7 +36,8 @@ void main() {
 
     // Decode flow direction from pass 0 for directional blur
     vec4 flowData = texture(iChannel0, channelUv(0, fragCoord));
-    vec2 flowDir = normalize(flowData.rg * 2.0 - 1.0 + 0.0001);
+    vec2 rawFlow = flowData.rg * 2.0 - 1.0;
+    vec2 flowDir = length(rawFlow) > 0.001 ? normalize(rawFlow) : vec2(0.0);
     float flowMag = flowData.b * 2.0;
 
     // -- Directional bloom along flow lines --

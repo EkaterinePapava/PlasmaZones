@@ -181,7 +181,6 @@ vec4 renderMagneticZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCo
 
     float particleCount = customParams[1].x >= 0.0 ? customParams[1].x : 30.0;
     float particleSize = customParams[1].y >= 0.0 ? customParams[1].y : 1.5;
-    float trailLength = customParams[1].z >= 0.0 ? customParams[1].z : 0.5;
     float distortionAmount = customParams[1].w >= 0.0 ? customParams[1].w : 0.4;
     float audioReactivity  = customParams[2].x >= 0.0 ? customParams[2].x : 1.0;
     float nebulaIntensity  = customParams[2].y >= 0.0 ? customParams[2].y : 0.15;
@@ -352,7 +351,7 @@ vec4 renderMagneticZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCo
         fx += deformColor;
 
         // Subtle grid for depth - distorted by vertex displacement
-        vec2 gridUV = globalUV + vDisplacement * 2.0;
+        vec2 gridUV = globalUV + vDisplacement * 0.08;
         vec2 grid = abs(fract(gridUV * gridFreq) - 0.5);
         float gridLine = smoothstep(0.48, 0.5, max(grid.x, grid.y)) * 0.05;
         fx += fieldColor * gridLine * (1.0 - mouseDist) * fieldDensity;
@@ -412,9 +411,9 @@ vec4 renderMagneticZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCo
                 float angle = atan(fromCenter.y, fromCenter.x);
 
                 // Multi-scale angular noise creates branching arc structure
-                float arcNoise1 = noise(vec2(angle * 3.0, iTime * 4.0)) * 0.5;
-                float arcNoise2 = noise(vec2(angle * 8.0, iTime * 6.0 + 10.0)) * 0.3;
-                float arcNoise3 = noise(vec2(angle * 20.0, iTime * 8.0 + 25.0)) * 0.2;
+                float arcNoise1 = angularNoise(angle, 3.0, iTime * 4.0) * 0.5;
+                float arcNoise2 = angularNoise(angle, 8.0, iTime * 6.0 + 10.0) * 0.3;
+                float arcNoise3 = angularNoise(angle, 20.0, iTime * 8.0 + 25.0) * 0.2;
                 float arcPattern = arcNoise1 + arcNoise2 + arcNoise3;
 
                 // Arcs are strongest near the edge, branch inward

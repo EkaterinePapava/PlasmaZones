@@ -231,7 +231,7 @@ vec4 renderPrismataZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCo
             float cauBoost = 1.0 + (hasAudio ? fractureBright * 0.4 : idleAnim * 0.4);
             base += accent * cauMask * causticStr * vitalityScale(0.08, 0.35, vitality) * cauBoost;
             base += hlTint * cauMask * causticStr * vitalityScale(0.03, 0.15, vitality) * cauBoost;
-            base += vec3(1.0) * fractureBright * vitalityScale(0.04, 0.2, vitality);
+            base += hlTint * fractureBright * vitalityScale(0.04, 0.2, vitality);
 
             // 2) Chromatic fracture — RGB dispersion on facet edges
             vec3 chroma = chromaticSample(1.0, edgeDist, chromaStr);

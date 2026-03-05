@@ -142,10 +142,11 @@ vec4 renderZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor,
         float t = iTime * speed;
 
         // Derive base hue from hueCenter color (RGB → HSL hue via atan2)
-        float hueCenterVal = fract(atan(
-            1.732 * (hueCenter.g - hueCenter.b),
-            2.0 * hueCenter.r - hueCenter.g - hueCenter.b
-        ) / TAU);
+        float hueX = 1.732 * (hueCenter.g - hueCenter.b);
+        float hueY = 2.0 * hueCenter.r - hueCenter.g - hueCenter.b;
+        float hueCenterVal = (abs(hueX) + abs(hueY) < 0.01)
+            ? 0.0
+            : fract(atan(hueX, hueY) / TAU);
 
         // Virtual grid coordinates — screen-space for continuity across zones
         float vh = gridDensity;
@@ -280,6 +281,7 @@ vec4 renderZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor,
         float ditherAmt = 0.04 + audioShockwave * 0.03;  // shockwave adds dither grit as it passes
         float dither = mosaicHash(fragCoord + iTime) * ditherAmt;
         col += dither;
+        col = clamp(col, 0.0, 1.0);  // clamp before posterization
         col = floor(col * posterLevels) / posterLevels;
 
         // Dormant desaturation

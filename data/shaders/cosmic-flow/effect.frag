@@ -54,12 +54,12 @@ float noise(in vec2 p) {
 }
 
 // Fractal Brownian Motion with rotation
-float fbm(in vec2 uv, int octaves) {
+float fbm(in vec2 uv, int octaves, float rotAngle) {
     float value = 0.0;
     float amplitude = 0.5;
 
-    float c = cos(0.5);
-    float s = sin(0.5);
+    float c = cos(rotAngle);
+    float s = sin(rotAngle);
     mat2 rot = mat2(c, -s, s, c);
 
     for (int i = 0; i < octaves && i < 8; i++) {
@@ -103,6 +103,7 @@ vec4 renderCosmicZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColo
     float sparkleStr = customParams[3].w >= 0.0 ? customParams[3].w : 2.5;
 
     int gwCount = int(customParams[5].x >= 0.0 ? customParams[5].x : 3.0);
+    float fbmRot = customParams[4].w >= 0.0 ? customParams[4].w : 0.5;
 
     // Convert rect to pixel coordinates
     vec2 rectPos = zoneRectPos(rect);
@@ -200,10 +201,10 @@ vec4 renderCosmicZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColo
     if (d < 0.0) {
 
         // First fbm layer - slow drift
-        float q = fbm(centeredUV + time * vSpeed, octaves);
+        float q = fbm(centeredUV + time * vSpeed, octaves, fbmRot);
 
         // Second fbm layer - combines with first for complexity
-        float r = fbm(centeredUV + q + time * vFlowSpeed, octaves);
+        float r = fbm(centeredUV + q + time * vFlowSpeed, octaves, fbmRot);
 
         // Generate color from palette
         vec3 col = palette(r * contrast, palA, palB, palC, palD);
@@ -268,10 +269,11 @@ vec4 renderCosmicZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColo
 
         // Animated border using the same palette (sin/cos avoids atan seam at ±PI)
         float angle = atan(p.y, p.x) * 2.0;
-        float borderFlow = fbm(vec2(sin(angle), cos(angle)) * 2.0 + time * 0.5, 3);
+        float borderFlow = fbm(vec2(sin(angle), cos(angle)) * 2.0 + time * 0.5, 3, 0.5);
         vec3 borderCol = palette(borderFlow * contrast, palA, palB, palC, palD);
         // Zone border color tint — let per-zone color influence the palette
-        borderCol = mix(borderCol, borderColor.rgb * dot(borderCol, vec3(0.299, 0.587, 0.114)), 0.3);
+        vec3 zoneBorderTint = colorWithFallback(borderColor.rgb, borderCol);
+        borderCol = mix(borderCol, zoneBorderTint * dot(borderCol, vec3(0.299, 0.587, 0.114)), 0.3);
         borderCol *= borderBrightness;
 
         // Highlighted border is brighter and pulses with cosmic breath
@@ -298,7 +300,8 @@ vec4 renderCosmicZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColo
 
         // Glow color from palette
         float angle = atan(p.y, p.x);
-        vec3 glowCol = palette(angle / TAU + time * 0.1, palA, palB, palC, palD);
+        float glowT = angularNoise(angle, 1.5, time * 0.1);
+        vec3 glowCol = palette(glowT, palA, palB, palC, palD);
 
         // Highlighted: stronger, vivid glow; dormant: dim
         glowCol *= mix(0.3, 1.0, vitality);

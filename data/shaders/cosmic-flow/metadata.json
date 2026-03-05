@@ -113,9 +113,9 @@
             "group": "Zone",
             "type": "float",
             "slot": 10,
-            "default": -30.0,
-            "min": -60.0,
-            "max": 0.0
+            "default": 30.0,
+            "min": 5.0,
+            "max": 60.0
         },
         {
             "id": "borderBrightness",
