@@ -37,7 +37,7 @@ inline QString serializeGeometryMap(const QHash<QString, QRect>& map)
 {
     QJsonObject result;
     for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
-        result[Utils::extractStableId(it.key())] = rectToJsonObject(it.value());
+        result[Utils::extractAppId(it.key())] = rectToJsonObject(it.value());
     }
     return QString::fromUtf8(QJsonDocument(result).toJson(QJsonDocument::Compact));
 }

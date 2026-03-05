@@ -182,9 +182,9 @@ private:
     /**
      * @brief Build a map of full window IDs to EffectWindow pointers
      *
-     * Keys are full window IDs (including pointer address) from getWindowId(),
-     * so two windows of the same app class get separate entries. Callers that
-     * receive daemon data keyed by stableId should do a linear scan fallback
+     * Keys are full window IDs (appId|uuid) from getWindowId(),
+     * so two windows of the same app get separate entries. Callers that
+     * receive daemon data keyed by appId should do a linear scan fallback
      * when the exact full ID is not found.
      *
      * @param filterHandleable If true, only include windows passing shouldHandleWindow()
@@ -200,8 +200,8 @@ private:
     KWin::EffectWindow* getValidActiveWindowOrFail(const QString& action);
 
     /**
-     * @brief Check if a window is floating (full windowId with stableId fallback)
-     * @param windowId The window identifier (full or stable)
+     * @brief Check if a window is floating (full windowId with appId fallback)
+     * @param windowId The window identifier (full or appId-only)
      * @return true if window is floating
      */
     bool isWindowFloating(const QString& windowId) const;
@@ -211,8 +211,8 @@ private:
     KWin::EffectWindow* findWindowById(const QString& windowId) const;
 
     /**
-     * @brief All windows matching windowId (exact or same stableId).
-     * Used by autotile to disambiguate when multiple windows share a stableId (e.g. two Firefox).
+     * @brief All windows matching windowId (exact or same appId).
+     * Used by autotile to disambiguate when multiple windows share an appId (e.g. two Firefox).
      */
     QVector<KWin::EffectWindow*> findAllWindowsById(const QString& windowId) const;
 
@@ -251,15 +251,15 @@ private:
                           std::function<void(const QString&, const QString&)> onSnapSuccess = nullptr,
                           bool skipAnimation = false);
 
-    // Extract stable ID from full window ID (strips pointer address)
-    // Stable ID = windowClass:resourceName (without pointer address)
-    // This allows matching windows across KWin restarts
-    static QString extractStableId(const QString& windowId);
+    // Extract app identity from window ID (the portion before the '|' separator)
+    // New format: "appId|internalUuid" → returns "appId"
+    // Legacy format: "windowClass:resourceName:ptr" → returns everything before last ':'
+    static QString extractAppId(const QString& windowId);
 
     /**
-     * @brief Derive short name from window class for icon/app display
-     * X11: "resourceName resourceClass" → first part (e.g., "dolphin")
-     * Wayland app_id: "org.kde.dolphin" → last dot-segment (e.g., "dolphin")
+     * @brief Derive short name from app ID for icon/app display
+     * Reverse-DNS: "org.kde.dolphin" → last dot-segment (e.g., "dolphin")
+     * Simple name: "firefox" → as-is
      */
     static QString deriveShortNameFromWindowClass(const QString& windowClass);
 

@@ -216,7 +216,7 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
                         for (KWin::EffectWindow* ew : allWindows) {
                             if (!ew || !m_effect->shouldHandleWindow(ew))
                                 continue;
-                            if (PlasmaZonesEffect::extractStableId(m_effect->getWindowId(ew)) != stableId)
+                            if (PlasmaZonesEffect::extractAppId(m_effect->getWindowId(ew)) != stableId)
                                 continue;
                             if (!added.contains(m_effect->getWindowScreenName(ew)))
                                 continue;

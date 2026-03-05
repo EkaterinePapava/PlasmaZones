@@ -749,44 +749,40 @@ private Q_SLOTS:
 
     void testRestore_zoneNumberFallback()
     {
-        QString stableId = QStringLiteral("firefox:Navigator");
+        QString appId = QStringLiteral("firefox");
         QString oldZoneId = QUuid::createUuid().toString();
 
-        QHash<QString, QStringList> pendingZones;
-        pendingZones[stableId] = {oldZoneId};
-        m_service->setPendingZoneAssignments(pendingZones);
+        WindowTrackingService::PendingRestore entry;
+        entry.zoneIds = {oldZoneId};
+        entry.screenName = QString();
+        entry.layoutId = m_testLayout->id().toString();
+        entry.zoneNumbers = {2};
 
-        QHash<QString, QString> pendingScreens;
-        pendingScreens[stableId] = QString();
-        m_service->setPendingScreenAssignments(pendingScreens);
+        QHash<QString, QList<WindowTrackingService::PendingRestore>> queues;
+        queues[appId] = {entry};
+        m_service->setPendingRestoreQueues(queues);
 
-        QHash<QString, QString> pendingLayouts;
-        pendingLayouts[stableId] = m_testLayout->id().toString();
-        m_service->setPendingLayoutAssignments(pendingLayouts);
-
-        QHash<QString, QList<int>> pendingNumbers;
-        pendingNumbers[stableId] = {2};
-        m_service->setPendingZoneNumbers(pendingNumbers);
-
-        SnapResult result =
-            m_service->calculateRestoreFromSession(QStringLiteral("firefox:Navigator:99999"), QString(), false);
+        SnapResult result = m_service->calculateRestoreFromSession(QStringLiteral("firefox|99999"), QString(), false);
         Q_UNUSED(result);
 
-        QVERIFY(m_service->pendingZoneNumbers().contains(stableId));
-        QCOMPARE(m_service->pendingZoneNumbers().value(stableId), QList<int>{2});
+        QVERIFY(m_service->pendingRestoreQueues().contains(appId));
+        QCOMPARE(m_service->pendingRestoreQueues().value(appId).first().zoneNumbers, QList<int>{2});
     }
 
     void testRestore_floatingWindowSkipsRestore()
     {
-        QString stableId = QStringLiteral("firefox:Navigator");
-        QString windowId = QStringLiteral("firefox:Navigator:12345");
+        QString appId = QStringLiteral("firefox");
+        QString windowId = QStringLiteral("firefox|12345");
 
-        QHash<QString, QStringList> pendingZones;
-        pendingZones[stableId] = {m_zoneIds[0]};
-        m_service->setPendingZoneAssignments(pendingZones);
+        WindowTrackingService::PendingRestore entry;
+        entry.zoneIds = {m_zoneIds[0]};
+
+        QHash<QString, QList<WindowTrackingService::PendingRestore>> queues;
+        queues[appId] = {entry};
+        m_service->setPendingRestoreQueues(queues);
 
         QSet<QString> floating;
-        floating.insert(stableId);
+        floating.insert(appId);
         m_service->setFloatingWindows(floating);
 
         SnapResult result = m_service->calculateRestoreFromSession(windowId, QString(), false);
@@ -799,36 +795,23 @@ private Q_SLOTS:
 
     void testClearStalePendingAssignment()
     {
-        QString windowId = QStringLiteral("app:resource:12345");
-        QString stableId = Utils::extractStableId(windowId);
+        QString windowId = QStringLiteral("app|12345");
+        QString appId = Utils::extractAppId(windowId);
 
-        QHash<QString, QStringList> pendingZones;
-        pendingZones[stableId] = {m_zoneIds[0]};
-        m_service->setPendingZoneAssignments(pendingZones);
+        WindowTrackingService::PendingRestore entry;
+        entry.zoneIds = {m_zoneIds[0]};
+        entry.screenName = QStringLiteral("DP-1");
+        entry.virtualDesktop = 1;
+        entry.layoutId = QUuid::createUuid().toString();
+        entry.zoneNumbers = {1};
 
-        QHash<QString, QString> pendingScreens;
-        pendingScreens[stableId] = QStringLiteral("DP-1");
-        m_service->setPendingScreenAssignments(pendingScreens);
-
-        QHash<QString, int> pendingDesktops;
-        pendingDesktops[stableId] = 1;
-        m_service->setPendingDesktopAssignments(pendingDesktops);
-
-        QHash<QString, QString> pendingLayouts;
-        pendingLayouts[stableId] = QUuid::createUuid().toString();
-        m_service->setPendingLayoutAssignments(pendingLayouts);
-
-        QHash<QString, QList<int>> pendingNumbers;
-        pendingNumbers[stableId] = {1};
-        m_service->setPendingZoneNumbers(pendingNumbers);
+        QHash<QString, QList<WindowTrackingService::PendingRestore>> queues;
+        queues[appId] = {entry};
+        m_service->setPendingRestoreQueues(queues);
 
         bool cleared = m_service->clearStalePendingAssignment(windowId);
         QVERIFY(cleared);
-        QVERIFY(!m_service->pendingZoneAssignments().contains(stableId));
-        QVERIFY(!m_service->pendingScreenAssignments().contains(stableId));
-        QVERIFY(!m_service->pendingDesktopAssignments().contains(stableId));
-        QVERIFY(!m_service->pendingLayoutAssignments().contains(stableId));
-        QVERIFY(!m_service->pendingZoneNumbers().contains(stableId));
+        QVERIFY(!m_service->pendingRestoreQueues().contains(appId));
     }
 
     // =====================================================================
@@ -837,9 +820,9 @@ private Q_SLOTS:
 
     void testResnapFromPreviousLayout_zonePositionMapping()
     {
-        QString window1 = QStringLiteral("app1:win:111");
-        QString window2 = QStringLiteral("app2:win:222");
-        QString window3 = QStringLiteral("app3:win:333");
+        QString window1 = QStringLiteral("app1|111");
+        QString window2 = QStringLiteral("app2|222");
+        QString window3 = QStringLiteral("app3|333");
 
         m_service->assignWindowToZone(window1, m_zoneIds[0], QString(), 0);
         m_service->assignWindowToZone(window2, m_zoneIds[1], QString(), 0);
@@ -861,8 +844,8 @@ private Q_SLOTS:
 
     void testCalculateRotation_clockwiseAndCounterClockwise()
     {
-        QString window1 = QStringLiteral("app1:win:111");
-        QString window2 = QStringLiteral("app2:win:222");
+        QString window1 = QStringLiteral("app1|111");
+        QString window2 = QStringLiteral("app2|222");
 
         m_service->assignWindowToZone(window1, m_zoneIds[0], QString(), 0);
         m_service->assignWindowToZone(window2, m_zoneIds[1], QString(), 0);
@@ -880,18 +863,18 @@ private Q_SLOTS:
 
     void testDaemonRestart_pendingRestoresAvailableEmitted()
     {
-        QString stableId = QStringLiteral("firefox:Navigator");
+        QString appId = QStringLiteral("firefox");
 
-        QHash<QString, QStringList> pendingZones;
-        pendingZones[stableId] = {m_zoneIds[0]};
-        m_service->setPendingZoneAssignments(pendingZones);
+        WindowTrackingService::PendingRestore entry;
+        entry.zoneIds = {m_zoneIds[0]};
+        entry.layoutId = m_testLayout->id().toString();
 
-        QHash<QString, QString> pendingLayouts;
-        pendingLayouts[stableId] = m_testLayout->id().toString();
-        m_service->setPendingLayoutAssignments(pendingLayouts);
+        QHash<QString, QList<WindowTrackingService::PendingRestore>> queues;
+        queues[appId] = {entry};
+        m_service->setPendingRestoreQueues(queues);
 
-        QVERIFY(m_service->pendingZoneAssignments().contains(stableId));
-        QCOMPARE(m_service->pendingZoneAssignments().value(stableId).first(), m_zoneIds[0]);
+        QVERIFY(m_service->pendingRestoreQueues().contains(appId));
+        QCOMPARE(m_service->pendingRestoreQueues().value(appId).first().zoneIds.first(), m_zoneIds[0]);
     }
 
     // =====================================================================
@@ -900,35 +883,32 @@ private Q_SLOTS:
 
     void testRestore_wrongDisplay_multiMonitor()
     {
-        QString stableId = QStringLiteral("app:win");
+        QString appId = QStringLiteral("app");
 
-        QHash<QString, QStringList> pendingZones;
-        pendingZones[stableId] = {m_zoneIds[0]};
-        m_service->setPendingZoneAssignments(pendingZones);
+        WindowTrackingService::PendingRestore entry;
+        entry.zoneIds = {m_zoneIds[0]};
+        entry.screenName = QStringLiteral("HDMI-2");
 
-        QHash<QString, QString> pendingScreens;
-        pendingScreens[stableId] = QStringLiteral("HDMI-2");
-        m_service->setPendingScreenAssignments(pendingScreens);
+        QHash<QString, QList<WindowTrackingService::PendingRestore>> queues;
+        queues[appId] = {entry};
+        m_service->setPendingRestoreQueues(queues);
 
-        QCOMPARE(m_service->pendingScreenAssignments().value(stableId), QStringLiteral("HDMI-2"));
+        QCOMPARE(m_service->pendingRestoreQueues().value(appId).first().screenName, QStringLiteral("HDMI-2"));
     }
 
     void testRestore_savedScreenDisconnected()
     {
-        QString stableId = QStringLiteral("app:win");
-        QString windowId = QStringLiteral("app:win:12345");
+        QString appId = QStringLiteral("app");
+        QString windowId = QStringLiteral("app|12345");
 
-        QHash<QString, QStringList> pendingZones;
-        pendingZones[stableId] = {m_zoneIds[0]};
-        m_service->setPendingZoneAssignments(pendingZones);
+        WindowTrackingService::PendingRestore entry;
+        entry.zoneIds = {m_zoneIds[0]};
+        entry.screenName = QStringLiteral("DISCONNECTED-99");
+        entry.layoutId = m_testLayout->id().toString();
 
-        QHash<QString, QString> pendingScreens;
-        pendingScreens[stableId] = QStringLiteral("DISCONNECTED-99");
-        m_service->setPendingScreenAssignments(pendingScreens);
-
-        QHash<QString, QString> pendingLayouts;
-        pendingLayouts[stableId] = m_testLayout->id().toString();
-        m_service->setPendingLayoutAssignments(pendingLayouts);
+        QHash<QString, QList<WindowTrackingService::PendingRestore>> queues;
+        queues[appId] = {entry};
+        m_service->setPendingRestoreQueues(queues);
 
         SnapResult result = m_service->calculateRestoreFromSession(windowId, QStringLiteral("DP-1"), false);
         if (result.shouldSnap) {
@@ -942,7 +922,7 @@ private Q_SLOTS:
 
     void testMarkAsAutoSnapped()
     {
-        QString windowId = QStringLiteral("app:win:12345");
+        QString windowId = QStringLiteral("app|12345");
 
         QVERIFY(!m_service->isAutoSnapped(windowId));
         m_service->markAsAutoSnapped(windowId);
@@ -957,21 +937,20 @@ private Q_SLOTS:
 
     void testConsumePendingAssignment()
     {
-        QString windowId = QStringLiteral("app:resource:12345");
-        QString stableId = Utils::extractStableId(windowId);
+        QString windowId = QStringLiteral("app|12345");
+        QString appId = Utils::extractAppId(windowId);
 
-        QHash<QString, QStringList> pendingZones;
-        pendingZones[stableId] = {m_zoneIds[0]};
-        m_service->setPendingZoneAssignments(pendingZones);
+        WindowTrackingService::PendingRestore entry;
+        entry.zoneIds = {m_zoneIds[0]};
+        entry.zoneNumbers = {1};
 
-        QHash<QString, QList<int>> pendingNumbers;
-        pendingNumbers[stableId] = {1};
-        m_service->setPendingZoneNumbers(pendingNumbers);
+        QHash<QString, QList<WindowTrackingService::PendingRestore>> queues;
+        queues[appId] = {entry};
+        m_service->setPendingRestoreQueues(queues);
 
         m_service->consumePendingAssignment(windowId);
 
-        QVERIFY(!m_service->pendingZoneAssignments().contains(stableId));
-        QVERIFY(!m_service->pendingZoneNumbers().contains(stableId));
+        QVERIFY(!m_service->pendingRestoreQueues().contains(appId));
     }
 
     // =====================================================================
@@ -980,23 +959,20 @@ private Q_SLOTS:
 
     void testLayoutImport_uuidCollision_regeneratesIds()
     {
-        QString stableId = QStringLiteral("app:resource");
+        QString appId = QStringLiteral("app");
         QString bogusUuid = QUuid::createUuid().toString();
 
-        QHash<QString, QStringList> pendingZones;
-        pendingZones[stableId] = {bogusUuid};
-        m_service->setPendingZoneAssignments(pendingZones);
+        WindowTrackingService::PendingRestore entry;
+        entry.zoneIds = {bogusUuid};
+        entry.layoutId = m_testLayout->id().toString();
+        entry.zoneNumbers = {1};
 
-        QHash<QString, QString> pendingLayouts;
-        pendingLayouts[stableId] = m_testLayout->id().toString();
-        m_service->setPendingLayoutAssignments(pendingLayouts);
+        QHash<QString, QList<WindowTrackingService::PendingRestore>> queues;
+        queues[appId] = {entry};
+        m_service->setPendingRestoreQueues(queues);
 
-        QHash<QString, QList<int>> pendingNumbers;
-        pendingNumbers[stableId] = {1};
-        m_service->setPendingZoneNumbers(pendingNumbers);
-
-        QVERIFY(m_service->pendingZoneNumbers().contains(stableId));
-        QCOMPARE(m_service->pendingZoneNumbers().value(stableId).first(), 1);
+        QVERIFY(m_service->pendingRestoreQueues().contains(appId));
+        QCOMPARE(m_service->pendingRestoreQueues().value(appId).first().zoneNumbers.first(), 1);
     }
 
 private:

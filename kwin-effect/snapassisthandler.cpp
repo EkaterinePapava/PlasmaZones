@@ -105,23 +105,23 @@ QJsonArray SnapAssistHandler::buildCandidates(const QString& excludeWindowId, co
         if (snappedWindowIds.contains(windowId)) {
             continue;
         }
-        QString stableId = PlasmaZonesEffect::extractStableId(windowId);
-        bool snappedByStableId = false;
+        QString appId = PlasmaZonesEffect::extractAppId(windowId);
+        bool snappedByAppId = false;
         for (const QString& snappedId : snappedWindowIds) {
-            if (PlasmaZonesEffect::extractStableId(snappedId) == stableId) {
-                snappedByStableId = true;
+            if (PlasmaZonesEffect::extractAppId(snappedId) == appId) {
+                snappedByAppId = true;
                 break;
             }
         }
-        if (snappedByStableId) {
-            int sameStableCount = 0;
+        if (snappedByAppId) {
+            int sameAppCount = 0;
             for (KWin::EffectWindow* other : windows) {
                 if (other && m_effect->shouldHandleWindow(other)
-                    && PlasmaZonesEffect::extractStableId(m_effect->getWindowId(other)) == stableId) {
-                    ++sameStableCount;
+                    && PlasmaZonesEffect::extractAppId(m_effect->getWindowId(other)) == appId) {
+                    ++sameAppCount;
                 }
             }
-            if (sameStableCount <= 1) {
+            if (sameAppCount <= 1) {
                 continue;
             }
         }

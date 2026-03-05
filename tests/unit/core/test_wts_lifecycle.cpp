@@ -737,8 +737,8 @@ private Q_SLOTS:
 
     void testWindowClosed_persistsZoneToPending()
     {
-        QString windowId = QStringLiteral("firefox:Navigator:12345");
-        QString stableId = Utils::extractStableId(windowId);
+        QString windowId = QStringLiteral("firefox|12345");
+        QString appId = Utils::extractAppId(windowId);
 
         m_service->assignWindowToZone(windowId, m_zoneIds[0], QStringLiteral("DP-1"), 1);
         QVERIFY(m_service->isWindowSnapped(windowId));
@@ -746,35 +746,35 @@ private Q_SLOTS:
         m_service->windowClosed(windowId);
 
         QVERIFY(!m_service->isWindowSnapped(windowId));
-        QVERIFY(m_service->pendingZoneAssignments().contains(stableId));
-        QCOMPARE(m_service->pendingZoneAssignments().value(stableId).first(), m_zoneIds[0]);
+        QVERIFY(m_service->pendingRestoreQueues().contains(appId));
+        QCOMPARE(m_service->pendingRestoreQueues().value(appId).first().zoneIds.first(), m_zoneIds[0]);
     }
 
     void testWindowClosed_floatingWindowNotPersisted()
     {
-        QString windowId = QStringLiteral("firefox:Navigator:12345");
-        QString stableId = Utils::extractStableId(windowId);
+        QString windowId = QStringLiteral("firefox|12345");
+        QString appId = Utils::extractAppId(windowId);
 
         m_service->assignWindowToZone(windowId, m_zoneIds[0], QStringLiteral("DP-1"), 1);
         m_service->setWindowFloating(windowId, true);
 
         m_service->windowClosed(windowId);
 
-        QVERIFY(!m_service->pendingZoneAssignments().contains(stableId));
+        QVERIFY(!m_service->pendingRestoreQueues().contains(appId));
     }
 
     void testWindowClosed_preSnapGeometryConvertedToStableId()
     {
-        QString windowId = QStringLiteral("dolphin:dolphin:99999");
-        QString stableId = Utils::extractStableId(windowId);
+        QString windowId = QStringLiteral("org.kde.dolphin|99999");
+        QString appId = Utils::extractAppId(windowId);
 
         m_service->storePreSnapGeometry(windowId, QRect(100, 200, 800, 600));
         QVERIFY(m_service->hasPreSnapGeometry(windowId));
 
         m_service->windowClosed(windowId);
 
-        QVERIFY(m_service->hasPreSnapGeometry(stableId));
-        auto geo = m_service->preSnapGeometry(stableId);
+        QVERIFY(m_service->hasPreSnapGeometry(appId));
+        auto geo = m_service->preSnapGeometry(appId);
         QVERIFY(geo.has_value());
         QCOMPARE(geo->x(), 100);
         QCOMPARE(geo->width(), 800);
@@ -782,8 +782,8 @@ private Q_SLOTS:
 
     void testWindowClosed_preFloatZonesConvertedToStableId()
     {
-        QString windowId = QStringLiteral("kate:kate:55555");
-        QString stableId = Utils::extractStableId(windowId);
+        QString windowId = QStringLiteral("org.kde.kate|55555");
+        QString appId = Utils::extractAppId(windowId);
 
         m_service->assignWindowToZone(windowId, m_zoneIds[1], QStringLiteral("DP-1"), 1);
         m_service->unsnapForFloat(windowId);
@@ -792,12 +792,12 @@ private Q_SLOTS:
 
         m_service->windowClosed(windowId);
 
-        QCOMPARE(m_service->preFloatZone(stableId), m_zoneIds[1]);
+        QCOMPARE(m_service->preFloatZone(appId), m_zoneIds[1]);
     }
 
     void testWindowClosed_scheduleSaveStateCalled()
     {
-        QString windowId = QStringLiteral("app:window:12345");
+        QString windowId = QStringLiteral("app|12345");
         m_service->assignWindowToZone(windowId, m_zoneIds[0], QStringLiteral("DP-1"), 1);
 
         QSignalSpy spy(m_service, &WindowTrackingService::stateChanged);
@@ -812,7 +812,7 @@ private Q_SLOTS:
 
     void testOnLayoutChanged_staleAssignmentsRemoved()
     {
-        QString windowId = QStringLiteral("app:window:12345");
+        QString windowId = QStringLiteral("app|12345");
         QString screen = QStringLiteral("DP-1");
         m_service->assignWindowToZone(windowId, m_zoneIds[0], screen, 0);
         QVERIFY(m_service->isWindowSnapped(windowId));
@@ -829,8 +829,8 @@ private Q_SLOTS:
 
     void testOnLayoutChanged_resnapBufferPopulated()
     {
-        QString window1 = QStringLiteral("app1:window1:11111");
-        QString window2 = QStringLiteral("app2:window2:22222");
+        QString window1 = QStringLiteral("app1|11111");
+        QString window2 = QStringLiteral("app2|22222");
 
         m_service->assignWindowToZone(window1, m_zoneIds[0], QString(), 0);
         m_service->assignWindowToZone(window2, m_zoneIds[1], QString(), 0);
@@ -849,7 +849,7 @@ private Q_SLOTS:
 
     void testOnLayoutChanged_floatingWindowsExcludedFromResnap()
     {
-        QString windowId = QStringLiteral("app:window:12345");
+        QString windowId = QStringLiteral("app|12345");
         m_service->assignWindowToZone(windowId, m_zoneIds[0], QString(), 0);
         m_service->setWindowFloating(windowId, true);
 

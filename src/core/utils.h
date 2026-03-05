@@ -158,78 +158,47 @@ inline const QString Down = QStringLiteral("down");
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * @brief Extract stable ID from a full window ID
+ * @brief Extract app identity from a full window ID
  *
- * Window ID format: "windowClass:resourceName:pointerAddress"
- * Stable ID format: "windowClass:resourceName" (without pointer address)
+ * Window ID format: "appId|internalId"
+ * App ID is the application identity (desktopFileName or normalized windowClass)
+ * that persists across KWin restarts.
  *
- * The stable ID allows matching windows across KWin restarts since only
- * the pointer address changes between sessions.
- *
- * @param windowId Full window ID including pointer address
- * @return Stable ID without pointer address, or original if not in expected format
+ * @param windowId Full window ID
+ * @return App ID portion, or original string if not in expected format
  */
-inline QString extractStableId(const QString& windowId)
+inline QString extractAppId(const QString& windowId)
 {
     if (windowId.isEmpty()) {
         return windowId;
     }
-
-    // Find the last colon (separates pointer address from the rest)
-    int lastColon = windowId.lastIndexOf(QLatin1Char(':'));
-    if (lastColon <= 0) {
-        // No colon found or only one part - return as-is
-        return windowId;
-    }
-
-    // Check if what's after the last colon looks like a pointer address (all digits)
-    QStringView potentialPointer = QStringView(windowId).mid(lastColon + 1);
-    if (potentialPointer.isEmpty()) {
-        return windowId;
-    }
-
-    bool isPointer = true;
-    for (QChar c : potentialPointer) {
-        if (!c.isDigit()) {
-            isPointer = false;
-            break;
-        }
-    }
-
-    if (isPointer) {
-        // Strip the pointer address
-        return windowId.left(lastColon);
-    }
-
-    // Not a pointer format, return as-is
-    return windowId;
+    int sep = windowId.indexOf(QLatin1Char('|'));
+    return (sep > 0) ? windowId.left(sep) : windowId;
 }
 
 /**
- * @brief Extract window class from a window ID or stable ID
+ * @deprecated Use extractAppId() instead
+ */
+[[deprecated("Use extractAppId() instead")]]
+inline QString extractStableId(const QString& windowId)
+{
+    return extractAppId(windowId);
+}
+
+/**
+ * @brief Extract window class from a window ID
  *
- * Window class is the first component before the first colon.
+ * With the new "appId|internalId" format, the app ID is the window class.
  * Examples:
- *   "firefox:firefox:123456" -> "firefox"
- *   "org.kde.dolphin:org.kde.dolphin:789" -> "org.kde.dolphin"
- *   "firefox firefox:Navigator:123" -> "firefox firefox"
+ *   "firefox|a1b2c3d4-..." -> "firefox"
+ *   "org.kde.dolphin|a1b2c3d4-..." -> "org.kde.dolphin"
  *
- * @param windowId Full window ID or stable ID
- * @return Window class (first component), or entire string if no colon found
+ * @param windowId Full window ID or app ID
+ * @return Window class (app ID portion), or entire string if no separator found
  */
 inline QString extractWindowClass(const QString& windowId)
 {
-    if (windowId.isEmpty()) {
-        return windowId;
-    }
-
-    int firstColon = windowId.indexOf(QLatin1Char(':'));
-    if (firstColon <= 0) {
-        // No colon found - return as-is (entire string is the class)
-        return windowId;
-    }
-
-    return windowId.left(firstColon);
+    return extractAppId(windowId);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

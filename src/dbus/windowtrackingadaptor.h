@@ -181,7 +181,7 @@ public Q_SLOTS:
 
     /**
      * Get all pre-autotile geometries as JSON (for effect pre-population on restart)
-     * @return JSON object: {"stableId": {"x":N, "y":N, "width":N, "height":N}, ...}
+     * @return JSON object: {"appId": {"x":N, "y":N, "width":N, "height":N}, ...}
      */
     QString getPreAutotileGeometriesJson();
 

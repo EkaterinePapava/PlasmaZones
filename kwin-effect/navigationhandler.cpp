@@ -563,10 +563,10 @@ void NavigationHandler::executeFloatOff(KWin::EffectWindow* activeWindow, const 
                                         const QString& screenName)
 {
     m_floatingWindows.remove(windowId);
-    // Also remove stableId entry (session-restored entries)
-    QString stableId = m_effect->extractStableId(windowId);
-    if (stableId != windowId) {
-        m_floatingWindows.remove(stableId);
+    // Also remove appId entry (daemon-sent entries without instance part)
+    QString appId = m_effect->extractAppId(windowId);
+    if (appId != windowId) {
+        m_floatingWindows.remove(appId);
     }
 
     auto* iface = m_effect->windowTrackingInterface();
@@ -836,15 +836,15 @@ NavigationHandler::applyBatchSnapFromJson(const QString& jsonData, bool filterCu
         // Try exact full windowId match first (current daemon data uses full IDs)
         KWin::EffectWindow* window = windowMap.value(windowId);
         if (!window) {
-            // Fall back to stableId linear scan for backward compat
-            QString stableId = m_effect->extractStableId(windowId);
+            // Fall back to appId linear scan for backward compat
+            QString appId = m_effect->extractAppId(windowId);
             KWin::EffectWindow* candidate = nullptr;
             int matchCount = 0;
             for (auto it = windowMap.constBegin(); it != windowMap.constEnd(); ++it) {
-                if (m_effect->extractStableId(it.key()) == stableId) {
+                if (m_effect->extractAppId(it.key()) == appId) {
                     candidate = it.value();
                     if (++matchCount > 1) {
-                        break; // ambiguous — multiple windows share this stableId
+                        break; // ambiguous — multiple windows share this appId
                     }
                 }
             }
@@ -1037,9 +1037,9 @@ bool NavigationHandler::isWindowFloating(const QString& windowId) const
     if (m_floatingWindows.contains(windowId)) {
         return true;
     }
-    // Fall back to stable ID (session restore - pointer addresses change across restarts)
-    QString stableId = m_effect->extractStableId(windowId);
-    return (stableId != windowId && m_floatingWindows.contains(stableId));
+    // Fall back to appId (when daemon sends appId without instance part)
+    QString appId = m_effect->extractAppId(windowId);
+    return (appId != windowId && m_floatingWindows.contains(appId));
 }
 
 void NavigationHandler::setWindowFloating(const QString& windowId, bool floating)
@@ -1048,10 +1048,10 @@ void NavigationHandler::setWindowFloating(const QString& windowId, bool floating
         m_floatingWindows.insert(windowId);
     } else {
         m_floatingWindows.remove(windowId);
-        // Also remove stable ID entry (session-restored entries)
-        QString stableId = m_effect->extractStableId(windowId);
-        if (stableId != windowId) {
-            m_floatingWindows.remove(stableId);
+        // Also remove appId entry (daemon-sent entries without instance part)
+        QString appId = m_effect->extractAppId(windowId);
+        if (appId != windowId) {
+            m_floatingWindows.remove(appId);
         }
     }
 }

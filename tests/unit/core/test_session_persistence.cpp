@@ -55,7 +55,7 @@ public:
         // Save window-zone assignments using STABLE IDs
         QJsonObject assignmentsObj;
         for (auto it = m_windowZoneAssignments.constBegin(); it != m_windowZoneAssignments.constEnd(); ++it) {
-            QString stableId = PlasmaZones::Utils::extractStableId(it.key());
+            QString stableId = PlasmaZones::Utils::extractAppId(it.key());
             assignmentsObj[stableId] = it.value().isEmpty() ? QString() : it.value().first();
         }
         root[QStringLiteral("windowZoneAssignments")] = assignmentsObj;
@@ -94,7 +94,7 @@ public:
             return false;
         }
 
-        QString stableId = PlasmaZones::Utils::extractStableId(windowId);
+        QString stableId = PlasmaZones::Utils::extractAppId(windowId);
         if (!m_pendingZoneAssignments.contains(stableId)) {
             zoneId.clear();
             return false;
@@ -108,7 +108,7 @@ public:
     /// Consume a pending zone assignment (after successful restore)
     void consumePendingAssignment(const QString& windowId)
     {
-        QString stableId = PlasmaZones::Utils::extractStableId(windowId);
+        QString stableId = PlasmaZones::Utils::extractAppId(windowId);
         m_pendingZoneAssignments.remove(stableId);
     }
 
@@ -159,7 +159,7 @@ private Q_SLOTS:
 
     void testSaveLoad_singleWindow()
     {
-        QString windowId = QStringLiteral("org.kde.konsole:konsole:12345");
+        QString windowId = QStringLiteral("org.kde.konsole|12345");
         QString zoneId = QUuid::createUuid().toString();
 
         // Session 1: Snap window
@@ -174,7 +174,7 @@ private Q_SLOTS:
         session2.loadStateFromJson(json);
 
         // Session 2: New window with different pointer
-        QString newWindowId = QStringLiteral("org.kde.konsole:konsole:67890");
+        QString newWindowId = QStringLiteral("org.kde.konsole|67890");
 
         QString restoredZone;
         bool shouldRestore = session2.checkPersistedZone(newWindowId, restoredZone);
@@ -185,7 +185,7 @@ private Q_SLOTS:
 
     void testSaveLoad_lastUsedZone()
     {
-        QString windowId = QStringLiteral("org.kde.app:app:12345");
+        QString windowId = QStringLiteral("org.kde.app|12345");
         QString zoneId = QUuid::createUuid().toString();
 
         m_persistence->windowSnapped(windowId, zoneId);
@@ -215,7 +215,7 @@ private Q_SLOTS:
     void testRestore_sameClassWindowCollision()
     {
         // Session 1: User had one Konsole window snapped
-        QString konsoleSession1 = QStringLiteral("org.kde.konsole:konsole:12345");
+        QString konsoleSession1 = QStringLiteral("org.kde.konsole|12345");
         QString zoneA = QUuid::createUuid().toString();
 
         m_persistence->windowSnapped(konsoleSession1, zoneA);
@@ -225,7 +225,7 @@ private Q_SLOTS:
         MockSessionPersistence session2;
         session2.loadStateFromJson(json);
 
-        QString konsoleSession2 = QStringLiteral("org.kde.konsole:konsole:67890");
+        QString konsoleSession2 = QStringLiteral("org.kde.konsole|67890");
 
         QString restoredZone;
         bool shouldRestore = session2.checkPersistedZone(konsoleSession2, restoredZone);
@@ -239,9 +239,9 @@ private Q_SLOTS:
     void testRestore_multipleInstancesLastWriteWins()
     {
         // Session 1: User had 3 Konsole windows in different zones
-        QString konsole1 = QStringLiteral("org.kde.konsole:konsole:11111");
-        QString konsole2 = QStringLiteral("org.kde.konsole:konsole:22222");
-        QString konsole3 = QStringLiteral("org.kde.konsole:konsole:33333");
+        QString konsole1 = QStringLiteral("org.kde.konsole|11111");
+        QString konsole2 = QStringLiteral("org.kde.konsole|22222");
+        QString konsole3 = QStringLiteral("org.kde.konsole|33333");
 
         QString zoneA = QUuid::createUuid().toString();
         QString zoneB = QUuid::createUuid().toString();
@@ -260,7 +260,7 @@ private Q_SLOTS:
         QCOMPARE(session2.pendingAssignmentCount(), 1);
 
         // All new Konsole windows will match this single zone
-        QString anyKonsole = QStringLiteral("org.kde.konsole:konsole:99999");
+        QString anyKonsole = QStringLiteral("org.kde.konsole|99999");
         QString restoredZone;
         bool shouldRestore = session2.checkPersistedZone(anyKonsole, restoredZone);
 
@@ -273,8 +273,8 @@ private Q_SLOTS:
     void testRestore_differentAppsNoCollision()
     {
         // Different applications should NOT collide
-        QString konsole = QStringLiteral("org.kde.konsole:konsole:11111");
-        QString dolphin = QStringLiteral("org.kde.dolphin:dolphin:22222");
+        QString konsole = QStringLiteral("org.kde.konsole|11111");
+        QString dolphin = QStringLiteral("org.kde.dolphin|22222");
 
         QString zoneA = QUuid::createUuid().toString();
         QString zoneB = QUuid::createUuid().toString();
@@ -291,8 +291,8 @@ private Q_SLOTS:
         QCOMPARE(session2.pendingAssignmentCount(), 2);
 
         // Each app restores to correct zone
-        QString newKonsole = QStringLiteral("org.kde.konsole:konsole:33333");
-        QString newDolphin = QStringLiteral("org.kde.dolphin:dolphin:44444");
+        QString newKonsole = QStringLiteral("org.kde.konsole|33333");
+        QString newDolphin = QStringLiteral("org.kde.dolphin|44444");
 
         QString konsoleZone, dolphinZone;
         QVERIFY(session2.checkPersistedZone(newKonsole, konsoleZone));
@@ -306,7 +306,7 @@ private Q_SLOTS:
 
     void testRestore_consumePendingAfterRestore()
     {
-        QString windowId = QStringLiteral("org.kde.app:app:12345");
+        QString windowId = QStringLiteral("org.kde.app|12345");
         QString zoneId = QUuid::createUuid().toString();
 
         m_persistence->windowSnapped(windowId, zoneId);
@@ -319,21 +319,21 @@ private Q_SLOTS:
 
         // Check and consume
         QString restoredZone;
-        QString newWindow = QStringLiteral("org.kde.app:app:67890");
+        QString newWindow = QStringLiteral("org.kde.app|67890");
         QVERIFY(session2.checkPersistedZone(newWindow, restoredZone));
 
         session2.consumePendingAssignment(newWindow);
         QCOMPARE(session2.pendingAssignmentCount(), 0);
 
         // Should not match again
-        QString anotherWindow = QStringLiteral("org.kde.app:app:11111");
+        QString anotherWindow = QStringLiteral("org.kde.app|11111");
         QVERIFY(!session2.checkPersistedZone(anotherWindow, restoredZone));
     }
 
     void testRestore_consumeDoesNotAffectDifferentApps()
     {
-        QString app1 = QStringLiteral("org.kde.app1:app1:11111");
-        QString app2 = QStringLiteral("org.kde.app2:app2:22222");
+        QString app1 = QStringLiteral("org.kde.app1|11111");
+        QString app2 = QStringLiteral("org.kde.app2|22222");
         QString zone1 = QUuid::createUuid().toString();
         QString zone2 = QUuid::createUuid().toString();
 
@@ -348,13 +348,13 @@ private Q_SLOTS:
         QCOMPARE(session2.pendingAssignmentCount(), 2);
 
         // Consume app1's pending assignment
-        QString newApp1 = QStringLiteral("org.kde.app1:app1:33333");
+        QString newApp1 = QStringLiteral("org.kde.app1|33333");
         session2.consumePendingAssignment(newApp1);
 
         QCOMPARE(session2.pendingAssignmentCount(), 1);
 
         // app2 should still have pending assignment
-        QString newApp2 = QStringLiteral("org.kde.app2:app2:44444");
+        QString newApp2 = QStringLiteral("org.kde.app2|44444");
         QString restoredZone;
         QVERIFY(session2.checkPersistedZone(newApp2, restoredZone));
         QCOMPARE(restoredZone, zone2);
@@ -372,7 +372,7 @@ private Q_SLOTS:
 
     void testRestore_emptyWindowId()
     {
-        QString windowId = QStringLiteral("org.kde.app:app:12345");
+        QString windowId = QStringLiteral("org.kde.app|12345");
         QString zoneId = QUuid::createUuid().toString();
 
         m_persistence->windowSnapped(windowId, zoneId);
@@ -387,7 +387,7 @@ private Q_SLOTS:
 
     void testRestore_unsnapBeforeSave()
     {
-        QString windowId = QStringLiteral("org.kde.app:app:12345");
+        QString windowId = QStringLiteral("org.kde.app|12345");
         QString zoneId = QUuid::createUuid().toString();
 
         m_persistence->windowSnapped(windowId, zoneId);
@@ -409,8 +409,8 @@ private Q_SLOTS:
         // BUG: Firefox snapped to Zone A, Konsole never snapped.
         // After relog, new Konsole incorrectly matches Firefox's pending zone
         // because different app class -> no collision here (passes correctly).
-        QString firefox = QStringLiteral("org.mozilla.firefox:Navigator:11111");
-        QString konsole = QStringLiteral("org.kde.konsole:konsole:22222"); // Never snapped
+        QString firefox = QStringLiteral("org.mozilla.firefox|11111");
+        QString konsole = QStringLiteral("org.kde.konsole|22222"); // Never snapped
         QString zoneA = QUuid::createUuid().toString();
 
         m_persistence->windowSnapped(firefox, zoneA);
@@ -423,7 +423,7 @@ private Q_SLOTS:
         session2.loadStateFromJson(json);
 
         // New Konsole opens (never was snapped in session 1)
-        QString newKonsole = QStringLiteral("org.kde.konsole:konsole:33333");
+        QString newKonsole = QStringLiteral("org.kde.konsole|33333");
 
         QString restoredZone;
         bool shouldRestore = session2.checkPersistedZone(newKonsole, restoredZone);
@@ -437,8 +437,8 @@ private Q_SLOTS:
         // BUG: Konsole #1 snapped to Zone A, Konsole #2 not snapped.
         // After relog, new instance incorrectly matches because of
         // identity collision - can't distinguish which Konsole was snapped.
-        QString konsole1 = QStringLiteral("org.kde.konsole:konsole:11111"); // Snapped
-        QString konsole2 = QStringLiteral("org.kde.konsole:konsole:22222"); // NOT snapped
+        QString konsole1 = QStringLiteral("org.kde.konsole|11111"); // Snapped
+        QString konsole2 = QStringLiteral("org.kde.konsole|22222"); // NOT snapped
         QString zoneA = QUuid::createUuid().toString();
 
         m_persistence->windowSnapped(konsole1, zoneA);
@@ -451,7 +451,7 @@ private Q_SLOTS:
         session2.loadStateFromJson(json);
 
         // Konsole #2's new instance opens (was never snapped!)
-        QString newKonsole2 = QStringLiteral("org.kde.konsole:konsole:33333");
+        QString newKonsole2 = QStringLiteral("org.kde.konsole|33333");
 
         QString restoredZone;
         bool shouldRestore = session2.checkPersistedZone(newKonsole2, restoredZone);

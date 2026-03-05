@@ -40,13 +40,13 @@ QString AutotileHandler::findSavedGeometryKey(const QHash<QString, QRectF>& save
     if (it != savedGeometries.constEnd()) {
         return it.key();
     }
-    const QString windowStableId = PlasmaZonesEffect::extractStableId(windowId);
-    if (windowStableId.isEmpty()) {
+    const QString windowAppId = PlasmaZonesEffect::extractAppId(windowId);
+    if (windowAppId.isEmpty()) {
         return QString();
     }
     QString matchKey;
     for (auto i = savedGeometries.constBegin(); i != savedGeometries.constEnd(); ++i) {
-        if (PlasmaZonesEffect::extractStableId(i.key()) == windowStableId) {
+        if (PlasmaZonesEffect::extractAppId(i.key()) == windowAppId) {
             if (!matchKey.isEmpty()) {
                 return QString(); // Multiple matches - ambiguous
             }

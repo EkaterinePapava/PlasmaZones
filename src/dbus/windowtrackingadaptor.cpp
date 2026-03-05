@@ -82,7 +82,7 @@ WindowTrackingAdaptor::WindowTrackingAdaptor(LayoutManager* layoutManager, IZone
     // connected), set the flag so tryEmitPendingRestoresAvailable will emit when panel
     // geometry is ready. Fixes daemon restart: windows that were snapped before stop
     // are not re-registered because pendingRestoresAvailable was never emitted.
-    if (!m_service->pendingZoneAssignments().isEmpty() && m_layoutManager->activeLayout()) {
+    if (!m_service->pendingRestoreQueues().isEmpty() && m_layoutManager->activeLayout()) {
         m_hasPendingRestores = true;
         qCDebug(lcDbusWindow) << "Pending restores loaded at init - will emit when panel geometry ready";
     }

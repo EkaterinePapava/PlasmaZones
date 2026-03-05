@@ -73,7 +73,7 @@ struct PLASMAZONES_EXPORT DragInfo
         return !windowId.isEmpty();
     }
 
-    // Note: Use Utils::extractStableId(dragInfo.windowId) to get stable ID
+    // Note: Use Utils::extractAppId(dragInfo.windowId) to get app ID
 };
 
 /**

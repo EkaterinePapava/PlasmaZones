@@ -549,43 +549,26 @@ public:
     }
 
     /**
-     * @brief Get pending zone assignments (for session restore)
+     * @brief Pending restore entry for a single window instance
+     *
+     * Stores all data needed to restore a window to its previous zone.
+     * Multiple entries per appId support multi-instance apps (e.g. 3 Konsole windows).
      */
-    const QHash<QString, QStringList>& pendingZoneAssignments() const
+    struct PendingRestore
     {
-        return m_pendingZoneAssignments;
-    }
+        QStringList zoneIds;
+        QString screenName;
+        int virtualDesktop = 0;
+        QString layoutId;
+        QList<int> zoneNumbers;
+    };
 
     /**
-     * @brief Get pending screen assignments
+     * @brief Get pending restore queues (consumption queue: appId -> list of pending restores)
      */
-    const QHash<QString, QString>& pendingScreenAssignments() const
+    const QHash<QString, QList<PendingRestore>>& pendingRestoreQueues() const
     {
-        return m_pendingZoneScreens;
-    }
-
-    /**
-     * @brief Get pending desktop assignments
-     */
-    const QHash<QString, int>& pendingDesktopAssignments() const
-    {
-        return m_pendingZoneDesktops;
-    }
-
-    /**
-     * @brief Get pending layout assignments (for layout validation on restore)
-     */
-    const QHash<QString, QString>& pendingLayoutAssignments() const
-    {
-        return m_pendingZoneLayouts;
-    }
-
-    /**
-     * @brief Get pending zone numbers (for zone-number fallback on session restore)
-     */
-    const QHash<QString, QList<int>>& pendingZoneNumbers() const
-    {
-        return m_pendingZoneNumbers;
+        return m_pendingRestoreQueues;
     }
 
     /**
@@ -597,43 +580,11 @@ public:
     }
 
     /**
-     * @brief Set pending zone assignments (loaded from KConfig by adaptor)
+     * @brief Set pending restore queues (loaded from KConfig by adaptor)
      */
-    void setPendingZoneAssignments(const QHash<QString, QStringList>& assignments)
+    void setPendingRestoreQueues(const QHash<QString, QList<PendingRestore>>& queues)
     {
-        m_pendingZoneAssignments = assignments;
-    }
-
-    /**
-     * @brief Set pending screen assignments
-     */
-    void setPendingScreenAssignments(const QHash<QString, QString>& assignments)
-    {
-        m_pendingZoneScreens = assignments;
-    }
-
-    /**
-     * @brief Set pending desktop assignments
-     */
-    void setPendingDesktopAssignments(const QHash<QString, int>& assignments)
-    {
-        m_pendingZoneDesktops = assignments;
-    }
-
-    /**
-     * @brief Set pending layout assignments (loaded from KConfig by adaptor)
-     */
-    void setPendingLayoutAssignments(const QHash<QString, QString>& assignments)
-    {
-        m_pendingZoneLayouts = assignments;
-    }
-
-    /**
-     * @brief Set pending zone numbers (loaded from KConfig by adaptor)
-     */
-    void setPendingZoneNumbers(const QHash<QString, QList<int>>& numbers)
-    {
-        m_pendingZoneNumbers = numbers;
+        m_pendingRestoreQueues = queues;
     }
 
     /**
@@ -734,8 +685,8 @@ private:
     // Desktop tracking: windowId -> virtual desktop
     QHash<QString, int> m_windowDesktopAssignments;
 
-    // Pre-snap geometries: full windowId at runtime, stableId for session-restored entries
-    // Converted from windowId to stableId on window close for persistence
+    // Pre-snap geometries: full windowId at runtime, appId for session-restored entries
+    // Converted from windowId to appId on window close for persistence
     QHash<QString, QRect> m_preSnapGeometries;
     QHash<QString, QRect> m_preAutotileGeometries;
 
@@ -745,8 +696,8 @@ private:
     QString m_lastUsedZoneClass;
     int m_lastUsedDesktop = 0;
 
-    // Floating windows: full windowId at runtime, stableId for session-restored entries
-    // Converted from windowId to stableId on window close for persistence
+    // Floating windows: full windowId at runtime, appId for session-restored entries
+    // Converted from windowId to appId on window close for persistence
     QSet<QString> m_floatingWindows;
 
     // Subset of m_floatingWindows: windows whose float originated from autotile mode.
@@ -755,16 +706,12 @@ private:
     // mode transitions (only autotile floats are cleared on autotile→snapping).
     QSet<QString> m_autotileFloatedWindows;
 
-    // Session persistence
-    QHash<QString, QStringList> m_pendingZoneAssignments; // stableId -> zoneIds
-    QHash<QString, QString> m_pendingZoneScreens; // stableId -> screenName
-    QHash<QString, int> m_pendingZoneDesktops; // stableId -> desktop
-    QHash<QString, QString> m_pendingZoneLayouts; // stableId -> layoutId (for layout validation on restore)
-    QHash<QString, QList<int>> m_pendingZoneNumbers; // stableId -> zone numbers (fallback when UUIDs change)
+    // Session persistence: consumption queue (appId -> list of pending restores, consumed FIFO)
+    QHash<QString, QList<PendingRestore>> m_pendingRestoreQueues;
 
     // Pre-float zone and screen (for unfloat restore to correct monitor).
     // Keyed by full windowId at runtime (to distinguish multiple instances of
-    // the same app). Converted to stableId on window close and session save.
+    // the same app). Converted to appId on window close and session save.
     QHash<QString, QStringList> m_preFloatZoneAssignments;
     QHash<QString, QString> m_preFloatScreenAssignments;
 

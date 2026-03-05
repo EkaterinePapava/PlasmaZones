@@ -83,7 +83,7 @@ public:
             return;
         m_windowZoneAssignments.remove(windowId);
         m_preSnapGeometries.remove(windowId);
-        QString stableId = PlasmaZones::Utils::extractStableId(windowId);
+        QString stableId = PlasmaZones::Utils::extractAppId(windowId);
         m_floatingWindows.remove(stableId);
     }
 
@@ -113,7 +113,7 @@ public:
     {
         if (windowId.isEmpty())
             return;
-        QString stableId = PlasmaZones::Utils::extractStableId(windowId);
+        QString stableId = PlasmaZones::Utils::extractAppId(windowId);
 
         if (floating) {
             if (!m_floatingWindows.contains(stableId)) {
@@ -129,7 +129,7 @@ public:
     {
         if (windowId.isEmpty())
             return false;
-        QString stableId = PlasmaZones::Utils::extractStableId(windowId);
+        QString stableId = PlasmaZones::Utils::extractAppId(windowId);
         return m_floatingWindows.contains(stableId);
     }
 
@@ -179,7 +179,7 @@ private Q_SLOTS:
 
     void testWindowClosed_cleanupAll()
     {
-        QString windowId = QStringLiteral("app:window:12345");
+        QString windowId = QStringLiteral("app|12345");
         QString zoneId = QUuid::createUuid().toString();
 
         // Set up tracking data
@@ -202,7 +202,7 @@ private Q_SLOTS:
 
     void testFloatingWindow_basic()
     {
-        QString windowId = QStringLiteral("app:window:12345");
+        QString windowId = QStringLiteral("app|12345");
 
         QVERIFY(!m_tracker->isWindowFloating(windowId));
 
@@ -215,7 +215,7 @@ private Q_SLOTS:
 
     void testFloatingWindow_unsnapOnFloat()
     {
-        QString windowId = QStringLiteral("app:window:12345");
+        QString windowId = QStringLiteral("app|12345");
         QString zoneId = QUuid::createUuid().toString();
 
         m_tracker->windowSnapped(windowId, zoneId);
@@ -228,9 +228,9 @@ private Q_SLOTS:
 
     void testFloatingWindow_stableIdPersistence()
     {
-        // Floating state uses stable ID, so should work across different pointer addresses
-        QString window1 = QStringLiteral("app:window:12345");
-        QString window2 = QStringLiteral("app:window:67890"); // Same class, different pointer
+        // Floating state uses app ID, so should work across different window instances
+        QString window1 = QStringLiteral("app|12345");
+        QString window2 = QStringLiteral("app|67890"); // Same app, different instance UUID
 
         m_tracker->setWindowFloating(window1, true);
 
@@ -247,9 +247,9 @@ private Q_SLOTS:
     void testGetWindowsInZone()
     {
         QString zoneId = QUuid::createUuid().toString();
-        QString window1 = QStringLiteral("app:window1:11111");
-        QString window2 = QStringLiteral("app:window2:22222");
-        QString window3 = QStringLiteral("app:window3:33333");
+        QString window1 = QStringLiteral("app1|11111");
+        QString window2 = QStringLiteral("app2|22222");
+        QString window3 = QStringLiteral("app3|33333");
         QString otherZone = QUuid::createUuid().toString();
 
         m_tracker->windowSnapped(window1, zoneId);
@@ -265,8 +265,8 @@ private Q_SLOTS:
 
     void testGetSnappedWindows()
     {
-        QString window1 = QStringLiteral("app:window1:11111");
-        QString window2 = QStringLiteral("app:window2:22222");
+        QString window1 = QStringLiteral("app1|11111");
+        QString window2 = QStringLiteral("app2|22222");
         QString zone1 = QUuid::createUuid().toString();
         QString zone2 = QUuid::createUuid().toString();
 

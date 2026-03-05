@@ -71,7 +71,7 @@ void WindowTrackingService::assignWindowToZones(const QString& windowId, const Q
     m_windowScreenAssignments[windowId] = screenName;
     m_windowDesktopAssignments[windowId] = virtualDesktop;
 
-    // NOTE: Do NOT store to m_pendingZoneAssignments here!
+    // NOTE: Do NOT store to m_pendingRestoreQueues here!
     // Pending assignments are for session persistence and should only be populated
     // when a window closes (in windowClosed()). Storing here causes ALL previously-snapped
     // windows to auto-restore on open, even when they shouldn't.
@@ -103,7 +103,7 @@ void WindowTrackingService::unassignWindow(const QString& windowId)
     }
 
     // Don't remove from pending - keep for session restore
-    // (pending is keyed by stable ID anyway)
+    // (pending is keyed by app ID anyway)
 
     Q_EMIT windowZoneChanged(windowId, QString());
     scheduleSaveState();
@@ -154,13 +154,13 @@ void WindowTrackingService::storePreSnapGeometry(const QString& windowId, const 
 
     // Only store on FIRST snap - don't overwrite when moving A→B
     // Use full windowId so each window instance gets its own pre-snap geometry
-    // (stableId would collide for multiple instances of the same app)
+    // (appId would collide for multiple instances of the same app)
     if (m_preSnapGeometries.contains(windowId)) {
         return;
     }
-    // Also skip if a stableId entry exists (session-restored geometry should be preserved)
-    QString stableId = Utils::extractStableId(windowId);
-    if (stableId != windowId && m_preSnapGeometries.contains(stableId)) {
+    // Also skip if a appId entry exists (session-restored geometry should be preserved)
+    QString appId = Utils::extractAppId(windowId);
+    if (appId != windowId && m_preSnapGeometries.contains(appId)) {
         return;
     }
 
@@ -191,10 +191,10 @@ std::optional<QRect> WindowTrackingService::preSnapGeometry(const QString& windo
     if (m_preSnapGeometries.contains(windowId)) {
         return m_preSnapGeometries.value(windowId);
     }
-    // Fall back to stable ID (session restore - pointer addresses change across restarts)
-    QString stableId = Utils::extractStableId(windowId);
-    if (stableId != windowId && m_preSnapGeometries.contains(stableId)) {
-        return m_preSnapGeometries.value(stableId);
+    // Fall back to app ID (session restore - pointer addresses change across restarts)
+    QString appId = Utils::extractAppId(windowId);
+    if (appId != windowId && m_preSnapGeometries.contains(appId)) {
+        return m_preSnapGeometries.value(appId);
     }
     return std::nullopt;
 }
@@ -204,12 +204,12 @@ bool WindowTrackingService::hasPreSnapGeometry(const QString& windowId) const
     if (windowId.isEmpty()) {
         return false;
     }
-    // Try full window ID first, fall back to stable ID for session-restored entries
+    // Try full window ID first, fall back to app ID for session-restored entries
     if (m_preSnapGeometries.contains(windowId)) {
         return true;
     }
-    QString stableId = Utils::extractStableId(windowId);
-    return (stableId != windowId && m_preSnapGeometries.contains(stableId));
+    QString appId = Utils::extractAppId(windowId);
+    return (appId != windowId && m_preSnapGeometries.contains(appId));
 }
 
 void WindowTrackingService::clearPreSnapGeometry(const QString& windowId)
@@ -218,10 +218,10 @@ void WindowTrackingService::clearPreSnapGeometry(const QString& windowId)
         return;
     }
     bool removed = m_preSnapGeometries.remove(windowId) > 0;
-    // Also remove stable ID entry (session-restored entries)
-    QString stableId = Utils::extractStableId(windowId);
-    if (stableId != windowId) {
-        removed |= (m_preSnapGeometries.remove(stableId) > 0);
+    // Also remove app ID entry (session-restored entries)
+    QString appId = Utils::extractAppId(windowId);
+    if (appId != windowId) {
+        removed |= (m_preSnapGeometries.remove(appId) > 0);
     }
     if (removed) {
         scheduleSaveState();
@@ -250,9 +250,9 @@ void WindowTrackingService::storePreAutotileGeometry(const QString& windowId, co
         return;
     }
     m_preAutotileGeometries[windowId] = geometry;
-    QString stableId = Utils::extractStableId(windowId);
-    if (stableId != windowId) {
-        m_preAutotileGeometries[stableId] = geometry;
+    QString appId = Utils::extractAppId(windowId);
+    if (appId != windowId) {
+        m_preAutotileGeometries[appId] = geometry;
     }
     scheduleSaveState();
 }
@@ -263,9 +263,9 @@ void WindowTrackingService::clearPreAutotileGeometry(const QString& windowId)
         return;
     }
     bool removed = m_preAutotileGeometries.remove(windowId) > 0;
-    QString stableId = Utils::extractStableId(windowId);
-    if (stableId != windowId) {
-        removed |= (m_preAutotileGeometries.remove(stableId) > 0);
+    QString appId = Utils::extractAppId(windowId);
+    if (appId != windowId) {
+        removed |= (m_preAutotileGeometries.remove(appId) > 0);
     }
     if (removed) {
         scheduleSaveState();
@@ -290,9 +290,9 @@ std::optional<QRect> WindowTrackingService::validatedPreAutotileGeometry(const Q
     if (m_preAutotileGeometries.contains(windowId)) {
         rect = m_preAutotileGeometries.value(windowId);
     } else {
-        QString stableId = Utils::extractStableId(windowId);
-        if (stableId != windowId && m_preAutotileGeometries.contains(stableId)) {
-            rect = m_preAutotileGeometries.value(stableId);
+        QString appId = Utils::extractAppId(windowId);
+        if (appId != windowId && m_preAutotileGeometries.contains(appId)) {
+            rect = m_preAutotileGeometries.value(appId);
         } else {
             return std::nullopt;
         }
@@ -316,26 +316,26 @@ bool WindowTrackingService::isWindowFloating(const QString& windowId) const
     if (m_floatingWindows.contains(windowId)) {
         return true;
     }
-    // Fall back to stable ID (session restore - pointer addresses change across restarts)
-    QString stableId = Utils::extractStableId(windowId);
-    return (stableId != windowId && m_floatingWindows.contains(stableId));
+    // Fall back to app ID (session restore - pointer addresses change across restarts)
+    QString appId = Utils::extractAppId(windowId);
+    return (appId != windowId && m_floatingWindows.contains(appId));
 }
 
 void WindowTrackingService::setWindowFloating(const QString& windowId, bool floating)
 {
     // Use full windowId so each window instance has independent floating state
-    // (stableId would collide for multiple instances of the same app)
+    // (appId would collide for multiple instances of the same app)
     if (floating) {
         m_floatingWindows.insert(windowId);
     } else {
         m_floatingWindows.remove(windowId);
-        // Also remove stable ID entry (session-restored entries)
-        QString stableId = Utils::extractStableId(windowId);
-        if (stableId != windowId) {
-            m_floatingWindows.remove(stableId);
+        // Also remove app ID entry (session-restored entries)
+        QString appId = Utils::extractAppId(windowId);
+        if (appId != windowId) {
+            m_floatingWindows.remove(appId);
         }
         // Clear autotile-floated origin tracking for this specific instance only.
-        // No stableId removal — autotile-floated is per-instance, never shared.
+        // No appId removal — autotile-floated is per-instance, never shared.
         m_autotileFloatedWindows.remove(windowId);
     }
     scheduleSaveState();
@@ -353,10 +353,10 @@ void WindowTrackingService::clearAutotileFloated(const QString& windowId)
 
 bool WindowTrackingService::isAutotileFloated(const QString& windowId) const
 {
-    // Exact match only — NO stableId fallback.
+    // Exact match only — NO appId fallback.
     // m_autotileFloatedWindows is ephemeral runtime state (not persisted).
-    // A stableId fallback would cross-contaminate multiple instances of the
-    // same app (e.g., 3 Dolphin windows share stableId "dolphin:dolphin",
+    // A appId fallback would cross-contaminate multiple instances of the
+    // same app (e.g., 3 Dolphin windows share appId "dolphin:dolphin",
     // so floating one would incorrectly mark all three).
     return m_autotileFloatedWindows.contains(windowId);
 }
@@ -369,7 +369,7 @@ QStringList WindowTrackingService::floatingWindows() const
 void WindowTrackingService::unsnapForFloat(const QString& windowId)
 {
     // Save zone(s) and screen for restore on unfloat.
-    // Key by full windowId (not stableId) so multiple instances of the same
+    // Key by full windowId (not appId) so multiple instances of the same
     // application each remember their own zone independently.
     if (m_windowZoneAssignments.contains(windowId)) {
         QStringList zoneIds = m_windowZoneAssignments.value(windowId);
@@ -390,31 +390,31 @@ QString WindowTrackingService::preFloatZone(const QString& windowId) const
     // Try full window ID first (runtime - distinguishes multiple instances)
     QStringList zones = m_preFloatZoneAssignments.value(windowId);
     if (zones.isEmpty()) {
-        // Fall back to stable ID (session restore - pointer addresses change across restarts)
-        QString stableId = Utils::extractStableId(windowId);
-        zones = m_preFloatZoneAssignments.value(stableId);
+        // Fall back to app ID (session restore - pointer addresses change across restarts)
+        QString appId = Utils::extractAppId(windowId);
+        zones = m_preFloatZoneAssignments.value(appId);
     }
     return zones.isEmpty() ? QString() : zones.first();
 }
 
 QStringList WindowTrackingService::preFloatZones(const QString& windowId) const
 {
-    // Try full window ID first, fall back to stable ID for session restore
+    // Try full window ID first, fall back to app ID for session restore
     QStringList zones = m_preFloatZoneAssignments.value(windowId);
     if (zones.isEmpty()) {
-        QString stableId = Utils::extractStableId(windowId);
-        zones = m_preFloatZoneAssignments.value(stableId);
+        QString appId = Utils::extractAppId(windowId);
+        zones = m_preFloatZoneAssignments.value(appId);
     }
     return zones;
 }
 
 QString WindowTrackingService::preFloatScreen(const QString& windowId) const
 {
-    // Try full window ID first, fall back to stable ID for session restore
+    // Try full window ID first, fall back to app ID for session restore
     QString screen = m_preFloatScreenAssignments.value(windowId);
     if (screen.isEmpty()) {
-        QString stableId = Utils::extractStableId(windowId);
-        screen = m_preFloatScreenAssignments.value(stableId);
+        QString appId = Utils::extractAppId(windowId);
+        screen = m_preFloatScreenAssignments.value(appId);
     }
     return screen;
 }
@@ -424,11 +424,11 @@ void WindowTrackingService::clearPreFloatZone(const QString& windowId)
     // Remove by full window ID (runtime entries)
     m_preFloatZoneAssignments.remove(windowId);
     m_preFloatScreenAssignments.remove(windowId);
-    // Also remove by stable ID (session-restored entries)
-    QString stableId = Utils::extractStableId(windowId);
-    if (stableId != windowId) {
-        m_preFloatZoneAssignments.remove(stableId);
-        m_preFloatScreenAssignments.remove(stableId);
+    // Also remove by app ID (session-restored entries)
+    QString appId = Utils::extractAppId(windowId);
+    if (appId != windowId) {
+        m_preFloatZoneAssignments.remove(appId);
+        m_preFloatScreenAssignments.remove(appId);
     }
 }
 

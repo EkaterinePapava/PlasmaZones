@@ -185,9 +185,9 @@ void WindowTrackingAdaptor::onLayoutChanged()
     m_service->onLayoutChanged();
 
     // After layout becomes available, check if we have pending restores
-    if (!m_service->pendingZoneAssignments().isEmpty()) {
+    if (!m_service->pendingRestoreQueues().isEmpty()) {
         m_hasPendingRestores = true;
-        qCDebug(lcDbusWindow) << "Layout available with" << m_service->pendingZoneAssignments().size()
+        qCDebug(lcDbusWindow) << "Layout available with" << m_service->pendingRestoreQueues().size()
                               << "pending restores - checking if panel geometry is ready";
         tryEmitPendingRestoresAvailable();
     }

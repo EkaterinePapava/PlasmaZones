@@ -816,16 +816,17 @@ private Q_SLOTS:
     }
 
     // =====================================================================
-    // P2: Stable ID Fallbacks
+    // P2: App ID Fallbacks
     // =====================================================================
 
     void testFloatingWindow_stableIdLookupFallback()
     {
-        QString stableId = QStringLiteral("firefox:Navigator");
-        QString windowIdNew = QStringLiteral("firefox:Navigator:99999");
+        // App ID is stored when window closes; new instance (different UUID) should match
+        QString appId = QStringLiteral("firefox");
+        QString windowIdNew = QStringLiteral("firefox|a1b2c3d4-0000-0000-0000-000099999999");
 
         QSet<QString> floating;
-        floating.insert(stableId);
+        floating.insert(appId);
         m_service->setFloatingWindows(floating);
 
         QVERIFY(m_service->isWindowFloating(windowIdNew));
@@ -833,11 +834,12 @@ private Q_SLOTS:
 
     void testPreSnapGeometry_stableIdFallback()
     {
-        QString stableId = QStringLiteral("dolphin:dolphin");
-        QString windowId = QStringLiteral("dolphin:dolphin:88888");
+        // Pre-snap geometry keyed by appId should be found when looking up by full windowId
+        QString appId = QStringLiteral("dolphin");
+        QString windowId = QStringLiteral("dolphin|a1b2c3d4-0000-0000-0000-000088888888");
 
         QHash<QString, QRect> geos;
-        geos[stableId] = QRect(50, 100, 640, 480);
+        geos[appId] = QRect(50, 100, 640, 480);
         m_service->setPreSnapGeometries(geos);
 
         QVERIFY(m_service->hasPreSnapGeometry(windowId));

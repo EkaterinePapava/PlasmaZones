@@ -23,7 +23,7 @@ namespace PlasmaZones {
 
 void WindowTrackingService::windowClosed(const QString& windowId)
 {
-    QString stableId = Utils::extractStableId(windowId);
+    QString appId = Utils::extractAppId(windowId);
 
     // Persist the zone assignment to pending BEFORE removing from active tracking.
     // This ensures the window can be restored to its zone when reopened.
@@ -31,37 +31,28 @@ void WindowTrackingService::windowClosed(const QString& windowId)
     // and not be auto-snapped when reopened.
     QStringList zoneIds = m_windowZoneAssignments.value(windowId);
     QString zoneId = zoneIds.isEmpty() ? QString() : zoneIds.first();
-    // Check floating with full windowId first, fallback to stableId
+    // Check floating with full windowId first, fallback to appId
     bool isFloating = isWindowFloating(windowId);
     if (!zoneId.isEmpty() && !zoneId.startsWith(QStringLiteral("zoneselector-")) && !isFloating) {
-        if (!stableId.isEmpty()) {
-            m_pendingZoneAssignments[stableId] = zoneIds;
+        if (!appId.isEmpty()) {
+            PendingRestore entry;
+            entry.zoneIds = zoneIds;
 
             QString screenName = m_windowScreenAssignments.value(windowId);
-            if (!screenName.isEmpty()) {
-                m_pendingZoneScreens[stableId] = screenName;
-            } else {
-                m_pendingZoneScreens.remove(stableId);
-            }
+            entry.screenName = screenName;
 
             int desktop = m_windowDesktopAssignments.value(windowId, 0);
             if (desktop <= 0 && m_virtualDesktopManager) {
                 desktop = m_virtualDesktopManager->currentDesktop();
             }
-            if (desktop > 0) {
-                m_pendingZoneDesktops[stableId] = desktop;
-            } else {
-                m_pendingZoneDesktops.remove(stableId);
-            }
+            entry.virtualDesktop = desktop;
 
             // Save the layout ID to ensure we only restore if the same layout is active
             // This prevents restoring windows to wrong zones when layouts have been changed
             // Use resolveLayoutForScreen() for proper multi-screen support
             Layout* contextLayout = m_layoutManager ? m_layoutManager->resolveLayoutForScreen(screenName) : nullptr;
             if (contextLayout) {
-                m_pendingZoneLayouts[stableId] = contextLayout->id().toString();
-            } else {
-                m_pendingZoneLayouts.remove(stableId);
+                entry.layoutId = contextLayout->id().toString();
             }
 
             // Save zone numbers for fallback when zone UUIDs get regenerated on layout edit
@@ -71,13 +62,11 @@ void WindowTrackingService::windowClosed(const QString& windowId)
                 if (z)
                     zoneNumbers.append(z->zoneNumber());
             }
-            if (!zoneNumbers.isEmpty()) {
-                m_pendingZoneNumbers[stableId] = zoneNumbers;
-            } else {
-                m_pendingZoneNumbers.remove(stableId);
-            }
+            entry.zoneNumbers = zoneNumbers;
 
-            qCInfo(lcCore) << "Persisted zone" << zoneId << "for closed window" << stableId << "screen:" << screenName
+            m_pendingRestoreQueues[appId].append(entry);
+
+            qCInfo(lcCore) << "Persisted zone" << zoneId << "for closed window" << appId << "screen:" << screenName
                            << "desktop:" << desktop
                            << "layout:" << (contextLayout ? contextLayout->id().toString() : QStringLiteral("none"))
                            << "zoneNumbers:" << zoneNumbers;
@@ -90,33 +79,33 @@ void WindowTrackingService::windowClosed(const QString& windowId)
     m_windowScreenAssignments.remove(windowId);
     m_windowDesktopAssignments.remove(windowId);
 
-    // Convert pre-float entries from full window ID to stable ID so unfloating
-    // after reopen works (new window instance will have a different pointer address).
+    // Convert pre-float entries from full window ID to app ID so unfloating
+    // after reopen works (new window instance will have a different internal ID).
     if (m_preFloatZoneAssignments.contains(windowId)) {
-        m_preFloatZoneAssignments[stableId] = m_preFloatZoneAssignments.take(windowId);
+        m_preFloatZoneAssignments[appId] = m_preFloatZoneAssignments.take(windowId);
     }
     if (m_preFloatScreenAssignments.contains(windowId)) {
-        m_preFloatScreenAssignments[stableId] = m_preFloatScreenAssignments.take(windowId);
+        m_preFloatScreenAssignments[appId] = m_preFloatScreenAssignments.take(windowId);
     }
-    // Convert pre-snap geometry from full windowId to stableId for persistence
-    // so that when the window reopens (with a new pointer address), the geometry
-    // can still be found via stableId fallback
-    if (m_preSnapGeometries.contains(windowId) && stableId != windowId) {
-        m_preSnapGeometries[stableId] = m_preSnapGeometries.take(windowId);
+    // Convert pre-snap geometry from full windowId to appId for persistence
+    // so that when the window reopens (with a new internal ID), the geometry
+    // can still be found via appId fallback
+    if (m_preSnapGeometries.contains(windowId) && appId != windowId) {
+        m_preSnapGeometries[appId] = m_preSnapGeometries.take(windowId);
     }
-    // Convert pre-autotile geometry: remove full-windowId entry, keep stableId.
-    // storePreAutotileGeometry writes both keys, so the stableId entry already
+    // Convert pre-autotile geometry: remove full-windowId entry, keep appId.
+    // storePreAutotileGeometry writes both keys, so the appId entry already
     // exists — just clean up the stale full-windowId entry.
-    if (m_preAutotileGeometries.contains(windowId) && stableId != windowId) {
+    if (m_preAutotileGeometries.contains(windowId) && appId != windowId) {
         m_preAutotileGeometries.remove(windowId);
     }
-    // Convert floating state from full windowId to stableId for persistence
-    if (m_floatingWindows.contains(windowId) && stableId != windowId) {
+    // Convert floating state from full windowId to appId for persistence
+    if (m_floatingWindows.contains(windowId) && appId != windowId) {
         m_floatingWindows.remove(windowId);
-        m_floatingWindows.insert(stableId);
+        m_floatingWindows.insert(appId);
     }
-    // Remove autotile-floated tracking outright — do NOT migrate to stableId.
-    // This set is ephemeral (not persisted); migrating to stableId would create
+    // Remove autotile-floated tracking outright — do NOT migrate to appId.
+    // This set is ephemeral (not persisted); migrating to appId would create
     // a shared key that matches ALL instances of the same app, causing
     // cross-contamination when isAutotileFloated() is called for other instances.
     m_autotileFloatedWindows.remove(windowId);
@@ -143,7 +132,7 @@ void WindowTrackingService::onLayoutChanged()
 
     // Before removing stale assignments, capture (window, zonePosition) for resnap-to-new-layout.
     // When user presses the shortcut, we map zone N -> zone N (with cycling when layout has fewer zones).
-    // Include BOTH m_windowZoneAssignments (tracked) AND m_pendingZoneAssignments (session-restored
+    // Include BOTH m_windowZoneAssignments (tracked) AND m_pendingRestoreQueues (session-restored
     // windows that KWin placed in zones before we got windowSnapped - e.g. after login).
     //
     // LayoutManager ensures prevLayout is never null (captures current as previous on first set).
@@ -165,7 +154,7 @@ void WindowTrackingService::onLayoutChanged()
             zoneIdToPosition[prevZones[i]->id().toString()] = i + 1;
         }
         // Dedup: full windowId for live assignments (supports multi-instance apps),
-        // stableId for pending entries (avoids double-counting live + pending for same window)
+        // appId for pending entries (avoids double-counting live + pending for same window)
         QSet<QString> addedIds;
 
         auto addToBuffer = [&](const QString& windowIdOrStableId, const QStringList& zoneIdList,
@@ -197,12 +186,12 @@ void WindowTrackingService::onLayoutChanged()
             if (pos <= 0) {
                 return;
             }
-            // Track by exact key (full windowId for live, stableId for pending)
+            // Track by exact key (full windowId for live, appId for pending)
             addedIds.insert(windowIdOrStableId);
-            // Also track stableId so pending entries don't duplicate live ones
-            QString stableId = Utils::extractStableId(windowIdOrStableId);
-            if (stableId != windowIdOrStableId) {
-                addedIds.insert(stableId);
+            // Also track appId so pending entries don't duplicate live ones
+            QString appId = Utils::extractAppId(windowIdOrStableId);
+            if (appId != windowIdOrStableId) {
+                addedIds.insert(appId);
             }
             // Collect all zone positions for multi-zone resnap
             QList<int> allPositions;
@@ -259,23 +248,22 @@ void WindowTrackingService::onLayoutChanged()
             }
 
             // 2. Pending assignments (session-restored windows)
-            for (auto it = m_pendingZoneAssignments.constBegin(); it != m_pendingZoneAssignments.constEnd(); ++it) {
-                QString screenName = m_pendingZoneScreens.value(it.key());
-                if (!isAffectedByGlobalChange(screenName)) {
-                    continue;
-                }
-                if (anyZoneInActiveLayout(it.value())) {
-                    continue;
-                }
-                QString savedLayoutId = m_pendingZoneLayouts.value(it.key());
-                if (!savedLayoutId.isEmpty()) {
-                    auto savedUuid = Utils::parseUuid(savedLayoutId);
-                    if (!savedUuid || *savedUuid != prevLayoutId) {
-                        continue; // pending is for a different layout
+            for (auto it = m_pendingRestoreQueues.constBegin(); it != m_pendingRestoreQueues.constEnd(); ++it) {
+                for (const PendingRestore& entry : it.value()) {
+                    if (!isAffectedByGlobalChange(entry.screenName)) {
+                        continue;
                     }
+                    if (anyZoneInActiveLayout(entry.zoneIds)) {
+                        continue;
+                    }
+                    if (!entry.layoutId.isEmpty()) {
+                        auto savedUuid = Utils::parseUuid(entry.layoutId);
+                        if (!savedUuid || *savedUuid != prevLayoutId) {
+                            continue; // pending is for a different layout
+                        }
+                    }
+                    addToBuffer(it.key(), entry.zoneIds, entry.screenName, entry.virtualDesktop);
                 }
-                int vd = m_pendingZoneDesktops.value(it.key(), 0);
-                addToBuffer(it.key(), it.value(), screenName, vd);
             }
         } else {
             // Same layout (startup): capture assignments that belong to the current layout.
@@ -290,20 +278,19 @@ void WindowTrackingService::onLayoutChanged()
             }
 
             // 2. Pending assignments for current layout
-            for (auto it = m_pendingZoneAssignments.constBegin(); it != m_pendingZoneAssignments.constEnd(); ++it) {
-                if (!anyZoneInActiveLayout(it.value())) {
-                    continue;
-                }
-                QString savedLayoutId = m_pendingZoneLayouts.value(it.key());
-                if (!savedLayoutId.isEmpty()) {
-                    auto savedUuid = Utils::parseUuid(savedLayoutId);
-                    if (!savedUuid || *savedUuid != prevLayoutId) {
+            for (auto it = m_pendingRestoreQueues.constBegin(); it != m_pendingRestoreQueues.constEnd(); ++it) {
+                for (const PendingRestore& entry : it.value()) {
+                    if (!anyZoneInActiveLayout(entry.zoneIds)) {
                         continue;
                     }
+                    if (!entry.layoutId.isEmpty()) {
+                        auto savedUuid = Utils::parseUuid(entry.layoutId);
+                        if (!savedUuid || *savedUuid != prevLayoutId) {
+                            continue;
+                        }
+                    }
+                    addToBuffer(it.key(), entry.zoneIds, entry.screenName, entry.virtualDesktop);
                 }
-                QString screenName = m_pendingZoneScreens.value(it.key());
-                int vd = m_pendingZoneDesktops.value(it.key(), 0);
-                addToBuffer(it.key(), it.value(), screenName, vd);
             }
         }
 

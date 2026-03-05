@@ -47,7 +47,7 @@ public:
     void handleSnapAllWindows(const QString& snapData, const QString& screenName);
     void handleCycleWindowsInZone(const QString& directive, const QString& unused);
 
-    // Floating window tracking (uses full windowId, with stableId fallback for session restore)
+    // Floating window tracking (uses full windowId, with appId fallback)
     bool isWindowFloating(const QString& windowId) const;
     void setWindowFloating(const QString& windowId, bool floating);
     void syncFloatingWindowsFromDaemon();

@@ -155,19 +155,19 @@ void ScreenChangeHandler::applyWindowGeometriesFromJson(const QString& geometrie
     QJsonArray geometries = doc.array();
     qCInfo(lcScreenChange) << "Applying geometries to" << geometries.size() << "windows";
 
-    // Single pass: map by full window ID and by stableId for fallback
+    // Single pass: map by full window ID and by appId for fallback
     QHash<QString, KWin::EffectWindow*> windowByFullId;
-    QHash<QString, KWin::EffectWindow*> windowByStableId;
+    QHash<QString, KWin::EffectWindow*> windowByAppId;
     const auto windows = KWin::effects->stackingOrder();
     for (KWin::EffectWindow* w : windows) {
         if (!w || !m_effect->shouldHandleWindow(w)) {
             continue;
         }
         QString fullId = m_effect->getWindowId(w);
-        QString stableId = PlasmaZonesEffect::extractStableId(fullId);
+        QString appId = PlasmaZonesEffect::extractAppId(fullId);
         windowByFullId.insert(fullId, w);
-        if (!windowByStableId.contains(stableId)) {
-            windowByStableId.insert(stableId, w);
+        if (!windowByAppId.contains(appId)) {
+            windowByAppId.insert(appId, w);
         }
     }
 
@@ -200,7 +200,7 @@ void ScreenChangeHandler::applyWindowGeometriesFromJson(const QString& geometrie
 
         KWin::EffectWindow* window = windowByFullId.value(windowId);
         if (!window) {
-            window = windowByStableId.value(PlasmaZonesEffect::extractStableId(windowId));
+            window = windowByAppId.value(PlasmaZonesEffect::extractAppId(windowId));
         }
         if (window && m_effect->shouldHandleWindow(window)) {
             const QString winScreenName = m_effect->getWindowScreenName(window);

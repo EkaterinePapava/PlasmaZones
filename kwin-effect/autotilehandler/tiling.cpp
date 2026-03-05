@@ -83,14 +83,14 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
         entries.append(entry);
     }
 
-    // Disambiguate entries with multiple candidates (same stableId)
-    QHash<QString, QVector<int>> stableIdToEntryIndices;
+    // Disambiguate entries with multiple candidates (same appId)
+    QHash<QString, QVector<int>> appIdToEntryIndices;
     for (int i = 0; i < entries.size(); ++i) {
         if (!entries[i].candidates.isEmpty()) {
-            stableIdToEntryIndices[PlasmaZonesEffect::extractStableId(entries[i].windowId)].append(i);
+            appIdToEntryIndices[PlasmaZonesEffect::extractAppId(entries[i].windowId)].append(i);
         }
     }
-    for (const QVector<int>& indices : std::as_const(stableIdToEntryIndices)) {
+    for (const QVector<int>& indices : std::as_const(appIdToEntryIndices)) {
         if (indices.size() <= 1) {
             if (indices.size() == 1 && entries[indices[0]].candidates.size() > 1) {
                 Entry& e = entries[indices[0]];

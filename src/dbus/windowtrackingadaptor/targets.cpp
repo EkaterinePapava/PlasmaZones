@@ -253,7 +253,7 @@ QString WindowTrackingAdaptor::getCycleTargetForWindow(const QString& windowId, 
     if (currentIndex < 0) {
         currentIndex = 0;
         for (int i = 0; i < windowsInZone.size(); ++i) {
-            if (Utils::extractStableId(windowsInZone[i]) == Utils::extractStableId(windowId)) {
+            if (Utils::extractAppId(windowsInZone[i]) == Utils::extractAppId(windowId)) {
                 currentIndex = i;
                 break;
             }
