@@ -123,7 +123,7 @@ void EditorController::loadEditorSettings()
     KConfigGroup appearanceGroup = config->group(QStringLiteral("Appearance"));
     m_labelFontFamily = appearanceGroup.readEntry(QLatin1String("LabelFontFamily"), QString());
     m_labelFontSizeScale = qBound(0.25, appearanceGroup.readEntry(QLatin1String("LabelFontSizeScale"), 1.0), 3.0);
-    m_labelFontWeight = appearanceGroup.readEntry(QLatin1String("LabelFontWeight"), static_cast<int>(QFont::Bold));
+    m_labelFontWeight = appearanceGroup.readEntry(QLatin1String("LabelFontWeight"), 700);
     m_labelFontItalic = appearanceGroup.readEntry(QLatin1String("LabelFontItalic"), false);
     m_labelFontUnderline = appearanceGroup.readEntry(QLatin1String("LabelFontUnderline"), false);
     m_labelFontStrikeout = appearanceGroup.readEntry(QLatin1String("LabelFontStrikeout"), false);

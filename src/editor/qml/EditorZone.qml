@@ -354,14 +354,14 @@ Item {
         }
         // Color trackers to force re-evaluation when colors change
         // QVariantMap property changes don't automatically trigger QML bindings
-        property var _highlightColorTracker: zoneData ? zoneData.highlightColor : null
-        property var _inactiveColorTracker: zoneData ? zoneData.inactiveColor : null
-        property var _borderColorTracker: zoneData ? zoneData.borderColor : null
-        property var _activeOpacityTracker: zoneData ? zoneData.activeOpacity : null
-        property var _inactiveOpacityTracker: zoneData ? zoneData.inactiveOpacity : null
-        property var _borderWidthTracker: zoneData ? zoneData.borderWidth : null
-        property var _borderRadiusTracker: zoneData ? zoneData.borderRadius : null
-        property var _useCustomColorsTracker: zoneData ? zoneData.useCustomColors : null
+        property color _highlightColorTracker: zoneData ? zoneData.highlightColor : "transparent"
+        property color _inactiveColorTracker: zoneData ? zoneData.inactiveColor : "transparent"
+        property color _borderColorTracker: zoneData ? zoneData.borderColor : "transparent"
+        property real _activeOpacityTracker: zoneData ? zoneData.activeOpacity : 0.0
+        property real _inactiveOpacityTracker: zoneData ? zoneData.inactiveOpacity : 0.0
+        property int _borderWidthTracker: zoneData ? zoneData.borderWidth : 0
+        property int _borderRadiusTracker: zoneData ? zoneData.borderRadius : 0
+        property bool _useCustomColorsTracker: zoneData ? zoneData.useCustomColors : false
         // Bindings that depend on trackers to force re-evaluation
         property color customHighlightColor: {
             var _ = _highlightColorTracker; // Dependency on tracker

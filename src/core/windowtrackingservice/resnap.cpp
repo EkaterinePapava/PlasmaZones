@@ -229,7 +229,6 @@ QStringList WindowTrackingService::buildZoneOrderedWindowList(const QString& scr
     const QVector<Zone*> zones = layout->zones();
     QHash<QString, int> zoneNumberMap;
     for (Zone* zone : zones) {
-        zoneNumberMap[zone->id().toString(QUuid::WithoutBraces)] = zone->zoneNumber();
         zoneNumberMap[zone->id().toString()] = zone->zoneNumber();
     }
 

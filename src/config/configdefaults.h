@@ -198,6 +198,14 @@ public:
     static QColor autotileBorderColor() { return instance().defaultAutotileBorderColorValue(); }
     static bool autotileUseSystemBorderColors() { return instance().defaultAutotileUseSystemBorderColorsValue(); }
     // ═══════════════════════════════════════════════════════════════════════════
+    // Update Notification Settings
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // KConfigXT doesn't generate a public defaultDismissedUpdateVersionValue() for
+    // String entries with empty <default></default>, so we hardcode here.
+    static QString dismissedUpdateVersion() { return QString(); }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // Mode Tracking Settings
     // ═══════════════════════════════════════════════════════════════════════════
 

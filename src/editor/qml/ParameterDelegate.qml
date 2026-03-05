@@ -192,7 +192,7 @@ Item {
             radius: Kirigami.Units.smallSpacing
             color: currentColor
             border.width: Math.max(1, Math.round(Kirigami.Units.devicePixelRatio))
-            border.color: paramDelegate.resolvedDialogRoot ? paramDelegate.resolvedDialogRoot.themeSeparatorColor : "#ccc"
+            border.color: paramDelegate.resolvedDialogRoot ? paramDelegate.resolvedDialogRoot.themeSeparatorColor : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.3)
 
             MouseArea {
                 anchors.fill: parent

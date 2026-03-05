@@ -301,6 +301,7 @@ Rectangle {
         anchors.fill: parent
         hoverEnabled: true
         propagateComposedEvents: true
+        Accessible.name: i18n("Zone layout selector")
         onEntered: {
             if (root.selectorState === "near")
                 root.setState("expanded");

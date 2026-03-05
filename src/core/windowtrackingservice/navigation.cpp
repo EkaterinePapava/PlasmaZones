@@ -209,12 +209,7 @@ QVector<RotationEntry> WindowTrackingService::calculateRotation(bool clockwise, 
         // Build zone ID -> index map (with and without braces for format-agnostic matching)
         QHash<QString, int> zoneIdToIndex;
         for (int i = 0; i < zones.size(); ++i) {
-            QString zoneId = zones[i]->id().toString();
-            zoneIdToIndex[zoneId] = i;
-            QString withoutBraces = zones[i]->id().toString(QUuid::WithoutBraces);
-            if (withoutBraces != zoneId) {
-                zoneIdToIndex[withoutBraces] = i;
-            }
+            zoneIdToIndex[zones[i]->id().toString()] = i;
         }
 
         // Find zone indices for windows on this screen

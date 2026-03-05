@@ -193,8 +193,8 @@ Window {
             anchors.top: parent.top
             anchors.topMargin: Kirigami.Units.gridUnit * 1.5
             anchors.horizontalCenter: parent.horizontalCenter
-            width: 200
-            height: Math.round(200 / root.safeAspectRatio)
+            width: Kirigami.Units.gridUnit * 11
+            height: Math.round(Kirigami.Units.gridUnit * 11 / root.safeAspectRatio)
 
             // Background for preview area
             Rectangle {

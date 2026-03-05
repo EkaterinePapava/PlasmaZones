@@ -217,7 +217,7 @@ void ScreenManager::queryKdePlasmaPanels(bool fromDelayedRequery)
         }
 
         // Cleanup
-        delete plasmaShell;
+        plasmaShell->deleteLater();
         w->deleteLater();
     });
 }

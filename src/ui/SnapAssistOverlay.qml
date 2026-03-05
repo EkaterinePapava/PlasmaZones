@@ -61,6 +61,8 @@ Window {
         MouseArea {
             anchors.fill: parent
             onClicked: root.close()
+            Accessible.name: i18n("Dismiss snap assist overlay")
+            Accessible.role: Accessible.Button
         }
     }
 
@@ -225,7 +227,7 @@ Window {
                         MouseArea {
                             id: cardMouse
                             anchors.fill: parent
-                            hoverEnabled: true
+                            hoverEnabled: root.visible
                             cursorShape: Qt.PointingHandCursor
                             Accessible.name: candidate && candidate.caption
                                 ? i18n("Snap %1 to this zone", candidate.caption)

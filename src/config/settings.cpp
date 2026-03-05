@@ -262,7 +262,8 @@ void Settings::reset()
         QStringLiteral("Autotiling"),
         QStringLiteral("AutotileShortcuts"),
         QStringLiteral("Animations"),
-        QStringLiteral("ModeTracking")
+        QStringLiteral("ModeTracking"),
+        QStringLiteral("Updates")
     };
     for (const QString& groupName : groups) {
         config->deleteGroup(groupName);

@@ -27,7 +27,7 @@ ColumnLayout {
     property var groupParams: []  // Parameter array for this group (explicit, not closure-based)
     property int paramCount: groupParams ? groupParams.length : 0
     property bool expanded: true
-    property alias contentItem: contentLoader.sourceComponent
+    property alias contentComponent: contentLoader.sourceComponent
 
     // Signal emitted when user clicks header (for accordion behavior)
     signal toggled()

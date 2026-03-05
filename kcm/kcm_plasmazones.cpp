@@ -2053,9 +2053,9 @@ QVariantList KCMPlasmaZones::getRunningWindows()
         }
         QJsonObject obj = value.toObject();
         QVariantMap item;
-        item[QStringLiteral("windowClass")] = obj[QStringLiteral("windowClass")].toString();
-        item[QStringLiteral("appName")] = obj[QStringLiteral("appName")].toString();
-        item[QStringLiteral("caption")] = obj[QStringLiteral("caption")].toString();
+        item[QStringLiteral("windowClass")] = obj[QLatin1String("windowClass")].toString();
+        item[QStringLiteral("appName")] = obj[QLatin1String("appName")].toString();
+        item[QStringLiteral("caption")] = obj[QLatin1String("caption")].toString();
         result.append(item);
     }
 
@@ -2446,25 +2446,25 @@ void KCMPlasmaZones::refreshScreens()
                     screenInfo[QStringLiteral("isPrimary")] = (screenName == primaryScreenName);
 
                     // Include stable EDID-based screen ID from daemon
-                    if (jsonObj.contains(QStringLiteral("screenId"))) {
-                        screenInfo[QStringLiteral("screenId")] = jsonObj[QStringLiteral("screenId")].toString();
+                    if (jsonObj.contains(JsonKeys::ScreenId)) {
+                        screenInfo[QStringLiteral("screenId")] = jsonObj[JsonKeys::ScreenId].toString();
                     } else {
                         screenInfo[QStringLiteral("screenId")] = screenName;
                     }
 
                     // Forward manufacturer/model for display
-                    if (jsonObj.contains(QStringLiteral("manufacturer"))) {
-                        screenInfo[QStringLiteral("manufacturer")] = jsonObj[QStringLiteral("manufacturer")].toString();
+                    if (jsonObj.contains(JsonKeys::Manufacturer)) {
+                        screenInfo[QStringLiteral("manufacturer")] = jsonObj[JsonKeys::Manufacturer].toString();
                     }
-                    if (jsonObj.contains(QStringLiteral("model"))) {
-                        screenInfo[QStringLiteral("model")] = jsonObj[QStringLiteral("model")].toString();
+                    if (jsonObj.contains(JsonKeys::Model)) {
+                        screenInfo[QStringLiteral("model")] = jsonObj[JsonKeys::Model].toString();
                     }
 
                     // Create resolution string from geometry for QML display
-                    if (jsonObj.contains(QStringLiteral("geometry"))) {
-                        QJsonObject geom = jsonObj[QStringLiteral("geometry")].toObject();
-                        int width = geom[QStringLiteral("width")].toInt();
-                        int height = geom[QStringLiteral("height")].toInt();
+                    if (jsonObj.contains(JsonKeys::Geometry)) {
+                        QJsonObject geom = jsonObj[JsonKeys::Geometry].toObject();
+                        int width = geom[JsonKeys::Width].toInt();
+                        int height = geom[JsonKeys::Height].toInt();
                         screenInfo[QStringLiteral("resolution")] = QStringLiteral("%1×%2").arg(width).arg(height);
                     }
 

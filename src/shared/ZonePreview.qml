@@ -216,7 +216,7 @@ Item {
 
                 anchors.fill: parent
                 anchors.margins: -2  // Slightly larger hit area
-                hoverEnabled: root.interactive
+                hoverEnabled: root.interactive && root.visible
                 enabled: root.interactive
                 onEntered: root.zoneHovered(index)
             }

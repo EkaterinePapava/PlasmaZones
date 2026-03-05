@@ -135,7 +135,7 @@ QString LayoutAdaptor::getAllScreenAssignments()
         // returns nullptr for autotile and would silently drop them.
         QString effectiveId = m_layoutManager->assignmentIdForScreen(screenId, currentDesktop, currentActivity);
         if (!effectiveId.isEmpty()) {
-            screenObj[QStringLiteral("default")] = effectiveId;
+            screenObj[QLatin1String("default")] = effectiveId;
         }
 
         // Per-desktop entries (desktop > 0)
@@ -149,7 +149,7 @@ QString LayoutAdaptor::getAllScreenAssignments()
         if (!screenObj.isEmpty()) {
             // Key by connector name for KCM compatibility (D-Bus boundary translates on save)
             // Include screenId inside the object for consumers that need it
-            screenObj[QStringLiteral("screenId")] = screenId;
+            screenObj[QLatin1String("screenId")] = screenId;
             root[screenName] = screenObj;
         }
     }

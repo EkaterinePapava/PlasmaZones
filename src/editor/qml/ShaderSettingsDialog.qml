@@ -611,7 +611,7 @@ Kirigami.Dialog {
                         root.expandedGroupIndex = expanded ? -1 : index;
                     }
 
-                    contentItem: Component {
+                    contentComponent: Component {
                         ColumnLayout {
                             Kirigami.Theme.inherit: true
                             spacing: Kirigami.Units.smallSpacing

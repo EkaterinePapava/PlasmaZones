@@ -78,7 +78,7 @@ void AlgorithmRegistry::registerAlgorithm(const QString &id, TilingAlgorithm *al
     // Remove existing algorithm with same ID (replacement case)
     auto *old = removeAlgorithmInternal(id);
     if (old && old != algorithm) {
-        delete old;
+        old->deleteLater();
     }
 
     // Take ownership
@@ -116,7 +116,7 @@ bool AlgorithmRegistry::unregisterAlgorithm(const QString &id)
         return false;
     }
 
-    delete algorithm;
+    algorithm->deleteLater();
     Q_EMIT algorithmUnregistered(id);
     return true;
 }

@@ -163,10 +163,6 @@ void WindowTrackingService::onLayoutChanged()
         QHash<QString, int> zoneIdToPosition; // zoneId -> 1-based position
         for (int i = 0; i < prevZones.size(); ++i) {
             zoneIdToPosition[prevZones[i]->id().toString()] = i + 1;
-            QString withoutBraces = prevZones[i]->id().toString(QUuid::WithoutBraces);
-            if (withoutBraces != prevZones[i]->id().toString()) {
-                zoneIdToPosition[withoutBraces] = i + 1;
-            }
         }
         // Dedup: full windowId for live assignments (supports multi-instance apps),
         // stableId for pending entries (avoids double-counting live + pending for same window)

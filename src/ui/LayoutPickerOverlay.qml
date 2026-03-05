@@ -66,10 +66,10 @@ Window {
         id: metrics
 
         // Container chrome
-        readonly property int containerPadding: 36
-        readonly property int paddingSide: 18
-        readonly property int containerRadius: 12
-        readonly property int indicatorSpacing: 18
+        readonly property int containerPadding: Kirigami.Units.gridUnit * 2
+        readonly property int paddingSide: Kirigami.Units.gridUnit
+        readonly property int containerRadius: Kirigami.Units.largeSpacing * 2
+        readonly property int indicatorSpacing: Kirigami.Units.gridUnit
         readonly property real backdropAlpha: 0.3
 
         // Card preview
@@ -210,6 +210,8 @@ Window {
             MouseArea {
                 anchors.fill: parent
                 onClicked: root.hide()
+                Accessible.name: i18n("Dismiss layout picker")
+                Accessible.role: Accessible.Button
             }
         }
 

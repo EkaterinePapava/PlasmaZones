@@ -36,16 +36,16 @@ QDBusInterface* DBusLayoutService::getInterface()
     }
     
     // Clean up invalid interface
-    delete m_interface;
+    m_interface->deleteLater();
     m_interface = nullptr;
-    
+
     // Create new interface
     m_interface = new QDBusInterface(m_serviceName, m_objectPath, m_interfaceName, QDBusConnection::sessionBus(), this);
-    
+
     if (!m_interface->isValid()) {
         qCWarning(lcDbus) << "Cannot connect to PlasmaZones daemon - service:" << m_serviceName
                           << "path:" << m_objectPath;
-        delete m_interface;
+        m_interface->deleteLater();
         m_interface = nullptr;
         return nullptr;
     }
