@@ -338,6 +338,36 @@ void ZoneShaderNodeRhi::uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb)
             cb->resourceUpdate(ubatch);
         }
     }
+
+    // Desktop wallpaper texture upload (binding 11)
+    if (m_wallpaperDirty && m_wallpaperTexture && m_wallpaperSampler) {
+        m_wallpaperDirty = false;
+        const QImage& img = m_wallpaperImage;
+        const QSize targetSize = (!img.isNull() && img.width() > 0 && img.height() > 0)
+                                     ? img.size() : QSize(1, 1);
+        if (m_wallpaperTexture->pixelSize() != targetSize) {
+            m_wallpaperTexture.reset(rhi->newTexture(QRhiTexture::RGBA8, targetSize));
+            if (!m_wallpaperTexture->create()) {
+                m_wallpaperTexture.reset(); // Prevent binding a non-created texture
+                return;
+            }
+            resetAllSrbs();
+            if (!ensurePipeline()) {
+                return;
+            }
+        }
+        QRhiResourceUpdateBatch* ubatch = rhi->nextResourceUpdateBatch();
+        if (ubatch) {
+            if (!img.isNull() && img.width() > 0 && img.height() > 0) {
+                ubatch->uploadTexture(m_wallpaperTexture.get(), img);
+            } else {
+                QImage onePixel(1, 1, QImage::Format_RGBA8888);
+                onePixel.fill(Qt::transparent);
+                ubatch->uploadTexture(m_wallpaperTexture.get(), onePixel);
+            }
+            cb->resourceUpdate(ubatch);
+        }
+    }
 }
 
 // ============================================================================
@@ -380,6 +410,9 @@ void ZoneShaderNodeRhi::releaseRhiResources()
         m_userTextureSamplers[i].reset();
         m_userTextureDirty[i] = true;
     }
+    m_wallpaperTexture.reset();
+    m_wallpaperSampler.reset();
+    m_wallpaperDirty = true;
     m_ubo.reset();
     m_vbo.reset();
     m_vertexShader = QShader();

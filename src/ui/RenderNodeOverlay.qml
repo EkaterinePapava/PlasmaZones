@@ -58,6 +58,10 @@ Window {
     // Audio spectrum from CAVA (0-1 per bar). Set from C++ when audio viz enabled. Empty = disabled.
     property var audioSpectrum: []
 
+    // Desktop wallpaper texture (QImage, set from C++ for shaders with "wallpaper": true)
+    property var wallpaperTexture: null
+    property bool useWallpaper: false
+
     // Appearance properties
     property color highlightColor: Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.7)
     property color inactiveColor: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.4)
@@ -149,6 +153,8 @@ Window {
             property point iMouse: root.mousePosition
             property var labelsTexture: root.labelsTexture
             property var audioSpectrum: root.audioSpectrum
+            property var wallpaperTexture: root.wallpaperTexture
+            property bool useWallpaper: root.useWallpaper
         }
 
         ZoneShaderRenderer {

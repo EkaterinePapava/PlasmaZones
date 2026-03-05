@@ -2376,8 +2376,12 @@ QVector<KWin::EffectWindow*> PlasmaZonesEffect::findAllWindowsById(const QString
     for (KWin::EffectWindow* w : windows) {
         const QString wId = getWindowId(w);
         if (wId == windowId) {
-            out.append(w);
-            return out; // Exact match — only one window can have this full ID
+            // Exact match — discard any stableId matches accumulated from earlier
+            // windows in the stacking order. Without this clear, a second instance
+            // of the same app (same stableId) triggers the disambiguation path in
+            // slotWindowsTileRequested, which can assign the wrong EffectWindow to
+            // the tile entry — leaving the new window untiled.
+            return {w};
         }
         if (!targetStableId.isEmpty() && extractStableId(wId) == targetStableId) {
             out.append(w);
@@ -2403,14 +2407,14 @@ void PlasmaZonesEffect::prePaintScreen(KWin::ScreenPrePaintData& data, std::chro
 void PlasmaZonesEffect::paintScreen(const KWin::RenderTarget& renderTarget, const KWin::RenderViewport& viewport,
                                     int mask, const KWin::Region& deviceRegion, KWin::LogicalOutput* screen)
 {
+    m_currentRenderScreen = screen;
     KWin::effects->paintScreen(renderTarget, viewport, mask, deviceRegion, screen);
 
-    // Draw colored border around the active borderless autotiled window only.
-    // Uses live frameGeometry expanded by borderWidth so centered/undersized
-    // windows get a correctly-sized border.
+    // Border is drawn in paintWindow so it respects stacking order (OSDs render above it).
+    // Track current border rect for damage scheduling in postPaintScreen.
+    QRect borderRect;
     const int bw = m_autotileHandler->borderWidth();
     const QColor bc = m_autotileHandler->borderColor();
-    QRect borderRect;
     if (bw > 0 && bc.isValid() && bc.alpha() > 0) {
         KWin::EffectWindow* active = KWin::effects->activeWindow();
         if (active && !active->isMinimized() && !active->isFullScreen()
@@ -2419,12 +2423,9 @@ void PlasmaZonesEffect::paintScreen(const KWin::RenderTarget& renderTarget, cons
             if (m_autotileHandler->isBorderlessWindow(wid)) {
                 const QRectF frame = active->frameGeometry();
                 borderRect = frame.toAlignedRect().adjusted(-bw, -bw, bw, bw);
-                m_borderRenderer->drawBorders(renderTarget, viewport, {borderRect}, bw, bc);
             }
         }
     }
-    // Track current border rect for damage scheduling in postPaintScreen.
-    // If the border moved or disappeared, schedule repaint of the old region too.
     if (m_lastBorderRect != borderRect) {
         if (!m_lastBorderRect.isEmpty()) {
             KWin::effects->addRepaint(m_lastBorderRect);
@@ -2437,6 +2438,7 @@ void PlasmaZonesEffect::postPaintScreen()
 {
     // Schedule targeted repaints for active animations instead of full-screen
     m_windowAnimator->scheduleRepaints();
+    m_currentRenderScreen = nullptr;
     KWin::effects->postPaintScreen();
 }
 
@@ -2459,6 +2461,25 @@ void PlasmaZonesEffect::paintWindow(const KWin::RenderTarget& renderTarget, cons
     m_windowAnimator->applyTransform(w, data);
 
     KWin::effects->paintWindow(renderTarget, viewport, w, mask, deviceRegion, data);
+
+    // Draw autotile border AFTER the window is painted, at this window's z-level.
+    // This ensures windows above (OSDs, popups, panels) render on top of the border.
+    // Guard: only draw on the output where the window actually lives to prevent
+    // incorrect coordinate projection on other monitors in multi-monitor setups.
+    if (w && w == KWin::effects->activeWindow()
+        && w->screen() == m_currentRenderScreen) {
+        const int bw = m_autotileHandler->borderWidth();
+        const QColor bc = m_autotileHandler->borderColor();
+        if (bw > 0 && bc.isValid() && bc.alpha() > 0
+            && !w->isMinimized() && !w->isFullScreen() && w->isOnCurrentDesktop()) {
+            const QString wid = getWindowId(w);
+            if (m_autotileHandler->isBorderlessWindow(wid)) {
+                const QRectF frame = w->frameGeometry();
+                QRect borderRect = frame.toAlignedRect().adjusted(-bw, -bw, bw, bw);
+                m_borderRenderer->drawBorders(renderTarget, viewport, {borderRect}, bw, bc);
+            }
+        }
+    }
 }
 
 } // namespace PlasmaZones

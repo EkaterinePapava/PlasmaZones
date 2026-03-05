@@ -78,6 +78,8 @@ public:
     void setAudioSpectrum(const QVector<float>& spectrum) override;
     void setUserTexture(int slot, const QImage& image) override;
     void setUserTextureWrap(int slot, const QString& wrap) override;
+    void setWallpaperTexture(const QImage& image) override;
+    void setUseWallpaper(bool use) override;
     void setBufferShaderPath(const QString& path) override;
     void setBufferShaderPaths(const QStringList& paths) override;
     void setBufferFeedback(bool enable) override;
@@ -100,6 +102,7 @@ private:
     void uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb);
     void releaseRhiResources();
     void appendUserTextureBindings(QVector<QRhiShaderResourceBinding>& bindings) const;
+    void appendWallpaperBinding(QVector<QRhiShaderResourceBinding>& bindings) const;
     void resetAllSrbs();
     void bakeBufferShaders();
 
@@ -228,6 +231,13 @@ private:
     std::array<std::unique_ptr<QRhiSampler>, kMaxUserTextures> m_userTextureSamplers;
     std::array<QString, kMaxUserTextures> m_userTextureWraps;
     std::array<bool, kMaxUserTextures> m_userTextureDirty = {};
+
+    // Desktop wallpaper texture (binding 11) — opt-in via metadata "wallpaper": true
+    bool m_useWallpaper = false;
+    QImage m_wallpaperImage;
+    std::unique_ptr<QRhiTexture> m_wallpaperTexture;
+    std::unique_ptr<QRhiSampler> m_wallpaperSampler;
+    bool m_wallpaperDirty = false;
 };
 
 /** Result of warmShaderBakeCacheForPaths for reporting to UI (e.g. shaderCompilationFinished). */

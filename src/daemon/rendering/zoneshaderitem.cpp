@@ -250,6 +250,13 @@ QSGNode* ZoneShaderItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* 
         node->setUserTextureWrap(i, m_userTextureWraps[i]);
     }
 
+    // Sync desktop wallpaper texture (binding 11)
+    node->setUseWallpaper(m_useWallpaper);
+    {
+        QMutexLocker lock(&m_wallpaperTextureMutex);
+        node->setWallpaperTexture(m_wallpaperTexture);
+    }
+
     // Sync buffer shader path (multipass)
     QStringList effectivePaths = m_bufferShaderPaths;
     if (effectivePaths.isEmpty() && !m_bufferShaderPath.isEmpty()) {

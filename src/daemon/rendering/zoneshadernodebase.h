@@ -90,6 +90,11 @@ public:
         Q_UNUSED(wrap)
     }
 
+    /** Desktop wallpaper image (binding 11). Only used when shader subscribes via "wallpaper": true. */
+    virtual void setWallpaperTexture(const QImage& image) { Q_UNUSED(image) }
+    /** Whether the shader subscribes to wallpaper texture. */
+    virtual void setUseWallpaper(bool use) { Q_UNUSED(use) }
+
     /** Multi-pass: optional buffer pass fragment shader path. No-op if backend does not support multipass. */
     virtual void setBufferShaderPath(const QString& path) { Q_UNUSED(path) }
     /** Multi-pass: up to 4 buffer pass fragment shader paths (A→B→C→D). Overrides single path when non-empty. */

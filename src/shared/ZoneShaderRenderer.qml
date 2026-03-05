@@ -44,6 +44,8 @@ Item {
         iResolution: root.safeConfig.iResolution || Qt.size(width, height)
         iMouse: root.safeConfig.iMouse || Qt.point(0, 0)
 
+        useWallpaper: root.safeConfig.useWallpaper ?? false
+
         onStatusChanged: {
             if (status === ZoneShaderItem.Error) {
                 root.shaderError(errorLog)
@@ -65,6 +67,15 @@ Item {
         target: zoneShaderItem
         property: "labelsTexture"
         value: root.safeConfig.labelsTexture || null
-        when: root.safeConfig.labelsTexture
+        when: root.safeConfig.labelsTexture !== undefined && root.safeConfig.labelsTexture !== null
+    }
+
+    // wallpaperTexture uses Binding with explicit null guard because QImage
+    // truthiness evaluation is unreliable in QML (can crash during teardown).
+    Binding {
+        target: zoneShaderItem
+        property: "wallpaperTexture"
+        value: root.safeConfig.wallpaperTexture
+        when: root.safeConfig.wallpaperTexture !== undefined && root.safeConfig.wallpaperTexture !== null
     }
 }

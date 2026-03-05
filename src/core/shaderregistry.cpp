@@ -380,6 +380,9 @@ ShaderRegistry::ShaderInfo ShaderRegistry::loadShaderMetadata(const QString& sha
             info.bufferShaderPath.clear();
         }
     }
+    // Desktop wallpaper subscription: shader opts in to receive wallpaper at binding 11
+    info.useWallpaper = root.value(QLatin1String("wallpaper")).toBool(false);
+
     info.bufferFeedback = root.value(QLatin1String("bufferFeedback")).toBool(false);
     qreal scale = root.value(QLatin1String("bufferScale")).toDouble(1.0);
     info.bufferScale = qBound(0.125, scale, 1.0);

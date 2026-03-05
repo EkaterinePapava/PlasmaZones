@@ -113,7 +113,17 @@ QVariantMap queryTranslateShaderParams(const QString& shaderId, const QVariantMa
         return QVariantMap();
     }
 
-    QDBusReply<QVariantMap> reply = settingsIface.call(QStringLiteral("translateShaderParams"), shaderId, params);
+    // Filter out null/invalid QVariant values before D-Bus marshalling.
+    // QML can produce std::nullptr_t variants (type 51) which are not
+    // registered with D-Bus and cause a marshalling abort.
+    QVariantMap safeParams;
+    for (auto it = params.cbegin(); it != params.cend(); ++it) {
+        if (it.value().isValid() && !it.value().isNull()) {
+            safeParams.insert(it.key(), it.value());
+        }
+    }
+
+    QDBusReply<QVariantMap> reply = settingsIface.call(QStringLiteral("translateShaderParams"), shaderId, safeParams);
     if (reply.isValid()) {
         QVariant converted = DBusVariantUtils::convertDbusArgument(QVariant::fromValue(reply.value()));
         return converted.toMap();

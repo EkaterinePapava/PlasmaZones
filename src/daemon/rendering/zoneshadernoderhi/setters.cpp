@@ -192,6 +192,30 @@ void ZoneShaderNodeRhi::setUserTextureWrap(int slot, const QString& wrap)
     resetAllSrbs();
 }
 
+void ZoneShaderNodeRhi::setWallpaperTexture(const QImage& image)
+{
+    // Compare by data pointer and size: convertToFormat() creates a new QImage
+    // with a different cacheKey() even for identical content, so cacheKey() is
+    // unreliable. QImage uses implicit sharing, so constBits() identity + size
+    // is a fast check for the same underlying data.
+    if (m_wallpaperImage.constBits() == image.constBits()
+        && m_wallpaperImage.size() == image.size()) {
+        return;
+    }
+    m_wallpaperImage = image;
+    m_wallpaperDirty = true;
+    m_uniformsDirty = true;
+}
+
+void ZoneShaderNodeRhi::setUseWallpaper(bool use)
+{
+    if (m_useWallpaper == use) {
+        return;
+    }
+    m_useWallpaper = use;
+    resetAllSrbs();
+}
+
 void ZoneShaderNodeRhi::appendUserTextureBindings(QVector<QRhiShaderResourceBinding>& bindings) const
 {
     for (int t = 0; t < kMaxUserTextures; ++t) {
@@ -200,6 +224,15 @@ void ZoneShaderNodeRhi::appendUserTextureBindings(QVector<QRhiShaderResourceBind
                 7 + t, QRhiShaderResourceBinding::FragmentStage,
                 m_userTextures[t].get(), m_userTextureSamplers[t].get()));
         }
+    }
+}
+
+void ZoneShaderNodeRhi::appendWallpaperBinding(QVector<QRhiShaderResourceBinding>& bindings) const
+{
+    if (m_useWallpaper && m_wallpaperTexture && m_wallpaperSampler) {
+        bindings.append(QRhiShaderResourceBinding::sampledTexture(
+            11, QRhiShaderResourceBinding::FragmentStage,
+            m_wallpaperTexture.get(), m_wallpaperSampler.get()));
     }
 }
 

@@ -273,6 +273,9 @@ void OverlayService::showShaderPreview(int x, int y, int width, int height, cons
     }
 
     const QVariantList zones = parseZonesJson(zonesJson, "showShaderPreview:");
+    // Params arrive already translated to uniform names by the editor
+    // (via EditorController::translateShaderParams → D-Bus translateParamsToUniforms).
+    // Do NOT re-translate here — the keys are already uniform names like "customParams1_x".
     const QVariantMap shaderParams = parseShaderParamsJson(shaderParamsJson, "showShaderPreview:");
 
     if (!m_shaderPreviewWindow || m_shaderPreviewScreen != screen) {
@@ -285,6 +288,7 @@ void OverlayService::showShaderPreview(int x, int y, int width, int height, cons
     }
 
     m_shaderPreviewScreen = screen;
+    m_shaderPreviewShaderId = shaderId;
     m_shaderPreviewWindow->setScreen(screen);
     m_shaderPreviewWindow->setGeometry(x, y, width, height);
 
@@ -301,17 +305,9 @@ void OverlayService::showShaderPreview(int x, int y, int width, int height, cons
     // because setShaderSource() emits statusChanged() which cascades
     // through QML bindings and can trigger visibility changes before
     // buffer paths / zones / params are ready.
-    writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("bufferShaderPath"), info.bufferShaderPath);
-    QVariantList pathList;
-    for (const QString& p : info.bufferShaderPaths) {
-        pathList.append(p);
-    }
-    writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("bufferShaderPaths"), pathList);
-    writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("bufferFeedback"), info.bufferFeedback);
-    writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("bufferScale"), info.bufferScale);
-    writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("bufferWrap"), info.bufferWrap);
-    writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("shaderParams"), QVariant::fromValue(shaderParams));
-
+    // Note: applyShaderInfoToWindow sets shaderSource LAST internally.
+    // We must set zones/labels BEFORE calling it so they're ready when
+    // statusChanged fires. Set zones first, then call the helper.
     writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("zones"), zones);
     writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("zoneCount"), zones.size());
     writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("highlightedCount"), 0);
@@ -320,8 +316,8 @@ void OverlayService::showShaderPreview(int x, int y, int width, int height, cons
     const QImage labelsImage = buildLabelsImageForPreviewZones(zones, size, m_settings);
     writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("labelsTexture"), QVariant::fromValue(labelsImage));
 
-    // shaderSource LAST — triggers statusChanged() → QML binding cascade
-    writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("shaderSource"), info.shaderUrl);
+    // applyShaderInfoToWindow sets shaderSource LAST (triggers statusChanged cascade)
+    applyShaderInfoToWindow(m_shaderPreviewWindow, info, shaderParams);
 
     // Start iTime animation for preview (shared timer with main overlay)
     // Must start m_shaderTimer - updateShaderUniforms() uses it and returns early if invalid
@@ -372,6 +368,7 @@ void OverlayService::updateShaderPreview(int x, int y, int width, int height,
     }
 
     if (!shaderParamsJson.isEmpty()) {
+        // Params arrive already translated to uniform names by the editor
         const QVariantMap shaderParams = parseShaderParamsJson(shaderParamsJson, "updateShaderPreview:");
         writeQmlProperty(m_shaderPreviewWindow, QStringLiteral("shaderParams"), QVariant::fromValue(shaderParams));
     }
@@ -425,6 +422,7 @@ void OverlayService::destroyShaderPreviewWindow()
         m_shaderPreviewWindow = nullptr;
     }
     m_shaderPreviewScreen = nullptr;
+    m_shaderPreviewShaderId.clear();
     // Stop shader timer only if main overlay is also not visible
     if (!m_visible && m_shaderUpdateTimer && m_shaderUpdateTimer->isActive()) {
         stopShaderAnimation();

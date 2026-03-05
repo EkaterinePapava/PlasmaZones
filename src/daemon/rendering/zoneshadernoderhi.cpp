@@ -211,6 +211,19 @@ void ZoneShaderNodeRhi::prepare()
             }
             m_userTextureDirty[i] = true;
         }
+        // Desktop wallpaper texture (binding 11): 1x1 dummy when disabled/unavailable
+        m_wallpaperTexture.reset(rhi->newTexture(QRhiTexture::RGBA8, QSize(1, 1)));
+        if (!m_wallpaperTexture->create()) {
+            m_shaderError = QStringLiteral("Failed to create wallpaper texture");
+            return;
+        }
+        m_wallpaperSampler.reset(rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
+                                                  QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
+        if (!m_wallpaperSampler->create()) {
+            m_shaderError = QStringLiteral("Failed to create wallpaper sampler");
+            return;
+        }
+        m_wallpaperDirty = true;
     }
 
     if (m_shaderDirty) {

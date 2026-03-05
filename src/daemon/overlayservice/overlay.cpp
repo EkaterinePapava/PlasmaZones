@@ -300,20 +300,8 @@ void OverlayService::createOverlayWindow(QScreen* screen)
             const ShaderRegistry::ShaderInfo info = registry->shader(shaderId);
             qCDebug(lcOverlay) << "Overlay shader=" << shaderId << "multipass=" << info.isMultipass
                               << "bufferPaths=" << info.bufferShaderPaths.size();
-            // Set all auxiliary props BEFORE shaderSource — see shader.cpp comment
-            writeQmlProperty(window, QStringLiteral("bufferShaderPath"), info.bufferShaderPath);
-            QVariantList pathList;
-            for (const QString &p : info.bufferShaderPaths) {
-                pathList.append(p);
-            }
-            writeQmlProperty(window, QStringLiteral("bufferShaderPaths"), pathList);
-            writeQmlProperty(window, QStringLiteral("bufferFeedback"), info.bufferFeedback);
-            writeQmlProperty(window, QStringLiteral("bufferScale"), info.bufferScale);
-            writeQmlProperty(window, QStringLiteral("bufferWrap"), info.bufferWrap);
             QVariantMap translatedParams = registry->translateParamsToUniforms(shaderId, screenLayout->shaderParams());
-            writeQmlProperty(window, QStringLiteral("shaderParams"), QVariant::fromValue(translatedParams));
-            // shaderSource LAST — triggers statusChanged() → QML binding cascade
-            writeQmlProperty(window, QStringLiteral("shaderSource"), info.shaderUrl);
+            applyShaderInfoToWindow(window, info, translatedParams);
         }
     }
 
@@ -403,21 +391,8 @@ void OverlayService::updateOverlayWindow(QScreen* screen)
         if (registry) {
             const QString shaderId = screenLayout->shaderId();
             const ShaderRegistry::ShaderInfo info = registry->shader(shaderId);
-            // Set all auxiliary props BEFORE shaderSource — see shader.cpp comment
-            writeQmlProperty(window, QStringLiteral("bufferShaderPath"), info.bufferShaderPath);
-            QVariantList pathList;
-            for (const QString &p : info.bufferShaderPaths) {
-                pathList.append(p);
-            }
-            writeQmlProperty(window, QStringLiteral("bufferShaderPaths"), pathList);
-            writeQmlProperty(window, QStringLiteral("bufferFeedback"), info.bufferFeedback);
-            writeQmlProperty(window, QStringLiteral("bufferScale"), info.bufferScale);
-            writeQmlProperty(window, QStringLiteral("bufferWrap"), info.bufferWrap);
-            // Translate parameter IDs to shader uniform names (mapsTo values)
             QVariantMap translatedParams = registry->translateParamsToUniforms(shaderId, screenLayout->shaderParams());
-            writeQmlProperty(window, QStringLiteral("shaderParams"), QVariant::fromValue(translatedParams));
-            // shaderSource LAST — triggers statusChanged() → QML binding cascade
-            writeQmlProperty(window, QStringLiteral("shaderSource"), info.shaderUrl);
+            applyShaderInfoToWindow(window, info, translatedParams);
         }
     } else if (windowIsShader && !screenUsesShader) {
         // Clear shader properties if window is shader type but shaders are now disabled

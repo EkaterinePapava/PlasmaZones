@@ -229,6 +229,7 @@ private:
     // Shader preview overlay (editor dialog)
     QQuickWindow* m_shaderPreviewWindow = nullptr;
     QScreen* m_shaderPreviewScreen = nullptr;
+    QString m_shaderPreviewShaderId; // Shader ID for param translation in updateShaderPreview
 
     // Snap Assist overlay (window picker after snapping)
     QQuickWindow* m_snapAssistWindow = nullptr;

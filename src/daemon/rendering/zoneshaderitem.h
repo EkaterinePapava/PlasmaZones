@@ -120,6 +120,11 @@ class PLASMAZONES_RENDERING_EXPORT ZoneShaderItem : public QQuickItem
      *  Accepts QVector<float> (fast C++ path) or QVariantList (QML path). */
     Q_PROPERTY(QVariant audioSpectrum READ audioSpectrumVariant WRITE setAudioSpectrumVariant NOTIFY audioSpectrumChanged FINAL)
 
+    /** Desktop wallpaper image. Set from C++ OverlayService when shader subscribes via "wallpaper": true. */
+    Q_PROPERTY(QImage wallpaperTexture READ wallpaperTexture WRITE setWallpaperTexture NOTIFY wallpaperTextureChanged FINAL)
+    /** Whether the current shader subscribes to the wallpaper texture. */
+    Q_PROPERTY(bool useWallpaper READ useWallpaper WRITE setUseWallpaper NOTIFY useWallpaperChanged FINAL)
+
     // Status
     Q_PROPERTY(Status status READ status NOTIFY statusChanged FINAL)
     Q_PROPERTY(QString errorLog READ errorLog NOTIFY errorLogChanged FINAL)
@@ -272,6 +277,12 @@ public:
     /** Direct setter from C++ avoiding QVariantList round-trip. */
     void setAudioSpectrumRaw(const QVector<float>& spectrum);
 
+    QImage wallpaperTexture() const;
+    void setWallpaperTexture(const QImage& image);
+
+    bool useWallpaper() const { return m_useWallpaper; }
+    void setUseWallpaper(bool use);
+
     // Status getters
     Status status() const { return m_status; }
     QString errorLog() const { return m_errorLog; }
@@ -330,6 +341,8 @@ Q_SIGNALS:
     void customColorsChanged(); // Emitted when any customColor1-16 changes
     void labelsTextureChanged();
     void audioSpectrumChanged();
+    void wallpaperTextureChanged();
+    void useWallpaperChanged();
     void statusChanged();
     void errorLogChanged();
 
@@ -448,6 +461,11 @@ private:
     mutable QMutex m_labelsTextureMutex;
 
     QVector<float> m_audioSpectrum;
+
+    // Desktop wallpaper texture (binding 11)
+    QImage m_wallpaperTexture;
+    mutable QMutex m_wallpaperTextureMutex;
+    bool m_useWallpaper = false;
 
     // User texture data (bindings 7-10)
     std::array<QString, 4> m_userTexturePaths;

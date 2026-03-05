@@ -144,6 +144,14 @@ inline void applyShaderInfoToWindow(QObject* window, const ShaderRegistry::Shade
     writeQmlProperty(window, QStringLiteral("bufferScale"), info.bufferScale);
     writeQmlProperty(window, QStringLiteral("bufferWrap"), info.bufferWrap);
     writeQmlProperty(window, QStringLiteral("shaderParams"), QVariant::fromValue(params));
+    // Desktop wallpaper subscription
+    writeQmlProperty(window, QStringLiteral("useWallpaper"), info.useWallpaper);
+    if (info.useWallpaper) {
+        const QImage wp = ShaderRegistry::loadWallpaperImage();
+        if (!wp.isNull()) {
+            writeQmlProperty(window, QStringLiteral("wallpaperTexture"), QVariant::fromValue(wp));
+        }
+    }
     // shaderSource LAST — triggers statusChanged() → QML binding cascade
     writeQmlProperty(window, QStringLiteral("shaderSource"), info.shaderUrl);
 }

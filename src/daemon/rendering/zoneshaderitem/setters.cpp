@@ -443,6 +443,39 @@ void ZoneShaderItem::setAudioSpectrumRaw(const QVector<float>& spectrum)
 }
 
 // ============================================================================
+// Wallpaper Texture
+// ============================================================================
+
+QImage ZoneShaderItem::wallpaperTexture() const
+{
+    QMutexLocker lock(&m_wallpaperTextureMutex);
+    return m_wallpaperTexture;
+}
+
+void ZoneShaderItem::setWallpaperTexture(const QImage& image)
+{
+    {
+        QMutexLocker lock(&m_wallpaperTextureMutex);
+        if (m_wallpaperTexture.cacheKey() == image.cacheKey()) {
+            return;
+        }
+        m_wallpaperTexture = image;
+    }
+    Q_EMIT wallpaperTextureChanged();
+    update();
+}
+
+void ZoneShaderItem::setUseWallpaper(bool use)
+{
+    if (m_useWallpaper == use) {
+        return;
+    }
+    m_useWallpaper = use;
+    Q_EMIT useWallpaperChanged();
+    update();
+}
+
+// ============================================================================
 // Custom Color By Index (for setShaderParams loop)
 // ============================================================================
 
