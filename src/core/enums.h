@@ -80,4 +80,16 @@ enum class OsdStyle {
     Preview = 2 ///< Visual layout preview OSD (default)
 };
 
+/**
+ * @brief Overlay display mode options
+ *
+ * Controls how zones are rendered during drag overlay:
+ * - ZoneRectangles: Full-size translucent rectangles at actual zone positions (default)
+ * - LayoutPreview: Small layout preview thumbnail centered in each zone (kZones-style)
+ */
+enum class OverlayDisplayMode {
+    ZoneRectangles = 0, ///< Current behavior: full-size translucent rectangles
+    LayoutPreview = 1 ///< kZones-style: small layout thumbnail per zone
+};
+
 } // namespace PlasmaZones

@@ -84,6 +84,8 @@ void Settings::loadDisplayConfig(const KConfigGroup& display)
     m_showNavigationOsd = display.readEntry(QLatin1String("ShowNavigationOsd"), ConfigDefaults::showNavigationOsd());
     m_osdStyle =
         static_cast<OsdStyle>(readValidatedInt(display, "OsdStyle", ConfigDefaults::osdStyle(), 0, 2, "OSD style"));
+    m_overlayDisplayMode = static_cast<OverlayDisplayMode>(readValidatedInt(
+        display, "OverlayDisplayMode", ConfigDefaults::overlayDisplayMode(), 0, 1, "overlay display mode"));
 }
 
 void Settings::loadAppearanceConfig(const KConfigGroup& appearance)
@@ -423,6 +425,7 @@ void Settings::saveDisplayConfig(KConfigGroup& display)
     display.writeEntry(QLatin1String("ShowOsdOnLayoutSwitch"), m_showOsdOnLayoutSwitch);
     display.writeEntry(QLatin1String("ShowNavigationOsd"), m_showNavigationOsd);
     display.writeEntry(QLatin1String("OsdStyle"), static_cast<int>(m_osdStyle));
+    display.writeEntry(QLatin1String("OverlayDisplayMode"), static_cast<int>(m_overlayDisplayMode));
 }
 
 void Settings::saveAppearanceConfig(KConfigGroup& appearance)

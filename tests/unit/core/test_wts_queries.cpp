@@ -153,6 +153,13 @@ public:
     void setOsdStyle(OsdStyle) override
     {
     }
+    OverlayDisplayMode overlayDisplayMode() const override
+    {
+        return OverlayDisplayMode::ZoneRectangles;
+    }
+    void setOverlayDisplayMode(OverlayDisplayMode) override
+    {
+    }
     bool useSystemColors() const override
     {
         return false;

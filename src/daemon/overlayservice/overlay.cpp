@@ -410,6 +410,16 @@ void OverlayService::updateOverlayWindow(QScreen* screen)
     // ZoneDataProvider and zone components see the correct state.
     QVariantList zones = buildZonesList(screen);
     QVariantList patched = patchZonesWithHighlight(zones, window);
+
+    // Pass previewZones (all zones with relative geometries) only when LayoutPreview mode is active
+    bool anyZoneUsesPreview = false;
+    for (const QVariant& z : std::as_const(patched)) {
+        if (z.toMap().value(JsonKeys::OverlayDisplayMode).toInt() == 1) {
+            anyZoneUsesPreview = true;
+            break;
+        }
+    }
+    writeQmlProperty(window, QStringLiteral("previewZones"), anyZoneUsesPreview ? patched : QVariantList{});
     writeQmlProperty(window, QStringLiteral("zones"), patched);
 
     // Shader overlay: zoneCount, highlightedCount, zoneDataVersion, labelsTexture

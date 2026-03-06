@@ -420,6 +420,18 @@ void ZoneManager::updateZoneAppearance(const QString& zoneId, const QString& pro
     }
 
     zone[normalizedKey] = value;
+
+    // When enabling useCustomColors, initialize zone colors to theme defaults
+    // so they match what the KCM/global settings show (not the hardcoded constants)
+    if (normalizedKey == useCustomColorsKey && value.toBool()) {
+        if (!m_defaultHighlightColor.isEmpty())
+            zone[QString::fromLatin1(JsonKeys::HighlightColor)] = m_defaultHighlightColor;
+        if (!m_defaultInactiveColor.isEmpty())
+            zone[QString::fromLatin1(JsonKeys::InactiveColor)] = m_defaultInactiveColor;
+        if (!m_defaultBorderColor.isEmpty())
+            zone[QString::fromLatin1(JsonKeys::BorderColor)] = m_defaultBorderColor;
+    }
+
     m_zones.replace(index, zone);
 
     // Reuse ColorChanged signal for all appearance updates

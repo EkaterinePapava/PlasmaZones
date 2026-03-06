@@ -127,6 +127,17 @@ void Settings::setOsdStyle(OsdStyle style)
 
 SETTINGS_SETTER_ENUM_INT(OsdStyle, OsdStyle, 0, static_cast<int>(OsdStyle::Preview))
 
+void Settings::setOverlayDisplayMode(OverlayDisplayMode mode)
+{
+    if (m_overlayDisplayMode != mode) {
+        m_overlayDisplayMode = mode;
+        Q_EMIT overlayDisplayModeChanged();
+        Q_EMIT settingsChanged();
+    }
+}
+
+SETTINGS_SETTER_ENUM_INT(OverlayDisplayMode, OverlayDisplayMode, 0, static_cast<int>(OverlayDisplayMode::LayoutPreview))
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Appearance setters
 // ═══════════════════════════════════════════════════════════════════════════════

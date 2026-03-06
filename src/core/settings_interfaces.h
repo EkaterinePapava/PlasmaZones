@@ -107,6 +107,8 @@ public:
     virtual void setShowNavigationOsd(bool show) = 0;
     virtual OsdStyle osdStyle() const = 0;
     virtual void setOsdStyle(OsdStyle style) = 0;
+    virtual OverlayDisplayMode overlayDisplayMode() const = 0;
+    virtual void setOverlayDisplayMode(OverlayDisplayMode mode) = 0;
 
     // Appearance settings
     virtual bool useSystemColors() const = 0;

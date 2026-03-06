@@ -109,6 +109,10 @@ public:
     {
         return instance().defaultOsdStyleValue();
     }
+    static int overlayDisplayMode()
+    {
+        return instance().defaultOverlayDisplayModeValue();
+    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Appearance Settings

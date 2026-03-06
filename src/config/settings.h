@@ -57,6 +57,8 @@ public:
                    showOsdOnLayoutSwitchChanged)
     Q_PROPERTY(bool showNavigationOsd READ showNavigationOsd WRITE setShowNavigationOsd NOTIFY showNavigationOsdChanged)
     Q_PROPERTY(int osdStyle READ osdStyleInt WRITE setOsdStyleInt NOTIFY osdStyleChanged)
+    Q_PROPERTY(int overlayDisplayMode READ overlayDisplayModeInt WRITE setOverlayDisplayModeInt NOTIFY
+                   overlayDisplayModeChanged)
 
     // Appearance (ricer-friendly)
     Q_PROPERTY(bool useSystemColors READ useSystemColors WRITE setUseSystemColors NOTIFY useSystemColorsChanged)
@@ -437,6 +439,17 @@ public:
         return static_cast<int>(m_osdStyle);
     }
     void setOsdStyleInt(int style);
+
+    OverlayDisplayMode overlayDisplayMode() const override
+    {
+        return m_overlayDisplayMode;
+    }
+    void setOverlayDisplayMode(OverlayDisplayMode mode) override;
+    int overlayDisplayModeInt() const
+    {
+        return static_cast<int>(m_overlayDisplayMode);
+    }
+    void setOverlayDisplayModeInt(int mode);
 
     bool useSystemColors() const override
     {
@@ -1392,6 +1405,7 @@ private:
     bool m_showOsdOnLayoutSwitch = true;
     bool m_showNavigationOsd = true;
     OsdStyle m_osdStyle = OsdStyle::Preview; // Default to visual preview
+    OverlayDisplayMode m_overlayDisplayMode = OverlayDisplayMode::ZoneRectangles;
 
     // Appearance
     bool m_useSystemColors = true;

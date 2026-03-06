@@ -104,6 +104,9 @@ class PLASMAZONES_EXPORT Layout : public QObject
     Q_PROPERTY(int outerGapRight READ outerGapRight WRITE setOuterGapRight NOTIFY outerGapChanged)
     Q_PROPERTY(bool hasPerSideOuterGapOverride READ hasPerSideOuterGapOverride NOTIFY outerGapChanged)
     Q_PROPERTY(bool showZoneNumbers READ showZoneNumbers WRITE setShowZoneNumbers NOTIFY showZoneNumbersChanged)
+    Q_PROPERTY(
+        int overlayDisplayMode READ overlayDisplayMode WRITE setOverlayDisplayMode NOTIFY overlayDisplayModeChanged)
+    Q_PROPERTY(bool hasOverlayDisplayModeOverride READ hasOverlayDisplayModeOverride NOTIFY overlayDisplayModeChanged)
     Q_PROPERTY(int zoneCount READ zoneCount NOTIFY zonesChanged)
     Q_PROPERTY(QString sourcePath READ sourcePath WRITE setSourcePath NOTIFY sourcePathChanged)
     Q_PROPERTY(bool isSystemLayout READ isSystemLayout NOTIFY sourcePathChanged)
@@ -228,6 +231,17 @@ public:
         return m_showZoneNumbers;
     }
     void setShowZoneNumbers(bool show);
+
+    int overlayDisplayMode() const
+    {
+        return m_overlayDisplayMode;
+    }
+    void setOverlayDisplayMode(int mode);
+    bool hasOverlayDisplayModeOverride() const
+    {
+        return m_overlayDisplayMode >= 0;
+    }
+    void clearOverlayDisplayModeOverride();
 
     // Source path tracking - determines if layout is from system or user directory
     QString sourcePath() const
@@ -386,6 +400,7 @@ Q_SIGNALS:
     void zonePaddingChanged();
     void outerGapChanged();
     void showZoneNumbersChanged();
+    void overlayDisplayModeChanged();
     void sourcePathChanged();
     void shaderIdChanged();
     void shaderParamsChanged();
@@ -416,6 +431,7 @@ private:
     int m_outerGapLeft = -1;
     int m_outerGapRight = -1;
     bool m_showZoneNumbers = true;
+    int m_overlayDisplayMode = -1; // -1 = use global setting
     QString m_sourcePath; // Path where layout was loaded from (empty for new layouts)
     QString m_systemSourcePath; // Original system path if this is a user override of a system layout
     int m_defaultOrder = 999; // Optional: lower values appear first when choosing default (999 = not set)

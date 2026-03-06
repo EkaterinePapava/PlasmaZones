@@ -297,21 +297,24 @@ QString Settings::loadColorsFromFile(const QString& filePath)
 
 void Settings::applySystemColorScheme()
 {
-    KColorScheme scheme(QPalette::Active, KColorScheme::Selection);
-
-    QColor highlight = scheme.background(KColorScheme::ActiveBackground).color();
+    // Selection set for highlight color (accent/selection background)
+    KColorScheme selectionScheme(QPalette::Active, KColorScheme::Selection);
+    QColor highlight = selectionScheme.background(KColorScheme::NormalBackground).color();
     highlight.setAlpha(Defaults::HighlightAlpha);
     m_highlightColor = highlight;
 
-    QColor inactive = scheme.background(KColorScheme::NormalBackground).color();
+    // View set for inactive/border/text (neutral non-accent colors)
+    // This matches QML defaults: highlightColor → Theme.highlightColor, inactiveColor → Theme.textColor
+    KColorScheme viewScheme(QPalette::Active, KColorScheme::View);
+    QColor inactive = viewScheme.foreground(KColorScheme::NormalText).color();
     inactive.setAlpha(Defaults::InactiveAlpha);
     m_inactiveColor = inactive;
 
-    QColor border = scheme.foreground(KColorScheme::NormalText).color();
+    QColor border = viewScheme.foreground(KColorScheme::NormalText).color();
     border.setAlpha(Defaults::BorderAlpha);
     m_borderColor = border;
 
-    m_labelFontColor = scheme.foreground(KColorScheme::NormalText).color();
+    m_labelFontColor = viewScheme.foreground(KColorScheme::NormalText).color();
 
     Q_EMIT highlightColorChanged();
     Q_EMIT inactiveColorChanged();

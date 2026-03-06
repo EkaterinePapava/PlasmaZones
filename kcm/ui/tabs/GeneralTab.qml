@@ -612,6 +612,17 @@ ScrollView {
                         ToolTip.text: currentIndex === 0 ? i18n("No OSD shown. Enable layout switch or keyboard navigation above to show OSD.") : (currentIndex === 1 ? i18n("Show layout name as text only") : i18n("Show visual layout preview"))
                     }
 
+                    WideComboBox {
+                        Kirigami.FormData.label: i18n("Overlay display mode:")
+                        currentIndex: Math.max(0, Math.min(kcm.overlayDisplayMode, 1))
+                        model: [i18n("Zone rectangles"), i18n("Layout preview")]
+                        onActivated: (index) => {
+                            kcm.overlayDisplayMode = index;
+                        }
+                        ToolTip.visible: hovered
+                        ToolTip.text: currentIndex === 0 ? i18n("Show full-size translucent zone rectangles during drag") : i18n("Show a small layout preview thumbnail inside each zone during drag")
+                    }
+
                 }
 
             }

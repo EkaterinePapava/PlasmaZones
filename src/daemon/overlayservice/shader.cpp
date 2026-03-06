@@ -108,6 +108,19 @@ bool OverlayService::useShaderForScreen(QScreen* screen) const
     if (!screenLayout || ShaderRegistry::isNoneShader(screenLayout->shaderId())) {
         return false;
     }
+
+    // LayoutPreview mode requires standard QML overlay (ZonePreview can't be rendered in GLSL).
+    // If any zone resolves to LayoutPreview mode, fall back to standard overlay for this screen.
+    int globalMode = m_settings ? static_cast<int>(m_settings->overlayDisplayMode()) : 0;
+    int layoutMode = screenLayout->overlayDisplayMode();
+    for (const auto* zone : screenLayout->zones()) {
+        int resolved =
+            zone->overlayDisplayMode() >= 0 ? zone->overlayDisplayMode() : (layoutMode >= 0 ? layoutMode : globalMode);
+        if (resolved == 1) { // OverlayDisplayMode::LayoutPreview
+            return false;
+        }
+    }
+
     auto* registry = ShaderRegistry::instance();
     return registry && registry->shader(screenLayout->shaderId()).isValid();
 }

@@ -257,6 +257,10 @@ int KCMPlasmaZones::osdStyle() const
 {
     return m_settings->osdStyleInt();
 }
+int KCMPlasmaZones::overlayDisplayMode() const
+{
+    return m_settings->overlayDisplayModeInt();
+}
 
 // Appearance getters
 bool KCMPlasmaZones::useSystemColors() const
@@ -751,6 +755,14 @@ void KCMPlasmaZones::setOsdStyle(int style)
     if (m_settings->osdStyleInt() != style) {
         m_settings->setOsdStyleInt(style);
         Q_EMIT osdStyleChanged();
+        setNeedsSave(true);
+    }
+}
+void KCMPlasmaZones::setOverlayDisplayMode(int mode)
+{
+    if (m_settings->overlayDisplayModeInt() != mode) {
+        m_settings->setOverlayDisplayModeInt(mode);
+        Q_EMIT overlayDisplayModeChanged();
         setNeedsSave(true);
     }
 }
@@ -2305,6 +2317,7 @@ void KCMPlasmaZones::emitAllSettingsPropertyChanged()
     Q_EMIT showOsdOnLayoutSwitchChanged();
     Q_EMIT showNavigationOsdChanged();
     Q_EMIT osdStyleChanged();
+    Q_EMIT overlayDisplayModeChanged();
 
     // Appearance
     Q_EMIT useSystemColorsChanged();

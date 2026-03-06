@@ -67,6 +67,8 @@ class KCMPlasmaZones : public KQuickConfigModule
                    showOsdOnLayoutSwitchChanged)
     Q_PROPERTY(bool showNavigationOsd READ showNavigationOsd WRITE setShowNavigationOsd NOTIFY showNavigationOsdChanged)
     Q_PROPERTY(int osdStyle READ osdStyle WRITE setOsdStyle NOTIFY osdStyleChanged)
+    Q_PROPERTY(
+        int overlayDisplayMode READ overlayDisplayMode WRITE setOverlayDisplayMode NOTIFY overlayDisplayModeChanged)
 
     // Appearance
     Q_PROPERTY(bool useSystemColors READ useSystemColors WRITE setUseSystemColors NOTIFY useSystemColorsChanged)
@@ -306,6 +308,7 @@ public:
     bool showOsdOnLayoutSwitch() const;
     bool showNavigationOsd() const;
     int osdStyle() const;
+    int overlayDisplayMode() const;
     bool useSystemColors() const;
     QColor highlightColor() const;
     QColor inactiveColor() const;
@@ -461,6 +464,7 @@ public:
     void setShowOsdOnLayoutSwitch(bool show);
     void setShowNavigationOsd(bool show);
     void setOsdStyle(int style);
+    void setOverlayDisplayMode(int mode);
     void setUseSystemColors(bool use);
     void setHighlightColor(const QColor& color);
     void setInactiveColor(const QColor& color);
@@ -692,6 +696,7 @@ Q_SIGNALS:
     void showOsdOnLayoutSwitchChanged();
     void showNavigationOsdChanged();
     void osdStyleChanged();
+    void overlayDisplayModeChanged();
     void useSystemColorsChanged();
     void highlightColorChanged();
     void inactiveColorChanged();

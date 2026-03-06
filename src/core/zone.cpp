@@ -81,6 +81,7 @@ void Zone::copyPropertiesFrom(const Zone& other)
     m_borderRadius = other.m_borderRadius;
     m_isHighlighted = other.m_isHighlighted;
     m_useCustomColors = other.m_useCustomColors;
+    m_overlayDisplayMode = other.m_overlayDisplayMode;
     m_geometryMode = other.m_geometryMode;
     m_fixedGeometry = other.m_fixedGeometry;
 }
@@ -116,6 +117,17 @@ ZONE_SETTER_MIN_ZERO(BorderRadius, m_borderRadius, borderRadiusChanged)
 // Bool setters
 ZONE_SETTER(bool, Highlighted, m_isHighlighted, highlightedChanged)
 ZONE_SETTER(bool, UseCustomColors, m_useCustomColors, useCustomColorsChanged)
+
+// Overlay display mode setter (allows -1 for "use layout/global")
+void Zone::setOverlayDisplayMode(int mode)
+{
+    if (mode < -1)
+        mode = -1;
+    if (m_overlayDisplayMode != mode) {
+        m_overlayDisplayMode = mode;
+        Q_EMIT overlayDisplayModeChanged();
+    }
+}
 
 // Geometry mode setters
 void Zone::setGeometryMode(ZoneGeometryMode mode)
@@ -236,6 +248,9 @@ QJsonObject Zone::toJson(const QRectF& referenceGeometry) const
     appearance[BorderWidth] = m_borderWidth;
     appearance[BorderRadius] = m_borderRadius;
     appearance[UseCustomColors] = m_useCustomColors;
+    if (m_overlayDisplayMode >= 0) {
+        appearance[JsonKeys::OverlayDisplayMode] = m_overlayDisplayMode;
+    }
     json[Appearance] = appearance;
 
     return json;
@@ -282,6 +297,8 @@ Zone* Zone::fromJson(const QJsonObject& json, QObject* parent)
         zone->m_borderRadius = appearance[BorderRadius].toInt(Defaults::BorderRadius);
         // Check if useCustomColors exists in JSON, default to false if missing
         zone->m_useCustomColors = appearance.contains(UseCustomColors) ? appearance[UseCustomColors].toBool() : false;
+        zone->m_overlayDisplayMode =
+            appearance.contains(JsonKeys::OverlayDisplayMode) ? appearance[JsonKeys::OverlayDisplayMode].toInt(-1) : -1;
     }
 
     return zone;

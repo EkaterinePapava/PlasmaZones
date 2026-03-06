@@ -82,6 +82,7 @@ Layout::Layout(const Layout& other)
     , m_outerGapLeft(other.m_outerGapLeft)
     , m_outerGapRight(other.m_outerGapRight)
     , m_showZoneNumbers(other.m_showZoneNumbers)
+    , m_overlayDisplayMode(other.m_overlayDisplayMode)
     , m_sourcePath() // Copies have no source path (will be saved to user directory)
     , m_defaultOrder(other.m_defaultOrder)
     , m_appRules(other.m_appRules)
@@ -128,6 +129,7 @@ Layout& Layout::operator=(const Layout& other)
         m_outerGapLeft = other.m_outerGapLeft;
         m_outerGapRight = other.m_outerGapRight;
         m_showZoneNumbers = other.m_showZoneNumbers;
+        m_overlayDisplayMode = other.m_overlayDisplayMode;
         m_defaultOrder = other.m_defaultOrder;
         m_sourcePath.clear(); // Assignment creates a user copy (will be saved to user directory)
         m_systemSourcePath.clear(); // New copy has no system origin
@@ -185,6 +187,7 @@ LAYOUT_SETTER(const QString&, Name, m_name, nameChanged)
 LAYOUT_SETTER(LayoutType, Type, m_type, typeChanged)
 LAYOUT_SETTER(const QString&, Description, m_description, descriptionChanged)
 LAYOUT_SETTER(bool, ShowZoneNumbers, m_showZoneNumbers, showZoneNumbersChanged)
+LAYOUT_SETTER_MIN_NEGATIVE_ONE(OverlayDisplayMode, m_overlayDisplayMode, overlayDisplayModeChanged)
 LAYOUT_SETTER(const QString&, ShaderId, m_shaderId, shaderIdChanged)
 LAYOUT_SETTER(const QVariantMap&, ShaderParams, m_shaderParams, shaderParamsChanged)
 LAYOUT_SETTER(bool, HiddenFromSelector, m_hiddenFromSelector, hiddenFromSelectorChanged)
@@ -264,6 +267,11 @@ AppRuleMatch Layout::matchAppRule(const QString& windowClass) const
 void Layout::clearZonePaddingOverride()
 {
     setZonePadding(-1);
+}
+
+void Layout::clearOverlayDisplayModeOverride()
+{
+    setOverlayDisplayMode(-1);
 }
 
 void Layout::clearOuterGapOverride()

@@ -130,6 +130,28 @@ QVariantMap OverlayService::zoneToVariantMap(Zone* zone, QScreen* screen, Layout
     map[JsonKeys::BorderRadius] = zone->borderRadius();
 
     // ═══════════════════════════════════════════════════════════════════════════════
+    // Overlay display mode cascade: zone → layout → global
+    // ═══════════════════════════════════════════════════════════════════════════════
+    int resolvedDisplayMode = 0; // default: ZoneRectangles
+    if (zone->overlayDisplayMode() >= 0) {
+        resolvedDisplayMode = zone->overlayDisplayMode();
+    } else if (layout && layout->overlayDisplayMode() >= 0) {
+        resolvedDisplayMode = layout->overlayDisplayMode();
+    } else if (m_settings) {
+        resolvedDisplayMode = static_cast<int>(m_settings->overlayDisplayMode());
+    }
+    map[JsonKeys::OverlayDisplayMode] = resolvedDisplayMode;
+
+    // Relative geometry for LayoutPreview rendering (miniature zone thumbnail)
+    const QRectF relGeo = zone->relativeGeometry();
+    QVariantMap relGeoMap;
+    relGeoMap[JsonKeys::X] = relGeo.x();
+    relGeoMap[JsonKeys::Y] = relGeo.y();
+    relGeoMap[JsonKeys::Width] = relGeo.width();
+    relGeoMap[JsonKeys::Height] = relGeo.height();
+    map[QLatin1String("relativeGeometry")] = relGeoMap;
+
+    // ═══════════════════════════════════════════════════════════════════════════════
     // Shader-specific data (ZoneDataProvider texture)
     // ═══════════════════════════════════════════════════════════════════════════════
 

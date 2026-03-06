@@ -100,6 +100,8 @@ Item {
     property color inactiveColor: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.4)
     /// Border color (default: theme text)
     property color borderColor: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.9)
+    /// Label font color for zone numbers (default: theme text)
+    property color labelFontColor: Kirigami.Theme.textColor
     /// Scale factor when zone is hovered (1.0 = no scale, set > 1.0 to enable)
     property real hoverScale: 1
     /// Font properties for zone number labels
@@ -186,7 +188,7 @@ Item {
             // Border - brighter on hover
             border.color: {
                 if (isZoneHovered)
-                    return Qt.rgba(Math.min(1, Kirigami.Theme.highlightColor.r * 1.2), Math.min(1, Kirigami.Theme.highlightColor.g * 1.2), Math.min(1, Kirigami.Theme.highlightColor.b * 1.2), 1);
+                    return Qt.rgba(Math.min(1, root.highlightColor.r * 1.2), Math.min(1, root.highlightColor.g * 1.2), Math.min(1, root.highlightColor.b * 1.2), 1);
 
                 return root.borderColor;
             }
@@ -204,7 +206,7 @@ Item {
                 font.underline: root.fontUnderline
                 font.strikeout: root.fontStrikeout
                 font.family: root.fontFamily
-                color: Kirigami.Theme.textColor
+                color: root.labelFontColor
                 opacity: (root.isActive || root.isHovered || zoneRect.isZoneSelected || zoneRect.isZoneHovered) ? 0.9 : 0.6
                 visible: root.showZoneNumbers && (!root.isMonocleLayout || index === root.zones.length - 1) && parent.width >= 16 && parent.height >= 16
 

@@ -108,6 +108,9 @@ QJsonObject Layout::toJson() const
             json[JsonKeys::OuterGapRight] = m_outerGapRight;
     }
     json[JsonKeys::ShowZoneNumbers] = m_showZoneNumbers;
+    if (m_overlayDisplayMode >= 0) {
+        json[JsonKeys::OverlayDisplayMode] = m_overlayDisplayMode;
+    }
     if (m_defaultOrder != 999) {
         json[JsonKeys::DefaultOrder] = m_defaultOrder;
     }
@@ -192,6 +195,8 @@ Layout* Layout::fromJson(const QJsonObject& json, QObject* parent)
     layout->m_outerGapLeft = json.contains(JsonKeys::OuterGapLeft) ? json[JsonKeys::OuterGapLeft].toInt(-1) : -1;
     layout->m_outerGapRight = json.contains(JsonKeys::OuterGapRight) ? json[JsonKeys::OuterGapRight].toInt(-1) : -1;
     layout->m_showZoneNumbers = json[JsonKeys::ShowZoneNumbers].toBool(true);
+    layout->m_overlayDisplayMode =
+        json.contains(JsonKeys::OverlayDisplayMode) ? json[JsonKeys::OverlayDisplayMode].toInt(-1) : -1;
     layout->m_defaultOrder = json[JsonKeys::DefaultOrder].toInt(999);
     // Note: sourcePath is set by LayoutManager after loading, not from JSON
     // But systemSourcePath IS persisted in user JSON for system override restoration

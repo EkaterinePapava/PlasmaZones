@@ -168,6 +168,7 @@ inline constexpr QLatin1String Zones{"zones"};
 inline constexpr QLatin1String ZonePadding{"zonePadding"};
 inline constexpr QLatin1String OuterGap{"outerGap"};
 inline constexpr QLatin1String ShowZoneNumbers{"showZoneNumbers"};
+inline constexpr QLatin1String OverlayDisplayMode{"overlayDisplayMode"};
 inline constexpr QLatin1String IsBuiltIn{"isBuiltIn"}; // Legacy, for backward compat when loading
 inline constexpr QLatin1String IsSystem{"isSystem"}; // New: determined by source path
 inline constexpr QLatin1String SystemSourcePath{"systemSourcePath"}; // Original system layout path (for user overrides)

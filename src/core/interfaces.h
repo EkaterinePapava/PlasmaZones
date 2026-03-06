@@ -106,6 +106,7 @@ Q_SIGNALS:
     void showOsdOnLayoutSwitchChanged();
     void showNavigationOsdChanged();
     void osdStyleChanged();
+    void overlayDisplayModeChanged();
     void useSystemColorsChanged();
     void highlightColorChanged();
     void inactiveColorChanged();
