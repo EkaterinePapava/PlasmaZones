@@ -162,7 +162,7 @@ void PlasmaZonesEffect::ensurePreSnapGeometryStored(KWin::EffectWindow* w, const
     QString capturedWindowId = windowId;
     QRectF capturedGeom = preCapturedGeometry;
 
-    QDBusPendingCall pendingCall = m_windowTrackingInterface->asyncCall(QStringLiteral("hasPreSnapGeometry"), windowId);
+    QDBusPendingCall pendingCall = m_windowTrackingInterface->asyncCall(QStringLiteral("hasPreTileGeometry"), windowId);
     auto* watcher = new QDBusPendingCallWatcher(pendingCall, this);
 
     connect(watcher, &QDBusPendingCallWatcher::finished, this,
@@ -177,11 +177,11 @@ void PlasmaZonesEffect::ensurePreSnapGeometryStored(KWin::EffectWindow* w, const
                     QRectF geom =
                         capturedGeom.isValid() ? capturedGeom : (safeWindow ? safeWindow->frameGeometry() : QRectF());
                     if (geom.width() > 0 && geom.height() > 0) {
-                        m_windowTrackingInterface->asyncCall(QStringLiteral("storePreSnapGeometry"), capturedWindowId,
+                        m_windowTrackingInterface->asyncCall(QStringLiteral("storePreTileGeometry"), capturedWindowId,
                                                              static_cast<int>(geom.x()), static_cast<int>(geom.y()),
                                                              static_cast<int>(geom.width()),
-                                                             static_cast<int>(geom.height()));
-                        qCInfo(lcEffect) << "Stored pre-snap geometry for window" << capturedWindowId;
+                                                             static_cast<int>(geom.height()), false);
+                        qCInfo(lcEffect) << "Stored pre-tile geometry for window" << capturedWindowId;
                     }
                 }
             });
@@ -1567,24 +1567,25 @@ void PlasmaZonesEffect::slotToggleWindowFloatRequested(bool shouldFloat)
         return;
     }
 
-    // Store mode-appropriate geometry BEFORE the daemon processes the toggle.
+    // Store geometry BEFORE the daemon processes the toggle.
     // D-Bus calls on the same connection are processed in order.
     QRectF frameGeo = activeWindow->frameGeometry();
     if (m_autotileHandler->isAutotileScreen(screenName)) {
         // Autotile: only capture floating geometry before unfloat so the next
         // float cycle restores to the same floating position. Do NOT overwrite
-        // pre-autotile with tiled geometry — that would corrupt float restore.
+        // with tiled geometry — that would corrupt float restore.
         if (isWindowFloating(windowId)) {
-            m_windowTrackingInterface->asyncCall(QStringLiteral("recordPreAutotileGeometry"), windowId, screenName,
+            m_windowTrackingInterface->asyncCall(QStringLiteral("storePreTileGeometry"), windowId,
                                                  static_cast<int>(frameGeo.x()), static_cast<int>(frameGeo.y()),
                                                  static_cast<int>(frameGeo.width()),
-                                                 static_cast<int>(frameGeo.height()));
+                                                 static_cast<int>(frameGeo.height()), true);
         }
     } else {
-        // Snapping: store pre-snap geometry (has "first only" guard in daemon).
-        m_windowTrackingInterface->asyncCall(QStringLiteral("storePreSnapGeometry"), windowId,
+        // Snapping: store pre-tile geometry (first-only guard via overwrite=false).
+        m_windowTrackingInterface->asyncCall(QStringLiteral("storePreTileGeometry"), windowId,
                                              static_cast<int>(frameGeo.x()), static_cast<int>(frameGeo.y()),
-                                             static_cast<int>(frameGeo.width()), static_cast<int>(frameGeo.height()));
+                                             static_cast<int>(frameGeo.width()), static_cast<int>(frameGeo.height()),
+                                             false);
     }
     m_windowTrackingInterface->asyncCall(QStringLiteral("toggleFloatForWindow"), windowId, screenName);
 }

@@ -130,12 +130,11 @@ void WindowTrackingAdaptor::saveState()
     tracking.deleteEntry(QStringLiteral("PendingWindowLayoutAssignments"));
     tracking.deleteEntry(QStringLiteral("PendingWindowZoneNumbers"));
 
-    // Save pre-snap geometries (convert to appId for cross-restart persistence)
-    tracking.writeEntry(QStringLiteral("PreSnapGeometries"), serializeGeometryMap(m_service->preSnapGeometries()));
-
-    // Save pre-autotile geometries (convert to appId for cross-restart persistence)
-    tracking.writeEntry(QStringLiteral("PreAutotileGeometries"),
-                        serializeGeometryMap(m_service->preAutotileGeometries()));
+    // Save unified pre-tile geometries (convert to appId for cross-restart persistence)
+    tracking.writeEntry(QStringLiteral("PreTileGeometries"), serializeGeometryMap(m_service->preTileGeometries()));
+    // Remove old split keys if present (migration)
+    tracking.deleteEntry(QStringLiteral("PreSnapGeometries"));
+    tracking.deleteEntry(QStringLiteral("PreAutotileGeometries"));
 
     // Save last used zone info (from service)
     tracking.writeEntry(QStringLiteral("LastUsedZoneId"), m_service->lastUsedZoneId());
@@ -312,47 +311,39 @@ void WindowTrackingAdaptor::loadState()
 
     m_service->setPendingRestoreQueues(pendingQueues);
 
-    // Load pre-snap geometries
-    QHash<QString, QRect> preSnapGeometries;
-    QString geometriesJson = tracking.readEntry(QStringLiteral("PreSnapGeometries"), QString());
-    if (!geometriesJson.isEmpty()) {
-        QJsonDocument doc = QJsonDocument::fromJson(geometriesJson.toUtf8());
-        if (doc.isObject()) {
-            QJsonObject obj = doc.object();
-            for (auto it = obj.constBegin(); it != obj.constEnd(); ++it) {
-                if (it.value().isObject()) {
-                    QJsonObject geomObj = it.value().toObject();
-                    QRect geom(geomObj[QLatin1String("x")].toInt(), geomObj[QLatin1String("y")].toInt(),
-                               geomObj[QLatin1String("width")].toInt(), geomObj[QLatin1String("height")].toInt());
-                    if (geom.width() > 0 && geom.height() > 0) {
-                        preSnapGeometries[it.key()] = geom;
-                    }
+    // Load unified pre-tile geometries (with migration from old split keys)
+    QHash<QString, QRect> preTileGeometries;
+    auto loadGeometries = [](const QString& json, QHash<QString, QRect>& out) {
+        if (json.isEmpty()) {
+            return;
+        }
+        QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
+        if (!doc.isObject()) {
+            return;
+        }
+        QJsonObject obj = doc.object();
+        for (auto it = obj.constBegin(); it != obj.constEnd(); ++it) {
+            if (it.value().isObject()) {
+                QJsonObject geomObj = it.value().toObject();
+                QRect geom(geomObj[QLatin1String("x")].toInt(), geomObj[QLatin1String("y")].toInt(),
+                           geomObj[QLatin1String("width")].toInt(), geomObj[QLatin1String("height")].toInt());
+                if (geom.width() > 0 && geom.height() > 0) {
+                    out[it.key()] = geom;
                 }
             }
         }
-    }
-    m_service->setPreSnapGeometries(preSnapGeometries);
+    };
 
-    // Load pre-autotile geometries
-    QHash<QString, QRect> preAutotileGeometries;
-    QString autotileGeometriesJson = tracking.readEntry(QStringLiteral("PreAutotileGeometries"), QString());
-    if (!autotileGeometriesJson.isEmpty()) {
-        QJsonDocument doc = QJsonDocument::fromJson(autotileGeometriesJson.toUtf8());
-        if (doc.isObject()) {
-            QJsonObject obj = doc.object();
-            for (auto it = obj.constBegin(); it != obj.constEnd(); ++it) {
-                if (it.value().isObject()) {
-                    QJsonObject geomObj = it.value().toObject();
-                    QRect geom(geomObj[QLatin1String("x")].toInt(), geomObj[QLatin1String("y")].toInt(),
-                               geomObj[QLatin1String("width")].toInt(), geomObj[QLatin1String("height")].toInt());
-                    if (geom.width() > 0 && geom.height() > 0) {
-                        preAutotileGeometries[it.key()] = geom;
-                    }
-                }
-            }
-        }
+    // Try new unified key first
+    QString tileJson = tracking.readEntry(QStringLiteral("PreTileGeometries"), QString());
+    if (!tileJson.isEmpty()) {
+        loadGeometries(tileJson, preTileGeometries);
+    } else {
+        // Migration: merge old split keys (pre-snap wins on conflict since it's the original geometry)
+        loadGeometries(tracking.readEntry(QStringLiteral("PreAutotileGeometries"), QString()), preTileGeometries);
+        loadGeometries(tracking.readEntry(QStringLiteral("PreSnapGeometries"), QString()), preTileGeometries);
     }
-    m_service->setPreAutotileGeometries(preAutotileGeometries);
+    m_service->setPreTileGeometries(preTileGeometries);
 
     // Load last used zone info
     QString lastZoneId = tracking.readEntry(QStringLiteral("LastUsedZoneId"), QString());

@@ -26,35 +26,33 @@ namespace PlasmaZones {
 
 using namespace WindowTrackingInternal;
 
-void WindowTrackingAdaptor::storePreSnapGeometry(const QString& windowId, int x, int y, int width, int height)
+void WindowTrackingAdaptor::storePreTileGeometry(const QString& windowId, int x, int y, int width, int height,
+                                                 bool overwrite)
 {
-    if (!validateWindowId(windowId, QStringLiteral("store pre-snap geometry"))) {
+    if (!validateWindowId(windowId, QStringLiteral("store pre-tile geometry"))) {
         return;
     }
 
     if (width <= 0 || height <= 0) {
-        qCWarning(lcDbusWindow) << "Invalid geometry for pre-snap storage:"
+        qCWarning(lcDbusWindow) << "Invalid geometry for pre-tile storage:"
                                 << "width=" << width << "height=" << height;
         return;
     }
 
-    // Delegate to service
-    m_service->storePreSnapGeometry(windowId, QRect(x, y, width, height));
-    qCDebug(lcDbusWindow) << "Stored pre-snap geometry for window" << windowId;
+    m_service->storePreTileGeometry(windowId, QRect(x, y, width, height), overwrite);
+    qCDebug(lcDbusWindow) << "Stored pre-tile geometry for" << windowId << "overwrite=" << overwrite;
 }
 
-bool WindowTrackingAdaptor::getPreSnapGeometry(const QString& windowId, int& x, int& y, int& width, int& height)
+bool WindowTrackingAdaptor::getPreTileGeometry(const QString& windowId, int& x, int& y, int& width, int& height)
 {
     x = y = width = height = 0;
 
-    if (!validateWindowId(windowId, QStringLiteral("get pre-snap geometry"))) {
+    if (!validateWindowId(windowId, QStringLiteral("get pre-tile geometry"))) {
         return false;
     }
 
-    // Delegate to service
-    auto geo = m_service->preSnapGeometry(windowId);
+    auto geo = m_service->preTileGeometry(windowId);
     if (!geo) {
-        qCDebug(lcDbusWindow) << "No pre-snap geometry stored for window" << windowId;
         return false;
     }
 
@@ -62,57 +60,32 @@ bool WindowTrackingAdaptor::getPreSnapGeometry(const QString& windowId, int& x, 
     y = geo->y();
     width = geo->width();
     height = geo->height();
-    qCDebug(lcDbusWindow) << "Retrieved pre-snap geometry for window" << windowId << "at" << *geo;
     return true;
 }
 
-bool WindowTrackingAdaptor::hasPreSnapGeometry(const QString& windowId)
+bool WindowTrackingAdaptor::hasPreTileGeometry(const QString& windowId)
 {
     if (windowId.isEmpty()) {
         return false;
     }
-    // Delegate to service
-    return m_service->hasPreSnapGeometry(windowId);
+    return m_service->hasPreTileGeometry(windowId);
 }
 
-void WindowTrackingAdaptor::clearPreSnapGeometry(const QString& windowId)
+void WindowTrackingAdaptor::clearPreTileGeometry(const QString& windowId)
 {
-    if (!validateWindowId(windowId, QStringLiteral("clear pre-snap geometry"))) {
+    if (!validateWindowId(windowId, QStringLiteral("clear pre-tile geometry"))) {
         return;
     }
-    // Only log if there was something to clear
-    bool hadGeometry = m_service->hasPreSnapGeometry(windowId);
-    // Delegate to service
-    m_service->clearPreSnapGeometry(windowId);
+    bool hadGeometry = m_service->hasPreTileGeometry(windowId);
+    m_service->clearPreTileGeometry(windowId);
     if (hadGeometry) {
-        qCDebug(lcDbusWindow) << "Cleared pre-snap geometry for window" << windowId;
+        qCDebug(lcDbusWindow) << "Cleared pre-tile geometry for" << windowId;
     }
 }
 
-void WindowTrackingAdaptor::recordPreAutotileGeometry(const QString& windowId, const QString& screenName, int x, int y,
-                                                      int width, int height)
+QString WindowTrackingAdaptor::getPreTileGeometriesJson()
 {
-    Q_UNUSED(screenName)
-    if (windowId.isEmpty() || width <= 0 || height <= 0) {
-        return;
-    }
-    QRect geo(x, y, width, height);
-    m_service->storePreAutotileGeometry(windowId, geo);
-    qCDebug(lcDbusWindow) << "Recorded pre-autotile geometry for" << windowId << geo;
-}
-
-void WindowTrackingAdaptor::clearPreAutotileGeometry(const QString& windowId)
-{
-    if (windowId.isEmpty()) {
-        return;
-    }
-    m_service->clearPreAutotileGeometry(windowId);
-    qCDebug(lcDbusWindow) << "Cleared pre-autotile geometry for" << windowId;
-}
-
-QString WindowTrackingAdaptor::getPreAutotileGeometriesJson()
-{
-    return serializeGeometryMap(m_service->preAutotileGeometries());
+    return serializeGeometryMap(m_service->preTileGeometries());
 }
 
 bool WindowTrackingAdaptor::getValidatedPreTileGeometry(const QString& windowId, int& x, int& y, int& width,
@@ -124,9 +97,7 @@ bool WindowTrackingAdaptor::getValidatedPreTileGeometry(const QString& windowId,
         return false;
     }
 
-    // Delegate to service (checks pre-snap first, then pre-autotile).
-    // Used by restoreWindowSize and manual float geometry lookup.
-    auto geo = m_service->validatedPreSnapOrAutotileGeometry(windowId);
+    auto geo = m_service->validatedPreTileGeometry(windowId);
     if (!geo) {
         return false;
     }

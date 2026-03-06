@@ -159,51 +159,38 @@ public Q_SLOTS:
      * @param height Window height
      * @note Only stores on FIRST snap - subsequent snaps (A→B) keep original
      */
-    void storePreSnapGeometry(const QString& windowId, int x, int y, int width, int height);
+    /**
+     * Store geometry before tiling (unified snap + autotile)
+     * @param windowId Window ID
+     * @param x Window X position
+     * @param y Window Y position
+     * @param width Window width
+     * @param height Window height
+     * @param overwrite If false (snap mode), skip if entry exists. If true (autotile), always overwrite.
+     */
+    void storePreTileGeometry(const QString& windowId, int x, int y, int width, int height, bool overwrite);
 
     /**
-     * Get stored pre-snap geometry for a window
-     * @param windowId Window ID
-     * @param x Output: X position (0 if not found)
-     * @param y Output: Y position (0 if not found)
-     * @param width Output: Width (0 if not found)
-     * @param height Output: Height (0 if not found)
+     * Get stored pre-tile geometry for a window
      * @return true if geometry was found, false otherwise
      */
-    bool getPreSnapGeometry(const QString& windowId, int& x, int& y, int& width, int& height);
+    bool getPreTileGeometry(const QString& windowId, int& x, int& y, int& width, int& height);
 
     /**
-     * Check if a window has stored pre-snap geometry
-     * @param windowId Window ID
-     * @return true if pre-snap geometry exists for this window
+     * Check if a window has stored pre-tile geometry
      */
-    bool hasPreSnapGeometry(const QString& windowId);
+    bool hasPreTileGeometry(const QString& windowId);
 
     /**
-     * Clear stored pre-snap geometry for a window (called after restore)
-     * @param windowId Window ID
+     * Clear stored pre-tile geometry for a window (called after restore)
      */
-    void clearPreSnapGeometry(const QString& windowId);
+    void clearPreTileGeometry(const QString& windowId);
 
     /**
-     * Store pre-autotile geometry from KWin (for float restore in autotile mode)
-     * Called when KWin saves geometry before tiling an autotile window.
-     */
-    void recordPreAutotileGeometry(const QString& windowId, const QString& screenName, int x, int y, int width,
-                                   int height);
-
-    /**
-     * Clear stored pre-autotile geometry for a window.
-     * Called when autotile is disabled on a screen, so the next enable saves fresh data.
-     * @param windowId Window ID
-     */
-    void clearPreAutotileGeometry(const QString& windowId);
-
-    /**
-     * Get all pre-autotile geometries as JSON (for effect pre-population on restart)
+     * Get all pre-tile geometries as JSON (for effect pre-population on restart)
      * @return JSON object: {"appId": {"x":N, "y":N, "width":N, "height":N}, ...}
      */
-    QString getPreAutotileGeometriesJson();
+    QString getPreTileGeometriesJson();
 
     /**
      * Clean up all tracking data for a closed window
@@ -867,6 +854,14 @@ private:
      * @return JSON string with x, y, width, height
      */
     QString rectToJson(const QRect& rect) const;
+
+    /**
+     * @brief Restore a floating window to its pre-float zone (shared unfloat logic)
+     * @param windowId Window to unfloat
+     * @param screenName Fallback screen if pre-float screen is gone
+     * @return true if successfully restored to a zone, false if no zone to restore to
+     */
+    bool unfloatToZone(const QString& windowId, const QString& screenName);
 
     /**
      * @brief Detect which screen a zone is on by finding where its center falls

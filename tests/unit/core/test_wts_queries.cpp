@@ -845,10 +845,10 @@ private Q_SLOTS:
 
         QHash<QString, QRect> geos;
         geos[appId] = QRect(50, 100, 640, 480);
-        m_service->setPreSnapGeometries(geos);
+        m_service->setPreTileGeometries(geos);
 
-        QVERIFY(m_service->hasPreSnapGeometry(windowId));
-        auto geo = m_service->preSnapGeometry(windowId);
+        QVERIFY(m_service->hasPreTileGeometry(windowId));
+        auto geo = m_service->preTileGeometry(windowId);
         QVERIFY(geo.has_value());
         QCOMPARE(geo->width(), 640);
     }

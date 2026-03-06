@@ -69,27 +69,27 @@ public:
         }
     }
 
-    void storePreSnapGeometry(const QString& windowId, int x, int y, int width, int height)
+    void storePreTileGeometry(const QString& windowId, int x, int y, int width, int height)
     {
         if (windowId.isEmpty() || width <= 0 || height <= 0)
             return;
 
         // Key design: Only store on FIRST snap
-        if (m_preSnapGeometries.contains(windowId)) {
+        if (m_preTileGeometries.contains(windowId)) {
             return;
         }
 
-        m_preSnapGeometries[windowId] = QRect(x, y, width, height);
+        m_preTileGeometries[windowId] = QRect(x, y, width, height);
     }
 
-    bool getPreSnapGeometry(const QString& windowId, int& x, int& y, int& width, int& height)
+    bool getPreTileGeometry(const QString& windowId, int& x, int& y, int& width, int& height)
     {
         x = y = width = height = 0;
         if (windowId.isEmpty())
             return false;
 
-        auto it = m_preSnapGeometries.constFind(windowId);
-        if (it == m_preSnapGeometries.constEnd())
+        auto it = m_preTileGeometries.constFind(windowId);
+        if (it == m_preTileGeometries.constEnd())
             return false;
 
         const QRect& geometry = it.value();
@@ -100,15 +100,15 @@ public:
         return true;
     }
 
-    bool hasPreSnapGeometry(const QString& windowId)
+    bool hasPreTileGeometry(const QString& windowId)
     {
-        return !windowId.isEmpty() && m_preSnapGeometries.contains(windowId);
+        return !windowId.isEmpty() && m_preTileGeometries.contains(windowId);
     }
 
-    void clearPreSnapGeometry(const QString& windowId)
+    void clearPreTileGeometry(const QString& windowId)
     {
         if (!windowId.isEmpty()) {
-            m_preSnapGeometries.remove(windowId);
+            m_preTileGeometries.remove(windowId);
         }
     }
 
@@ -133,7 +133,7 @@ Q_SIGNALS:
 
 private:
     QHash<QString, QStringList> m_windowZoneAssignments;
-    QHash<QString, QRect> m_preSnapGeometries;
+    QHash<QString, QRect> m_preTileGeometries;
     QString m_lastUsedZoneId;
 };
 
@@ -238,10 +238,10 @@ private Q_SLOTS:
     void testPreSnapGeometry_stored()
     {
         QString windowId = QStringLiteral("app:window:12345");
-        m_tracker->storePreSnapGeometry(windowId, 100, 200, 800, 600);
+        m_tracker->storePreTileGeometry(windowId, 100, 200, 800, 600);
 
         int x, y, w, h;
-        QVERIFY(m_tracker->getPreSnapGeometry(windowId, x, y, w, h));
+        QVERIFY(m_tracker->getPreTileGeometry(windowId, x, y, w, h));
         QCOMPARE(x, 100);
         QCOMPARE(y, 200);
         QCOMPARE(w, 800);
@@ -253,13 +253,13 @@ private Q_SLOTS:
         // KEY DESIGN: Only store on FIRST snap, not A->B moves
         QString windowId = QStringLiteral("app:window:12345");
 
-        m_tracker->storePreSnapGeometry(windowId, 100, 200, 800, 600);
+        m_tracker->storePreTileGeometry(windowId, 100, 200, 800, 600);
 
         // Second snap attempt: should NOT overwrite
-        m_tracker->storePreSnapGeometry(windowId, 500, 500, 1000, 800);
+        m_tracker->storePreTileGeometry(windowId, 500, 500, 1000, 800);
 
         int x, y, w, h;
-        QVERIFY(m_tracker->getPreSnapGeometry(windowId, x, y, w, h));
+        QVERIFY(m_tracker->getPreTileGeometry(windowId, x, y, w, h));
         QCOMPARE(x, 100); // Still original values
         QCOMPARE(y, 200);
         QCOMPARE(w, 800);
@@ -270,24 +270,24 @@ private Q_SLOTS:
     {
         QString windowId = QStringLiteral("app:window:12345");
 
-        m_tracker->storePreSnapGeometry(windowId, 100, 200, 0, 600); // Zero width
-        QVERIFY(!m_tracker->hasPreSnapGeometry(windowId));
+        m_tracker->storePreTileGeometry(windowId, 100, 200, 0, 600); // Zero width
+        QVERIFY(!m_tracker->hasPreTileGeometry(windowId));
 
-        m_tracker->storePreSnapGeometry(windowId, 100, 200, 800, 0); // Zero height
-        QVERIFY(!m_tracker->hasPreSnapGeometry(windowId));
+        m_tracker->storePreTileGeometry(windowId, 100, 200, 800, 0); // Zero height
+        QVERIFY(!m_tracker->hasPreTileGeometry(windowId));
 
-        m_tracker->storePreSnapGeometry(windowId, 100, 200, -1, 600); // Negative width
-        QVERIFY(!m_tracker->hasPreSnapGeometry(windowId));
+        m_tracker->storePreTileGeometry(windowId, 100, 200, -1, 600); // Negative width
+        QVERIFY(!m_tracker->hasPreTileGeometry(windowId));
     }
 
     void testPreSnapGeometry_clear()
     {
         QString windowId = QStringLiteral("app:window:12345");
-        m_tracker->storePreSnapGeometry(windowId, 100, 200, 800, 600);
+        m_tracker->storePreTileGeometry(windowId, 100, 200, 800, 600);
 
-        QVERIFY(m_tracker->hasPreSnapGeometry(windowId));
-        m_tracker->clearPreSnapGeometry(windowId);
-        QVERIFY(!m_tracker->hasPreSnapGeometry(windowId));
+        QVERIFY(m_tracker->hasPreTileGeometry(windowId));
+        m_tracker->clearPreTileGeometry(windowId);
+        QVERIFY(!m_tracker->hasPreTileGeometry(windowId));
     }
 
     // =====================================================================

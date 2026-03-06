@@ -370,19 +370,11 @@ void WindowDragAdaptor::tryStorePreSnapGeometry(const QString& windowId)
 void WindowDragAdaptor::tryStorePreSnapGeometry(const QString& windowId, bool wasSnapped, const QRect& originalGeometry)
 {
     Q_UNUSED(wasSnapped)
-    // Store pre-snap geometry for restore on unsnap/float.
-    // The storePreSnapGeometry method handles the "already stored" case internally
-    // (only stores on FIRST snap, won't overwrite when moving A→B).
-    //
-    // BUG FIX: Previously we skipped this call if wasSnapped was true, but this caused
-    // a race condition: when floating a window and quickly drag-snapping it, the async
-    // D-Bus calls (windowUnsnappedForFloat, setWindowFloating, clearPreSnapGeometry)
-    // might not have completed, causing wasSnapped to incorrectly be true. This meant
-    // the floating geometry was never stored, so the second float couldn't restore it.
-    // By always calling the daemon, we let the service's internal check handle it correctly.
+    // Store pre-tile geometry for restore on unsnap/float (first-only: overwrite=false).
+    // The service handles the "already stored" case internally.
     if (m_windowTracking && originalGeometry.isValid()) {
-        m_windowTracking->storePreSnapGeometry(windowId, originalGeometry.x(), originalGeometry.y(),
-                                               originalGeometry.width(), originalGeometry.height());
+        m_windowTracking->storePreTileGeometry(windowId, originalGeometry.x(), originalGeometry.y(),
+                                               originalGeometry.width(), originalGeometry.height(), false);
     }
 }
 

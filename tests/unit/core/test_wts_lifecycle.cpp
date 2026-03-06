@@ -768,18 +768,18 @@ private Q_SLOTS:
         QVERIFY(!m_service->pendingRestoreQueues().contains(appId));
     }
 
-    void testWindowClosed_preSnapGeometryConvertedToStableId()
+    void testWindowClosed_preTileGeometryConvertedToStableId()
     {
         QString windowId = QStringLiteral("org.kde.dolphin|99999");
         QString appId = Utils::extractAppId(windowId);
 
-        m_service->storePreSnapGeometry(windowId, QRect(100, 200, 800, 600));
-        QVERIFY(m_service->hasPreSnapGeometry(windowId));
+        m_service->storePreTileGeometry(windowId, QRect(100, 200, 800, 600));
+        QVERIFY(m_service->hasPreTileGeometry(windowId));
 
         m_service->windowClosed(windowId);
 
-        QVERIFY(m_service->hasPreSnapGeometry(appId));
-        auto geo = m_service->preSnapGeometry(appId);
+        QVERIFY(m_service->hasPreTileGeometry(appId));
+        auto geo = m_service->preTileGeometry(appId);
         QVERIFY(geo.has_value());
         QCOMPARE(geo->x(), 100);
         QCOMPARE(geo->width(), 800);

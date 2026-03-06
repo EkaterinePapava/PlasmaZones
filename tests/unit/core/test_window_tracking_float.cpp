@@ -68,13 +68,13 @@ public:
         }
     }
 
-    void storePreSnapGeometry(const QString& windowId, int x, int y, int width, int height)
+    void storePreTileGeometry(const QString& windowId, int x, int y, int width, int height)
     {
         if (windowId.isEmpty() || width <= 0 || height <= 0)
             return;
-        if (m_preSnapGeometries.contains(windowId))
+        if (m_preTileGeometries.contains(windowId))
             return;
-        m_preSnapGeometries[windowId] = QRect(x, y, width, height);
+        m_preTileGeometries[windowId] = QRect(x, y, width, height);
     }
 
     void windowClosed(const QString& windowId)
@@ -82,7 +82,7 @@ public:
         if (windowId.isEmpty())
             return;
         m_windowZoneAssignments.remove(windowId);
-        m_preSnapGeometries.remove(windowId);
+        m_preTileGeometries.remove(windowId);
         QString stableId = PlasmaZones::Utils::extractAppId(windowId);
         m_floatingWindows.remove(stableId);
     }
@@ -138,9 +138,9 @@ public:
     {
         return m_windowZoneAssignments.size();
     }
-    int preSnapGeometryCount() const
+    int preTileGeometryCount() const
     {
-        return m_preSnapGeometries.size();
+        return m_preTileGeometries.size();
     }
     int floatingWindowCount() const
     {
@@ -152,7 +152,7 @@ Q_SIGNALS:
 
 private:
     QHash<QString, QStringList> m_windowZoneAssignments;
-    QHash<QString, QRect> m_preSnapGeometries;
+    QHash<QString, QRect> m_preTileGeometries;
     QSet<QString> m_floatingWindows;
     QString m_lastUsedZoneId;
 };
@@ -183,7 +183,7 @@ private Q_SLOTS:
         QString zoneId = QUuid::createUuid().toString();
 
         // Set up tracking data
-        m_tracker->storePreSnapGeometry(windowId, 100, 200, 800, 600);
+        m_tracker->storePreTileGeometry(windowId, 100, 200, 800, 600);
         m_tracker->windowSnapped(windowId, zoneId);
         m_tracker->setWindowFloating(windowId, true);
 
@@ -192,7 +192,7 @@ private Q_SLOTS:
 
         // All tracking data should be cleaned up
         QCOMPARE(m_tracker->zoneAssignmentCount(), 0);
-        QCOMPARE(m_tracker->preSnapGeometryCount(), 0);
+        QCOMPARE(m_tracker->preTileGeometryCount(), 0);
         QCOMPARE(m_tracker->floatingWindowCount(), 0);
     }
 

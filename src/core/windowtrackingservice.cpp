@@ -142,175 +142,107 @@ bool WindowTrackingService::isWindowSnapped(const QString& windowId) const
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Pre-Snap Geometry Storage
+// Pre-Tile Geometry Storage (unified snap + autotile)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-void WindowTrackingService::storePreSnapGeometry(const QString& windowId, const QRect& geometry)
+void WindowTrackingService::storePreTileGeometry(const QString& windowId, const QRect& geometry, bool overwrite)
 {
     if (windowId.isEmpty()) {
-        qCWarning(lcCore) << "Cannot store pre-snap geometry: empty windowId";
+        qCWarning(lcCore) << "Cannot store pre-tile geometry: empty windowId";
+        return;
+    }
+    if (!geometry.isValid()) {
         return;
     }
 
-    // Only store on FIRST snap - don't overwrite when moving A→B
-    // Use full windowId so each window instance gets its own pre-snap geometry
-    // (appId would collide for multiple instances of the same app)
-    if (m_preSnapGeometries.contains(windowId)) {
-        return;
-    }
-    // Also skip if a appId entry exists (session-restored geometry should be preserved)
     QString appId = Utils::extractAppId(windowId);
-    if (appId != windowId && m_preSnapGeometries.contains(appId)) {
-        return;
-    }
 
-    if (geometry.isValid()) {
-        m_preSnapGeometries[windowId] = geometry;
-
-        // Memory cleanup: limit pre-snap geometry cache to prevent unbounded growth.
-        // Skip eviction of just-inserted key to avoid invalidating the entry we just stored.
-        static constexpr int MaxPreSnapGeometries = 100;
-        if (m_preSnapGeometries.size() > MaxPreSnapGeometries) {
-            for (auto it = m_preSnapGeometries.begin(); it != m_preSnapGeometries.end(); ++it) {
-                if (it.key() != windowId) {
-                    m_preSnapGeometries.erase(it);
-                    break;
-                }
-            }
+    if (!overwrite) {
+        // First-only mode (snap): don't overwrite when moving A→B
+        if (m_preTileGeometries.contains(windowId)) {
+            return;
         }
+        if (appId != windowId && m_preTileGeometries.contains(appId)) {
+            return;
+        }
+    }
 
-        scheduleSaveState();
-    }
-}
-
-std::optional<QRect> WindowTrackingService::preSnapGeometry(const QString& windowId) const
-{
-    if (windowId.isEmpty()) {
-        return std::nullopt;
-    }
-    // Try full window ID first (runtime - distinguishes multiple instances)
-    if (m_preSnapGeometries.contains(windowId)) {
-        return m_preSnapGeometries.value(windowId);
-    }
-    // Fall back to app ID (session restore - pointer addresses change across restarts)
-    QString appId = Utils::extractAppId(windowId);
-    if (appId != windowId && m_preSnapGeometries.contains(appId)) {
-        return m_preSnapGeometries.value(appId);
-    }
-    return std::nullopt;
-}
-
-bool WindowTrackingService::hasPreSnapGeometry(const QString& windowId) const
-{
-    if (windowId.isEmpty()) {
-        return false;
-    }
-    // Try full window ID first, fall back to app ID for session-restored entries
-    if (m_preSnapGeometries.contains(windowId)) {
-        return true;
-    }
-    QString appId = Utils::extractAppId(windowId);
-    return (appId != windowId && m_preSnapGeometries.contains(appId));
-}
-
-void WindowTrackingService::clearPreSnapGeometry(const QString& windowId)
-{
-    if (windowId.isEmpty()) {
-        return;
-    }
-    bool removed = m_preSnapGeometries.remove(windowId) > 0;
-    // Also remove app ID entry (session-restored entries)
-    QString appId = Utils::extractAppId(windowId);
+    m_preTileGeometries[windowId] = geometry;
     if (appId != windowId) {
-        removed |= (m_preSnapGeometries.remove(appId) > 0);
-    }
-    if (removed) {
-        scheduleSaveState();
-    }
-}
-
-std::optional<QRect> WindowTrackingService::validatedPreSnapGeometry(const QString& windowId) const
-{
-    auto geo = preSnapGeometry(windowId);
-    if (!geo) {
-        return std::nullopt;
+        m_preTileGeometries[appId] = geometry;
     }
 
-    QRect rect = *geo;
-    if (isGeometryOnScreen(rect)) {
-        return rect;
-    }
-
-    // Adjust to fit within visible screens
-    return adjustGeometryToScreen(rect);
-}
-
-void WindowTrackingService::storePreAutotileGeometry(const QString& windowId, const QRect& geometry)
-{
-    if (windowId.isEmpty() || !geometry.isValid()) {
-        return;
-    }
-    m_preAutotileGeometries[windowId] = geometry;
-    QString appId = Utils::extractAppId(windowId);
-    if (appId != windowId) {
-        m_preAutotileGeometries[appId] = geometry;
-    }
-
-    // Memory cleanup: limit pre-autotile geometry cache to prevent unbounded growth.
-    // Skip eviction of just-inserted keys to avoid invalidating the entry we just stored.
-    static constexpr int MaxPreAutotileGeometries = 100;
-    if (m_preAutotileGeometries.size() > MaxPreAutotileGeometries) {
-        for (auto it = m_preAutotileGeometries.begin(); it != m_preAutotileGeometries.end(); ++it) {
+    // Memory cleanup: limit cache to prevent unbounded growth.
+    // Each window stores up to 2 keys (windowId + appId), so evict until we're
+    // back at the cap. Skip just-inserted keys.
+    static constexpr int MaxPreTileGeometries = 100;
+    while (m_preTileGeometries.size() > MaxPreTileGeometries) {
+        bool evicted = false;
+        for (auto it = m_preTileGeometries.begin(); it != m_preTileGeometries.end(); ++it) {
             if (it.key() != windowId && it.key() != appId) {
-                m_preAutotileGeometries.erase(it);
+                m_preTileGeometries.erase(it);
+                evicted = true;
                 break;
             }
+        }
+        if (!evicted) {
+            break; // Only our own keys remain
         }
     }
 
     scheduleSaveState();
 }
 
-void WindowTrackingService::clearPreAutotileGeometry(const QString& windowId)
+std::optional<QRect> WindowTrackingService::preTileGeometry(const QString& windowId) const
+{
+    if (windowId.isEmpty()) {
+        return std::nullopt;
+    }
+    if (m_preTileGeometries.contains(windowId)) {
+        return m_preTileGeometries.value(windowId);
+    }
+    QString appId = Utils::extractAppId(windowId);
+    if (appId != windowId && m_preTileGeometries.contains(appId)) {
+        return m_preTileGeometries.value(appId);
+    }
+    return std::nullopt;
+}
+
+bool WindowTrackingService::hasPreTileGeometry(const QString& windowId) const
+{
+    if (windowId.isEmpty()) {
+        return false;
+    }
+    if (m_preTileGeometries.contains(windowId)) {
+        return true;
+    }
+    QString appId = Utils::extractAppId(windowId);
+    return (appId != windowId && m_preTileGeometries.contains(appId));
+}
+
+void WindowTrackingService::clearPreTileGeometry(const QString& windowId)
 {
     if (windowId.isEmpty()) {
         return;
     }
-    bool removed = m_preAutotileGeometries.remove(windowId) > 0;
+    bool removed = m_preTileGeometries.remove(windowId) > 0;
     QString appId = Utils::extractAppId(windowId);
     if (appId != windowId) {
-        removed |= (m_preAutotileGeometries.remove(appId) > 0);
+        removed |= (m_preTileGeometries.remove(appId) > 0);
     }
     if (removed) {
         scheduleSaveState();
     }
 }
 
-std::optional<QRect> WindowTrackingService::validatedPreSnapOrAutotileGeometry(const QString& windowId) const
+std::optional<QRect> WindowTrackingService::validatedPreTileGeometry(const QString& windowId) const
 {
-    auto geo = validatedPreSnapGeometry(windowId);
-    if (geo) {
-        return geo;
-    }
-    return validatedPreAutotileGeometry(windowId);
-}
-
-std::optional<QRect> WindowTrackingService::validatedPreAutotileGeometry(const QString& windowId) const
-{
-    if (windowId.isEmpty()) {
+    auto geo = preTileGeometry(windowId);
+    if (!geo) {
         return std::nullopt;
     }
-    QRect rect;
-    if (m_preAutotileGeometries.contains(windowId)) {
-        rect = m_preAutotileGeometries.value(windowId);
-    } else {
-        QString appId = Utils::extractAppId(windowId);
-        if (appId != windowId && m_preAutotileGeometries.contains(appId)) {
-            rect = m_preAutotileGeometries.value(appId);
-        } else {
-            return std::nullopt;
-        }
-    }
+
+    QRect rect = *geo;
     if (!rect.isValid() || rect.width() <= 0 || rect.height() <= 0) {
         return std::nullopt;
     }

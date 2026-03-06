@@ -245,7 +245,7 @@ void NavigationHandler::handleDirectZoneSnap(KWin::EffectWindow* activeWindow, c
                     auto* innerIface = m_effect->windowTrackingInterface();
                     if (innerIface && innerIface->isValid()) {
                         QDBusPendingCall hasGeomCall =
-                            innerIface->asyncCall(QStringLiteral("hasPreSnapGeometry"), windowId);
+                            innerIface->asyncCall(QStringLiteral("hasPreTileGeometry"), windowId);
                         auto* hasGeomWatcher = new QDBusPendingCallWatcher(hasGeomCall, this);
                         connect(hasGeomWatcher, &QDBusPendingCallWatcher::finished, this,
                                 [this, windowId, preSnapGeom](QDBusPendingCallWatcher* hgw) {
@@ -254,11 +254,11 @@ void NavigationHandler::handleDirectZoneSnap(KWin::EffectWindow* activeWindow, c
                                     if (!hasGeomReply.isValid() || !hasGeomReply.value()) {
                                         auto* storeIface = m_effect->windowTrackingInterface();
                                         if (storeIface && storeIface->isValid()) {
-                                            storeIface->asyncCall(QStringLiteral("storePreSnapGeometry"), windowId,
+                                            storeIface->asyncCall(QStringLiteral("storePreTileGeometry"), windowId,
                                                                   static_cast<int>(preSnapGeom.x()),
                                                                   static_cast<int>(preSnapGeom.y()),
                                                                   static_cast<int>(preSnapGeom.width()),
-                                                                  static_cast<int>(preSnapGeom.height()));
+                                                                  static_cast<int>(preSnapGeom.height()), false);
                                         }
                                     }
                                 });
@@ -430,7 +430,7 @@ void NavigationHandler::handleRestoreWindow()
                 auto* innerIface = m_effect->windowTrackingInterface();
                 if (innerIface && innerIface->isValid()) {
                     innerIface->asyncCall(QStringLiteral("windowUnsnapped"), capturedWindowId);
-                    innerIface->asyncCall(QStringLiteral("clearPreSnapGeometry"), capturedWindowId);
+                    innerIface->asyncCall(QStringLiteral("clearPreTileGeometry"), capturedWindowId);
                 }
             });
 }
@@ -545,7 +545,7 @@ void NavigationHandler::executeFloatOn(KWin::EffectWindow* activeWindow, const Q
                     if (iface && iface->isValid()) {
                         iface->asyncCall(QStringLiteral("windowUnsnappedForFloat"), windowId);
                         iface->asyncCall(QStringLiteral("setWindowFloating"), windowId, true);
-                        iface->asyncCall(QStringLiteral("clearPreSnapGeometry"), windowId);
+                        iface->asyncCall(QStringLiteral("clearPreTileGeometry"), windowId);
                     }
 
                     m_effect->emitNavigationFeedback(true, QStringLiteral("float"), QStringLiteral("floated"),
@@ -631,10 +631,11 @@ void NavigationHandler::executeFloatOff(KWin::EffectWindow* activeWindow, const 
                 auto* iface = m_effect->windowTrackingInterface();
                 if (iface && iface->isValid()) {
                     QRectF floatingGeom = safeWindow->frameGeometry();
-                    qCDebug(lcEffect) << "Storing floating geometry as pre-snap:" << floatingGeom;
-                    iface->asyncCall(QStringLiteral("storePreSnapGeometry"), windowId,
+                    qCDebug(lcEffect) << "Storing floating geometry as pre-tile:" << floatingGeom;
+                    iface->asyncCall(QStringLiteral("storePreTileGeometry"), windowId,
                                      static_cast<int>(floatingGeom.x()), static_cast<int>(floatingGeom.y()),
-                                     static_cast<int>(floatingGeom.width()), static_cast<int>(floatingGeom.height()));
+                                     static_cast<int>(floatingGeom.width()), static_cast<int>(floatingGeom.height()),
+                                     true);
                 }
 
                 qCInfo(lcEffect) << "Applying unfloat geometry:" << geometry << "to zones:" << zoneIds

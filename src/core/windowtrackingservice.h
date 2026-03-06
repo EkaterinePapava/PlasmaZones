@@ -117,63 +117,41 @@ public:
     bool isWindowSnapped(const QString& windowId) const;
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Pre-Snap Geometry Storage
+    // Pre-Tile Geometry Storage (unified snap + autotile)
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * @brief Store geometry before snapping (only on first snap)
+     * @brief Store geometry before tiling (snap or autotile)
      * @param windowId Full window ID
-     * @param geometry Window geometry before snapping
+     * @param geometry Window geometry before tiling
+     * @param overwrite If false (snap mode), skip if entry already exists (first-only).
+     *                  If true (autotile mode), always overwrite.
      */
-    void storePreSnapGeometry(const QString& windowId, const QRect& geometry);
+    void storePreTileGeometry(const QString& windowId, const QRect& geometry, bool overwrite = false);
 
     /**
-     * @brief Get stored pre-snap geometry
+     * @brief Get stored pre-tile geometry
      * @param windowId Full window ID
      * @return Geometry if stored, nullopt otherwise
      */
-    std::optional<QRect> preSnapGeometry(const QString& windowId) const;
+    std::optional<QRect> preTileGeometry(const QString& windowId) const;
 
     /**
-     * @brief Check if window has stored pre-snap geometry
+     * @brief Check if window has stored pre-tile geometry
      */
-    bool hasPreSnapGeometry(const QString& windowId) const;
+    bool hasPreTileGeometry(const QString& windowId) const;
 
     /**
-     * @brief Clear stored pre-snap geometry (after restore)
+     * @brief Clear stored pre-tile geometry (after restore)
      */
-    void clearPreSnapGeometry(const QString& windowId);
+    void clearPreTileGeometry(const QString& windowId);
 
     /**
-     * @brief Store pre-autotile geometry (from KWin when tiling autotile windows)
-     * Used to restore window position when floating from autotile mode.
-     */
-    void storePreAutotileGeometry(const QString& windowId, const QRect& geometry);
-
-    /**
-     * @brief Clear stored pre-autotile geometry (after restore)
-     */
-    void clearPreAutotileGeometry(const QString& windowId);
-
-    /**
-     * @brief Get validated pre-snap geometry within screen bounds
+     * @brief Get validated pre-tile geometry within screen bounds
      * @param windowId Full window ID
      * @return Adjusted geometry within visible screens, nullopt if not found
      */
-    std::optional<QRect> validatedPreSnapGeometry(const QString& windowId) const;
-
-    /**
-     * @brief Get validated pre-snap or pre-autotile geometry (for float restore)
-     * Checks pre-snap first (manual zones), then pre-autotile (autotile mode).
-     */
-    std::optional<QRect> validatedPreSnapOrAutotileGeometry(const QString& windowId) const;
-
-    /**
-     * @brief Get validated pre-autotile geometry only (for autotile float restore)
-     * Unlike validatedPreSnapOrAutotileGeometry, skips pre-snap to avoid using
-     * stale manual-snap data when floating from autotile mode.
-     */
-    std::optional<QRect> validatedPreAutotileGeometry(const QString& windowId) const;
+    std::optional<QRect> validatedPreTileGeometry(const QString& windowId) const;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Floating Window State
@@ -533,19 +511,11 @@ public:
     }
 
     /**
-     * @brief Get all pre-snap geometries for persistence
+     * @brief Get all pre-tile geometries for persistence
      */
-    const QHash<QString, QRect>& preSnapGeometries() const
+    const QHash<QString, QRect>& preTileGeometries() const
     {
-        return m_preSnapGeometries;
-    }
-
-    /**
-     * @brief Get all pre-autotile geometries for persistence
-     */
-    const QHash<QString, QRect>& preAutotileGeometries() const
-    {
-        return m_preAutotileGeometries;
+        return m_preTileGeometries;
     }
 
     /**
@@ -588,19 +558,11 @@ public:
     }
 
     /**
-     * @brief Set pre-snap geometries (loaded from KConfig by adaptor)
+     * @brief Set pre-tile geometries (loaded from KConfig by adaptor)
      */
-    void setPreSnapGeometries(const QHash<QString, QRect>& geometries)
+    void setPreTileGeometries(const QHash<QString, QRect>& geometries)
     {
-        m_preSnapGeometries = geometries;
-    }
-
-    /**
-     * @brief Set pre-autotile geometries (loaded from KConfig by adaptor)
-     */
-    void setPreAutotileGeometries(const QHash<QString, QRect>& geometries)
-    {
-        m_preAutotileGeometries = geometries;
+        m_preTileGeometries = geometries;
     }
 
     /**
@@ -685,10 +647,9 @@ private:
     // Desktop tracking: windowId -> virtual desktop
     QHash<QString, int> m_windowDesktopAssignments;
 
-    // Pre-snap geometries: full windowId at runtime, appId for session-restored entries
-    // Converted from windowId to appId on window close for persistence
-    QHash<QString, QRect> m_preSnapGeometries;
-    QHash<QString, QRect> m_preAutotileGeometries;
+    // Pre-tile geometries (unified snap + autotile): full windowId + appId at runtime,
+    // appId only for session-restored entries. Converted on window close for persistence.
+    QHash<QString, QRect> m_preTileGeometries;
 
     // Last used zone tracking
     QString m_lastUsedZoneId;

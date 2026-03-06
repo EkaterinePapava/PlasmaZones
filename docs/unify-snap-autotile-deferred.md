@@ -34,7 +34,23 @@ Tracks what was completed and what remains from the unification plan.
 - [x] Renamed across D-Bus XML, WTA header, persistence.cpp, targets.cpp,
       navigationhandler.cpp, windowdragadaptor drop.cpp and drag.cpp
 
-### Bug fixes found during review
+### Tier 3 #1: Merge pre-snap + pre-autotile into single geometry storage
+- [x] Replaced `m_preSnapGeometries` + `m_preAutotileGeometries` with unified `m_preTileGeometries`
+- [x] `storePreTileGeometry(windowId, geometry, overwrite)` — `false` for snap (first-only), `true` for autotile (always-overwrite)
+- [x] Dual-key storage (windowId + appId) now applied to both modes, improving snap-mode session restore
+- [x] Session persistence migration: reads old `PreSnapGeometries`/`PreAutotileGeometries`, merges into `PreTileGeometries` (pre-snap wins on conflict)
+- [x] `windowClosed` cleanup simplified: removes stale windowId key, appId key survives for session restore
+- [x] Unified D-Bus API: `storePreTileGeometry`, `hasPreTileGeometry`, `clearPreTileGeometry`, `getValidatedPreTileGeometry`
+- [x] Removed `floatWindow`/`unfloatWindow` from Autotile D-Bus XML (callers migrated to `setWindowFloatingForScreen`)
+- [x] Effect callers updated: `ensurePreSnapGeometryStored`, `slotToggleWindowFloatRequested`, drag-to-float, navigation handler, autotile handler
+- [x] All 46 tests updated and passing
+
+### Bug fixes found during analysis
+- [x] Eviction convergence bug: dual-key insertion added 2 entries but evicted only 1, causing slow cache growth — fixed with `while` loop
+- [x] DRY: extracted `unfloatToZone()` private helper — deduplicated ~30 lines shared between `toggleFloatForWindow` and `setWindowFloatingForScreen`
+- [x] Drag-to-float screen lookup race: `getWindowScreenName` after drag returns destination screen, not origin — fixed by capturing `m_dragBypassScreenName` at drag start
+
+### Earlier bug fixes (PR 1-3 review)
 - [x] Unconditional geometry stores corrupted float restore for autotile-only windows
 - [x] `clearFloatingStateForSnap` passed stale screen to `windowFloatingChanged` signal
 - [x] `setWindowFloating` used `m_lastActiveScreenName` — now looks up tracked screen
@@ -66,21 +82,9 @@ minimal benefit for non-trivial rework.
 
 ## Deferred: Tier 3 — Architectural Refactors
 
-### Merge pre-snap + pre-autotile into single geometry storage
+### ~~Merge pre-snap + pre-autotile into single geometry storage~~ ✓ COMPLETED
 
-Both modes store "geometry before tiling" with different keys and different semantics
-(first-only vs always-overwrite). Merging would reduce complexity but touches core
-persistence (save/load, session restore) and requires careful handling of the semantic
-differences.
-
-**Effort:** High. **Risk:** High — breaks persistence format, affects session restore.
-
-**Files:**
-- `src/core/windowtrackingservice.h` — merge `m_preSnapGeometries` + `m_preAutotileGeometries`
-- `src/core/windowtrackingservice.cpp` — unify store/retrieve/clear logic
-- `src/dbus/windowtrackingadaptor/persistence.cpp` — update save/load
-- `src/dbus/windowtrackingadaptor/float.cpp` — update `applyGeometryForFloat` fallback chain
-- `kwin-effect/autotilehandler.cpp` — update `saveAndRecordPreAutotileGeometry`
+Completed above — see "Tier 3 #1" in Completed section.
 
 ### Split `applyGeometryRequested` signal by purpose
 

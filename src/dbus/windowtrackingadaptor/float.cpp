@@ -181,49 +181,13 @@ void WindowTrackingAdaptor::toggleFloatForWindow(const QString& windowId, const 
     }
 
     if (currentlyFloating) {
-        // Unfloat: restore to pre-float zone
-        QString restoreJson = calculateUnfloatRestore(windowId, screenName);
-        QJsonDocument doc = QJsonDocument::fromJson(restoreJson.toUtf8());
-        if (!doc.isObject()) {
+        if (!unfloatToZone(windowId, screenName)) {
             Q_EMIT navigationFeedback(false, QStringLiteral("float"), QStringLiteral("no_pre_float_zone"), QString(),
                                       QString(), screenName);
             return;
         }
-        QJsonObject obj = doc.object();
-        if (!obj.value(QLatin1String("found")).toBool(false)) {
-            Q_EMIT navigationFeedback(false, QStringLiteral("float"), QStringLiteral("no_pre_float_zone"), QString(),
-                                      QString(), screenName);
-            return;
-        }
-        QStringList zoneIds;
-        for (const QJsonValue& v : obj.value(QLatin1String("zoneIds")).toArray()) {
-            zoneIds.append(v.toString());
-        }
-        QRect geo(obj.value(QLatin1String("x")).toInt(), obj.value(QLatin1String("y")).toInt(),
-                  obj.value(QLatin1String("width")).toInt(), obj.value(QLatin1String("height")).toInt());
-        QString restoreScreen = obj.value(QLatin1String("screenName")).toString();
-        if (zoneIds.isEmpty() || !geo.isValid()) {
-            Q_EMIT navigationFeedback(false, QStringLiteral("float"), QStringLiteral("no_pre_float_zone"), QString(),
-                                      QString(), screenName);
-            return;
-        }
-        m_service->setWindowFloating(windowId, false);
-        m_service->clearPreFloatZone(windowId);
-
-        // Re-assign window to zone(s) directly via service (handles multi-zone correctly).
-        // The effect receives applyGeometryRequested with empty zoneId so it only applies geometry
-        // without calling windowSnapped (which would lose multi-zone assignment).
-        int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-        if (zoneIds.size() > 1) {
-            m_service->assignWindowToZones(windowId, zoneIds, restoreScreen, currentDesktop);
-        } else {
-            m_service->assignWindowToZone(windowId, zoneIds.first(), restoreScreen, currentDesktop);
-        }
-
-        Q_EMIT windowFloatingChanged(windowId, false, restoreScreen);
-        Q_EMIT applyGeometryRequested(windowId, rectToJson(geo), QString(), restoreScreen);
         Q_EMIT navigationFeedback(true, QStringLiteral("float"), QStringLiteral("unfloated"), QString(), QString(),
-                                  restoreScreen);
+                                  screenName);
     } else {
         // Float: unsnap and restore to original geometry.
         // Uses the same priority as autotile float (pre-snap → pre-autotile)
@@ -241,24 +205,10 @@ void WindowTrackingAdaptor::toggleFloatForWindow(const QString& windowId, const 
 
 bool WindowTrackingAdaptor::applyGeometryForFloat(const QString& windowId, const QString& screenName)
 {
-    // Floating geometry is shared between autotile and snapping modes.
-    // Prefer pre-snap geometry (the window's original position before any zone
-    // snapping) so that floating in autotile restores to the same position as
-    // floating in snapping mode. Fall back to pre-autotile geometry for windows
-    // that were opened during autotile (no pre-snap geometry exists).
-    auto snapGeo = m_service->validatedPreSnapGeometry(windowId);
-    if (snapGeo) {
-        QRect geo = *snapGeo;
-        Q_EMIT applyGeometryRequested(windowId, rectToJson(geo), QString(), screenName);
-        qCDebug(lcDbusWindow) << "Applied pre-snap geometry for float:" << windowId << geo;
-        return true;
-    }
-
-    auto autotileGeo = m_service->validatedPreAutotileGeometry(windowId);
-    if (autotileGeo) {
-        QRect geo = *autotileGeo;
-        Q_EMIT applyGeometryRequested(windowId, rectToJson(geo), QString(), screenName);
-        qCDebug(lcDbusWindow) << "Applied pre-autotile geometry for float:" << windowId << geo;
+    auto geo = m_service->validatedPreTileGeometry(windowId);
+    if (geo) {
+        Q_EMIT applyGeometryRequested(windowId, rectToJson(*geo), QString(), screenName);
+        qCDebug(lcDbusWindow) << "Applied pre-tile geometry for float:" << windowId << *geo;
         return true;
     }
 
@@ -303,39 +253,62 @@ void WindowTrackingAdaptor::setWindowFloatingForScreen(const QString& windowId, 
         Q_EMIT windowFloatingChanged(windowId, true, screenName);
         applyGeometryForFloat(windowId, screenName);
     } else {
-        // Unfloat: restore to pre-float zone (same as toggleFloatForWindow unfloat path)
-        QString restoreJson = calculateUnfloatRestore(windowId, screenName);
-        QJsonDocument doc = QJsonDocument::fromJson(restoreJson.toUtf8());
-        QJsonObject obj = doc.isObject() ? doc.object() : QJsonObject();
-        if (!obj.value(QLatin1String("found")).toBool(false)) {
+        if (!unfloatToZone(windowId, screenName)) {
             // No zone to restore to — just clear floating state
             m_service->setWindowFloating(windowId, false);
             Q_EMIT windowFloatingChanged(windowId, false, screenName);
-            return;
         }
-        QStringList zoneIds;
-        for (const QJsonValue& v : obj.value(QLatin1String("zoneIds")).toArray()) {
-            zoneIds.append(v.toString());
-        }
-        QRect geo(obj.value(QLatin1String("x")).toInt(), obj.value(QLatin1String("y")).toInt(),
-                  obj.value(QLatin1String("width")).toInt(), obj.value(QLatin1String("height")).toInt());
-        QString restoreScreen = obj.value(QLatin1String("screenName")).toString();
-        if (zoneIds.isEmpty() || !geo.isValid()) {
-            m_service->setWindowFloating(windowId, false);
-            Q_EMIT windowFloatingChanged(windowId, false, screenName);
-            return;
-        }
-        m_service->setWindowFloating(windowId, false);
-        m_service->clearPreFloatZone(windowId);
-        int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-        if (zoneIds.size() > 1) {
-            m_service->assignWindowToZones(windowId, zoneIds, restoreScreen, currentDesktop);
-        } else {
-            m_service->assignWindowToZone(windowId, zoneIds.first(), restoreScreen, currentDesktop);
-        }
-        Q_EMIT windowFloatingChanged(windowId, false, restoreScreen);
-        Q_EMIT applyGeometryRequested(windowId, rectToJson(geo), QString(), restoreScreen);
     }
+}
+
+bool WindowTrackingAdaptor::unfloatToZone(const QString& windowId, const QString& screenName)
+{
+    QStringList zoneIds = m_service->preFloatZones(windowId);
+    if (zoneIds.isEmpty()) {
+        qCDebug(lcDbusWindow) << "unfloatToZone: no pre-float zones for" << windowId;
+        return false;
+    }
+
+    // Use saved pre-float screen; fall back to caller's screen if monitor was replugged.
+    QString restoreScreen = m_service->preFloatScreen(windowId);
+    if (!restoreScreen.isEmpty() && !Utils::findScreenByIdOrName(restoreScreen)) {
+        qCInfo(lcDbusWindow) << "unfloatToZone: saved screen" << restoreScreen << "no longer exists, falling back to"
+                             << screenName;
+        restoreScreen.clear();
+    }
+    if (restoreScreen.isEmpty()) {
+        restoreScreen = screenName;
+    }
+
+    // Calculate geometry (combined for multi-zone)
+    QRect geo;
+    if (zoneIds.size() > 1) {
+        geo = m_service->multiZoneGeometry(zoneIds, restoreScreen);
+    } else {
+        geo = m_service->zoneGeometry(zoneIds.first(), restoreScreen);
+    }
+
+    if (!geo.isValid() || zoneIds.isEmpty()) {
+        qCDebug(lcDbusWindow) << "unfloatToZone: invalid geometry for zones" << zoneIds;
+        return false;
+    }
+
+    m_service->setWindowFloating(windowId, false);
+    m_service->clearPreFloatZone(windowId);
+
+    // Re-assign window to zone(s) directly via service (handles multi-zone correctly).
+    // The effect receives applyGeometryRequested with empty zoneId so it only applies geometry
+    // without calling windowSnapped (which would lose multi-zone assignment).
+    int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
+    if (zoneIds.size() > 1) {
+        m_service->assignWindowToZones(windowId, zoneIds, restoreScreen, currentDesktop);
+    } else {
+        m_service->assignWindowToZone(windowId, zoneIds.first(), restoreScreen, currentDesktop);
+    }
+
+    Q_EMIT windowFloatingChanged(windowId, false, restoreScreen);
+    Q_EMIT applyGeometryRequested(windowId, rectToJson(geo), QString(), restoreScreen);
+    return true;
 }
 
 } // namespace PlasmaZones

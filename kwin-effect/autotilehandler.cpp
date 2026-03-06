@@ -185,10 +185,10 @@ bool AutotileHandler::saveAndRecordPreAutotileGeometry(const QString& windowId, 
     screenGeometries[windowId] = frame;
     qCDebug(lcEffect) << "Saved pre-autotile geometry for" << windowId << "on" << screenName << ":" << frame;
     if (m_effect->m_daemonServiceRegistered) {
-        m_effect->fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("recordPreAutotileGeometry"),
-                                        {windowId, screenName, static_cast<int>(frame.x()), static_cast<int>(frame.y()),
-                                         static_cast<int>(frame.width()), static_cast<int>(frame.height())},
-                                        QStringLiteral("recordPreAutotileGeometry"));
+        m_effect->fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("storePreTileGeometry"),
+                                        {windowId, static_cast<int>(frame.x()), static_cast<int>(frame.y()),
+                                         static_cast<int>(frame.width()), static_cast<int>(frame.height()), true},
+                                        QStringLiteral("storePreTileGeometry"));
     }
     return true;
 }

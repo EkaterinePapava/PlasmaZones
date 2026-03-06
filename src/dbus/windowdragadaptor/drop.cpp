@@ -211,9 +211,9 @@ void WindowDragAdaptor::dragStopped(const QString& windowId, int cursorX, int cu
             }
         }
 
-        // Clear pre-snap geometry to prevent memory accumulation
+        // Clear pre-tile geometry to prevent memory accumulation
         if (m_windowTracking) {
-            m_windowTracking->clearPreSnapGeometry(windowId);
+            m_windowTracking->clearPreTileGeometry(windowId);
         }
     }
 

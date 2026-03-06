@@ -82,8 +82,8 @@
                 <annotation name="org.gtk.GDBus.DocString" value="Last used zone UUID or empty string."/>
             </arg>
         </method>
-        <method name="storePreSnapGeometry">
-            <annotation name="org.gtk.GDBus.DocString" value="Store window geometry before snapping (for unsnap restore). Only stores on first snap."/>
+        <method name="storePreTileGeometry">
+            <annotation name="org.gtk.GDBus.DocString" value="Store window geometry before tiling (snap or autotile). If overwrite is false (snap mode), skips if entry exists."/>
             <arg name="windowId" type="s" direction="in">
                 <annotation name="org.gtk.GDBus.DocString" value="Window identifier."/>
             </arg>
@@ -99,14 +99,17 @@
             <arg name="height" type="i" direction="in">
                 <annotation name="org.gtk.GDBus.DocString" value="Window height."/>
             </arg>
+            <arg name="overwrite" type="b" direction="in">
+                <annotation name="org.gtk.GDBus.DocString" value="If false, skip if entry exists (snap). If true, always overwrite (autotile)."/>
+            </arg>
         </method>
-        <method name="hasPreSnapGeometry">
-            <annotation name="org.gtk.GDBus.DocString" value="Return true if pre-snap geometry is stored for the window."/>
+        <method name="hasPreTileGeometry">
+            <annotation name="org.gtk.GDBus.DocString" value="Return true if pre-tile geometry is stored for the window."/>
             <arg name="windowId" type="s" direction="in">
                 <annotation name="org.gtk.GDBus.DocString" value="Window identifier."/>
             </arg>
             <arg name="hasGeometry" type="b" direction="out">
-                <annotation name="org.gtk.GDBus.DocString" value="True if pre-snap geometry exists."/>
+                <annotation name="org.gtk.GDBus.DocString" value="True if pre-tile geometry exists."/>
             </arg>
         </method>
         <method name="getValidatedPreTileGeometry">
@@ -130,27 +133,8 @@
                 <annotation name="org.gtk.GDBus.DocString" value="Height (if found)."/>
             </arg>
         </method>
-        <method name="clearPreSnapGeometry">
-            <annotation name="org.gtk.GDBus.DocString" value="Clear stored pre-snap geometry for the window."/>
-            <arg name="windowId" type="s" direction="in">
-                <annotation name="org.gtk.GDBus.DocString" value="Window identifier."/>
-            </arg>
-        </method>
-        <method name="recordPreAutotileGeometry">
-            <annotation name="org.gtk.GDBus.DocString" value="Store pre-autotile geometry from KWin for float restore. Called when KWin saves geometry before tiling an autotile window."/>
-            <arg name="windowId" type="s" direction="in">
-                <annotation name="org.gtk.GDBus.DocString" value="Window identifier."/>
-            </arg>
-            <arg name="screenName" type="s" direction="in">
-                <annotation name="org.gtk.GDBus.DocString" value="Screen name (unused, for future use)."/>
-            </arg>
-            <arg name="x" type="i" direction="in"/>
-            <arg name="y" type="i" direction="in"/>
-            <arg name="width" type="i" direction="in"/>
-            <arg name="height" type="i" direction="in"/>
-        </method>
-        <method name="clearPreAutotileGeometry">
-            <annotation name="org.gtk.GDBus.DocString" value="Clear stored pre-autotile geometry for a window. Called when autotile is disabled on a screen so the next enable saves fresh data."/>
+        <method name="clearPreTileGeometry">
+            <annotation name="org.gtk.GDBus.DocString" value="Clear stored pre-tile geometry for a window."/>
             <arg name="windowId" type="s" direction="in">
                 <annotation name="org.gtk.GDBus.DocString" value="Window identifier."/>
             </arg>

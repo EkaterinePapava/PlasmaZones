@@ -87,17 +87,12 @@ void WindowTrackingService::windowClosed(const QString& windowId)
     if (m_preFloatScreenAssignments.contains(windowId)) {
         m_preFloatScreenAssignments[appId] = m_preFloatScreenAssignments.take(windowId);
     }
-    // Convert pre-snap geometry from full windowId to appId for persistence
+    // Convert pre-tile geometry from full windowId to appId for persistence
     // so that when the window reopens (with a new internal ID), the geometry
-    // can still be found via appId fallback
-    if (m_preSnapGeometries.contains(windowId) && appId != windowId) {
-        m_preSnapGeometries[appId] = m_preSnapGeometries.take(windowId);
-    }
-    // Convert pre-autotile geometry: remove full-windowId entry, keep appId.
-    // storePreAutotileGeometry writes both keys, so the appId entry already
-    // exists — just clean up the stale full-windowId entry.
-    if (m_preAutotileGeometries.contains(windowId) && appId != windowId) {
-        m_preAutotileGeometries.remove(windowId);
+    // can still be found via appId fallback. storePreTileGeometry writes both
+    // keys, so we just clean up the stale full-windowId entry.
+    if (m_preTileGeometries.contains(windowId) && appId != windowId) {
+        m_preTileGeometries.remove(windowId);
     }
     // Convert floating state from full windowId to appId for persistence
     if (m_floatingWindows.contains(windowId) && appId != windowId) {

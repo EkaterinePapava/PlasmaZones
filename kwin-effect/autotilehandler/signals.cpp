@@ -115,8 +115,8 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
                     }
                     const QString windowId = m_effect->getWindowId(w);
                     m_effect->fireAndForgetDBusCall(DBus::Interface::WindowTracking,
-                                                    QStringLiteral("clearPreAutotileGeometry"), {windowId},
-                                                    QStringLiteral("clearPreAutotileGeometry"));
+                                                    QStringLiteral("clearPreTileGeometry"), {windowId},
+                                                    QStringLiteral("clearPreTileGeometry"));
                 }
             }
             m_preAutotileGeometries.remove(screenName);
@@ -175,7 +175,7 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
         // kept advancing while no frames were rendered.
         QDBusMessage fetchMsg =
             QDBusMessage::createMethodCall(DBus::ServiceName, DBus::ObjectPath, DBus::Interface::WindowTracking,
-                                           QStringLiteral("getPreAutotileGeometriesJson"));
+                                           QStringLiteral("getPreTileGeometriesJson"));
         auto* watcher = new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(fetchMsg), this);
         // Capture expected screen set for staleness detection — if the user
         // rapidly toggles autotile, a stale reply must not overwrite fresh data.
