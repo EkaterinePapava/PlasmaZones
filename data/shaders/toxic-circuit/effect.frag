@@ -459,7 +459,7 @@ vec4 renderToxicCircuitZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 bord
         // signal flow rather than uniform brightening.
         if (hasAudio && signalDensity > 0.05) {
             // Bass overclock: packets race faster when bass hits
-            float packetSpeedBoost = 1.0 + bass * 1.5 * audioSensitivity;
+            float packetSpeedBoost = 1.0 + bass * 0.8 * audioSensitivity;
 
             // Horizontal trace signal packets
             float hTraceOn = smoothstep(0.02, 0.0, abs(fract(glitchedUV.y * circuitDensity) - 0.5));

@@ -401,7 +401,7 @@ vec4 renderBerryZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
 
     // === Outer glow (both states, vitality-modulated) ===
     if (d > 0.0) {
-        float glowR = vitalityScale(12.0, 24.0, vitality) + (hasAudio ? bass * audioSens * vitalityScale(6.0, 16.0, vitality) : idlePulse * vitalityScale(3.0, 8.0, vitality));
+        float glowR = vitalityScale(12.0, 24.0, vitality) + (hasAudio ? bass * audioSens * vitalityScale(4.0, 8.0, vitality) : idlePulse * vitalityScale(3.0, 8.0, vitality));
         float breathe = 1.0 + vitalityScale(0.05, 0.15, vitality) * sin(iTime * 2.0);
         glowR *= breathe;
         if (d < glowR) {

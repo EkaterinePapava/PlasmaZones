@@ -348,7 +348,7 @@ vec4 compositePrismataLabels(vec4 color, vec2 fragCoord,
         // Phase from position + voronoi cell for per-facet spectral variation
         float prismPhase = globalUV.x * 15.0 + globalUV.y * 10.0
                          + cellId * TAU + time * 0.8;
-        if (hasAudio) prismPhase += bass * refractReact * 3.0;
+        if (hasAudio) prismPhase += bass * refractReact * 1.5;
         vec3 rainbow = vec3(
             sin(prismPhase) * 0.5 + 0.5,
             sin(prismPhase + 2.094) * 0.5 + 0.5,
@@ -383,7 +383,7 @@ vec4 compositePrismataLabels(vec4 color, vec2 fragCoord,
     if (labels.a > 0.01) {
         float caAngle = time * 0.5 + cellId * TAU;
         vec2 caDir = vec2(cos(caAngle), sin(caAngle));
-        float caAmount = (hasAudio ? 1.5 + bass * refractReact * 4.0 : 1.5)
+        float caAmount = (hasAudio ? 1.5 + bass * refractReact * 2.0 : 1.5)
                          * px.x * iResolution.x * 0.002;
 
         float rCh = texture(uZoneLabels, uv + caDir * caAmount).a;

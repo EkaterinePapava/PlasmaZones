@@ -421,28 +421,28 @@ vec4 renderCachyZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
         //   bass  → flow accelerates, veins brighten
         //   mids  → palette drifts warmer/cooler
         //   treble → grid catches light
-        float audioFlow = 1.0 + bassEnv * 0.6;
         float audioColorShift = midsEnv * 0.15;
 
         vec2 toLogo = LOGO_CENTER * noiseScale - centeredUV;
         float pullStrength = 0.15 / (length(toLogo) + 0.1);
-        vec2 flowUV = centeredUV + (flowDir * flowSpeed * audioFlow + normalize(toLogo + 0.001) * pullStrength) * time;
+        vec2 flowUV = centeredUV + (flowDir * flowSpeed + normalize(toLogo + 0.001) * pullStrength) * time;
 
-        float q = fbm(flowUV + time * speed * audioFlow, octaves, fbmRot);
-        float r = fbm(flowUV + q * 1.5 + time * speed * 0.7 * audioFlow, octaves, fbmRot);
+        float q = fbm(flowUV + time * speed, octaves, fbmRot);
+        float r = fbm(flowUV + q * 1.5 + time * speed * 0.7, octaves, fbmRot);
 
-        float veinNoise = fbm(centeredUV * 1.3 + flowDir * time * flowSpeed * audioFlow * 0.5, max(octaves - 2, 3), fbmRot);
-        float veins = smoothstep(0.03, 0.0, abs(veinNoise - 0.5)) * 0.35;
-        float veinGlow = 1.0 + bassEnv * 1.2;
+        // Bass widens veins (organic throb) rather than brightening them
+        float veinNoise = fbm(centeredUV * 1.3 + flowDir * time * flowSpeed * 0.5, max(octaves - 2, 3), fbmRot);
+        float veinWidth = 0.03 + bassEnv * 0.02;
+        float veins = smoothstep(veinWidth, 0.0, abs(veinNoise - 0.5)) * 0.35;
 
         float colorT = r * contrast + audioColorShift;
         vec3 col = cachyPalette(colorT, palPrimary, palSecondary, palAccent);
         col *= brightness * 0.55;
 
         vec3 veinCol = cachyPalette(colorT + 0.2 + audioColorShift, palAccent, palGlow, palPrimary);
-        col += veinCol * veins * veinGlow;
+        col += veinCol * veins;
 
-        vec3 grid = facetGrid(centeredUV + time * speed * audioFlow * 0.3, gridScale);
+        vec3 grid = facetGrid(centeredUV + time * speed * 0.3, gridScale);
         float edgeLine = smoothstep(0.05, 0.0, grid.x * 0.5);
         float gridAudio = 1.0 + trebleEnv * 0.8;
         vec3 gridColor = cachyPalette(grid.y + colorT * 0.3, palPrimary, palSecondary, palAccent);
@@ -473,7 +473,7 @@ vec4 renderCachyZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
             float lightCast = exp(-max(iLogo.dist, 0.0) * 15.0) * 0.25;
             vec3 logoLight = cachyPalette(time * 0.08 + iLogoUV.y + float(li) * 0.3,
                                            palGlow, palPrimary, palAccent);
-            col += logoLight * lightCast * instIntensity * (1.0 + bassEnv * 0.5) * depthFactor;
+            col += logoLight * lightCast * instIntensity * (1.0 + bassEnv * 0.2) * depthFactor;
 
             // ── Per-instance bass shockwave ring ──────────────────
             float iShockPhase = fract(time * 0.7 + float(li) * 0.137);
@@ -485,7 +485,7 @@ vec4 renderCachyZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
                 float shockMask = smoothstep(0.06, 0.0, shockDist) * iShockStr;
                 vec3 shockCol = cachyPalette(iShockRadius * 3.0 + time * 0.2 + float(li),
                                               palGlow, palPrimary, palAccent);
-                col += shockCol * shockMask * 0.4 * depthFactor;
+                col += shockCol * shockMask * 0.15 * depthFactor;
             }
 
             // ── Logo fill ─────────────────────────────────────────
@@ -514,7 +514,7 @@ vec4 renderCachyZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
                     float topoWave = exp(-8.0 * pow(fract(facetT - wavePos), 2.0));
                     facetCol *= 1.0 + topoWave * 0.4;
 
-                    facetCol *= 1.0 + bassEnv * logoPulse * 0.8;
+                    facetCol *= 1.0 + bassEnv * logoPulse * 0.3;
 
                     int flickerFacet = int(mod(floor(time * 12.0 + float(li) * 3.7), 12.0));
                     if (iLogo.facetId == flickerFacet && trebleEnv > 0.1) {
@@ -541,7 +541,7 @@ vec4 renderCachyZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
                 float glow3 = exp(-max(iLogo.dist, 0.0) * 8.0) * 0.12;
                 vec3 edgeCol = cachyPalette(time * 0.12 + iLogoUV.y + float(li) * 0.2,
                                              palGlow, palPrimary, palAccent);
-                float flare = 1.0 + bassEnv * 2.5;
+                float flare = 1.0 + bassEnv * 0.6;
                 col += edgeCol * glow1 * flare * particleStr * 2.0 * depthFactor;
                 col += palPrimary * glow2 * flare * 0.5 * depthFactor;
                 col += palAccent * glow3 * 0.4 * depthFactor;
@@ -655,7 +655,7 @@ vec4 renderCachyZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
     }
 
     // ── Outer glow ───────────────────────────────────────────
-    float bassGlowPush = hasAudio ? bassEnv * 4.0 : idlePulse * 5.0;
+    float bassGlowPush = hasAudio ? bassEnv * 2.0 : idlePulse * 5.0;
     float glowRadius = mix(10.0, 18.0, vitality) + bassGlowPush;
     if (d > 0.0 && d < glowRadius && borderGlow > 0.01) {
         float glow = expGlow(d, 7.0, borderGlow);

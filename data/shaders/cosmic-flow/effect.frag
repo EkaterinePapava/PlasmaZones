@@ -160,7 +160,7 @@ vec4 renderCosmicZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColo
     //   bass  → FBM contrast deepening (brighter peaks, darker valleys)
     //   mids  → palette phase rotation (prismatic drift per channel)
     //   treble → stellar sparks (handled below, already unique)
-    float audioContrast = 1.0 + bassEnv * 0.4;
+    float audioContrast = 1.0 + bassEnv * 0.2;
 
     // Mids rotate the palette phase vector per-channel for prismatic drift
     float audioPalRotation = midsEnv * 0.25;
@@ -190,7 +190,7 @@ vec4 renderCosmicZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColo
         // Thin vein lines at the 0.5 contour of a higher-frequency noise
         // Bass widens the vein detection threshold (physically thicker veins)
         float veinNoise = noise(centeredUV * 6.0 + time * vSpeed * 0.5);
-        float veinWidth = 0.06 + bassEnv * 0.04;
+        float veinWidth = 0.06 + bassEnv * 0.025;
         float veins = 1.0 - smoothstep(0.0, veinWidth, abs(veinNoise - 0.5));
         // Color veins slightly offset from base palette
         vec3 veinColor = palette(r * contrast * audioContrast + 0.25, palA, palB, palC, palD);
@@ -272,7 +272,7 @@ vec4 renderCosmicZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColo
     }
 
     // Outer glow
-    float bassGlowPush = hasAudio ? bassEnv * 4.0 : idlePulse * 5.0;
+    float bassGlowPush = hasAudio ? bassEnv * 2.0 : idlePulse * 5.0;
     float glowRadius = mix(12.0, 20.0, vitality) + bassGlowPush;
     if (d > 0.0 && d < glowRadius && borderGlow > 0.01) {
         float glow = expGlow(d, 8.0, borderGlow);

@@ -100,7 +100,7 @@ void main() {
 
     // Bass amplifies displacement in bursts
     if (hasAudio && bass > 0.05) {
-        displacement *= 1.0 + bass * audioReact * 1.5;
+        displacement *= 1.0 + bass * audioReact * 0.7;
     }
 
     // Image source: desktop wallpaper > procedural watercolor

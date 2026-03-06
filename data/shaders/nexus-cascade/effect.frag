@@ -240,7 +240,7 @@ vec4 compositeNexusLabels(vec4 color, vec2 fragCoord,
     // Chromatic aberration direction rotates over time
     float caAngle = iTime * 0.7;
     vec2 caDir = vec2(cos(caAngle), sin(caAngle));
-    float caAmount = (hasAudio ? 2.0 + bass * 6.0 * labelAudioReact : 2.0) * px.x * iResolution.x * 0.003;
+    float caAmount = (hasAudio ? 2.0 + bass * 3.0 * labelAudioReact : 2.0) * px.x * iResolution.x * 0.003;
 
     // Sample RGB channels at offset positions
     float rCh = texture(uZoneLabels, uv + caDir * caAmount).a;

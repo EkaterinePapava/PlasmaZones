@@ -406,7 +406,7 @@ vec4 compositeBloomLabels(vec4 color, vec2 fragCoord, float bass, bool hasAudio)
     // Core: warm bass glow through the label
     if (labels.a > 0.01) {
         vec3 core = color.rgb * labelBrightness + warm * 0.3;
-        float bassGlow = hasAudio ? 1.0 + bass * 1.5 * labelAudioReact : 1.0;
+        float bassGlow = hasAudio ? 1.0 + bass * 0.6 * labelAudioReact : 1.0;
         core *= bassGlow;
         color.rgb = mix(color.rgb, core, labels.a);
         color.a = max(color.a, labels.a);

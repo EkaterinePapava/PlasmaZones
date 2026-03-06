@@ -394,7 +394,7 @@ vec4 compositeMosaicLabels(vec4 color, vec2 fragCoord,
     if (labels.a > 0.01) {
         vec3 labelHue = mix(hueCenter, shapeTint, 0.5) * 1.4;
         labelHue = floor(labelHue * posterLevels) / posterLevels;
-        float flashIntensity = 1.0 + (hasAudio ? bass * 0.8 * labelAudioMul : 0.0);
+        float flashIntensity = 1.0 + (hasAudio ? bass * 0.4 * labelAudioMul : 0.0);
         vec3 tileCol = labelHue * flashIntensity;
         color.rgb = mix(color.rgb, tileCol, labels.a * labelBright);
         color.a = max(color.a, labels.a);

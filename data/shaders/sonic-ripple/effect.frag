@@ -222,7 +222,7 @@ vec4 renderZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor,
         nebColor = mix(nebColor, mix(primary, bassCol, 0.5) * 0.6, hue2 * 0.3);
         // Tint the core region with bass color when bass is strong
         if (hasAudio) {
-            nebColor = mix(nebColor, bassCol, exp(-r * 2.5) * bass * 0.7);
+            nebColor = mix(nebColor, bassCol, exp(-r * 2.5) * bass * 0.4);
         }
 
         // Brightness: always visible base + strong audio boost
