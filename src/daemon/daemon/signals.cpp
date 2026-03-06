@@ -92,11 +92,20 @@ void Daemon::initializeAutotile()
                     // Also track autotile origin so mode transitions can distinguish
                     // autotile-originated floats from manual snapping-mode floats.
                     if (m_windowTrackingAdaptor) {
-                        m_windowTrackingAdaptor->setWindowFloating(windowId, floating);
                         WindowTrackingService* wts = m_windowTrackingAdaptor->service();
                         if (floating) {
-                            wts->markAutotileFloated(windowId);
+                            // Only mark as autotile-floated if the window wasn't already
+                            // floating in WTS (i.e., from snap mode). When autotile activates,
+                            // insertWindow() detects WTS floating and re-emits this signal —
+                            // marking it autotileFloated would cause windowsReleasedFromTiling
+                            // to clear the manual snap-mode float on toggle-off.
+                            bool wasAlreadyFloating = wts->isWindowFloating(windowId);
+                            m_windowTrackingAdaptor->setWindowFloating(windowId, true);
+                            if (!wasAlreadyFloating) {
+                                wts->markAutotileFloated(windowId);
+                            }
                         } else {
+                            m_windowTrackingAdaptor->setWindowFloating(windowId, false);
                             wts->clearAutotileFloated(windowId);
                         }
                     }

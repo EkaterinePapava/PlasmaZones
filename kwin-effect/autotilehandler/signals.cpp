@@ -107,18 +107,11 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
                         {QPointer<KWin::EffectWindow>(w), QRect(l, t, std::max(0, r - l), std::max(0, b - t))});
                 }
             }
-            // Clear daemon-side pre-autotile geometries for this screen
-            if (m_effect->m_daemonServiceRegistered) {
-                for (KWin::EffectWindow* w : windows) {
-                    if (!w || !m_effect->shouldHandleWindow(w) || m_effect->getWindowScreenName(w) != screenName) {
-                        continue;
-                    }
-                    const QString windowId = m_effect->getWindowId(w);
-                    m_effect->fireAndForgetDBusCall(DBus::Interface::WindowTracking,
-                                                    QStringLiteral("clearPreTileGeometry"), {windowId},
-                                                    QStringLiteral("clearPreTileGeometry"));
-                }
-            }
+            // Clear the effect-local autotile geometry cache for this screen.
+            // Do NOT clear daemon-side pre-tile geometries — with unified storage,
+            // the daemon entry is the original pre-tile geometry that snap mode needs
+            // for float restore. Clearing it here would cause ensurePreSnapGeometryStored
+            // to re-store the tiled geometry when resnap fires.
             m_preAutotileGeometries.remove(screenName);
         }
         // Invalidate any pending stagger timers from prior autotile operations.

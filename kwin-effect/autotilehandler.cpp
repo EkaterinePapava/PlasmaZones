@@ -185,9 +185,13 @@ bool AutotileHandler::saveAndRecordPreAutotileGeometry(const QString& windowId, 
     screenGeometries[windowId] = frame;
     qCDebug(lcEffect) << "Saved pre-autotile geometry for" << windowId << "on" << screenName << ":" << frame;
     if (m_effect->m_daemonServiceRegistered) {
+        // Use overwrite=false so a pre-existing snap geometry is preserved when
+        // autotile activates on a screen with already-snapped windows. The effect-
+        // local cache (screenGeometries) already guards against redundant stores
+        // within an autotile session; overwrite=false prevents cross-mode clobbering.
         m_effect->fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("storePreTileGeometry"),
                                         {windowId, static_cast<int>(frame.x()), static_cast<int>(frame.y()),
-                                         static_cast<int>(frame.width()), static_cast<int>(frame.height()), true},
+                                         static_cast<int>(frame.width()), static_cast<int>(frame.height()), false},
                                         QStringLiteral("storePreTileGeometry"));
     }
     return true;

@@ -1569,24 +1569,17 @@ void PlasmaZonesEffect::slotToggleWindowFloatRequested(bool shouldFloat)
 
     // Store geometry BEFORE the daemon processes the toggle.
     // D-Bus calls on the same connection are processed in order.
+    // Both modes share the same logic now that storage is unified:
+    //   - Floating → unfloat: capture floating position (overwrite=true) so the
+    //     next float cycle restores to where the user left the window.
+    //   - Snapped/tiled → float: first-only (overwrite=false) to preserve the
+    //     original free-floating geometry. Don't overwrite with tiled geometry.
     QRectF frameGeo = activeWindow->frameGeometry();
-    if (m_autotileHandler->isAutotileScreen(screenName)) {
-        // Autotile: only capture floating geometry before unfloat so the next
-        // float cycle restores to the same floating position. Do NOT overwrite
-        // with tiled geometry — that would corrupt float restore.
-        if (isWindowFloating(windowId)) {
-            m_windowTrackingInterface->asyncCall(QStringLiteral("storePreTileGeometry"), windowId,
-                                                 static_cast<int>(frameGeo.x()), static_cast<int>(frameGeo.y()),
-                                                 static_cast<int>(frameGeo.width()),
-                                                 static_cast<int>(frameGeo.height()), true);
-        }
-    } else {
-        // Snapping: store pre-tile geometry (first-only guard via overwrite=false).
-        m_windowTrackingInterface->asyncCall(QStringLiteral("storePreTileGeometry"), windowId,
-                                             static_cast<int>(frameGeo.x()), static_cast<int>(frameGeo.y()),
-                                             static_cast<int>(frameGeo.width()), static_cast<int>(frameGeo.height()),
-                                             false);
-    }
+    const bool floating = isWindowFloating(windowId);
+    m_windowTrackingInterface->asyncCall(QStringLiteral("storePreTileGeometry"), windowId,
+                                         static_cast<int>(frameGeo.x()), static_cast<int>(frameGeo.y()),
+                                         static_cast<int>(frameGeo.width()), static_cast<int>(frameGeo.height()),
+                                         floating);
     m_windowTrackingInterface->asyncCall(QStringLiteral("toggleFloatForWindow"), windowId, screenName);
 }
 
