@@ -266,21 +266,31 @@ bool WindowAnimator::hasAnimation(KWin::EffectWindow* window) const
     return m_animations.contains(window);
 }
 
-bool WindowAnimator::startAnimation(KWin::EffectWindow* window, const QPointF& oldPosition, const QRect& targetGeometry)
+bool WindowAnimator::startAnimation(KWin::EffectWindow* window, const QPointF& oldPosition, const QSizeF& oldSize,
+                                    const QRect& targetGeometry)
 {
     if (!window || !m_enabled) {
         return false;
     }
 
+    // Skip degenerate targets
+    if (targetGeometry.width() <= 0 || targetGeometry.height() <= 0) {
+        return false;
+    }
+
     // Skip if position change is below the minimum distance threshold
+    // and size isn't changing either
     const QPointF newPos = targetGeometry.topLeft();
     const qreal dist = QLineF(oldPosition, newPos).length();
-    if (dist < qMax(1.0, qreal(m_minDistance))) {
+    const bool sizeChanging =
+        qAbs(oldSize.width() - targetGeometry.width()) > 1.0 || qAbs(oldSize.height() - targetGeometry.height()) > 1.0;
+    if (dist < qMax(1.0, qreal(m_minDistance)) && !sizeChanging) {
         return false;
     }
 
     WindowAnimation anim;
     anim.startPosition = oldPosition;
+    anim.startSize = oldSize;
     anim.targetGeometry = targetGeometry;
     anim.duration = m_duration;
     anim.easing = m_easing;
@@ -289,8 +299,9 @@ bool WindowAnimator::startAnimation(KWin::EffectWindow* window, const QPointF& o
 
     window->addRepaintFull();
 
-    qCDebug(lcEffect) << "Started slide animation from" << oldPosition << "to" << newPos << "distance:" << dist
-                      << "duration:" << m_duration << "easing:" << m_easing.toString();
+    qCDebug(lcEffect) << "Started animation from" << oldPosition << oldSize << "to" << newPos << targetGeometry.size()
+                      << "distance:" << dist << "scale:" << sizeChanging << "duration:" << m_duration
+                      << "easing:" << m_easing.toString();
     return true;
 }
 
@@ -320,6 +331,15 @@ QPointF WindowAnimator::currentVisualPosition(KWin::EffectWindow* window) const
         return window ? window->frameGeometry().topLeft() : QPointF();
     }
     return it->currentVisualPosition();
+}
+
+QSizeF WindowAnimator::currentVisualSize(KWin::EffectWindow* window) const
+{
+    auto it = m_animations.constFind(window);
+    if (it == m_animations.constEnd()) {
+        return window ? window->frameGeometry().size() : QSizeF();
+    }
+    return it->currentVisualSize();
 }
 
 void WindowAnimator::advanceAnimations()
@@ -377,6 +397,22 @@ void WindowAnimator::applyTransform(KWin::EffectWindow* window, KWin::WindowPain
     const QPointF desiredPos = it->currentVisualPosition();
     const QPointF actualPos = window->frameGeometry().topLeft();
     data += (desiredPos - actualPos);
+
+    // Scale: smoothly morph from old size to target size.
+    // moveResize() was already called, so frameGeometry is at the target.
+    // Scale converges to 1.0 at t=1, ensuring the final state uses the
+    // natural buffer with no transform. The visual invariant holds regardless
+    // of when the Wayland buffer actually resizes:
+    //   visual_size = frameGeometry.size * scale = desiredSize
+    if (it->hasScaleChange()) {
+        const QSizeF desiredSize = it->currentVisualSize();
+        const QSizeF actualSize = window->frameGeometry().size();
+        constexpr qreal MinDim = 1.0;
+        const qreal sx = qBound(0.1, desiredSize.width() / qMax(actualSize.width(), MinDim), 10.0);
+        const qreal sy = qBound(0.1, desiredSize.height() / qMax(actualSize.height(), MinDim), 10.0);
+        data.setXScale(data.xScale() * sx);
+        data.setYScale(data.yScale() * sy);
+    }
 }
 
 QRectF WindowAnimator::animationBounds(KWin::EffectWindow* window) const
@@ -393,10 +429,16 @@ QRectF WindowAnimator::animationBounds(KWin::EffectWindow* window) const
     // (SIGSEGV in KWin::Item::boundingRect).  Fall back to the stored target.
     QRectF expanded = (window && !window->isDeleted()) ? window->expandedGeometry() : QRectF(it->targetGeometry);
 
-    // The same visual footprint translated to the animation start position
-    const QPointF maxOffset(it->startPosition.x() - it->targetGeometry.x(),
-                            it->startPosition.y() - it->targetGeometry.y());
-    QRectF atStart = expanded.translated(maxOffset);
+    // Shadow/decoration padding (constant, independent of scale)
+    const QRectF frameGeo(it->targetGeometry);
+    const qreal padLeft = expanded.x() - frameGeo.x();
+    const qreal padTop = expanded.y() - frameGeo.y();
+    const qreal padRight = expanded.right() - frameGeo.right();
+    const qreal padBottom = expanded.bottom() - frameGeo.bottom();
+
+    // Visual footprint at animation start (t=0): old position + old size + padding
+    QRectF atStart(it->startPosition.x() + padLeft, it->startPosition.y() + padTop,
+                   it->startSize.width() - padLeft + padRight, it->startSize.height() - padTop + padBottom);
 
     QRectF bounds = expanded.united(atStart);
 
@@ -417,19 +459,21 @@ QRectF WindowAnimator::animationBounds(KWin::EffectWindow* window) const
             && (it->easing.y1 < 0.0 || it->easing.y1 > 1.0 || it->easing.y2 < 0.0 || it->easing.y2 > 1.0));
 
     if (needsSampling) {
-        qreal pMin = 0.0, pMax = 1.0;
+        // Position and size deltas
+        const qreal dx = it->startPosition.x() - it->targetGeometry.x();
+        const qreal dy = it->startPosition.y() - it->targetGeometry.y();
+        const qreal dw = it->startSize.width() - it->targetGeometry.width();
+        const qreal dh = it->startSize.height() - it->targetGeometry.height();
+
         constexpr int nSamples = 50;
         for (int i = 1; i < nSamples; ++i) {
             qreal p = it->easing.evaluate(qreal(i) / nSamples);
-            pMin = qMin(pMin, p);
-            pMax = qMax(pMax, p);
-        }
-        // Offset at eased value p: maxOffset * (1 - p)
-        if (pMax > 1.0) {
-            bounds = bounds.united(expanded.translated(maxOffset * (1.0 - pMax)));
-        }
-        if (pMin < 0.0) {
-            bounds = bounds.united(expanded.translated(maxOffset * (1.0 - pMin)));
+            // At eased value p, visual offset from target = delta * (1 - p)
+            const qreal inv = 1.0 - p;
+            QRectF sampledRect(it->targetGeometry.x() + dx * inv + padLeft, it->targetGeometry.y() + dy * inv + padTop,
+                               it->targetGeometry.width() + dw * inv - padLeft + padRight,
+                               it->targetGeometry.height() + dh * inv - padTop + padBottom);
+            bounds = bounds.united(sampledRect);
         }
     }
 

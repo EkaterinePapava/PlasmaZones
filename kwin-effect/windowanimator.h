@@ -8,6 +8,7 @@
 #include <QRect>
 #include <QRectF>
 #include <QPointF>
+#include <QSizeF>
 #include <QString>
 #include <QElapsedTimer>
 #include <QtMath>
@@ -87,16 +88,18 @@ private:
 };
 
 /**
- * @brief Animation data for translate-only window transitions
+ * @brief Animation data for window snap transitions (translate + scale)
  *
- * Stores the start position and target geometry for smooth slide animations.
+ * Stores the start position/size and target geometry for smooth animations.
  * The window's actual frame is moved to targetGeometry immediately via
- * moveResize(); this animation only provides a visual translation offset
- * that slides from the old position to the new. No scale transforms.
+ * moveResize(); this animation provides a visual translation offset and
+ * scale factor that morph from the old geometry to the new.
+ * Scale converges to 1.0, so the final state is always the natural buffer.
  */
 struct WindowAnimation
 {
     QPointF startPosition; ///< Visual top-left position before snap
+    QSizeF startSize; ///< Visual size before snap (for scale interpolation)
     QRect targetGeometry; ///< Target geometry (for duplicate detection)
     QElapsedTimer timer; ///< Timer for animation progress
     qreal duration = 150.0; ///< Animation duration in milliseconds
@@ -140,16 +143,34 @@ struct WindowAnimation
         return QPointF(startPosition.x() + (tx - startPosition.x()) * p,
                        startPosition.y() + (ty - startPosition.y()) * p);
     }
+
+    /// Interpolated visual size at the current animation progress.
+    /// At t=0 returns startSize; at t=1 returns targetGeometry.size().
+    QSizeF currentVisualSize() const
+    {
+        const qreal p = progress();
+        const qreal tw = targetGeometry.width();
+        const qreal th = targetGeometry.height();
+        return QSizeF(startSize.width() + (tw - startSize.width()) * p,
+                      startSize.height() + (th - startSize.height()) * p);
+    }
+
+    /// True if the animation involves a size change (not just position).
+    bool hasScaleChange() const
+    {
+        return qAbs(startSize.width() - targetGeometry.width()) > 1.0
+            || qAbs(startSize.height() - targetGeometry.height()) > 1.0;
+    }
 };
 
 /**
- * @brief Manages translate-only window slide animations
+ * @brief Manages window snap animations (translate + scale)
  *
  * When a window is snapped to a zone, the caller applies moveResize()
- * immediately to set the final geometry. This animator provides a visual
- * translation offset that slides the window from its old position to the
- * new one. No scale transforms are used, avoiding Wayland buffer desync
- * artifacts (flickering, zoom, size jumps).
+ * immediately to set the final geometry. This animator provides visual
+ * translation and scale transforms that morph the window from its old
+ * position/size to the new one. Scale converges to 1.0 at the end,
+ * so the client buffer is always rendered at its natural target size.
  */
 class WindowAnimator : public QObject
 {
@@ -198,7 +219,8 @@ public:
         return !m_animations.isEmpty();
     }
     bool hasAnimation(KWin::EffectWindow* window) const;
-    bool startAnimation(KWin::EffectWindow* window, const QPointF& oldPosition, const QRect& targetGeometry);
+    bool startAnimation(KWin::EffectWindow* window, const QPointF& oldPosition, const QSizeF& oldSize,
+                        const QRect& targetGeometry);
     void removeAnimation(KWin::EffectWindow* window);
     void clear();
 
@@ -209,14 +231,18 @@ public:
     /// Used to chain animations when redirecting to a new target mid-flight.
     QPointF currentVisualPosition(KWin::EffectWindow* window) const;
 
+    /// Current visual size (lerped between start and target).
+    /// Used to chain animations when redirecting to a new target mid-flight.
+    QSizeF currentVisualSize(KWin::EffectWindow* window) const;
+
     // Per-frame: clean up completed animations. Called from prePaintScreen().
     void advanceAnimations();
 
     // Schedule targeted repaints for active animation regions. Called from postPaintScreen().
     void scheduleRepaints() const;
 
-    // Paint helper — applies translate-only offset (no scale transforms).
-    // The window visually slides from startPosition to its real frame position.
+    // Paint helper — applies translate offset and optional scale transform.
+    // The window visually morphs from startPosition/startSize to its final geometry.
     void applyTransform(KWin::EffectWindow* window, KWin::WindowPaintData& data) const;
 
     // Bounding rect covering the full animation path (for repaint regions)

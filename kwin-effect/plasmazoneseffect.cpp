@@ -2189,21 +2189,24 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
         return;
     }
 
-    // Translate-only animation: moveResize to the final geometry immediately,
-    // then slide the window visually from the old position to the new one.
-    // No scale transforms — avoids Wayland buffer desync (flickering, zoom,
-    // size jumps) since the client buffer is always rendered at its natural size.
+    // Animation: moveResize to the final geometry immediately, then morph
+    // the window visually from its old position/size to the new one using
+    // translate + scale. Scale converges to 1.0, so the final state uses
+    // the natural buffer with no transform applied.
     QPointF animStartPos;
+    QSizeF animStartSize;
     if (!skipAnimation && !allowDuringDrag && m_windowAnimator->isEnabled()) {
         if (m_windowAnimator->hasAnimation(window)) {
             if (m_windowAnimator->isAnimatingToTarget(window, geo)) {
-                return; // Already sliding to this target
+                return; // Already animating to this target
             }
-            // Capture current visual position before changing anything
+            // Capture current visual state before changing anything (mid-flight redirect)
             animStartPos = m_windowAnimator->currentVisualPosition(window);
+            animStartSize = m_windowAnimator->currentVisualSize(window);
             m_windowAnimator->removeAnimation(window);
         } else {
             animStartPos = oldFrame.topLeft();
+            animStartSize = oldFrame.size();
         }
 
         // Apply final geometry immediately — client starts re-rendering at new size
@@ -2212,8 +2215,8 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
             kw->moveResize(QRectF(geo));
         }
 
-        // Start slide animation from old visual position to new position
-        m_windowAnimator->startAnimation(window, animStartPos, geo);
+        // Start animation from old visual state to new geometry
+        m_windowAnimator->startAnimation(window, animStartPos, animStartSize, geo);
 
         repaintSnapRegions(window, oldFrame, geo);
         return;
