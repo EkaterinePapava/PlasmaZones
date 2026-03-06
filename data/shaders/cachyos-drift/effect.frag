@@ -379,6 +379,9 @@ vec4 renderCachyZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
     float logoSizeMin   = customParams[6].y >= 0.0 ? customParams[6].y : 0.4;
     float logoSizeMax   = customParams[6].z >= 0.0 ? customParams[6].z : 1.0;
 
+    float flowCenterX   = customParams[6].w >= 0.0 ? customParams[6].w : 0.4;
+    float flowCenterY   = customParams[7].x >= 0.0 ? customParams[7].x : 0.5;
+
     vec2 rectPos = zoneRectPos(rect);
     vec2 rectSize = zoneRectSize(rect);
     vec2 center = rectPos + rectSize * 0.5;
@@ -423,24 +426,45 @@ vec4 renderCachyZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
         //   treble → grid catches light
         float audioColorShift = midsEnv * 0.15;
 
-        vec2 toLogo = LOGO_CENTER * noiseScale - centeredUV;
+        vec2 flowCenter = (vec2(flowCenterX, flowCenterY) * 2.0 - 1.0) * noiseScale;
+        flowCenter.x *= aspect;
+        vec2 toLogo = flowCenter - centeredUV;
         float pullStrength = 0.15 / (length(toLogo) + 0.1);
         vec2 flowUV = centeredUV + (flowDir * flowSpeed + normalize(toLogo + 0.001) * pullStrength) * time;
 
         float q = fbm(flowUV + time * speed, octaves, fbmRot);
         float r = fbm(flowUV + q * 1.5 + time * speed * 0.7, octaves, fbmRot);
 
-        // Bass widens veins (organic throb) rather than brightening them
-        float veinNoise = fbm(centeredUV * 1.3 + flowDir * time * flowSpeed * 0.5, max(octaves - 2, 3), fbmRot);
+        // Audio-reactive veins with domain warping
+        vec2 veinUV = centeredUV * 1.3 + flowDir * time * flowSpeed * 0.5;
+
+        // Domain warp: bass makes veins slither, mids add slower undulation
+        float warpStr = 0.08 + bassEnv * 0.25 + midsEnv * 0.12;
+        float wn1 = noise(veinUV * 1.8 + time * 0.6);
+        float wn2 = noise(veinUV * 1.8 + time * 0.6 + vec2(97.0, 53.0));
+        veinUV += (vec2(wn1, wn2) - 0.5) * warpStr;
+
+        // Second warp layer driven by treble — fast jittery distortion
+        float trebleWarp = trebleEnv * 0.1;
+        if (trebleWarp > 0.005) {
+            float tw1 = noise(veinUV * 4.0 + time * 3.0);
+            float tw2 = noise(veinUV * 4.0 + time * 3.0 + vec2(41.0, 73.0));
+            veinUV += (vec2(tw1, tw2) - 0.5) * trebleWarp;
+        }
+
+        float veinNoise = fbm(veinUV, max(octaves - 2, 3), fbmRot);
         float veinWidth = 0.03 + bassEnv * 0.02;
         float veins = smoothstep(veinWidth, 0.0, abs(veinNoise - 0.5)) * 0.35;
+
+        // Vein brightness pulse along their length on bass hits
+        float veinPulse = 1.0 + bassEnv * 0.4 * sin(veinNoise * 12.0 - time * 4.0);
 
         float colorT = r * contrast + audioColorShift;
         vec3 col = cachyPalette(colorT, palPrimary, palSecondary, palAccent);
         col *= brightness * 0.55;
 
         vec3 veinCol = cachyPalette(colorT + 0.2 + audioColorShift, palAccent, palGlow, palPrimary);
-        col += veinCol * veins;
+        col += veinCol * veins * veinPulse;
 
         vec3 grid = facetGrid(centeredUV + time * speed * 0.3, gridScale);
         float edgeLine = smoothstep(0.05, 0.0, grid.x * 0.5);
