@@ -167,14 +167,15 @@ void WindowTrackingService::storePreSnapGeometry(const QString& windowId, const 
     if (geometry.isValid()) {
         m_preSnapGeometries[windowId] = geometry;
 
-        // Memory cleanup: limit pre-snap geometry cache to prevent unbounded growth
-        // Keep max 100 entries, removing an arbitrary entry when exceeded
+        // Memory cleanup: limit pre-snap geometry cache to prevent unbounded growth.
+        // Skip eviction of just-inserted key to avoid invalidating the entry we just stored.
         static constexpr int MaxPreSnapGeometries = 100;
         if (m_preSnapGeometries.size() > MaxPreSnapGeometries) {
-            // Remove an arbitrary entry (QHash iteration order is unspecified)
-            auto it = m_preSnapGeometries.begin();
-            if (it != m_preSnapGeometries.end()) {
-                m_preSnapGeometries.erase(it);
+            for (auto it = m_preSnapGeometries.begin(); it != m_preSnapGeometries.end(); ++it) {
+                if (it.key() != windowId) {
+                    m_preSnapGeometries.erase(it);
+                    break;
+                }
             }
         }
 
@@ -254,6 +255,19 @@ void WindowTrackingService::storePreAutotileGeometry(const QString& windowId, co
     if (appId != windowId) {
         m_preAutotileGeometries[appId] = geometry;
     }
+
+    // Memory cleanup: limit pre-autotile geometry cache to prevent unbounded growth.
+    // Skip eviction of just-inserted keys to avoid invalidating the entry we just stored.
+    static constexpr int MaxPreAutotileGeometries = 100;
+    if (m_preAutotileGeometries.size() > MaxPreAutotileGeometries) {
+        for (auto it = m_preAutotileGeometries.begin(); it != m_preAutotileGeometries.end(); ++it) {
+            if (it.key() != windowId && it.key() != appId) {
+                m_preAutotileGeometries.erase(it);
+                break;
+            }
+        }
+    }
+
     scheduleSaveState();
 }
 

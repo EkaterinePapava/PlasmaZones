@@ -337,45 +337,8 @@ void AutotileHandler::onDaemonReady()
     m_pendingCloses.clear();
 }
 
-bool AutotileHandler::handleAutotileFloatToggle(KWin::EffectWindow* activeWindow, const QString& windowId,
-                                                const QString& screenName)
-{
-    // Check whether the window has pre-autotile geometry on ANY screen
-    bool isAutotileWindow = false;
-    for (auto it = m_preAutotileGeometries.constBegin(); it != m_preAutotileGeometries.constEnd(); ++it) {
-        if (hasSavedGeometryForWindow(it.value(), windowId)) {
-            isAutotileWindow = true;
-            break;
-        }
-    }
-    if (!isAutotileWindow) {
-        return false;
-    }
-
-    // If the window is currently floating, capture its geometry now before
-    // the D-Bus call. The engine's retile emits windowsTileRequested before
-    // windowFloatingChanged on D-Bus, so reading frameGeometry in the unfloat
-    // handler would yield the already-tiled geometry, not the floating position.
-    if (m_effect->isWindowFloating(windowId)) {
-        const QRectF frame = activeWindow->frameGeometry();
-        if (frame.isValid() && frame.width() > 0 && frame.height() > 0) {
-            auto& screenGeometries = m_preAutotileGeometries[screenName];
-            const QString savedKey = findSavedGeometryKey(screenGeometries, windowId);
-            const QString key = savedKey.isEmpty() ? windowId : savedKey;
-            screenGeometries[key] = frame;
-            qCDebug(lcEffect) << "Pre-saved floating geometry before unfloat:" << windowId << frame;
-            if (m_effect->ensureWindowTrackingReady("pre-save floating geometry")
-                && m_effect->m_windowTrackingInterface) {
-                m_effect->m_windowTrackingInterface->asyncCall(
-                    QStringLiteral("recordPreAutotileGeometry"), windowId, screenName, static_cast<int>(frame.x()),
-                    static_cast<int>(frame.y()), static_cast<int>(frame.width()), static_cast<int>(frame.height()));
-            }
-        }
-    }
-    m_effect->fireAndForgetDBusCall(DBus::Interface::Autotile, QStringLiteral("toggleWindowFloat"),
-                                    {windowId, screenName}, QStringLiteral("toggleWindowFloat"));
-    return true;
-}
+// handleAutotileFloatToggle removed: float toggle is now routed through
+// the unified WTA toggleFloatForWindow method via slotToggleWindowFloatRequested.
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // D-Bus signal connections and settings

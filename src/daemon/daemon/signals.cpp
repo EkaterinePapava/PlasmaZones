@@ -418,7 +418,7 @@ void Daemon::connectOverlaySignals()
                    const QString& targetZoneId, const QString& screenName) {
                 // Suppress resnap OSD when triggered by a mode/layout change
                 // (layout switch OSD already provides feedback)
-                if (m_suppressResnapOsd && action == QStringLiteral("resnap")) {
+                if (m_suppressResnapOsd && (action == QStringLiteral("resnap") || action == QStringLiteral("retile"))) {
                     m_suppressResnapOsd = false;
                     return;
                 }

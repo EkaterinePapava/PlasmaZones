@@ -203,27 +203,8 @@ public Q_SLOTS:
      */
     void unfloatWindow(const QString& windowId);
 
-    /**
-     * @brief Toggle floating state of the focused window
-     *
-     * Called by KWin effect shortcut on autotile screens. Delegates to
-     * AutotileEngine::toggleFocusedWindowFloat() which emits
-     * windowFloatingChanged.
-     *
-     * @note Prefer toggleWindowFloat() which takes explicit IDs.
-     */
-    void toggleFocusedWindowFloat();
-
-    /**
-     * @brief Toggle floating state of a specific window
-     *
-     * Bypasses internal focus tracking by using caller-supplied IDs.
-     * Preferred over toggleFocusedWindowFloat() to avoid desync issues.
-     *
-     * @param windowId Window identifier from KWin
-     * @param screenName Screen where the window is located
-     */
-    void toggleWindowFloat(const QString& windowId, const QString& screenName);
+    // toggleFocusedWindowFloat and toggleWindowFloat removed: float toggle
+    // is now routed through the unified WTA toggleFloatForWindow method.
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Ratio/Count Adjustment

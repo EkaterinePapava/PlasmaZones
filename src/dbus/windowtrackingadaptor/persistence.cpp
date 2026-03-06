@@ -125,8 +125,7 @@ bool WindowTrackingAdaptor::getValidatedPreSnapGeometry(const QString& windowId,
     }
 
     // Delegate to service (checks pre-snap first, then pre-autotile).
-    // Used by manual float (toggleFloatForWindow) and restoreWindowSize — NOT autotile float
-    // (which uses applyGeometryForFloat with the opposite priority).
+    // Used by restoreWindowSize and manual float geometry lookup.
     auto geo = m_service->validatedPreSnapOrAutotileGeometry(windowId);
     if (!geo) {
         return false;

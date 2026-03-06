@@ -46,18 +46,6 @@ public:
     void onWindowClosed(const QString& windowId, const QString& screenName);
     void onDaemonReady();
 
-    /**
-     * @brief Handle float toggle for autotile-managed windows.
-     *
-     * Checks whether the window has pre-autotile geometry (i.e., is managed
-     * by the autotile engine). If so, performs the autotile-specific pre-save
-     * and D-Bus call.
-     *
-     * @return true if handled (caller should return), false if not an autotile window
-     */
-    bool handleAutotileFloatToggle(KWin::EffectWindow* activeWindow, const QString& windowId,
-                                   const QString& screenName);
-
     // D-Bus signal connections and settings
     void connectSignals();
     void loadSettings();

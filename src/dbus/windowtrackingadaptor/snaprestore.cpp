@@ -105,6 +105,15 @@ void WindowTrackingAdaptor::resolveWindowRestore(const QString& windowId, const 
         return;
     }
 
+    // 0. Floating windows should not be auto-snapped — show OSD so the user
+    //    knows the window is floating (same feedback as autotile mode).
+    if (m_service->isWindowFloating(windowId)) {
+        qCInfo(lcDbusWindow) << "resolveWindowRestore: window" << windowId << "is floating — skipping snap";
+        Q_EMIT navigationFeedback(true, QStringLiteral("float"), QStringLiteral("floated"), QString(), QString(),
+                                  screenName);
+        return;
+    }
+
     // 1. App rules (highest priority)
     {
         SnapResult result = m_service->calculateSnapToAppRule(windowId, screenName, sticky);
@@ -194,7 +203,7 @@ void WindowTrackingAdaptor::applySnapResult(const SnapResult& result, const QStr
     shouldSnap = true;
 
     m_service->markAsAutoSnapped(windowId);
-    clearFloatingStateForSnap(windowId);
+    clearFloatingStateForSnap(windowId, result.screenName);
 
     int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
     if (result.zoneIds.size() > 1) {

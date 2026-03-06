@@ -39,12 +39,10 @@ void Daemon::handleRotate(bool clockwise)
 
 void Daemon::handleFloat()
 {
-    // Always delegate to WTA → effect → correct handler.
-    // The effect knows the actual KWin active window and its screen, avoiding
-    // focus-tracking desync in the autotile engine's toggleFocusedWindowFloat().
-    // For autotile screens, the effect routes to AutotileAdaptor::toggleWindowFloat()
-    // with explicit windowId + screenName. For non-autotile, it routes to
-    // WTA::toggleFloatForWindow().
+    // Delegate to WTA → effect → unified toggleFloatForWindow.
+    // The effect resolves the active KWin window + screen, stores both pre-snap
+    // and pre-autotile geometry, then calls toggleFloatForWindow which the daemon
+    // routes internally to snapping toggle or autotile engine based on screen mode.
     if (!m_windowTrackingAdaptor) {
         return;
     }

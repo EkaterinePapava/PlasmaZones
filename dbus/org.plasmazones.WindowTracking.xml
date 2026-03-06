@@ -454,6 +454,9 @@
             <arg name="isFloating" type="b">
                 <annotation name="org.gtk.GDBus.DocString" value="New floating state."/>
             </arg>
+            <arg name="screenName" type="s">
+                <annotation name="org.gtk.GDBus.DocString" value="Screen where the window is located."/>
+            </arg>
         </signal>
 
         <method name="toggleFloatForWindow">

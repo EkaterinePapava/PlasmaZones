@@ -103,7 +103,7 @@ void WindowTrackingAdaptor::windowSnapped(const QString& windowId, const QString
         return;
     }
 
-    clearFloatingStateForSnap(windowId);
+    clearFloatingStateForSnap(windowId, screenName);
 
     // Check if this was an auto-snap (restore from session or snap to last zone)
     // and clear the flag. Auto-snapped windows don't update last-used zone tracking.
@@ -146,7 +146,7 @@ void WindowTrackingAdaptor::windowSnappedMultiZone(const QString& windowId, cons
         return;
     }
 
-    clearFloatingStateForSnap(windowId);
+    clearFloatingStateForSnap(windowId, screenName);
 
     bool wasAutoSnapped = m_service->clearAutoSnapped(windowId);
 

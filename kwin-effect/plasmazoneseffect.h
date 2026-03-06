@@ -103,7 +103,7 @@ private Q_SLOTS:
     void slotSnapAllWindowsRequested(const QString& screenName);
     void slotCycleWindowsInZoneRequested(const QString& directive, const QString& unused);
     void slotPendingRestoresAvailable();
-    void slotWindowFloatingChanged(const QString& windowId, bool isFloating);
+    void slotWindowFloatingChanged(const QString& windowId, bool isFloating, const QString& screenName);
     void slotRunningWindowsRequested();
     void slotRestoreSizeDuringDrag(const QString& windowId, int width, int height);
     void slotMoveSpecificWindowToZoneRequested(const QString& windowId, const QString& zoneId,

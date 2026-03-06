@@ -13,6 +13,7 @@
 #include <QRect>
 #include <QSet>
 #include <QTimer>
+#include <functional>
 
 namespace PlasmaZones {
 
@@ -70,6 +71,23 @@ public:
     void setZoneDetectionAdaptor(ZoneDetectionAdaptor* adaptor)
     {
         m_zoneDetectionAdaptor = adaptor;
+    }
+
+    /**
+     * @brief Set callbacks for routing float toggle to autotile engine
+     *
+     * When set, toggleFloatForWindow will check isAutotileScreen and, if true,
+     * delegate to the autotile engine's toggleWindowFloat instead of the
+     * snapping-mode toggle logic.
+     *
+     * @param isAutotileScreen Returns true if the screen uses autotile mode
+     * @param autotileToggleFloat Calls AutotileEngine::toggleWindowFloat(windowId, screenName)
+     */
+    void setAutotileFloatCallbacks(std::function<bool(const QString&)> isAutotileScreen,
+                                   std::function<void(const QString&, const QString&)> autotileToggleFloat)
+    {
+        m_isAutotileScreen = std::move(isAutotileScreen);
+        m_autotileToggleFloat = std::move(autotileToggleFloat);
     }
 
     /**
@@ -636,7 +654,7 @@ Q_SIGNALS:
      * @param windowId Window identifier (stable ID portion)
      * @param isFloating The new floating state
      */
-    void windowFloatingChanged(const QString& windowId, bool isFloating);
+    void windowFloatingChanged(const QString& windowId, bool isFloating, const QString& screenName);
 
     /**
      * @brief Emitted when pending window restores become available
@@ -871,8 +889,9 @@ private:
     /**
      * @brief Clear floating state when a window is being snapped
      * @param windowId Window ID being snapped
+     * @param screenName Screen where the snap is occurring (for windowFloatingChanged signal)
      */
-    void clearFloatingStateForSnap(const QString& windowId);
+    void clearFloatingStateForSnap(const QString& windowId, const QString& screenName);
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // Screen tracking (from KWin effect's D-Bus calls)
@@ -887,6 +906,10 @@ private:
     LayoutManager* m_layoutManager;
     ISettings* m_settings;
     VirtualDesktopManager* m_virtualDesktopManager;
+
+    // Autotile routing callbacks (set by daemon after AutotileEngine is created)
+    std::function<bool(const QString&)> m_isAutotileScreen;
+    std::function<void(const QString&, const QString&)> m_autotileToggleFloat;
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // Business logic service

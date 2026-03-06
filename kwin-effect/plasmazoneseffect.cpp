@@ -1414,7 +1414,7 @@ void PlasmaZonesEffect::connectNavigationSignals()
     // Connect to floating state changes to keep local cache in sync
     QDBusConnection::sessionBus().connect(DBus::ServiceName, DBus::ObjectPath, DBus::Interface::WindowTracking,
                                           QStringLiteral("windowFloatingChanged"), this,
-                                          SLOT(slotWindowFloatingChanged(QString, bool)));
+                                          SLOT(slotWindowFloatingChanged(QString, bool, QString)));
 
     QDBusConnection::sessionBus().connect(DBus::ServiceName, DBus::ObjectPath, DBus::Interface::WindowTracking,
                                           QStringLiteral("applyGeometryRequested"), this,
@@ -1559,24 +1559,29 @@ void PlasmaZonesEffect::slotToggleWindowFloatRequested(bool shouldFloat)
     QString windowId = getWindowId(activeWindow);
     QString screenName = getWindowScreenName(activeWindow);
 
-    // Route to the autotile engine if this window is autotile-managed
-    if (m_autotileHandler->handleAutotileFloatToggle(activeWindow, windowId, screenName)) {
-        return;
-    }
-
     if (!ensureWindowTrackingReady("toggle float")) {
         return;
     }
-    // Store the window's current geometry as pre-snap BEFORE the daemon processes the toggle.
-    // If the daemon decides to unfloat (snap to zone), this ensures the floating position is
-    // preserved as pre-snap for the next float toggle (float->unfloat->float cycle).
-    // If the daemon decides to float instead, it clears pre-snap anyway, so this is harmless.
-    // D-Bus calls on the same connection are processed in order, so storePreSnapGeometry
-    // completes before toggleFloatForWindow.
+
+    // Store mode-appropriate geometry BEFORE the daemon processes the toggle.
+    // D-Bus calls on the same connection are processed in order.
     QRectF frameGeo = activeWindow->frameGeometry();
-    m_windowTrackingInterface->asyncCall(QStringLiteral("storePreSnapGeometry"), windowId,
-                                         static_cast<int>(frameGeo.x()), static_cast<int>(frameGeo.y()),
-                                         static_cast<int>(frameGeo.width()), static_cast<int>(frameGeo.height()));
+    if (m_autotileHandler->isAutotileScreen(screenName)) {
+        // Autotile: only capture floating geometry before unfloat so the next
+        // float cycle restores to the same floating position. Do NOT overwrite
+        // pre-autotile with tiled geometry — that would corrupt float restore.
+        if (isWindowFloating(windowId)) {
+            m_windowTrackingInterface->asyncCall(QStringLiteral("recordPreAutotileGeometry"), windowId, screenName,
+                                                 static_cast<int>(frameGeo.x()), static_cast<int>(frameGeo.y()),
+                                                 static_cast<int>(frameGeo.width()),
+                                                 static_cast<int>(frameGeo.height()));
+        }
+    } else {
+        // Snapping: store pre-snap geometry (has "first only" guard in daemon).
+        m_windowTrackingInterface->asyncCall(QStringLiteral("storePreSnapGeometry"), windowId,
+                                             static_cast<int>(frameGeo.x()), static_cast<int>(frameGeo.y()),
+                                             static_cast<int>(frameGeo.width()), static_cast<int>(frameGeo.height()));
+    }
     m_windowTrackingInterface->asyncCall(QStringLiteral("toggleFloatForWindow"), windowId, screenName);
 }
 
@@ -1780,8 +1785,9 @@ void PlasmaZonesEffect::slotPendingRestoresAvailable()
     });
 }
 
-void PlasmaZonesEffect::slotWindowFloatingChanged(const QString& windowId, bool isFloating)
+void PlasmaZonesEffect::slotWindowFloatingChanged(const QString& windowId, bool isFloating, const QString& screenName)
 {
+    Q_UNUSED(screenName)
     // Update local floating cache when daemon notifies us of state changes
     // This keeps the effect's cache in sync with the daemon, preventing
     // inverted toggle behavior when a floating window is drag-snapped.

@@ -142,8 +142,10 @@ void WindowTrackingAdaptor::setWindowFloating(const QString& windowId, bool floa
     // Delegate to service
     m_service->setWindowFloating(windowId, floating);
     qCInfo(lcDbusWindow) << "Window" << windowId << "is now" << (floating ? "floating" : "not floating");
-    // Notify effect so it can update its local cache (use full windowId for per-instance tracking)
-    Q_EMIT windowFloatingChanged(windowId, floating);
+    // Notify effect so it can update its local cache (use full windowId for per-instance tracking).
+    // Use the window's tracked screen if available, otherwise fall back to last active screen.
+    QString screen = m_service->screenAssignments().value(windowId, m_lastActiveScreenName);
+    Q_EMIT windowFloatingChanged(windowId, floating, screen);
 }
 
 QStringList WindowTrackingAdaptor::getFloatingWindows()
@@ -159,6 +161,13 @@ void WindowTrackingAdaptor::toggleFloatForWindow(const QString& windowId, const 
     if (!validateWindowId(windowId, QStringLiteral("toggle float"))) {
         Q_EMIT navigationFeedback(false, QStringLiteral("float"), QStringLiteral("invalid_window"), QString(),
                                   QString(), screenName);
+        return;
+    }
+
+    // Route to autotile engine if this screen uses autotile mode
+    if (m_isAutotileScreen && m_autotileToggleFloat && m_isAutotileScreen(screenName)) {
+        qCInfo(lcDbusWindow) << "toggleFloatForWindow: routing to autotile engine for screen" << screenName;
+        m_autotileToggleFloat(windowId, screenName);
         return;
     }
 
@@ -211,30 +220,20 @@ void WindowTrackingAdaptor::toggleFloatForWindow(const QString& windowId, const 
             m_service->assignWindowToZone(windowId, zoneIds.first(), restoreScreen, currentDesktop);
         }
 
-        Q_EMIT windowFloatingChanged(windowId, false);
+        Q_EMIT windowFloatingChanged(windowId, false, restoreScreen);
         Q_EMIT applyGeometryRequested(windowId, rectToJson(geo), QString(), restoreScreen);
         Q_EMIT navigationFeedback(true, QStringLiteral("float"), QStringLiteral("unfloated"), QString(), QString(),
                                   restoreScreen);
     } else {
-        // Float (manual path): restore to pre-snap geometry (prefers pre-snap over
-        // pre-autotile — opposite of applyGeometryForFloat which is the autotile path).
-        int x, y, w, h;
-        if (!getValidatedPreSnapGeometry(windowId, x, y, w, h) || w <= 0 || h <= 0) {
-            // Snapped but no pre-snap geometry — still mark as floating, no geometry restore
-            m_service->unsnapForFloat(windowId);
-            m_service->setWindowFloating(windowId, true);
-            Q_EMIT windowFloatingChanged(windowId, true);
-            Q_EMIT navigationFeedback(true, QStringLiteral("float"), QStringLiteral("floated"), QString(), QString(),
-                                      screenName);
-            return;
-        }
+        // Float: unsnap and restore to original geometry.
+        // Uses the same priority as autotile float (pre-snap → pre-autotile)
+        // via applyGeometryForFloat(). Do NOT clear pre-snap geometry — it
+        // must survive float/unfloat cycles so every float restores to the
+        // same original position (matching autotile behavior).
         m_service->unsnapForFloat(windowId);
         m_service->setWindowFloating(windowId, true);
-        m_service->clearPreSnapGeometry(windowId);
-        // NOTE: Do NOT clear pre-autotile geometry — see applyGeometryForFloat comment.
-        QRect geo(x, y, w, h);
-        Q_EMIT applyGeometryRequested(windowId, rectToJson(geo), QString(), screenName);
-        Q_EMIT windowFloatingChanged(windowId, true);
+        Q_EMIT windowFloatingChanged(windowId, true, screenName);
+        applyGeometryForFloat(windowId, screenName);
         Q_EMIT navigationFeedback(true, QStringLiteral("float"), QStringLiteral("floated"), QString(), QString(),
                                   screenName);
     }
@@ -267,13 +266,13 @@ bool WindowTrackingAdaptor::applyGeometryForFloat(const QString& windowId, const
     return false;
 }
 
-void WindowTrackingAdaptor::clearFloatingStateForSnap(const QString& windowId)
+void WindowTrackingAdaptor::clearFloatingStateForSnap(const QString& windowId, const QString& screenName)
 {
     if (m_service->isWindowFloating(windowId)) {
         qCDebug(lcDbusWindow) << "Window" << windowId << "was floating, clearing floating state for snap";
         m_service->setWindowFloating(windowId, false);
         m_service->clearPreFloatZone(windowId);
-        Q_EMIT windowFloatingChanged(windowId, false);
+        Q_EMIT windowFloatingChanged(windowId, false, screenName);
     }
 }
 

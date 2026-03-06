@@ -269,18 +269,7 @@
             </arg>
         </method>
 
-        <method name="toggleFocusedWindowFloat">
-            <annotation name="org.gtk.GDBus.DocString" value="Toggle floating state of the focused window. Called by KWin effect shortcut on autotile screens. Prefer toggleWindowFloat() which takes explicit IDs."/>
-        </method>
-
-        <method name="toggleWindowFloat">
-            <annotation name="org.gtk.GDBus.DocString" value="Toggle floating state of a specific window. Bypasses internal focus tracking by using caller-supplied IDs. Preferred over toggleFocusedWindowFloat() to avoid desync issues."/>
-            <arg name="windowId" type="s" direction="in">
-                <annotation name="org.gtk.GDBus.DocString" value="Window ID to toggle floating state."/>
-            </arg>
-            <arg name="screenName" type="s" direction="in">
-                <annotation name="org.gtk.GDBus.DocString" value="Screen where the window is located."/>
-            </arg>
-        </method>
+        <!-- toggleFocusedWindowFloat and toggleWindowFloat removed: float toggle
+             is now routed through the unified WTA toggleFloatForWindow method -->
     </interface>
 </node>

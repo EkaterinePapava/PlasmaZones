@@ -303,6 +303,16 @@ bool Daemon::init()
     // autotile checks (overlay suppression and snap rejection on autotile screens)
     m_windowDragAdaptor->setAutotileEngine(m_autotileEngine.get());
 
+    // Give WTA autotile routing callbacks so toggleFloatForWindow can route to
+    // the autotile engine when the window is on an autotile screen
+    m_windowTrackingAdaptor->setAutotileFloatCallbacks(
+        [this](const QString& screenName) {
+            return m_autotileEngine->isAutotileScreen(screenName);
+        },
+        [this](const QString& windowId, const QString& screenName) {
+            m_autotileEngine->toggleWindowFloat(windowId, screenName);
+        });
+
     // Create autotile D-Bus adaptor
     m_autotileAdaptor = new AutotileAdaptor(m_autotileEngine.get(), this);
 
@@ -448,6 +458,11 @@ void Daemon::stop()
     // Null the WindowDragAdaptor's engine pointer for the same reason.
     if (m_windowDragAdaptor) {
         m_windowDragAdaptor->setAutotileEngine(nullptr);
+    }
+
+    // Clear the WTA's autotile routing callbacks (they capture m_autotileEngine).
+    if (m_windowTrackingAdaptor) {
+        m_windowTrackingAdaptor->setAutotileFloatCallbacks(nullptr, nullptr);
     }
 
     // Destroy the engine now (during stop(), before Qt child destruction order).
