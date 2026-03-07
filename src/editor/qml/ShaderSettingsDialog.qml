@@ -7,7 +7,6 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import org.plasmazones.common 1.0
 
 /**
  * @brief Shader settings dialog
@@ -20,7 +19,6 @@ Kirigami.Dialog {
     id: root
 
     required property var editorController
-    property var editorWindow: null
     // ═══════════════════════════════════════════════════════════════════════
     // CONSTANTS
     // ═══════════════════════════════════════════════════════════════════════
@@ -84,46 +82,102 @@ Kirigami.Dialog {
     }
     // Computed property: parameters grouped by their "group" field
     readonly property var parameterGroups: buildParameterGroups(shaderParams)
-    // Hide overlay when editor loses focus (alt-tab, another app, native dialogs);
-    // restore when editor becomes active again. Only applies while dialog is open.
+    // Pause/resume local preview animation when app loses/gains focus
     readonly property bool appActive: Qt.application.state === Qt.ApplicationActive
+    // Local shader preview — static config rebuilt on shader/params/zones change
+    property var previewShaderConfig: null
+    // {bufferShaderPaths, bufferFeedback, bufferScale, bufferWrap, useWallpaper, zones, shaderParams} (shaderSource set imperatively)
+    // Cached shader metadata (static per shader — avoid D-Bus call on every param change)
+    property var cachedShaderInfoForPreview: null
+    property string cachedShaderInfoId: ""
+    // Animation state for local preview (bound directly, not via config object)
+    property real previewITime: 0
+    property real previewLastTime: 0
+    property real previewTimeDelta: 0.016
+    property int previewFrame: 0
 
-    // Centralize overlay visibility to avoid duplication and ensure consistent behavior
     function hideShaderPreview() {
+        previewAnimationTimer.stop();
+        previewShaderConfig = null;
+        shaderPreview.shaderSource = "";
         if (editorController)
-            editorController.hideShaderPreviewOverlay();
+            editorController.stopAudioCapture();
 
     }
 
-    function restoreShaderPreview() {
-        Qt.callLater(root.updateDaemonShaderPreview);
-    }
-
-    // Update daemon overlay when params/shader change or layout settles
-    function updateDaemonShaderPreview() {
+    // Build local preview config from shader info + translated params + zones
+    function updateLocalShaderPreview() {
         if (!previewAllowed) {
             root.hideShaderPreview();
             return ;
         }
-        if (!editorController || !editorWindow || !root.hasShaderEffect || root.pendingShaderId === root.noneShaderId) {
+        if (!editorController || !root.hasShaderEffect || root.pendingShaderId === root.noneShaderId) {
             root.hideShaderPreview();
             return ;
         }
         if (!previewContainer.visible || previewBackground.width <= 0 || previewBackground.height <= 0)
             return ;
 
-        var pt = previewBackground.mapToItem(editorWindow.contentItem, 0, 0);
-        var gx = Math.round(editorWindow.x + pt.x);
-        var gy = Math.round(editorWindow.y + pt.y);
         var w = Math.max(1, Math.floor(previewBackground.width));
         var h = Math.max(1, Math.floor(previewBackground.height));
         var zones = editorController.zonesForShaderPreview(w, h);
         var params = editorController.translateShaderParams(root.pendingShaderId, root.pendingParams || {
         });
-        var zonesJson = JSON.stringify(zones);
-        var paramsJson = JSON.stringify(params);
-        var screenName = "";
-        editorController.showShaderPreviewOverlay(gx, gy, w, h, screenName, root.pendingShaderId, paramsJson, zonesJson);
+        // Cache shader metadata per shader ID (avoids D-Bus call on every param change)
+        if (root.cachedShaderInfoId !== root.pendingShaderId) {
+            root.cachedShaderInfoForPreview = editorController.getShaderInfo(root.pendingShaderId);
+            root.cachedShaderInfoId = root.pendingShaderId;
+        }
+        var info = root.cachedShaderInfoForPreview;
+        if (!info || !info.shaderUrl) {
+            root.hideShaderPreview();
+            return ;
+        }
+        // Build labels texture (zone numbers) for the preview
+        var labelsImg = editorController.buildLabelsTexture(zones, w, h);
+        // Load wallpaper texture if shader uses it
+        var useWallpaper = info.wallpaper || false;
+        var wallpaperImg = useWallpaper ? editorController.loadWallpaperTexture() : null;
+        var bsPaths = info.bufferShaderPaths || [];
+        var shaderUrl = info.shaderUrl || "";
+        // Set config WITHOUT shaderSource — shaderSource is set imperatively
+        // after all config bindings have evaluated (see Qt.callLater below).
+        // This mirrors the daemon's applyShaderInfoToWindow() which sets
+        // shaderSource LAST because setShaderSource() triggers compilation
+        // that references bufferShaderPaths, zones, and params.
+        previewShaderConfig = {
+            "bufferShaderPaths": (bsPaths.length > 0) ? Array.from(bsPaths) : (info.bufferShaderPath ? [info.bufferShaderPath] : []),
+            "bufferFeedback": info.bufferFeedback || false,
+            "bufferScale": info.bufferScale !== undefined ? info.bufferScale : 1,
+            "bufferWrap": info.bufferWrap || "clamp",
+            "useWallpaper": useWallpaper,
+            "zones": zones,
+            "shaderParams": params,
+            "labelsTexture": labelsImg,
+            "wallpaperTexture": wallpaperImg
+        };
+        // Set shaderSource AFTER bindings settle — Qt.callLater defers to
+        // the next event loop iteration, guaranteeing all property bindings
+        // from the config assignment above have been evaluated first.
+        // Guard against stale URL from rapid shader switching: only apply if
+        // the pending shader ID still matches when the deferred call fires.
+        var capturedShaderId = root.pendingShaderId;
+        Qt.callLater(function() {
+            if (root.pendingShaderId === capturedShaderId)
+                shaderPreview.shaderSource = shaderUrl;
+
+        });
+        if (!previewAnimationTimer.running) {
+            previewLastTime = Date.now() / 1000;
+            previewITime = 0;
+            previewTimeDelta = 0.016;
+            previewFrame = 0;
+            previewAnimationTimer.start();
+            // Start CAVA audio capture once when preview first activates
+            if (editorController)
+                editorController.startAudioCapture();
+
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -290,7 +344,6 @@ Kirigami.Dialog {
         shaderColorDialog.selectedColor = currentColor;
         shaderColorDialog.paramId = paramId;
         shaderColorDialog.paramName = paramName;
-        root.hideShaderPreview();
         shaderColorDialog.open();
     }
 
@@ -373,21 +426,31 @@ Kirigami.Dialog {
         presetErrorMessage = "";
         initializePendingState();
         expandedGroupIndex = 0;
-        Qt.callLater(root.updateDaemonShaderPreview);
+        Qt.callLater(root.updateLocalShaderPreview);
     }
     onAppActiveChanged: {
         if (!root.visible || !root.hasShaderEffect)
             return ;
 
-        if (appActive)
-            root.restoreShaderPreview();
-        else
-            root.hideShaderPreview();
+        if (appActive) {
+            if (root.previewShaderConfig) {
+                root.previewLastTime = Date.now() / 1000;
+                previewAnimationTimer.start();
+                // Re-check CAVA on focus — user may have toggled it in KCM
+                if (editorController)
+                    editorController.startAudioCapture();
+
+            }
+        } else {
+            previewAnimationTimer.stop();
+        }
     }
     onClosed: {
         previewAllowed = false;
         debouncePreviewUpdate.stop();
         root.hideShaderPreview();
+        cachedShaderInfoForPreview = null;
+        cachedShaderInfoId = "";
     }
     onPendingShaderIdChanged: {
         if (visible)
@@ -416,7 +479,23 @@ Kirigami.Dialog {
 
         interval: 150
         repeat: false
-        onTriggered: root.updateDaemonShaderPreview()
+        onTriggered: root.updateLocalShaderPreview()
+    }
+
+    // Local animation timer for shader preview (replaces daemon-side 60fps timer)
+    Timer {
+        id: previewAnimationTimer
+
+        interval: 16 // ~60fps
+        repeat: true
+        onTriggered: {
+            var now = Date.now() / 1000;
+            var delta = Math.min(now - root.previewLastTime, 0.1);
+            root.previewLastTime = now;
+            root.previewITime += delta;
+            root.previewTimeDelta = delta;
+            root.previewFrame = (root.previewFrame + 1) % 1e+09;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -574,7 +653,6 @@ Kirigami.Dialog {
 
             // ═══════════════════════════════════════════════════════════════════
             // PARAMETERS SECTION
-            // Shader preview is now in the editor canvas (zones rendered with shader)
             // ═══════════════════════════════════════════════════════════════════
             Kirigami.Separator {
                 Layout.fillWidth: true
@@ -774,7 +852,6 @@ Kirigami.Dialog {
                     Accessible.description: ToolTip.text
                     onClicked: {
                         preparePresetDialog(loadPresetDialog);
-                        root.hideShaderPreview();
                         loadPresetDialog.open();
                     }
                 }
@@ -788,7 +865,6 @@ Kirigami.Dialog {
                     Accessible.description: ToolTip.text
                     onClicked: {
                         preparePresetDialog(savePresetDialog);
-                        root.hideShaderPreview();
                         savePresetDialog.open();
                     }
                 }
@@ -833,12 +909,113 @@ Kirigami.Dialog {
             clip: true
 
             Rectangle {
+                // shaderSource is set imperatively from updateLocalShaderPreview()
+                // via Qt.callLater — NOT via binding — to guarantee it runs after
+                // all other config properties have been applied.
+
                 id: previewBackground
+
+                readonly property var cfg: root.previewShaderConfig || ({
+                })
+                // Mouse tracking for zone hover highlight in preview
+                property point previewMouse: Qt.point(-1, -1)
+                readonly property int previewHoveredZone: {
+                    var mouse = previewBackground.previewMouse;
+                    if (mouse.x < 0 || mouse.y < 0)
+                        return -1;
+
+                    var zones = previewBackground.cfg.zones || [];
+                    for (var i = 0; i < zones.length; i++) {
+                        var z = zones[i];
+                        var zx = (z.x !== undefined) ? z.x : 0;
+                        var zy = (z.y !== undefined) ? z.y : 0;
+                        var zw = (z.width !== undefined) ? z.width : 0;
+                        var zh = (z.height !== undefined) ? z.height : 0;
+                        if (mouse.x >= zx && mouse.x < zx + zw && mouse.y >= zy && mouse.y < zy + zh)
+                            return i;
+
+                    }
+                    return -1;
+                }
 
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 color: Kirigami.Theme.backgroundColor
                 radius: Kirigami.Units.smallSpacing
+                clip: true
+                onWidthChanged: debouncePreviewUpdate.restart()
+                onHeightChanged: debouncePreviewUpdate.restart()
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.NoButton
+                    onPositionChanged: function(mouse) {
+                        previewBackground.previewMouse = Qt.point(mouse.x, mouse.y);
+                    }
+                    onExited: {
+                        previewBackground.previewMouse = Qt.point(-1, -1);
+                    }
+                }
+
+                // Local shader renderer — replaces daemon-side LayerShell overlay
+                // shaderSource is set imperatively via Qt.callLater in
+                // updateLocalShaderPreview() to guarantee it runs after all
+                // config bindings (bufferShaderPaths, zones, params) have settled.
+                ZoneShaderItem {
+                    id: shaderPreview
+
+                    anchors.fill: parent
+                    visible: root.previewShaderConfig !== null
+                    // Render to a private layer FBO so multipass shaders' beginPass(rt)
+                    // clears only this layer — not the entire editor window surface.
+                    layer.enabled: true
+                    // Our render node already outputs correct top-down orientation;
+                    // disable default MirrorVertically to prevent double-flip.
+                    layer.textureMirroring: ShaderEffectSource.NoMirroring
+                    // All auxiliary props BEFORE shaderSource
+                    bufferShaderPaths: previewBackground.cfg.bufferShaderPaths || []
+                    bufferFeedback: previewBackground.cfg.bufferFeedback || false
+                    bufferScale: previewBackground.cfg.bufferScale !== undefined ? previewBackground.cfg.bufferScale : 1
+                    bufferWrap: previewBackground.cfg.bufferWrap || "clamp"
+                    zones: previewBackground.cfg.zones || []
+                    shaderParams: previewBackground.cfg.shaderParams || ({
+                    })
+                    useWallpaper: previewBackground.cfg.useWallpaper || false
+                    // Timing bound directly to root properties for per-frame updates
+                    iTime: root.previewITime
+                    iTimeDelta: root.previewTimeDelta
+                    iFrame: root.previewFrame
+                    iResolution: Qt.size(width, height)
+                    iMouse: previewBackground.previewMouse
+                    hoveredZoneIndex: previewBackground.previewHoveredZone
+                    audioSpectrum: editorController ? editorController.audioSpectrum : []
+                }
+
+                // QImage bindings use Binding with `when` guard to avoid passing
+                // undefined/null to C++ setters (can crash during teardown)
+                Binding {
+                    target: shaderPreview
+                    property: "labelsTexture"
+                    value: previewBackground.cfg.labelsTexture
+                    when: previewBackground.cfg.labelsTexture !== undefined && previewBackground.cfg.labelsTexture !== null
+                }
+
+                Binding {
+                    target: shaderPreview
+                    property: "wallpaperTexture"
+                    value: previewBackground.cfg.wallpaperTexture
+                    when: previewBackground.cfg.wallpaperTexture !== undefined && previewBackground.cfg.wallpaperTexture !== null
+                }
+
+                // Fallback message when no shader is rendering
+                Label {
+                    anchors.centerIn: parent
+                    visible: root.previewShaderConfig === null && root.hasShaderEffect
+                    text: i18nc("@info:placeholder", "Loading preview…")
+                    opacity: 0.5
+                }
+
             }
 
         }
@@ -859,10 +1036,6 @@ Kirigami.Dialog {
             if (paramId)
                 root.setPendingParam(paramId, selectedColor.toString());
 
-            root.restoreShaderPreview();
-        }
-        onRejected: function() {
-            root.restoreShaderPreview();
         }
     }
 
@@ -897,10 +1070,6 @@ Kirigami.Dialog {
             if (ok)
                 root.presetErrorMessage = "";
 
-            root.restoreShaderPreview();
-        }
-        onRejected: function() {
-            root.restoreShaderPreview();
         }
     }
 
@@ -922,10 +1091,6 @@ Kirigami.Dialog {
                 };
                 root.presetErrorMessage = "";
             }
-            root.restoreShaderPreview();
-        }
-        onRejected: function() {
-            root.restoreShaderPreview();
         }
     }
 

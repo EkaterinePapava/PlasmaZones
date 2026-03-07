@@ -6,11 +6,13 @@
 #include <QObject>
 #include <QVariantList>
 #include <QFont>
+#include <QImage>
 #include <QRectF>
 #include <QUuid>
 #include <QScreen>
 #include <QQuickWindow>
 #include <QSize>
+#include <QVector>
 #include <KConfigGroup>
 #include "../core/constants.h"
 #include "../core/logging.h"
@@ -23,6 +25,7 @@ class ILayoutService;
 class ZoneManager;
 class SnappingService;
 class TemplateService;
+class CavaService;
 
 /**
  * @brief Controller for the layout editor
@@ -123,6 +126,9 @@ class EditorController : public QObject
     Q_PROPERTY(QVariantList currentShaderParameters READ currentShaderParameters NOTIFY currentShaderParametersChanged)
     Q_PROPERTY(bool shadersEnabled READ shadersEnabled NOTIFY shadersEnabledChanged)
     Q_PROPERTY(QString noneShaderUuid READ noneShaderUuid CONSTANT)
+
+    // Audio spectrum (CAVA) for shader preview
+    Q_PROPERTY(QVariant audioSpectrum READ audioSpectrumVariant NOTIFY audioSpectrumChanged)
 
     // Visibility filtering (Tier 2 per-context allow-lists)
     Q_PROPERTY(QStringList allowedScreens READ allowedScreens WRITE setAllowedScreens NOTIFY allowedScreensChanged)
@@ -373,30 +379,29 @@ public:
     Q_INVOKABLE QVariantMap getShaderInfo(const QString& shaderId) const;
 
     /**
-     * @brief Show shader preview overlay via daemon (avoids multi-pass clear in embedded preview)
-     * @param x Global X coordinate for preview top-left
-     * @param y Global Y coordinate for preview top-left
-     * @param width Preview width in pixels
-     * @param height Preview height in pixels
-     * @param screenName Screen name (empty = screen containing x,y)
-     * @param shaderId Shader UUID
-     * @param shaderParamsJson JSON map of uniform names to values
-     * @param zonesJson JSON array of zone objects (pixel coords)
+     * @brief Build a labels texture (zone numbers) for shader preview
+     * @param zones Zone data from zonesForShaderPreview()
+     * @param width Texture width in pixels
+     * @param height Texture height in pixels
+     * @return QImage with zone numbers rendered, or null image if no zones
      */
-    Q_INVOKABLE void showShaderPreviewOverlay(int x, int y, int width, int height, const QString& screenName,
-                                              const QString& shaderId, const QString& shaderParamsJson,
-                                              const QString& zonesJson);
+    Q_INVOKABLE QImage buildLabelsTexture(const QVariantList& zones, int width, int height) const;
 
     /**
-     * @brief Update existing shader preview overlay geometry and/or params
+     * @brief Load the current Plasma desktop wallpaper as a QImage
+     * @return RGBA8888 QImage, or null image if no wallpaper found
      */
-    Q_INVOKABLE void updateShaderPreviewOverlay(int x, int y, int width, int height, const QString& shaderParamsJson,
-                                                const QString& zonesJson);
+    Q_INVOKABLE QImage loadWallpaperTexture() const;
 
     /**
-     * @brief Hide and destroy the shader preview overlay
+     * @brief Start CAVA audio capture for shader preview (if available)
      */
-    Q_INVOKABLE void hideShaderPreviewOverlay();
+    Q_INVOKABLE void startAudioCapture();
+
+    /**
+     * @brief Stop CAVA audio capture
+     */
+    Q_INVOKABLE void stopAudioCapture();
 
 public Q_SLOTS:
     // Layout operations
@@ -651,6 +656,7 @@ Q_SIGNALS:
     void availableShadersChanged();
     void currentShaderParametersChanged();
     void shadersEnabledChanged();
+    void audioSpectrumChanged();
 
     // Visibility filtering signals
     void allowedScreensChanged();
@@ -689,6 +695,7 @@ Q_SIGNALS:
     void clipboardOperationFailed(const QString& error);
 
 private:
+    QVariant audioSpectrumVariant() const;
     void markUnsaved();
 
     /**
@@ -841,6 +848,10 @@ private:
     // Current layout's shader settings
     QString m_currentShaderId; // Empty = no shader effect
     QVariantMap m_currentShaderParams;
+
+    // Audio spectrum (CAVA) for shader preview
+    CavaService* m_cavaService = nullptr;
+    QVector<float> m_audioSpectrum;
 
     // Cache for current shader's parameter definitions (avoids repeated D-Bus calls)
     // Updated when shader selection changes

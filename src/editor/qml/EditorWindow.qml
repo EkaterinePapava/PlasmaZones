@@ -680,7 +680,6 @@ Window {
         id: shaderDialog
 
         editorController: editorWindow._editorController
-        editorWindow: editorWindow
     }
 
     // ═══════════════════════════════════════════════════════════════════

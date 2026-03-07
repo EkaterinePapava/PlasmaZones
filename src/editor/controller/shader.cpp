@@ -7,9 +7,12 @@
 #include "../undo/commands/UpdateShaderIdCommand.h"
 #include "../undo/commands/UpdateShaderParamsCommand.h"
 #include "../helpers/ShaderDbusQueries.h"
+#include "../helpers/SettingsDbusQueries.h"
 #include "../../core/constants.h"
 #include "../../core/shaderregistry.h"
 #include "../../core/logging.h"
+#include "../../daemon/rendering/zonelabeltexturebuilder.h"
+#include "../../daemon/cavaservice.h"
 
 #include <KLocalizedString>
 #include <QColor>
@@ -139,39 +142,6 @@ QVariantList EditorController::zonesForShaderPreview(int width, int height) cons
 QVariantMap EditorController::translateShaderParams(const QString& shaderId, const QVariantMap& params) const
 {
     return ShaderDbusQueries::queryTranslateShaderParams(shaderId, params);
-}
-
-void EditorController::showShaderPreviewOverlay(int x, int y, int width, int height, const QString& screenName,
-                                                const QString& shaderId, const QString& shaderParamsJson,
-                                                const QString& zonesJson)
-{
-    QDBusInterface iface(QString::fromLatin1(DBus::ServiceName), QString::fromLatin1(DBus::ObjectPath),
-                         QString::fromLatin1(DBus::Interface::Overlay), QDBusConnection::sessionBus());
-    if (iface.isValid()) {
-        iface.asyncCall(QStringLiteral("showShaderPreview"), x, y, width, height, screenName, shaderId,
-                        shaderParamsJson, zonesJson);
-    }
-}
-
-void EditorController::updateShaderPreviewOverlay(int x, int y, int width, int height, const QString& shaderParamsJson,
-                                                  const QString& zonesJson)
-{
-    QDBusInterface iface(QString::fromLatin1(DBus::ServiceName), QString::fromLatin1(DBus::ObjectPath),
-                         QString::fromLatin1(DBus::Interface::Overlay), QDBusConnection::sessionBus());
-    if (iface.isValid()) {
-        iface.asyncCall(QStringLiteral("updateShaderPreview"), x, y, width, height, shaderParamsJson, zonesJson);
-    }
-}
-
-void EditorController::hideShaderPreviewOverlay()
-{
-    QDBusInterface iface(QString::fromLatin1(DBus::ServiceName), QString::fromLatin1(DBus::ObjectPath),
-                         QString::fromLatin1(DBus::Interface::Overlay), QDBusConnection::sessionBus());
-    if (iface.isValid()) {
-        // Use synchronous call so hide completes before any in-flight async show can leave
-        // a visible overlay after the dialog has closed.
-        iface.call(QStringLiteral("hideShaderPreview"));
-    }
 }
 
 bool EditorController::saveShaderPreset(const QString& filePath, const QString& shaderId,
@@ -473,6 +443,62 @@ void EditorController::refreshAvailableShaders()
 QVariantMap EditorController::getShaderInfo(const QString& shaderId) const
 {
     return ShaderDbusQueries::queryShaderInfo(shaderId);
+}
+
+QImage EditorController::buildLabelsTexture(const QVariantList& zones, int width, int height) const
+{
+    if (zones.isEmpty() || width <= 0 || height <= 0) {
+        return QImage();
+    }
+    return ZoneLabelTextureBuilder::build(zones, QSize(width, height), Qt::white, true);
+}
+
+QImage EditorController::loadWallpaperTexture() const
+{
+    return ShaderRegistry::loadWallpaperImage();
+}
+
+QVariant EditorController::audioSpectrumVariant() const
+{
+    return QVariant::fromValue(m_audioSpectrum);
+}
+
+void EditorController::startAudioCapture()
+{
+    // Already running — nothing to do (settings were validated on initial start)
+    if (m_cavaService && m_cavaService->isRunning()) {
+        return;
+    }
+    // Respect the KCM setting — don't start CAVA if audio visualizer is disabled
+    if (!SettingsDbusQueries::queryBoolSetting(QStringLiteral("enableAudioVisualizer"), false)) {
+        return;
+    }
+    if (!CavaService::isAvailable()) {
+        qCDebug(lcEditor) << "CAVA not available — audio spectrum disabled";
+        return;
+    }
+    if (!m_cavaService) {
+        m_cavaService = new CavaService(this);
+        connect(m_cavaService, &CavaService::spectrumUpdated, this, [this](const QVector<float>& spectrum) {
+            m_audioSpectrum = spectrum;
+            Q_EMIT audioSpectrumChanged();
+        });
+    }
+    // Sync bar count from KCM settings (default 64)
+    const int barCount = SettingsDbusQueries::queryIntSetting(QStringLiteral("audioSpectrumBarCount"), 64);
+    m_cavaService->setBarCount(barCount);
+    m_cavaService->start();
+}
+
+void EditorController::stopAudioCapture()
+{
+    if (m_cavaService && m_cavaService->isRunning()) {
+        m_cavaService->stop();
+    }
+    if (!m_audioSpectrum.isEmpty()) {
+        m_audioSpectrum.clear();
+        Q_EMIT audioSpectrumChanged();
+    }
 }
 
 } // namespace PlasmaZones

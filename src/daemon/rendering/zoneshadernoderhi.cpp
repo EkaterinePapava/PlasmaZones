@@ -428,16 +428,23 @@ void ZoneShaderNodeRhi::render(const RenderState* state)
     if (m_item && m_item->window() && m_item->width() > 0 && m_item->height() > 0) {
         QQuickWindow* win = m_item->window();
         const qreal dpr = win->devicePixelRatio();
-        const QPointF topLeft = m_item->mapToItem(win->contentItem(), QPointF(0, 0));
-        vpX = qRound(topLeft.x() * dpr);
-        vpY = qRound(topLeft.y() * dpr);
-        vpW = qRound(m_item->width() * dpr);
-        vpH = qRound(m_item->height() * dpr);
-        // Clamp to render target bounds (e.g. when item is partially off-screen)
-        vpX = qBound(0, vpX, outputSize.width() - 1);
-        vpY = qBound(0, vpY, outputSize.height() - 1);
-        vpW = qBound(1, vpW, outputSize.width() - vpX);
-        vpH = qBound(1, vpH, outputSize.height() - vpY);
+        const int itemPxW = qRound(m_item->width() * dpr);
+        const int itemPxH = qRound(m_item->height() * dpr);
+        // When rendering to a layer FBO (QQuickItem::layer.enabled), the render
+        // target matches the item size and origin is (0,0). Only compute a
+        // window-relative offset when rendering directly to the window surface.
+        // Use ±1px tolerance for fractional DPI scaling rounding differences.
+        const bool isLayerFbo = qAbs(outputSize.width() - itemPxW) <= 1 && qAbs(outputSize.height() - itemPxH) <= 1;
+        if (!isLayerFbo) {
+            const QPointF topLeft = m_item->mapToItem(win->contentItem(), QPointF(0, 0));
+            vpX = qRound(topLeft.x() * dpr);
+            vpY = qRound(topLeft.y() * dpr);
+            // Clamp to render target bounds (e.g. when item is partially off-screen)
+            vpX = qBound(0, vpX, outputSize.width() - 1);
+            vpY = qBound(0, vpY, outputSize.height() - 1);
+        }
+        vpW = qBound(1, itemPxW, outputSize.width() - vpX);
+        vpH = qBound(1, itemPxH, outputSize.height() - vpY);
     }
     cb->setViewport(QRhiViewport(vpX, vpY, vpW, vpH));
     cb->setGraphicsPipeline(m_pipeline.get());

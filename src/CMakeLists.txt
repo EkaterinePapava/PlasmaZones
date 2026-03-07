@@ -437,6 +437,8 @@ set(plasmazones_editor_SRCS
     editor/EditorController.cpp
     editor/controller/gaps.cpp
     editor/controller/shader.cpp
+    daemon/cavaservice.cpp
+    daemon/cavaservice.h
     editor/controller/layout.cpp
     editor/controller/selection.cpp
     editor/controller/multiselect.cpp
