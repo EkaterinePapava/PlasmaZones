@@ -128,6 +128,9 @@ inline LayerShellQt::Window::Anchors getAnchorsForPosition(ZoneSelectorPosition 
     case ZoneSelectorPosition::Left:
         return LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorLeft | LayerShellQt::Window::AnchorTop
                                              | LayerShellQt::Window::AnchorBottom);
+    case ZoneSelectorPosition::Center:
+        return LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop | LayerShellQt::Window::AnchorBottom
+                                             | LayerShellQt::Window::AnchorLeft | LayerShellQt::Window::AnchorRight);
     case ZoneSelectorPosition::Right:
         return LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorRight | LayerShellQt::Window::AnchorTop
                                              | LayerShellQt::Window::AnchorBottom);

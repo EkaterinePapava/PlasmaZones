@@ -303,6 +303,16 @@ bool WindowDragAdaptor::isNearTriggerEdge(QScreen* screen, int cursorX, int curs
         return nearTop && nearRight;
     case ZoneSelectorPosition::Left:
         return nearLeft;
+    case ZoneSelectorPosition::Center: {
+        // Trigger when cursor is within triggerDistance of screen center;
+        // once shown, keep visible while cursor is inside the popup bounds
+        const int centerX = screenGeom.x() + screenGeom.width() / 2;
+        const int centerY = screenGeom.y() + screenGeom.height() / 2;
+        if (m_zoneSelectorShown) {
+            return std::abs(cursorX - centerX) <= barWidth / 2 && std::abs(cursorY - centerY) <= barHeight / 2;
+        }
+        return std::abs(cursorX - centerX) <= triggerDistance && std::abs(cursorY - centerY) <= triggerDistance;
+    }
     case ZoneSelectorPosition::Right:
         return nearRight;
     case ZoneSelectorPosition::BottomLeft:

@@ -17,7 +17,7 @@ QVariant validatePerScreenValue(const QString& key, const QVariant& value)
     namespace K = ZoneSelectorConfigKey;
     if (key == QLatin1String(K::Position)) {
         int v = value.toInt();
-        return (v >= 0 && v <= 8 && v != 4) ? QVariant(v) : QVariant();
+        return (v >= 0 && v <= 8) ? QVariant(v) : QVariant();
     }
     if (key == QLatin1String(K::LayoutMode)) {
         int v = value.toInt();
@@ -143,7 +143,7 @@ QVariant validatePerScreenSnappingValue(const QString& key, const QVariant& valu
         return QVariant(qBound(10, value.toInt(), 200));
     if (key == QLatin1String("ZoneSelectorPosition")) {
         int v = value.toInt();
-        return (v >= 0 && v <= 8 && v != 4) ? QVariant(v) : QVariant();
+        return (v >= 0 && v <= 8) ? QVariant(v) : QVariant();
     }
     if (key == QLatin1String("ZoneSelectorLayoutMode"))
         return QVariant(qBound(0, value.toInt(), static_cast<int>(ZoneSelectorLayoutMode::Vertical)));

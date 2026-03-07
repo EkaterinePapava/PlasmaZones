@@ -197,7 +197,7 @@ void Settings::loadZoneSelectorConfig(const KConfigGroup& zoneSelector)
     m_zoneSelectorTriggerDistance = readValidatedInt(zoneSelector, "TriggerDistance", ConfigDefaults::triggerDistance(),
                                                      10, 200, "zone selector trigger distance");
     int selectorPos = zoneSelector.readEntry(QLatin1String("Position"), ConfigDefaults::position());
-    if (selectorPos >= 0 && selectorPos <= 8 && selectorPos != 4) {
+    if (selectorPos >= 0 && selectorPos <= 8) {
         m_zoneSelectorPosition = static_cast<ZoneSelectorPosition>(selectorPos);
     } else {
         m_zoneSelectorPosition = static_cast<ZoneSelectorPosition>(ConfigDefaults::position());

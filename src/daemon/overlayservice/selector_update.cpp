@@ -142,6 +142,13 @@ void applyZoneSelectorGeometry(QQuickWindow* window, QScreen* screen, const Zone
         window->setX(rightX);
         window->setY(bottomY);
         break;
+    case ZoneSelectorPosition::Center:
+        // Fill the entire screen; QML "center" state positions the container in the middle
+        window->setX(screenGeom.x());
+        window->setY(screenGeom.y());
+        window->setWidth(screenGeom.width());
+        window->setHeight(screenGeom.height());
+        return;
     default:
         // Fall back to Top position for invalid values
         window->setX(centeredX);
@@ -286,6 +293,12 @@ void OverlayService::updateZoneSelectorWindow(QScreen* screen)
             anchors =
                 LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorBottom | LayerShellQt::Window::AnchorRight);
             margins = QMargins(screenW - layout.barWidth, screenH - layout.barHeight, 0, 0);
+            break;
+        case ZoneSelectorPosition::Center:
+            anchors =
+                LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop | LayerShellQt::Window::AnchorBottom
+                                              | LayerShellQt::Window::AnchorLeft | LayerShellQt::Window::AnchorRight);
+            margins = QMargins(0, 0, 0, 0);
             break;
         default:
             // Already initialized to Top position

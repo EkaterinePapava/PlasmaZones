@@ -245,8 +245,8 @@ SETTINGS_SETTER(ZoneSelectorPosition, ZoneSelectorPosition, m_zoneSelectorPositi
 
 void Settings::setZoneSelectorPositionInt(int position)
 {
-    // Valid positions are 0-8 except 4 (center)
-    if (position >= 0 && position <= 8 && position != 4) {
+    // Valid positions are 0-8 (3x3 grid)
+    if (position >= 0 && position <= 8) {
         setZoneSelectorPosition(static_cast<ZoneSelectorPosition>(position));
     }
 }

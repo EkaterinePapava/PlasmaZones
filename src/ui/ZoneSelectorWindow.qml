@@ -189,8 +189,8 @@ Window {
         backgroundColor: root.backgroundColor
         textColor: root.textColor
         containerRadius: root.containerRadius
-        // State based on selectorPosition (0-8 grid, 4=center is disabled)
-        // 0=TopLeft, 1=Top, 2=TopRight, 3=Left, 5=Right, 6=BottomLeft, 7=Bottom, 8=BottomRight
+        // State based on selectorPosition (0-8 grid)
+        // 0=TopLeft, 1=Top, 2=TopRight, 3=Left, 4=Center, 5=Right, 6=BottomLeft, 7=Bottom, 8=BottomRight
         state: {
             switch (selectorPosition) {
             case 0:
@@ -201,6 +201,8 @@ Window {
                 return "topRight";
             case 3:
                 return "left";
+            case 4:
+                return "center";
             case 5:
                 return "right";
             case 6:
@@ -289,6 +291,20 @@ Window {
                 PropertyChanges {
                     target: container
                     anchors.leftMargin: root.containerSideMargin
+                }
+
+            },
+            State {
+                name: "center"
+
+                AnchorChanges {
+                    target: container
+                    anchors.top: undefined
+                    anchors.bottom: undefined
+                    anchors.left: undefined
+                    anchors.right: undefined
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.horizontalCenter: parent.horizontalCenter
                 }
 
             },
