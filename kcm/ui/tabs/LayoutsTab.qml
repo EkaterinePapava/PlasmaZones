@@ -139,7 +139,7 @@ ColumnLayout {
         readonly property real actualCellWidth: width / columnCount
 
         cellWidth: actualCellWidth
-        cellHeight: Kirigami.Units.gridUnit * 10
+        cellHeight: Kirigami.Units.gridUnit * 12
 
         // Background
         Rectangle {
