@@ -18,7 +18,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
-#include <QTimer>
 
 namespace PlasmaZones {
 
@@ -190,16 +189,8 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
             }
         }
 
-        // Wayland clients may not respect geometry constraints immediately after
-        // moveResize. Retry centering with a single deferred pass at 200ms.
-        if (!m_autotileTargetZones.isEmpty()) {
-            QTimer::singleShot(200, this, [this, gen]() {
-                if (m_autotileStaggerGeneration != gen) {
-                    return;
-                }
-                centerUndersizedAutotileWindows();
-            });
-        }
+        // Wayland centering is handled reactively by slotWindowFrameGeometryChanged
+        // as soon as the client commits its constrained size — no deferred timer needed.
     };
 
     m_effect->applyStaggeredOrImmediate(
@@ -280,54 +271,65 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
         onComplete);
 }
 
-void AutotileHandler::centerUndersizedAutotileWindows()
+void AutotileHandler::slotWindowFrameGeometryChanged(KWin::EffectWindow* w, const QRectF& oldGeometry)
 {
-    QHash<QString, QRect> targets;
-    targets.swap(m_autotileTargetZones);
+    Q_UNUSED(oldGeometry)
+    if (!w || m_autotileTargetZones.isEmpty()) {
+        return;
+    }
+
+    const QString windowId = m_effect->getWindowId(w);
+    auto it = m_autotileTargetZones.find(windowId);
+    if (it == m_autotileTargetZones.end()) {
+        return;
+    }
+
+    const QRect& targetZone = it.value();
+    const QRectF actual = w->frameGeometry();
 
     constexpr qreal MinCenteringDelta = 3.0;
     constexpr qreal MaxCenteringDelta = 64.0;
 
-    for (auto it = targets.constBegin(); it != targets.constEnd(); ++it) {
-        const QString& windowId = it.key();
-        const QRect& targetZone = it.value();
+    const qreal dw = targetZone.width() - actual.width();
+    const qreal dh = targetZone.height() - actual.height();
 
-        KWin::EffectWindow* w = m_effect->findWindowById(windowId);
-        if (!w || w->isDeleted() || w->isFullScreen()) {
-            continue;
+    // Window fills the zone (or close enough) — no centering needed; consume entry
+    if (qAbs(dw) <= MinCenteringDelta && qAbs(dh) <= MinCenteringDelta) {
+        m_autotileTargetZones.erase(it);
+        return;
+    }
+
+    if ((dw > MinCenteringDelta || dh > MinCenteringDelta) && qAbs(dw) < MaxCenteringDelta
+        && qAbs(dh) < MaxCenteringDelta) {
+        const qreal dx = qMax(0.0, dw) / 2.0;
+        const qreal dy = qMax(0.0, dh) / 2.0;
+        const QRectF centered(targetZone.x() + dx, targetZone.y() + dy, actual.width(), actual.height());
+
+        // Already at the centered position — record and consume
+        if (qAbs(actual.x() - centered.x()) < 1.0 && qAbs(actual.y() - centered.y()) < 1.0) {
+            m_centeredWaylandZones[windowId] = targetZone;
+            m_autotileTargetZones.erase(it);
+            return;
         }
 
-        const QRectF actual = w->frameGeometry();
-        const qreal dw = targetZone.width() - actual.width();
-        const qreal dh = targetZone.height() - actual.height();
-
-        if (qAbs(dw) <= MinCenteringDelta && qAbs(dh) <= MinCenteringDelta) {
-            m_autotileTargetZones[windowId] = targetZone;
-            continue;
+        KWin::Window* kw = w->window();
+        if (kw) {
+            qCInfo(lcEffect) << "Centering undersized autotile window (immediate)" << windowId
+                             << "actual=" << actual.size() << "zone=" << targetZone.size() << "offset=(" << dx << ","
+                             << dy << ")";
+            // Erase BEFORE moveResize to prevent re-entrancy: moveResize emits
+            // windowFrameGeometryChanged synchronously, which would re-enter
+            // this slot and find the entry still present → infinite recursion → crash.
+            m_centeredWaylandZones[windowId] = targetZone;
+            m_autotileTargetZones.erase(it);
+            m_effect->m_windowAnimator->removeAnimation(w);
+            kw->moveResize(centered);
         }
-
-        if ((dw > MinCenteringDelta || dh > MinCenteringDelta) && qAbs(dw) < MaxCenteringDelta
-            && qAbs(dh) < MaxCenteringDelta) {
-            const qreal dx = qMax(0.0, dw) / 2.0;
-            const qreal dy = qMax(0.0, dh) / 2.0;
-            const QRectF centered(targetZone.x() + dx, targetZone.y() + dy, actual.width(), actual.height());
-
-            // Skip moveResize if the window is already at the centered position
-            // to avoid redundant configure events that can freeze Wayland terminals.
-            if (qAbs(actual.x() - centered.x()) < 1.0 && qAbs(actual.y() - centered.y()) < 1.0) {
-                m_centeredWaylandZones[windowId] = targetZone;
-                continue;
-            }
-
-            KWin::Window* kw = w->window();
-            if (kw) {
-                qCInfo(lcEffect) << "Centering undersized autotile window" << windowId << "actual=" << actual.size()
-                                 << "zone=" << targetZone.size() << "offset=(" << dx << "," << dy << ")";
-                m_effect->m_windowAnimator->removeAnimation(w);
-                kw->moveResize(centered);
-                m_centeredWaylandZones[windowId] = targetZone;
-            }
-        }
+    } else {
+        // Window size delta exceeds MaxCenteringDelta — too far from zone size
+        // to center meaningfully. Consume the entry to avoid stale lookups on
+        // every subsequent geometry change for this window.
+        m_autotileTargetZones.erase(it);
     }
 }
 

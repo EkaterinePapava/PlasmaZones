@@ -140,18 +140,9 @@ void WindowTrackingAdaptor::saveState()
     tracking.writeEntry(QStringLiteral("LastUsedZoneId"), m_service->lastUsedZoneId());
     // Note: Other last-used fields would need accessors in service
 
-    // Save floating windows (convert to appId for cross-restart persistence, deduplicate)
-    QJsonArray floatingArray;
-    QSet<QString> savedFloatingIds;
-    for (const QString& windowId : m_service->floatingWindows()) {
-        QString appId = Utils::extractAppId(windowId);
-        if (!appId.isEmpty() && !savedFloatingIds.contains(appId)) {
-            floatingArray.append(appId);
-            savedFloatingIds.insert(appId);
-        }
-    }
-    tracking.writeEntry(QStringLiteral("FloatingWindows"),
-                        QString::fromUtf8(QJsonDocument(floatingArray).toJson(QJsonDocument::Compact)));
+    // Float state is ephemeral (session-only) — do NOT persist across restarts.
+    // Clear any stale entry from older versions so restored sessions start clean.
+    tracking.deleteEntry(QStringLiteral("FloatingWindows"));
 
     // Save pre-float zone assignments (for unfloating after session restore).
     // Runtime keys may be full window IDs; convert to
@@ -352,21 +343,8 @@ void WindowTrackingAdaptor::loadState()
     int lastDesktop = tracking.readEntry(QStringLiteral("LastUsedDesktop"), 0);
     m_service->setLastUsedZone(lastZoneId, lastScreenName, lastZoneClass, lastDesktop);
 
-    // Load floating windows
-    QSet<QString> floatingWindows;
-    QString floatingJson = tracking.readEntry(QStringLiteral("FloatingWindows"), QString());
-    if (!floatingJson.isEmpty()) {
-        QJsonDocument doc = QJsonDocument::fromJson(floatingJson.toUtf8());
-        if (doc.isArray()) {
-            QJsonArray arr = doc.array();
-            for (const QJsonValue& val : arr) {
-                if (val.isString()) {
-                    floatingWindows.insert(val.toString());
-                }
-            }
-        }
-    }
-    m_service->setFloatingWindows(floatingWindows);
+    // Float state is ephemeral (session-only) — skip loading.
+    // Any stale FloatingWindows entries from older versions are cleaned up in saveState().
 
     // Load pre-float zone assignments (for unfloating after session restore)
     // Supports both old format (string) and new format (JSON array) for backward compat

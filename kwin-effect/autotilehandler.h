@@ -116,6 +116,7 @@ public Q_SLOTS:
     void slotWindowMinimizedChanged(KWin::EffectWindow* w);
     void slotWindowMaximizedStateChanged(KWin::EffectWindow* w, bool horizontal, bool vertical);
     void slotWindowFullScreenChanged(KWin::EffectWindow* w);
+    void slotWindowFrameGeometryChanged(KWin::EffectWindow* w, const QRectF& oldGeometry);
 
 private:
     // ═══════════════════════════════════════════════════════════════════
@@ -125,7 +126,6 @@ private:
     void setWindowBorderless(KWin::EffectWindow* w, const QString& windowId, bool borderless);
     void unmaximizeMonocleWindow(const QString& windowId);
     bool saveAndRecordPreAutotileGeometry(const QString& windowId, const QString& screenName, const QRectF& frame);
-    void centerUndersizedAutotileWindows();
     bool shouldApplyBorderInset(const QString& windowId) const;
 
     /**

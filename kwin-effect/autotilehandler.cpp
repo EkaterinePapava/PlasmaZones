@@ -279,6 +279,12 @@ void AutotileHandler::notifyWindowAdded(KWin::EffectWindow* w)
 
     // Only notify autotile daemon for windows on autotile screens
     if (m_autotileScreens.contains(screenName)) {
+        // Save pre-autotile geometry BEFORE the daemon tiles the window.
+        // Without this, a window launched directly into autotile has no saved
+        // geometry — floating it would leave it at its tiled position instead
+        // of restoring to its original free-floating size.
+        saveAndRecordPreAutotileGeometry(windowId, screenName, w->frameGeometry());
+
         int minWidth = 0;
         int minHeight = 0;
         KWin::Window* kw = w->window();

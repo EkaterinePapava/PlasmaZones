@@ -636,6 +636,10 @@ void PlasmaZonesEffect::setupWindowConnections(KWin::EffectWindow* w)
     connect(w, &KWin::EffectWindow::windowFullScreenChanged, m_autotileHandler.get(),
             &AutotileHandler::slotWindowFullScreenChanged);
 
+    // Autotile: center undersized Wayland windows as soon as they commit constrained size
+    connect(w, &KWin::EffectWindow::windowFrameGeometryChanged, m_autotileHandler.get(),
+            &AutotileHandler::slotWindowFrameGeometryChanged);
+
     // Autotile: track minimize/unminimize to remove/re-add windows from tiling
     connect(w, &KWin::EffectWindow::minimizedChanged, m_autotileHandler.get(),
             &AutotileHandler::slotWindowMinimizedChanged);
@@ -2165,7 +2169,7 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
     // This applies to all snap operations (zone snap, autotile, resnap, etc.).
     // Wayland-native clients negotiate size async (constrainFrameSize only
     // checks min/max, not char-cell grid), so they're handled by the deferred
-    // check in centerUndersizedAutotileWindows().
+    // check in slotWindowFrameGeometryChanged().
     if (window->isX11Client()) {
         KWin::Window* kw = window->window();
         if (kw) {
