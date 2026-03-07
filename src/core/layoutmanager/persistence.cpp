@@ -133,6 +133,10 @@ void LayoutManager::loadLayoutsFromDirectory(const QString& directory)
                     if (layout->systemSourcePath().isEmpty()) {
                         layout->setSystemSourcePath(existing->sourcePath());
                     }
+                    // Preserve defaultOrder from system layout when user copy doesn't have one
+                    if (layout->defaultOrder() == 999 && existing->defaultOrder() != 999) {
+                        layout->setDefaultOrder(existing->defaultOrder());
+                    }
                     int index = m_layouts.indexOf(existing);
                     disconnect(existing, &Layout::layoutModified, this, nullptr);
                     m_layouts.replace(index, layout);

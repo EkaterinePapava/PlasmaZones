@@ -189,11 +189,11 @@ private Q_SLOTS:
     }
 
     /**
-     * autotileSplitRatio default must be 0.6 (matching the .kcfg <default>0.6</default>).
+     * autotileSplitRatio default must be 0.5 (matching the .kcfg <default>0.5</default>).
      */
-    void testAutotileSplitRatio_default_is0point6()
+    void testAutotileSplitRatio_default_is0point5()
     {
-        QVERIFY(qFuzzyCompare(ConfigDefaults::autotileSplitRatio(), 0.6));
+        QVERIFY(qFuzzyCompare(ConfigDefaults::autotileSplitRatio(), 0.5));
     }
 
     /**

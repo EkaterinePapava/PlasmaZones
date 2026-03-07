@@ -716,11 +716,11 @@
     </entry>
     <entry name="AutotileAlgorithm" type="String">
       <label>Active tiling algorithm (master-stack, bsp, columns, rows, dwindle, spiral, monocle, three-column, grid, wide, centered-master)</label>
-      <default>master-stack</default>
+      <default>bsp</default>
     </entry>
     <entry name="AutotileSplitRatio" type="Double">
-      <label>Master/stack split ratio (0.1-0.9)</label>
-      <default>0.6</default>
+      <label>Primary split ratio (0.1-0.9)</label>
+      <default>0.5</default>
       <min>0.1</min>
       <max>0.9</max>
     </entry>

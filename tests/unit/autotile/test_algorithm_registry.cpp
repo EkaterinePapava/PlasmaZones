@@ -194,17 +194,17 @@ private Q_SLOTS:
 
     void testDefault_algorithmId()
     {
-        QCOMPARE(AlgorithmRegistry::defaultAlgorithmId(), DBus::AutotileAlgorithm::MasterStack);
+        QCOMPARE(AlgorithmRegistry::defaultAlgorithmId(), DBus::AutotileAlgorithm::BSP);
     }
 
     void testDefault_algorithmInstance()
     {
         auto* registry = AlgorithmRegistry::instance();
         auto* defaultAlgo = registry->defaultAlgorithm();
-        auto* masterStack = registry->algorithm(DBus::AutotileAlgorithm::MasterStack);
+        auto* bsp = registry->algorithm(DBus::AutotileAlgorithm::BSP);
 
         QVERIFY(defaultAlgo != nullptr);
-        QCOMPARE(defaultAlgo, masterStack);
+        QCOMPARE(defaultAlgo, bsp);
     }
 
     // =========================================================================

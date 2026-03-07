@@ -98,10 +98,10 @@ private Q_SLOTS:
     // Algorithm selection tests
     // =========================================================================
 
-    void testAlgorithm_defaultIsMasterStack()
+    void testAlgorithm_defaultIsBsp()
     {
         AutotileEngine engine(nullptr, nullptr, nullptr);
-        QCOMPARE(engine.algorithm(), DBus::AutotileAlgorithm::MasterStack);
+        QCOMPARE(engine.algorithm(), DBus::AutotileAlgorithm::BSP);
     }
 
     void testAlgorithm_setValid()
@@ -120,8 +120,8 @@ private Q_SLOTS:
     {
         AutotileEngine engine(nullptr, nullptr, nullptr);
 
-        engine.setAlgorithm(DBus::AutotileAlgorithm::BSP);
-        QCOMPARE(engine.algorithm(), DBus::AutotileAlgorithm::BSP);
+        engine.setAlgorithm(DBus::AutotileAlgorithm::MasterStack);
+        QCOMPARE(engine.algorithm(), DBus::AutotileAlgorithm::MasterStack);
 
         QSignalSpy spy(&engine, &AutotileEngine::algorithmChanged);
         engine.setAlgorithm(QStringLiteral("nonexistent-algorithm"));

@@ -35,7 +35,7 @@ struct PLASMAZONES_EXPORT AutotileConfig
      * Common values: "master-stack", "bsp", "columns", "dwindle", "spiral", "monocle"
      * See AlgorithmRegistry for available algorithms.
      */
-    QString algorithmId = QStringLiteral("master-stack");
+    QString algorithmId = QStringLiteral("bsp");
 
     // ═══════════════════════════════════════════════════════════════════════
     // Master Area Settings

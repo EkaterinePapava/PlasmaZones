@@ -332,6 +332,10 @@ public:
     {
         return m_defaultOrder;
     }
+    void setDefaultOrder(int order)
+    {
+        m_defaultOrder = order;
+    }
 
     // Zone management
     int zoneCount() const

@@ -25,9 +25,9 @@ class TilingAlgorithm;
  * It manages algorithm lifecycle and provides discovery for UI components.
  *
  * Built-in algorithms are registered automatically on first access:
- * - Master-Stack (default): Classic master/stack layout
+ * - BSP (default): Binary space partitioning
+ * - Master-Stack: Classic master/stack layout
  * - Columns: Equal-width vertical columns
- * - BSP: Binary space partitioning
  *
  * Future algorithms (Monocle, Dwindle, Spiral, Rows, ThreeColumn) can be
  * added by implementing TilingAlgorithm and calling registerAlgorithm().

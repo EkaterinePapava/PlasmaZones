@@ -147,8 +147,10 @@ private Q_SLOTS:
         const QString screen = QStringLiteral("eDP-1");
         engine.setAutotileScreens({screen});
 
+        // Start from MasterStack (which has fewer default maxWindows than BSP)
         auto* msAlgo = AlgorithmRegistry::instance()->algorithm(DBus::AutotileAlgorithm::MasterStack);
         QVERIFY(msAlgo);
+        engine.setAlgorithm(DBus::AutotileAlgorithm::MasterStack);
 
         engine.config()->maxWindows = msAlgo->defaultMaxWindows();
 

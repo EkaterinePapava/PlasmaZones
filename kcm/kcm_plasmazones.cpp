@@ -1926,7 +1926,7 @@ void KCMPlasmaZones::defaults()
 {
     m_settings->reset();
 
-    // Set default layout: pick the layout with the lowest defaultOrder (Columns (2) has 0)
+    // Set default layout: pick the layout with the lowest defaultOrder (BSP has 0)
     int bestOrder = 999;
     QString bestId;
     for (const QVariant& layoutVar : m_layoutManager->layouts()) {

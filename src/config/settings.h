@@ -1486,8 +1486,8 @@ private:
 
     // Autotiling Settings
     bool m_autotileEnabled = false;
-    QString m_autotileAlgorithm = QString(DBus::AutotileAlgorithm::MasterStack);
-    qreal m_autotileSplitRatio = 0.6;
+    QString m_autotileAlgorithm = QString(DBus::AutotileAlgorithm::BSP);
+    qreal m_autotileSplitRatio = 0.5;
     int m_autotileMasterCount = 1;
     qreal m_autotileCenteredMasterSplitRatio = 0.5;
     int m_autotileCenteredMasterMasterCount = 1;
