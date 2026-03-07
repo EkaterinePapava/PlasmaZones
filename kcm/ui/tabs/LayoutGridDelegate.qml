@@ -125,6 +125,21 @@ Item {
                     }
 
                     Kirigami.Icon {
+                        source: root.modelData.isSystem ? "lock" : "document-edit"
+                        visible: root.modelData.isSystem === true || root.modelData.hasSystemOrigin === true
+                        width: Kirigami.Units.iconSizes.small
+                        height: Kirigami.Units.iconSizes.small
+                        color: Kirigami.Theme.disabledTextColor
+                        ToolTip.visible: systemIconHover.hovered
+                        ToolTip.text: root.modelData.isSystem ? i18n("System layout (read-only)") : i18n("Modified system layout")
+
+                        HoverHandler {
+                            id: systemIconHover
+                        }
+
+                    }
+
+                    Kirigami.Icon {
                         source: "view-filter"
                         visible: {
                             var d = root.modelData;

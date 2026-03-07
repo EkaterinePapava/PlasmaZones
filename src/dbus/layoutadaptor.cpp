@@ -209,6 +209,7 @@ QStringList LayoutAdaptor::getLayoutList()
             Layout* layout = m_layoutManager->layoutById(*uuidOpt);
             if (layout) {
                 json[JsonKeys::IsSystem] = layout->isSystemLayout();
+                json[JsonKeys::HasSystemOrigin] = layout->hasSystemOrigin();
                 json[JsonKeys::Type] = static_cast<int>(layout->type());
                 json[JsonKeys::HiddenFromSelector] = layout->hiddenFromSelector();
                 if (layout->defaultOrder() != 999) {
