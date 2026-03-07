@@ -167,6 +167,7 @@ public:
      */
     struct PreviewParams
     {
+        QString algorithmId; ///< Active algorithm — maxWindows/splitRatio/masterCount apply only to this
         int maxWindows = -1; ///< -1 = use algorithm default
         int masterCount = -1; ///< -1 = use default (1)
         qreal splitRatio = -1.0; ///< -1 = use algorithm default

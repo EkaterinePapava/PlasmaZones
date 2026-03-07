@@ -24,7 +24,7 @@ AlgorithmRegistry::PreviewParams AlgorithmRegistry::s_previewParams;
 
 bool AlgorithmRegistry::PreviewParams::operator==(const PreviewParams& other) const
 {
-    return maxWindows == other.maxWindows && masterCount == other.masterCount
+    return algorithmId == other.algorithmId && maxWindows == other.maxWindows && masterCount == other.masterCount
         && qFuzzyCompare(1.0 + splitRatio, 1.0 + other.splitRatio)
         && centeredMasterMasterCount == other.centeredMasterMasterCount
         && qFuzzyCompare(1.0 + centeredMasterSplitRatio, 1.0 + other.centeredMasterSplitRatio);
@@ -269,8 +269,14 @@ int AlgorithmRegistry::effectiveMaxWindows(TilingAlgorithm* algorithm)
     if (!algorithm) {
         return s_previewParams.maxWindows;
     }
-    // Always use the algorithm's own default for preview generation.
-    // The global maxWindows setting is a runtime cap, not a preview override.
+    // Use the user-configured maxWindows only for the active algorithm.
+    // Other algorithms use their own default so each preview is representative.
+    if (s_previewParams.maxWindows > 0 && !s_previewParams.algorithmId.isEmpty()) {
+        auto* inst = instance();
+        if (inst && inst->algorithm(s_previewParams.algorithmId) == algorithm) {
+            return s_previewParams.maxWindows;
+        }
+    }
     return algorithm->defaultMaxWindows();
 }
 
@@ -286,16 +292,26 @@ QVariantList AlgorithmRegistry::generatePreviewZones(TilingAlgorithm* algorithm,
         count = effectiveMaxWindows(algorithm);
     }
 
-    // Use centered-master-specific params when generating preview for that algorithm
-    const bool isCenteredMaster = (algorithm == instance()->algorithm(CenteredMaster));
+    // Apply configured params only to the active algorithm (or centered-master's dedicated params).
+    // Non-active algorithms use their own defaults so each preview is representative.
+    auto* inst = instance();
+    const bool isActive =
+        inst && !s_previewParams.algorithmId.isEmpty() && inst->algorithm(s_previewParams.algorithmId) == algorithm;
+    const bool isCenteredMaster = inst && (algorithm == inst->algorithm(CenteredMaster));
 
-    const int masterCount = isCenteredMaster
-        ? ((s_previewParams.centeredMasterMasterCount > 0) ? s_previewParams.centeredMasterMasterCount : 1)
-        : ((s_previewParams.masterCount > 0) ? s_previewParams.masterCount : 1);
-    const qreal splitRatio = isCenteredMaster
-        ? ((s_previewParams.centeredMasterSplitRatio > 0) ? s_previewParams.centeredMasterSplitRatio
-                                                          : algorithm->defaultSplitRatio())
-        : ((s_previewParams.splitRatio > 0) ? s_previewParams.splitRatio : algorithm->defaultSplitRatio());
+    int masterCount = 1;
+    qreal splitRatio = algorithm->defaultSplitRatio();
+    if (isCenteredMaster) {
+        if (s_previewParams.centeredMasterMasterCount > 0)
+            masterCount = s_previewParams.centeredMasterMasterCount;
+        if (s_previewParams.centeredMasterSplitRatio > 0)
+            splitRatio = s_previewParams.centeredMasterSplitRatio;
+    } else if (isActive) {
+        if (s_previewParams.masterCount > 0)
+            masterCount = s_previewParams.masterCount;
+        if (s_previewParams.splitRatio > 0)
+            splitRatio = s_previewParams.splitRatio;
+    }
 
     // Generate preview zones for a representative window count
     const QRect previewRect(0, 0, PreviewSize, PreviewSize);

@@ -1500,7 +1500,7 @@ private:
     int m_autotileOuterGapRight = 8;
     bool m_autotileFocusNewWindows = true;
     bool m_autotileSmartGaps = true;
-    int m_autotileMaxWindows = 6;
+    int m_autotileMaxWindows = 5;
     AutotileInsertPosition m_autotileInsertPosition = AutotileInsertPosition::End;
 
     // Animation Settings (applies to both snapping and autotiling geometry changes)
