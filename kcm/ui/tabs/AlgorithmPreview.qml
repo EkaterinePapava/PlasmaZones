@@ -20,39 +20,39 @@ Item {
 
     // KCM reference for calling generateAlgorithmPreview()
     required property var kcm
-
     // Algorithm configuration
     property string algorithmId: ""
     property int windowCount: 4
     property real splitRatio: 0.6
     property int masterCount: 1
-
     // Color customization (passed through to ZonePreview)
     property color windowColor: Kirigami.Theme.highlightColor
     property color windowBorder: Kirigami.Theme.textColor
-
     // Throttled zone calculation (~60fps cap) to avoid redundant recalcs
     // when multiple properties change in the same frame
     property var zones: []
+    // Algorithm name label (hidden when used inside the Tiling tab's algorithm section
+    // where the name is already shown alongside the combo box)
+    property bool showLabel: true
 
     function recalcZones() {
         if (root.algorithmId !== "")
-            root.zones = root.kcm.generateAlgorithmPreview(
-                root.algorithmId, root.windowCount, root.splitRatio, root.masterCount)
-    }
+            root.zones = root.kcm.generateAlgorithmPreview(root.algorithmId, root.windowCount, root.splitRatio, root.masterCount);
 
-    Timer {
-        id: recalcTimer
-        interval: 16  // ~60fps cap
-        onTriggered: root.recalcZones()
     }
 
     onAlgorithmIdChanged: recalcTimer.restart()
     onWindowCountChanged: recalcTimer.restart()
     onSplitRatioChanged: recalcTimer.restart()
     onMasterCountChanged: recalcTimer.restart()
-
     Component.onCompleted: recalcTimer.start()
+
+    Timer {
+        id: recalcTimer
+
+        interval: 16 // ~60fps cap
+        onTriggered: root.recalcZones()
+    }
 
     // Render using shared ZonePreview (same component used in LayoutComboBox dropdowns)
     QFZCommon.ZonePreview {
@@ -77,18 +77,15 @@ Item {
             required property int index
 
             visible: (root.algorithmId === "master-stack" || root.algorithmId === "wide" || root.algorithmId === "centered-master") && index < root.masterCount
-            x: (modelData.relativeGeometry?.x || 0) * root.width + Kirigami.Units.smallSpacing
-            y: (modelData.relativeGeometry?.y || 0) * root.height + Kirigami.Units.smallSpacing
+            x: ((modelData.relativeGeometry && modelData.relativeGeometry.x) || 0) * root.width + Kirigami.Units.smallSpacing
+            y: ((modelData.relativeGeometry && modelData.relativeGeometry.y) || 0) * root.height + Kirigami.Units.smallSpacing
             width: Kirigami.Units.smallSpacing * 2
             height: Kirigami.Units.smallSpacing * 2
             radius: Kirigami.Units.smallSpacing
             color: Kirigami.Theme.positiveTextColor
         }
-    }
 
-    // Algorithm name label (hidden when used inside the Tiling tab's algorithm section
-    // where the name is already shown alongside the combo box)
-    property bool showLabel: true
+    }
 
     Label {
         visible: root.showLabel
@@ -97,21 +94,34 @@ Item {
         anchors.margins: 2
         text: {
             switch (root.algorithmId) {
-                case "master-stack": return i18n("Master + Stack")
-                case "bsp": return i18n("BSP")
-                case "columns": return i18n("Columns")
-                case "rows": return i18n("Rows")
-                case "dwindle": return i18n("Dwindle")
-                case "spiral": return i18n("Spiral")
-                case "monocle": return i18n("Monocle")
-                case "three-column": return i18n("Three Column")
-                case "grid": return i18n("Grid")
-                case "wide": return i18n("Wide")
-                case "centered-master": return i18n("Centered Master")
-                default: return root.algorithmId
+            case "master-stack":
+                return i18n("Master + Stack");
+            case "bsp":
+                return i18n("BSP");
+            case "columns":
+                return i18n("Columns");
+            case "rows":
+                return i18n("Rows");
+            case "dwindle":
+                return i18n("Dwindle");
+            case "spiral":
+                return i18n("Spiral");
+            case "monocle":
+                return i18n("Monocle");
+            case "three-column":
+                return i18n("Three Column");
+            case "grid":
+                return i18n("Grid");
+            case "wide":
+                return i18n("Wide");
+            case "centered-master":
+                return i18n("Centered Master");
+            default:
+                return root.algorithmId;
             }
         }
         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
         opacity: 0.5
     }
+
 }
