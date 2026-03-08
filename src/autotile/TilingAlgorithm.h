@@ -163,6 +163,17 @@ public:
      */
     virtual int defaultMaxWindows() const noexcept;
 
+    /**
+     * @brief Whether this algorithm intentionally produces overlapping zones
+     *
+     * Algorithms like Cascade, Stair, and Monocle overlap zones by design.
+     * When true, the post-layout enforceWindowMinSizes pass is skipped to
+     * avoid removeZoneOverlaps destroying the intended layout.
+     *
+     * @return true if zones intentionally overlap (default: false)
+     */
+    virtual bool producesOverlappingZones() const noexcept;
+
 protected:
     /**
      * @brief Distribute a total evenly among N parts with pixel-perfect remainder handling

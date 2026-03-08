@@ -65,6 +65,10 @@ public:
     {
         return 5;
     }
+    bool producesOverlappingZones() const noexcept override
+    {
+        return true;
+    }
 };
 
 } // namespace PlasmaZones

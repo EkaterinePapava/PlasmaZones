@@ -1249,9 +1249,9 @@ void AutotileEngine::recalculateLayout(const QString& screenName)
     // Lightweight safety net: the algorithm handles min sizes directly, but
     // enforceWindowMinSizes catches any residual deficits from rounding or
     // edge cases the algorithm couldn't fully solve (e.g., unsatisfiable constraints).
-    // Skip for Monocle: zones intentionally overlap (stacked windows), and
-    // removeZoneOverlaps would separate them into side-by-side columns.
-    if (effectiveRespectMinimumSize(screenName) && !minSizes.isEmpty() && algoId != DBus::AutotileAlgorithm::Monocle) {
+    // Skip for overlapping algorithms (Monocle, Cascade, Stair): zones intentionally
+    // overlap and removeZoneOverlaps would destroy the intended layout.
+    if (effectiveRespectMinimumSize(screenName) && !minSizes.isEmpty() && !algo->producesOverlappingZones()) {
         const int threshold = effectiveInnerGap(screenName) + qMax(AutotileDefaults::GapEdgeThresholdPx, 12);
         GeometryUtils::enforceWindowMinSizes(zones, minSizes, threshold, innerGap);
     }

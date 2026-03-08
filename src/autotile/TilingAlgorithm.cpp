@@ -44,6 +44,11 @@ int TilingAlgorithm::defaultMaxWindows() const noexcept
     return DefaultMaxWindows;
 }
 
+bool TilingAlgorithm::producesOverlappingZones() const noexcept
+{
+    return false;
+}
+
 QVector<int> TilingAlgorithm::distributeEvenly(int total, int count)
 {
     QVector<int> sizes;
