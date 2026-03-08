@@ -516,8 +516,10 @@ void Daemon::start()
     qCInfo(lcDaemon) << "Overlay service ready -" << m_screenManager->screens().count()
                      << "screens available (windows created on-demand)";
 
-    // Register global shortcuts via ShortcutManager
-    m_shortcutManager->registerShortcuts();
+    // Register global shortcuts via ShortcutManager (deferred/batched to avoid
+    // blocking the event loop with ~86 synchronous D-Bus round-trips to KGlobalAccel
+    // during login, when D-Bus is heavily contended by other KDE services)
+    m_shortcutManager->registerShortcutsDeferred();
 
     // Connect shortcut signals
     // Screen detection: On X11, QCursor::pos() works; on Wayland, background daemons

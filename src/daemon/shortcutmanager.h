@@ -5,6 +5,8 @@
 
 #include <QObject>
 #include <QAction>
+#include <QList>
+#include <functional>
 
 namespace PlasmaZones {
 
@@ -37,9 +39,13 @@ public:
     ~ShortcutManager() override;
 
     /**
-     * @brief Initialize and register shortcuts
+     * @brief Register shortcuts in batches, yielding the event loop between each
+     *
+     * Splits the 43 shortcut registrations into small batches and uses
+     * QTimer::singleShot(0, ...) between batches so the daemon stays responsive
+     * during login when KGlobalAccel is under heavy D-Bus contention.
      */
-    void registerShortcuts();
+    void registerShortcutsDeferred();
 
     /**
      * @brief Update shortcuts when settings change
@@ -147,6 +153,11 @@ Q_SIGNALS:
      */
     void layoutPickerRequested();
 
+    /**
+     * @brief Emitted when deferred shortcut registration completes
+     */
+    void shortcutsRegistered();
+
 private Q_SLOTS:
     void onOpenEditor();
     void onPreviousLayout();
@@ -235,6 +246,9 @@ private:
     void setupResnapToNewLayoutShortcut();
     void setupSnapAllWindowsShortcut();
     void setupLayoutPickerShortcut();
+    void buildBatchList();
+    void registerShortcuts();
+    void registerNextBatch();
 
     Settings* m_settings = nullptr;
     LayoutManager* m_layoutManager = nullptr;
@@ -282,6 +296,9 @@ private:
 
     // Layout Picker action
     QAction* m_layoutPickerAction = nullptr;
+
+    // Deferred registration state
+    QList<std::function<void()>> m_pendingBatches;
 };
 
 } // namespace PlasmaZones

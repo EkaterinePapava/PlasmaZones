@@ -8,6 +8,7 @@
 #include "../core/logging.h"
 #include <QAction>
 #include <QKeySequence>
+#include <QTimer>
 #include <KGlobalAccel>
 #include <KLocalizedString>
 
@@ -155,25 +156,72 @@ ShortcutManager::~ShortcutManager()
 // Public Methods
 // ═══════════════════════════════════════════════════════════════════════════════
 
+void ShortcutManager::buildBatchList()
+{
+    m_pendingBatches = {
+        [this]() {
+            setupEditorShortcut();
+            setupCyclingShortcuts();
+        },
+        [this]() { setupQuickLayoutShortcuts(); },
+        [this]() { setupNavigationShortcuts(); },
+        [this]() {
+            setupSwapWindowShortcuts();
+            setupRotateWindowsShortcuts();
+        },
+        [this]() { setupSnapToZoneShortcuts(); },
+        [this]() {
+            setupCycleWindowsShortcuts();
+            setupResnapToNewLayoutShortcut();
+            setupSnapAllWindowsShortcut();
+            setupLayoutPickerShortcut();
+        },
+    };
+}
+
 void ShortcutManager::registerShortcuts()
 {
-    setupEditorShortcut();
-    setupCyclingShortcuts();
-    setupQuickLayoutShortcuts();
-    setupNavigationShortcuts();
-    setupSwapWindowShortcuts();
-    setupSnapToZoneShortcuts();
-    setupRotateWindowsShortcuts();
-    setupCycleWindowsShortcuts();
-    setupResnapToNewLayoutShortcut();
-    setupSnapAllWindowsShortcut();
-    setupLayoutPickerShortcut();
+    buildBatchList();
+    while (!m_pendingBatches.isEmpty()) {
+        m_pendingBatches.takeFirst()();
+    }
+    Q_EMIT shortcutsRegistered();
+}
+
+void ShortcutManager::registerShortcutsDeferred()
+{
+    if (!m_pendingBatches.isEmpty()) {
+        qCWarning(lcShortcuts) << "registerShortcutsDeferred() called while "
+                                  "registration is already in progress — ignoring";
+        return;
+    }
+    buildBatchList();
+    registerNextBatch();
+}
+
+void ShortcutManager::registerNextBatch()
+{
+    if (m_pendingBatches.isEmpty()) {
+        qCInfo(lcShortcuts) << "All shortcuts registered (deferred)";
+        Q_EMIT shortcutsRegistered();
+        return;
+    }
+    auto batch = m_pendingBatches.takeFirst();
+    batch();
+    QTimer::singleShot(0, this, &ShortcutManager::registerNextBatch);
 }
 
 void ShortcutManager::updateShortcuts()
 {
     // Called when settingsChanged() is emitted (e.g., after KCM reload)
     // Refresh all shortcuts from current settings values
+    // If deferred registration is still in progress, skip — pending batches will
+    // read the current settings when they execute via SETUP_SHORTCUT.
+    if (!m_pendingBatches.isEmpty()) {
+        qCDebug(lcShortcuts) << "Skipping updateShortcuts() — deferred registration in progress";
+        return;
+    }
+
     qCInfo(lcShortcuts) << "Updating all shortcuts from settings";
 
     // Core shortcuts
@@ -230,6 +278,9 @@ void ShortcutManager::updateShortcuts()
 
 void ShortcutManager::unregisterShortcuts()
 {
+    // Cancel any in-flight deferred registration
+    m_pendingBatches.clear();
+
     // Clear all actions - KGlobalAccel will unregister automatically when actions are deleted
     // Use direct delete instead of deleteLater() because:
     // 1. Actions have 'this' as parent, so deleteLater() + parent cleanup = double-free risk
