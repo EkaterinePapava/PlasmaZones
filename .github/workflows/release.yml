@@ -528,20 +528,30 @@ jobs:
           fi
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: PlasmaZones v${{ needs.version.outputs.version }}
-          body_path: release_notes.md
-          draft: false
-          prerelease: ${{ contains(needs.version.outputs.version, 'alpha') || contains(needs.version.outputs.version, 'beta') || contains(needs.version.outputs.version, 'rc') }}
-          files: |
-            artifacts/**/*.*deb
-            artifacts/**/*.rpm
-            artifacts/**/*.pkg.tar.zst
-            artifacts/**/*linux-x86_64.tar.gz
-            artifacts/**/*.nix
-          generate_release_notes: false
-          make_latest: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="v${{ needs.version.outputs.version }}"
+          PRERELEASE_FLAG=""
+          if echo "$VERSION" | grep -qE '(alpha|beta|rc)'; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          # Collect all release assets
+          ASSETS=()
+          while IFS= read -r f; do
+            ASSETS+=("$f")
+          done < <(find artifacts -type f \( -name '*.deb' -o -name '*.ddeb' -o -name '*.rpm' -o -name '*.pkg.tar.zst' -o -name '*linux-x86_64.tar.gz' -o -name '*.nix' \))
+
+          echo "Uploading ${#ASSETS[@]} assets:"
+          printf '  %s\n' "${ASSETS[@]}"
+
+          gh release create "$VERSION" \
+            --title "PlasmaZones $VERSION" \
+            --notes-file release_notes.md \
+            --latest \
+            $PRERELEASE_FLAG \
+            "${ASSETS[@]}"
 
   # ═══════════════════════════════════════════════════════════════════════════
   # Publish to AUR (Arch User Repository)
