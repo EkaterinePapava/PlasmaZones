@@ -102,10 +102,10 @@ public:
         ++m_autotileStaggerGeneration;
     }
 
-    // Cancel any pending staggered restore (called by resnap to prevent stale overrides)
-    void cancelPendingRestore()
+    // Mark specific windows as overridden by resnap — stagger callbacks skip these
+    void markResnapOverrides(const QSet<QString>& windowIds)
     {
-        ++m_restoreStaggerGeneration;
+        m_resnapOverriddenWindows = windowIds;
     }
 
 public Q_SLOTS:
@@ -155,6 +155,7 @@ private:
     QSet<QString> m_minimizeFloatedWindows;
     uint64_t m_autotileStaggerGeneration = 0;
     uint64_t m_restoreStaggerGeneration = 0;
+    QSet<QString> m_resnapOverriddenWindows; ///< windows resnapped by handleResnapToNewLayout (skip stagger restore)
     QHash<QString, QRect> m_autotileTargetZones;
     QHash<QString, QRect> m_centeredWaylandZones; ///< zones where Wayland windows were last centered
     QString m_pendingAutotileFocusWindowId;

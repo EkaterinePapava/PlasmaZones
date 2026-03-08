@@ -120,22 +120,28 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
         m_autotileTargetZones.clear();
         m_centeredWaylandZones.clear();
         // Restore pre-autotile geometries with stagger animation support.
-        // A generation guard prevents stale restore timers from overriding
-        // the resnap positions — handleResnapToNewLayout() calls
-        // cancelPendingRestore() which bumps the generation, cancelling
-        // any not-yet-fired restore callbacks.
+        // The daemon also emits resnapToNewLayoutRequested for zone-assigned
+        // windows; handleResnapToNewLayout() populates m_resnapOverriddenWindows
+        // with the IDs it resnapped. Stagger callbacks check this set and skip
+        // windows the resnap already handled, ensuring non-zone-assigned windows
+        // (the "neither" state) still get their pre-autotile geometry restored.
         ++m_restoreStaggerGeneration;
+        m_resnapOverriddenWindows.clear();
         const uint64_t restoreGen = m_restoreStaggerGeneration;
         m_effect->applyStaggeredOrImmediate(toRestore.size(), [this, toRestore, restoreGen](int i) {
             if (m_restoreStaggerGeneration != restoreGen) {
                 return;
             }
             const RestoreEntry& e = toRestore[i];
-            if (e.window && !e.window->isDeleted() && m_effect->shouldHandleWindow(e.window)) {
-                qCInfo(lcEffect) << "Restoring pre-autotile geometry for" << m_effect->getWindowId(e.window) << "to"
-                                 << e.geometry;
-                m_effect->applySnapGeometry(e.window, e.geometry);
+            if (!e.window || e.window->isDeleted() || !m_effect->shouldHandleWindow(e.window)) {
+                return;
             }
+            const QString windowId = m_effect->getWindowId(e.window);
+            if (m_resnapOverriddenWindows.contains(windowId)) {
+                return; // Resnap already positioned this window in its zone
+            }
+            qCInfo(lcEffect) << "Restoring pre-autotile geometry for" << windowId << "to" << e.geometry;
+            m_effect->applySnapGeometry(e.window, e.geometry);
         });
     }
 

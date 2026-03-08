@@ -70,6 +70,7 @@ private:
         QString firstSourceZoneId;
         QString firstTargetZoneId;
         QString firstScreenName;
+        QSet<QString> snappedWindowIds; ///< window IDs that were actually snapped
     };
 
     /**

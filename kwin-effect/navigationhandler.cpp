@@ -886,6 +886,9 @@ NavigationHandler::applyBatchSnapFromJson(const QString& jsonData, bool filterCu
     result.firstSourceZoneId = pending.first().sourceZoneId;
     result.firstTargetZoneId = pending.first().targetZoneId;
     result.firstScreenName = pending.first().windowScreen;
+    for (const PendingSnap& p : pending) {
+        result.snappedWindowIds.insert(p.snapWindowId);
+    }
 
     // Store pre-snap geometries for ALL windows before any timers fire,
     // so each records its true original geometry (not an intermediate state).
@@ -936,15 +939,18 @@ void NavigationHandler::handleResnapToNewLayout(const QString& resnapData)
 {
     qCInfo(lcEffect) << "Resnap to new layout requested";
 
-    // Cancel any pending staggered restore from autotile → snap transition
-    // to prevent stale pre-autotile positions from overriding resnap results.
-    m_effect->m_autotileHandler->cancelPendingRestore();
-
     KWin::EffectWindow* activeWindow = m_effect->getActiveWindow();
     QString screenName = activeWindow ? m_effect->getWindowScreenName(activeWindow) : QString();
 
     BatchSnapResult result = applyBatchSnapFromJson(resnapData, /*filterCurrentDesktop=*/true,
                                                     /*resolveFullWindowId=*/true);
+
+    // Tell AutotileHandler which windows the resnap covered so pending
+    // stagger-restore callbacks skip them (they're already in their zones).
+    // Windows NOT in this set still get their pre-autotile geometry restored.
+    if (!result.snappedWindowIds.isEmpty()) {
+        m_effect->m_autotileHandler->markResnapOverrides(result.snappedWindowIds);
+    }
 
     if (result.status != BatchSnapResult::Success) {
         emitBatchFeedback(result, QStringLiteral("resnap"), screenName);
