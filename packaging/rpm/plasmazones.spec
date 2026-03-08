@@ -2,7 +2,7 @@
 # FancyZones-style window tiling for KDE Plasma
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Requires Plasma 6.6+ (KF6 6.6, Qt 6.6, LayerShellQt 6.6, KWin 6.6).
+# Requires Plasma 6.6+ (KF6 6.6, Qt 6.6, LayerShellQt 6.6, KWin 6.6+).
 #
 # Build: rpmbuild -ba plasmazones.spec
 # Clean build: mock -r fedora-43-x86_64 plasmazones-1.2.0-1.fc43.src.rpm
@@ -50,9 +50,8 @@ BuildRequires:  kf6-knotifications-devel >= 6.6.0
 BuildRequires:  kf6-kcolorscheme-devel >= 6.6.0
 
 # Plasma 6.6 / KWin 6.6 (effect API), LayerShellQt 6.6 (setScreen API)
-# IMPORTANT: The KWin effect plugin embeds EffectPluginFactory<VERSION> in its IID.
-# It will only load when runtime KWin matches the kwin-devel used at build time.
-# Rebuild this package whenever KWin is updated in the target distro.
+# The KWin effect plugin links against libkwin; RPM auto-generates soname deps
+# for ABI safety. Patch releases (6.6.x) maintain ABI and IID compatibility.
 BuildRequires:  kwin-devel >= 6.6.0
 BuildRequires:  layer-shell-qt-devel >= 6.6.0
 
@@ -78,10 +77,8 @@ Requires:       kf6-kglobalaccel >= 6.6.0
 Requires:       kf6-knotifications >= 6.6.0
 Requires:       kf6-kcolorscheme >= 6.6.0
 Requires:       layer-shell-qt >= 6.6.0
-# KWin effect plugin is version-locked: require exact KWin version from build env
-# (KWin does not provide .pc; extract from cmake config installed by kwin-devel)
-%global kwin_build_version %(sed -n 's/.*PACKAGE_VERSION \"\\([0-9.]*\\)\".*/\\1/p' %{_libdir}/cmake/KWin/KWinConfigVersion.cmake 2>/dev/null || echo 6.6.0)
-Requires:       kwin = %{kwin_build_version}
+# KWin: require minimum version; RPM auto-deps track soname for ABI safety
+Requires:       kwin >= 6.6.0
 Requires:       hicolor-icon-theme
 
 %description
