@@ -7,6 +7,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.15.11] - 2026-03-08
+
+### Fixed
+- **Release workflow retry loop**: Replaced `softprops/action-gh-release` with native `gh` CLI to fix releases getting stuck in a retry loop ([action-gh-release#704](https://github.com/softprops/action-gh-release/issues/704)).
+
 ## [1.15.10] - 2026-03-08
 
 ### Fixed
