@@ -138,22 +138,20 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
     };
     QVector<TileSnap> toApply;
     QSet<QString> tiledWindowIds;
-    QString tileScreenName;
+    QSet<QString> tileScreenNames;
     for (Entry& e : entries) {
         if (!e.window) {
             continue;
         }
         tiledWindowIds.insert(e.windowId);
         QString screenName = m_effect->getWindowScreenName(e.window);
-        if (tileScreenName.isEmpty()) {
-            tileScreenName = screenName;
-        }
+        tileScreenNames.insert(screenName);
         toApply.append({QPointer<KWin::EffectWindow>(e.window), e.geometry, e.windowId, screenName, e.isMonocle});
     }
 
     const uint64_t gen = m_autotileStaggerGeneration;
 
-    auto onComplete = [this, toApply, tiledWindowIds, tileScreenName, gen]() {
+    auto onComplete = [this, toApply, tiledWindowIds, tileScreenNames, gen]() {
         if (m_autotileStaggerGeneration != gen) {
             return;
         }
@@ -161,7 +159,7 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
             const QSet<QString> toRestore = m_border.borderlessWindows - tiledWindowIds;
             for (const QString& wid : toRestore) {
                 KWin::EffectWindow* win = m_effect->findWindowById(wid);
-                if (win && m_effect->getWindowScreenName(win) == tileScreenName && !win->isMinimized()) {
+                if (win && tileScreenNames.contains(m_effect->getWindowScreenName(win)) && !win->isMinimized()) {
                     setWindowBorderless(win, wid, false);
                 }
             }
@@ -178,6 +176,27 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
                     ws->raiseWindow(kw);
                 }
             }
+            // Restore saved autotile stacking order from previous session.
+            // Preserves user's z-order choices (e.g. floated window raised to
+            // front) across mode toggles. Windows not in saved order keep
+            // default tiling z-order from the raise loop above.
+            for (const QString& screenName : tileScreenNames) {
+                const QStringList savedOrder = m_savedAutotileStackingOrder.value(screenName);
+                if (savedOrder.isEmpty()) {
+                    continue;
+                }
+                for (const QString& windowId : savedOrder) {
+                    KWin::EffectWindow* w = m_effect->findWindowById(windowId);
+                    if (w && !w->isDeleted()) {
+                        KWin::Window* kw = w->window();
+                        if (kw) {
+                            ws->raiseWindow(kw);
+                        }
+                    }
+                }
+                m_savedAutotileStackingOrder.remove(screenName);
+            }
+
             if (!m_pendingAutotileFocusWindowId.isEmpty()) {
                 KWin::EffectWindow* focusWin = m_effect->findWindowById(m_pendingAutotileFocusWindowId);
                 m_pendingAutotileFocusWindowId.clear();

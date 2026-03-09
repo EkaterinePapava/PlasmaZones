@@ -37,6 +37,8 @@ void AutotileHandler::slotEnabledChanged(bool enabled)
     if (!enabled) {
         restoreAllBorderless();
         restoreAllMonocleMaximized();
+        m_savedSnapStackingOrder.clear();
+        m_savedAutotileStackingOrder.clear();
     }
 }
 
@@ -67,25 +69,46 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
             }
         }
 
-        // Restore pre-autotile geometries for windows on removed screens.
+        // Save autotile stacking order before restoring snap-mode order.
+        // This allows restoring the user's autotile z-order (e.g. floated
+        // windows raised to front) when re-entering autotile mode.
+        for (const QString& screenName : removed) {
+            QStringList autotileOrder;
+            for (KWin::EffectWindow* w : windows) {
+                if (w && m_effect->shouldHandleWindow(w) && m_effect->getWindowScreenName(w) == screenName) {
+                    autotileOrder.append(m_effect->getWindowId(w));
+                }
+            }
+            if (!autotileOrder.isEmpty()) {
+                m_savedAutotileStackingOrder[screenName] = autotileOrder;
+            }
+        }
+
+        // Restore pre-autotile geometries and stacking order for removed screens.
+        // Entries are ordered by saved stacking order (bottom→top) so the stagger
+        // animation restores both geometry and z-order together — each window pops
+        // into its correct position AND layer in sequence.
         struct RestoreEntry
         {
             QPointer<KWin::EffectWindow> window;
             QRect geometry;
+            bool hasGeometry = false;
         };
-        QVector<RestoreEntry> toRestore;
+
+        // Build a windowId→RestoreEntry map from saved geometries, then order
+        // by saved stacking order. Windows opened during autotile (not in saved
+        // stacking order) are appended at the end.
+        QHash<QString, RestoreEntry> entryMap;
         for (const QString& screenName : removed) {
             const auto savedIt = m_preAutotileGeometries.constFind(screenName);
-            if (savedIt == m_preAutotileGeometries.constEnd()) {
-                continue;
-            }
-            const QHash<QString, QRectF>& savedGeometries = savedIt.value();
+            const QHash<QString, QRectF>& savedGeometries =
+                (savedIt != m_preAutotileGeometries.constEnd()) ? savedIt.value() : QHash<QString, QRectF>();
+
             for (KWin::EffectWindow* w : windows) {
                 if (!w || !m_effect->shouldHandleWindow(w) || m_effect->getWindowScreenName(w) != screenName) {
                     continue;
                 }
                 const QString windowId = m_effect->getWindowId(w);
-
                 if (m_effect->isWindowFloating(windowId)) {
                     qCInfo(lcEffect) << "slotScreensChanged: skipping restore for floating window:" << windowId
                                      << "frame:" << w->frameGeometry();
@@ -94,27 +117,46 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
 
                 unmaximizeMonocleWindow(windowId);
 
+                RestoreEntry entry;
+                entry.window = QPointer<KWin::EffectWindow>(w);
                 const QString savedKey = findSavedGeometryKey(savedGeometries, windowId);
-                if (savedKey.isEmpty()) {
-                    continue;
+                if (!savedKey.isEmpty()) {
+                    const QRectF& savedGeo = savedGeometries.value(savedKey);
+                    if (savedGeo.isValid()) {
+                        const int l = qRound(savedGeo.x());
+                        const int t = qRound(savedGeo.y());
+                        const int r = qRound(savedGeo.x() + savedGeo.width());
+                        const int b = qRound(savedGeo.y() + savedGeo.height());
+                        entry.geometry = QRect(l, t, std::max(0, r - l), std::max(0, b - t));
+                        entry.hasGeometry = true;
+                    }
                 }
-                const QRectF& savedGeo = savedGeometries.value(savedKey);
-                if (savedGeo.isValid()) {
-                    const int l = qRound(savedGeo.x());
-                    const int t = qRound(savedGeo.y());
-                    const int r = qRound(savedGeo.x() + savedGeo.width());
-                    const int b = qRound(savedGeo.y() + savedGeo.height());
-                    toRestore.append(
-                        {QPointer<KWin::EffectWindow>(w), QRect(l, t, std::max(0, r - l), std::max(0, b - t))});
-                }
+                entryMap[windowId] = entry;
             }
-            // Clear the effect-local autotile geometry cache for this screen.
-            // Do NOT clear daemon-side pre-tile geometries — with unified storage,
-            // the daemon entry is the original pre-tile geometry that snap mode needs
-            // for float restore. Clearing it here would cause ensurePreSnapGeometryStored
-            // to re-store the tiled geometry when resnap fires.
             m_preAutotileGeometries.remove(screenName);
         }
+
+        // Order entries by saved stacking order (bottom→top), then append
+        // any windows not in the saved order (opened during autotile).
+        QVector<RestoreEntry> toRestore;
+        toRestore.reserve(entryMap.size());
+        QSet<QString> ordered;
+        for (const QString& screenName : removed) {
+            for (const QString& windowId : m_savedSnapStackingOrder.value(screenName)) {
+                auto it = entryMap.constFind(windowId);
+                if (it != entryMap.constEnd()) {
+                    toRestore.append(it.value());
+                    ordered.insert(windowId);
+                }
+            }
+            m_savedSnapStackingOrder.remove(screenName);
+        }
+        for (auto it = entryMap.constBegin(); it != entryMap.constEnd(); ++it) {
+            if (!ordered.contains(it.key())) {
+                toRestore.append(it.value());
+            }
+        }
+
         // Invalidate any pending stagger timers from prior autotile operations.
         ++m_autotileStaggerGeneration;
         m_autotileTargetZones.clear();
@@ -123,8 +165,7 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
         // The daemon also emits resnapToNewLayoutRequested for zone-assigned
         // windows; handleResnapToNewLayout() populates m_resnapOverriddenWindows
         // with the IDs it resnapped. Stagger callbacks check this set and skip
-        // windows the resnap already handled, ensuring non-zone-assigned windows
-        // (the "neither" state) still get their pre-autotile geometry restored.
+        // geometry application (but still raise to restore z-order).
         ++m_restoreStaggerGeneration;
         m_resnapOverriddenWindows.clear();
         const uint64_t restoreGen = m_restoreStaggerGeneration;
@@ -137,11 +178,21 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
                 return;
             }
             const QString windowId = m_effect->getWindowId(e.window);
-            if (m_resnapOverriddenWindows.contains(windowId)) {
-                return; // Resnap already positioned this window in its zone
+
+            // Apply geometry if we have it and resnap didn't handle this window
+            if (e.hasGeometry && !m_resnapOverriddenWindows.contains(windowId)) {
+                qCInfo(lcEffect) << "Restoring pre-autotile geometry for" << windowId << "to" << e.geometry;
+                m_effect->applySnapGeometry(e.window, e.geometry);
             }
-            qCInfo(lcEffect) << "Restoring pre-autotile geometry for" << windowId << "to" << e.geometry;
-            m_effect->applySnapGeometry(e.window, e.geometry);
+
+            // Raise to restore pre-autotile stacking order (no focus steal)
+            KWin::Window* kw = e.window->window();
+            if (kw) {
+                auto* ws = KWin::Workspace::self();
+                if (ws) {
+                    ws->raiseWindow(kw);
+                }
+            }
         });
     }
 
@@ -149,6 +200,19 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
     m_lastFocusFollowsMouseWindowId.clear();
 
     if (!added.isEmpty()) {
+        // Save stacking order for windows on screens entering autotile.
+        // Restored when leaving autotile so windows return to their
+        // pre-autotile z-order (autotile focus changes reorder windows).
+        for (KWin::EffectWindow* w : windows) {
+            if (!w || !m_effect->shouldHandleWindow(w)) {
+                continue;
+            }
+            const QString screenName = m_effect->getWindowScreenName(w);
+            if (added.contains(screenName)) {
+                m_savedSnapStackingOrder[screenName].append(m_effect->getWindowId(w));
+            }
+        }
+
         // Save current frame geometries and notify windows IMMEDIATELY (non-blocking).
         // The window's current position IS the pre-autotile geometry we want to save.
         // slotWindowsTileRequested also saves pre-autotile geometry (before tiling), so

@@ -151,6 +151,8 @@ private:
 
     QSet<QString> m_autotileScreens;
     QHash<QString, QHash<QString, QRectF>> m_preAutotileGeometries;
+    QHash<QString, QStringList> m_savedSnapStackingOrder; ///< snap-mode stacking order, restored on autotile→snap
+    QHash<QString, QStringList> m_savedAutotileStackingOrder; ///< autotile stacking order, restored on snap→autotile
     QSet<QString> m_notifiedWindows;
     QSet<QString> m_pendingCloses;
     QSet<QString> m_minimizeFloatedWindows;

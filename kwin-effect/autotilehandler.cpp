@@ -387,6 +387,13 @@ void AutotileHandler::onWindowClosed(const QString& windowId, const QString& scr
     if (m_preAutotileGeometries.contains(screenName)) {
         m_preAutotileGeometries[screenName].remove(windowId);
     }
+    // Remove from saved stacking orders so stale IDs don't accumulate
+    if (m_savedSnapStackingOrder.contains(screenName)) {
+        m_savedSnapStackingOrder[screenName].removeAll(windowId);
+    }
+    if (m_savedAutotileStackingOrder.contains(screenName)) {
+        m_savedAutotileStackingOrder[screenName].removeAll(windowId);
+    }
 
     // Notify autotile daemon
     if (m_autotileScreens.contains(screenName)) {
