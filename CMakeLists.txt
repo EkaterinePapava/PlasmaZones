@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 fuddlesworth
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# PlasmaZones - KDE/Plasma FancyZones Implementation
+# PlasmaZones - Window tiling and autotiling for KDE Plasma
 
 cmake_minimum_required(VERSION 3.16)
 

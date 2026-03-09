@@ -1,8 +1,8 @@
 # PlasmaZones - Cursor Rules
-# KDE/Plasma FancyZones Implementation - QML/C++/Qt6/Kirigami Best Practices
+# KDE/Plasma Window Tiling - QML/C++/Qt6/Kirigami Best Practices
 
 ## Project Overview
-PlasmaZones is a KDE/Plasma implementation of Windows FancyZones functionality for organizing windows into customizable zones. Uses Qt6, KDE Frameworks 6, Kirigami UI components, and modern C++20.
+PlasmaZones is a window tiling and zone management tool for KDE Plasma. Features customizable zone layouts with drag-to-snap, automatic tiling algorithms, and keyboard navigation. Uses Qt6, KDE Frameworks 6, Kirigami UI components, and modern C++20.
 
 ## License & Copyright
 - ALWAYS include SPDX headers in ALL files (QML and C++)

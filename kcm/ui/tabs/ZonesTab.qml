@@ -521,7 +521,7 @@ ScrollView {
                         checked: kcm.alwaysActivateOnDrag
                         onToggled: kcm.alwaysActivateOnDrag = checked
                         ToolTip.visible: hovered && root.isCurrentTab
-                        ToolTip.text: i18n("When enabled, the zone overlay appears on every window drag without requiring a modifier key or mouse button. Similar to FancyZones and KZones behavior.")
+                        ToolTip.text: i18n("When enabled, the zone overlay appears on every window drag without requiring a modifier key or mouse button.")
                     }
 
                     ModifierAndMouseCheckBoxes {

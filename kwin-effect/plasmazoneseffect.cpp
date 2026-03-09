@@ -2206,7 +2206,7 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
 
     // In KWin 6, we use the window's moveResize methods
     // When allowDuringDrag is false: defer if window is in user move/resize (snap on release)
-    // When allowDuringDrag is true: apply immediately (FancyZones-style during drag)
+    // When allowDuringDrag is true: apply immediately (snap-on-hover during drag)
     if (!allowDuringDrag && (window->isUserMove() || window->isUserResize())) {
         if (retriesLeft <= 0) {
             qCWarning(lcEffect) << "Giving up snap geometry — window still in user move after"

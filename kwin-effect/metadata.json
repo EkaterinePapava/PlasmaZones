@@ -1,7 +1,7 @@
 {
     "KPlugin": {
         "Category": "Window Management",
-        "Description": "FancyZones-style window snapping with modifier key detection",
+        "Description": "Window zone snapping and autotiling with modifier key detection",
         "EnabledByDefault": true,
         "License": "GPL",
         "Name": "PlasmaZones",

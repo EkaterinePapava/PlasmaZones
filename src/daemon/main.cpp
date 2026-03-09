@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
 
     // Set up application metadata
     KAboutData aboutData(QStringLiteral("plasmazonesd"), i18n("PlasmaZones Daemon"), PlasmaZones::VERSION_STRING,
-                         i18n("FancyZones-style window snapping for KDE Plasma"), KAboutLicense::GPL_V3,
+                         i18n("Window tiling and zone management for KDE Plasma"), KAboutLicense::GPL_V3,
                          i18n("© 2026 fuddlesworth"));
     aboutData.addAuthor(i18n("fuddlesworth"));
     aboutData.setHomepage(QStringLiteral("https://github.com/plasmazones/plasmazones"));

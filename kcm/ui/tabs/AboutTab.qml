@@ -56,7 +56,7 @@ ScrollView {
         Label {
             Layout.fillWidth: true
             Layout.topMargin: Kirigami.Units.largeSpacing
-            text: i18n("A window tiling and zone management tool for KDE Plasma, inspired by Windows PowerToys FancyZones. Organize your desktop with customizable zones for efficient window placement.")
+            text: i18n("A window tiling and zone management tool for KDE Plasma. Organize your desktop with customizable zones, automatic tiling layouts, and keyboard-driven window placement.")
             wrapMode: Text.WordWrap
         }
 
@@ -152,7 +152,7 @@ ScrollView {
 
                 Label {
                     Layout.fillWidth: true
-                    text: i18n("Inspired by Microsoft PowerToys FancyZones")
+                    text: i18n("Inspired by FancyZones, extended with automatic tiling")
                     opacity: 0.7
                 }
 

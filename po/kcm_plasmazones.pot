@@ -506,9 +506,9 @@ msgstr ""
 
 #: kcm/ui/tabs/AboutTab.qml:59
 msgid ""
-"A window tiling and zone management tool for KDE Plasma, inspired by Windows "
-"PowerToys FancyZones. Organize your desktop with customizable zones for "
-"efficient window placement."
+"A window tiling and zone management tool for KDE Plasma. Organize your "
+"desktop with customizable zones, automatic tiling layouts, and keyboard-"
+"driven window placement."
 msgstr ""
 
 #: kcm/ui/tabs/AboutTab.qml:70
@@ -554,7 +554,7 @@ msgid "Created by fuddlesworth"
 msgstr ""
 
 #: kcm/ui/tabs/AboutTab.qml:151
-msgid "Inspired by Microsoft PowerToys FancyZones"
+msgid "Inspired by FancyZones, extended with automatic tiling"
 msgstr ""
 
 #: kcm/ui/tabs/AboutTab.qml:157
@@ -1414,8 +1414,7 @@ msgstr ""
 #: kcm/ui/tabs/ZonesTab.qml:463
 msgid ""
 "When enabled, the zone overlay appears on every window drag without "
-"requiring a modifier key or mouse button. Similar to FancyZones and KZones "
-"behavior."
+"requiring a modifier key or mouse button."
 msgstr ""
 
 #: kcm/ui/tabs/ZonesTab.qml:470

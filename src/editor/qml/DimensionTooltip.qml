@@ -10,7 +10,7 @@ import org.kde.kirigami as Kirigami
  * @brief Simple tooltip showing zone dimensions during drag/resize operations
  *
  * Displays position and size (percentage) in a clean, minimal format at the bottom of the zone.
- * Similar to Windows FancyZones behavior.
+ * Shows percentage-based dimensions for zone sizing feedback.
  */
 Rectangle {
     // 8px padding from bottom

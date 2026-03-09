@@ -238,7 +238,7 @@ private:
                                 const QString& screenName = QString());
 
     // Apply snap geometry to window
-    // When allowDuringDrag is true, applies immediately even if window is in user move state (for FancyZones-style)
+    // When allowDuringDrag is true, applies immediately even if window is in user move state (snap-on-hover)
     // retriesLeft caps the deferred-retry chain (avoids unbounded timers if isUserMove gets stuck)
     void applySnapGeometry(KWin::EffectWindow* window, const QRect& geometry, bool allowDuringDrag = false,
                            int retriesLeft = 20, bool skipAnimation = false);

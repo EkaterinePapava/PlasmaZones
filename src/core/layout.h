@@ -57,7 +57,7 @@ struct PLASMAZONES_EXPORT AppRuleMatch
 };
 
 /**
- * @brief Layout types matching FancyZones
+ * @brief Layout types for zone configurations
  */
 enum class LayoutType {
     Custom, // User-defined canvas layout

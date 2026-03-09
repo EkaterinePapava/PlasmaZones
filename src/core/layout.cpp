@@ -410,7 +410,7 @@ void Layout::endBatchModify()
 Zone* Layout::zoneAtPoint(const QPointF& point) const
 {
     // When zones overlap, pick the smallest zone containing the point.
-    // This matches FancyZones' "area covered" heuristic: the cursor covers
+    // "Area covered" heuristic: the cursor covers
     // a larger proportion of a smaller zone, so it wins the overlap.
     Zone* best = nullptr;
     qreal bestArea = std::numeric_limits<qreal>::max();

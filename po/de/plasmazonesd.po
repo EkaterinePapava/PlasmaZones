@@ -24,8 +24,8 @@ msgstr "PlasmaZones-Hintergrunddienst"
 
 #: src/daemon/main.cpp:51
 #, kde-format
-msgid "FancyZones-style window snapping for KDE Plasma"
-msgstr "Fenster-Manager im FancyZones-Stil für KDE Plasma"
+msgid "Window tiling and zone management for KDE Plasma"
+msgstr "Fensterteilung und Zonenverwaltung für KDE Plasma"
 
 #: src/daemon/main.cpp:52
 #, kde-format

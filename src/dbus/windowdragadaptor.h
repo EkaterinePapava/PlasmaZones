@@ -122,7 +122,7 @@ public Q_SLOTS:
 Q_SIGNALS:
     /**
      * Emitted when the zone geometry under the cursor changes during drag.
-     * KWin effect subscribes and applies the geometry immediately for FancyZones-style snap-on-hover.
+     * KWin effect subscribes and applies the geometry immediately for snap-on-hover behavior.
      */
     void zoneGeometryDuringDragChanged(const QString& windowId, int x, int y, int width, int height);
 

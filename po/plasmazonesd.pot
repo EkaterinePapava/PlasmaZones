@@ -24,7 +24,7 @@ msgstr ""
 
 #: src/daemon/main.cpp:51
 #, kde-format
-msgid "FancyZones-style window snapping for KDE Plasma"
+msgid "Window tiling and zone management for KDE Plasma"
 msgstr ""
 
 #: src/daemon/main.cpp:52
