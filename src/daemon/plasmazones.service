@@ -2,7 +2,7 @@
 Description=PlasmaZones Window Snapping Daemon
 Documentation=https://github.com/fuddlesworth/PlasmaZones
 PartOf=graphical-session.target
-After=plasma-workspace.target plasma-kglobalaccel.service
+After=plasma-workspace.target
 
 [Service]
 Type=simple

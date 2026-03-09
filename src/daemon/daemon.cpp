@@ -516,11 +516,8 @@ void Daemon::start()
     qCInfo(lcDaemon) << "Overlay service ready -" << m_screenManager->screens().count()
                      << "screens available (windows created on-demand)";
 
-    // Register global shortcuts via ShortcutManager.
-    // Phase 1 (sync): setDefaultShortcut for all 43 actions — fast, no key grabbing.
-    // Phase 2 (async): setShortcutKeys via QDBusPendingCall — key grabbing on the
-    // daemon side without blocking our event loop during login contention.
-    m_shortcutManager->registerShortcutsDeferred();
+    // Register global shortcuts via ShortcutManager
+    m_shortcutManager->registerShortcuts();
 
     // Connect shortcut signals
     // Screen detection: On X11, QCursor::pos() works; on Wayland, background daemons

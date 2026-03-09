@@ -5,11 +5,6 @@
 
 #include <QObject>
 #include <QAction>
-#include <QList>
-#include <QKeySequence>
-#include <QStringList>
-
-class QDBusPendingCallWatcher;
 
 namespace PlasmaZones {
 
@@ -42,13 +37,9 @@ public:
     ~ShortcutManager() override;
 
     /**
-     * @brief Register shortcuts in batches, yielding the event loop between each
-     *
-     * Splits the 43 shortcut registrations into small batches and uses
-     * QTimer::singleShot(0, ...) between batches so the daemon stays responsive
-     * during login when KGlobalAccel is under heavy D-Bus contention.
+     * @brief Initialize and register shortcuts
      */
-    void registerShortcutsDeferred();
+    void registerShortcuts();
 
     /**
      * @brief Update shortcuts when settings change
@@ -156,11 +147,6 @@ Q_SIGNALS:
      */
     void layoutPickerRequested();
 
-    /**
-     * @brief Emitted when deferred shortcut registration completes
-     */
-    void shortcutsRegistered();
-
 private Q_SLOTS:
     void onOpenEditor();
     void onPreviousLayout();
@@ -249,10 +235,6 @@ private:
     void setupResnapToNewLayoutShortcut();
     void setupSnapAllWindowsShortcut();
     void setupLayoutPickerShortcut();
-    void queueAsyncShortcut(QAction* action, const QKeySequence& shortcut);
-    void fireAsyncRegistrations();
-    void onAsyncRegistrationFinished(QDBusPendingCallWatcher* watcher);
-    QStringList makeActionId(const QAction* action) const;
 
     Settings* m_settings = nullptr;
     LayoutManager* m_layoutManager = nullptr;
@@ -300,14 +282,6 @@ private:
 
     // Layout Picker action
     QAction* m_layoutPickerAction = nullptr;
-
-    // Async registration state
-    struct PendingAsyncShortcut {
-        QAction* action;
-        QKeySequence shortcut;
-    };
-    QList<PendingAsyncShortcut> m_asyncQueue;
-    int m_pendingAsyncCount = 0;
 };
 
 } // namespace PlasmaZones
