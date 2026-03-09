@@ -22,9 +22,8 @@ set(QT_DEFAULT_MAJOR_VERSION 6)
 # Find KWin for effect development
 find_package(KWin 6.6 REQUIRED)
 
-# KWin effect plugins embed EffectPluginFactory<VERSION> in their IID; the plugin will
-# only load when the runtime KWin version matches. Log the build-time version so
-# packagers can verify (e.g. when building RPMs, ensure kwin-devel matches target).
+# KWin effect plugins link against libkwin. Log the build-time version so
+# packagers can verify compatibility (patch releases are ABI-compatible).
 if(KWin_FOUND AND KWin_DIR)
     file(READ "${KWin_DIR}/KWinConfigVersion.cmake" _kwin_version_file)
     string(REGEX MATCH "set\\(PACKAGE_VERSION \"([0-9.]+)\"\\)" _ "${_kwin_version_file}")

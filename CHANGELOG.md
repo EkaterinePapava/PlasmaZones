@@ -51,6 +51,42 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - Split `Settings`, `OverlayService`, `WindowTrackingService`, D-Bus adaptors, and editor into subdirectories
 - **Comprehensive unit tests** for all algorithms, engine, tiling state, overflow manager, geometry utils, and algorithm registry (11 test suites)
 
+## [1.15.13] - 2026-03-08
+
+### Fixed
+- **Login freeze with many shortcuts** (fixes [#200](https://github.com/fuddlesworth/PlasmaZones/discussions/200)): Deferred `KGlobalAccel::setGlobalShortcut()` calls one-at-a-time with event loop yields between each. Phase 1 registers all 39 shortcuts via `setDefaultShortcut()` (fast, no key grabbing). Phase 2 processes `setGlobalShortcut()` individually so each ~600ms blocking D-Bus call never freezes the desktop. Eliminates 20-40s hangs during login when kglobalacceld is under contention.
+
+## [1.15.12] - 2026-03-08
+
+### Fixed
+- **Global shortcuts broken after v1.15.9/v1.15.10** (fixes [#200](https://github.com/fuddlesworth/PlasmaZones/discussions/200)): Reverted async D-Bus shortcut registration (v1.15.10) and deferred batching (v1.15.9) which left the KGlobalAccel component inactive, preventing all shortcut dispatch. Restored direct `KGlobalAccel::setGlobalShortcut()` calls which properly register actions and set up key grabs through the official API.
+
+## [1.15.11] - 2026-03-08
+
+### Fixed
+- **Release workflow retry loop**: Replaced `softprops/action-gh-release` with native `gh` CLI to fix releases getting stuck in a retry loop ([action-gh-release#704](https://github.com/softprops/action-gh-release/issues/704)).
+
+## [1.15.10] - 2026-03-08
+
+### Fixed
+- **Login freeze persisted despite v1.15.9 batching** (fixes [#200](https://github.com/fuddlesworth/PlasmaZones/discussions/200)): The v1.15.9 deferred batch approach still blocked because each batch made synchronous D-Bus round-trips whose replies stalled for ~25s while kglobalaccel processed key grabs (QTBUG-34698). Replaced with true async D-Bus: `setDefaultShortcut()` registers actions synchronously (fast — no key grabbing), then `setShortcutKeys` calls fire via `QDBusPendingCallWatcher` so the event loop never blocks on key grabbing.
+
+## [1.15.9] - 2026-03-08
+
+### Fixed
+- **Login freeze with autostart apps** (fixes [#200](https://github.com/fuddlesworth/PlasmaZones/discussions/200)): Shortcut registration made 86+ synchronous D-Bus calls to KGlobalAccel at startup, blocking the event loop for 20-40 seconds when competing with other KDE services during login. Registration is now batched and deferred, yielding the event loop between batches.
+- **systemd service ordering**: Added `After=plasma-kglobalaccel.service` to ensure the shortcut daemon is ready before PlasmaZones registers shortcuts.
+
+## [1.15.8] - 2026-03-08
+
+### Fixed
+- **RPM: remove exact KWin version pin** (fixes [#199](https://github.com/fuddlesworth/PlasmaZones/discussions/199)): RPM package required `kwin = <build-version>` which blocked installation when KWin received patch updates (e.g. 6.6.1 -> 6.6.2). Changed to `kwin >= 6.6.0`; soname-level deps handle ABI safety automatically.
+
+## [1.15.7] - 2026-03-06
+
+### Fixed
+- **KWin 6.6.2 compatibility**: Rebuild for KWin 6.6.2 minor release; effect plugin is version-locked and requires exact KWin version match to load.
+
 ## [1.15.6] - 2026-02-28
 
 ### Fixed

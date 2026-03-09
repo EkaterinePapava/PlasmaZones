@@ -5,6 +5,9 @@
 
 #include <QObject>
 #include <QAction>
+#include <QKeySequence>
+#include <QPointer>
+#include <QQueue>
 
 namespace PlasmaZones {
 
@@ -160,6 +163,11 @@ Q_SIGNALS:
     void decreaseMasterCountRequested();
     void retileRequested();
 
+    /**
+     * @brief Emitted when deferred shortcut registration completes
+     */
+    void shortcutsRegistered();
+
 private Q_SLOTS:
     void onOpenEditor();
     void onPreviousLayout();
@@ -269,6 +277,8 @@ private:
     void setupSnapAllWindowsShortcut();
     void setupLayoutPickerShortcut();
     void setupAutotileShortcuts();
+    void queueGlobalShortcut(QAction* action, const QKeySequence& shortcut);
+    void processNextDeferredShortcut();
 
     Settings* m_settings = nullptr;
     LayoutManager* m_layoutManager = nullptr;
@@ -326,6 +336,16 @@ private:
     QAction* m_incMasterCountAction = nullptr;
     QAction* m_decMasterCountAction = nullptr;
     QAction* m_retileAction = nullptr;
+
+    // Deferred registration state
+    struct DeferredShortcut
+    {
+        QPointer<QAction> action;
+        QKeySequence shortcut;
+    };
+    QQueue<DeferredShortcut> m_deferredQueue;
+    bool m_registrationInProgress = false;
+    bool m_settingsDirty = false;
 };
 
 } // namespace PlasmaZones
