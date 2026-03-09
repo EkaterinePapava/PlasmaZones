@@ -29,7 +29,7 @@ QString WideAlgorithm::name() const
 
 QString WideAlgorithm::description() const
 {
-    return i18n("Horizontal master-stack with master row on top");
+    return i18n("Master area on top, remaining windows stacked below");
 }
 
 QString WideAlgorithm::icon() const noexcept

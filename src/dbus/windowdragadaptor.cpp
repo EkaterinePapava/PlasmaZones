@@ -56,7 +56,7 @@ WindowDragAdaptor::WindowDragAdaptor(IOverlayService* overlay, IZoneDetector* de
     connect(m_layoutManager, &LayoutManager::layoutAssigned, this, &WindowDragAdaptor::onLayoutChanged);
 
     // Escape shortcut to cancel overlay during drag (registered when drag starts, unregistered when drag ends)
-    m_cancelOverlayAction = new QAction(i18n("Cancel zone overlay"), this);
+    m_cancelOverlayAction = new QAction(i18n("Cancel Zone Overlay"), this);
     m_cancelOverlayAction->setObjectName(QStringLiteral("cancel_overlay_during_drag"));
     connect(m_cancelOverlayAction, &QAction::triggered, this, &WindowDragAdaptor::cancelSnap);
 

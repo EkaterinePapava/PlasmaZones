@@ -76,7 +76,7 @@ private Q_SLOTS:
         auto* algo = registry->algorithm(DBus::AutotileAlgorithm::BSP);
 
         QVERIFY(algo != nullptr);
-        QCOMPARE(algo->name(), QStringLiteral("BSP"));
+        QCOMPARE(algo->name(), QStringLiteral("Binary Split"));
         QVERIFY(!algo->supportsMasterCount());
         QVERIFY(algo->supportsSplitRatio());
     }

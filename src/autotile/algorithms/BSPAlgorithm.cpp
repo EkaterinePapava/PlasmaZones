@@ -24,12 +24,12 @@ BSPAlgorithm::BSPAlgorithm(QObject* parent)
 
 QString BSPAlgorithm::name() const
 {
-    return i18n("BSP");
+    return i18n("Binary Split");
 }
 
 QString BSPAlgorithm::description() const
 {
-    return i18n("Binary space partitioning - balanced recursive splitting");
+    return i18n("Balanced recursive splitting into equal regions");
 }
 
 QString BSPAlgorithm::icon() const noexcept

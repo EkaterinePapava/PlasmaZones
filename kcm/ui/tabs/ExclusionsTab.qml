@@ -64,7 +64,7 @@ ScrollView {
                     Layout.margins: Kirigami.Units.smallSpacing
 
                     CheckBox {
-                        text: i18n("Exclude transient windows (dialogs, utilities, tooltips)")
+                        text: i18n("Exclude transient windows (dialogs, popups, toolbars)")
                         checked: kcm.excludeTransientWindows
                         onToggled: kcm.excludeTransientWindows = checked
                     }

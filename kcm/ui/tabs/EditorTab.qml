@@ -102,7 +102,7 @@ ScrollView {
 
                     Button {
                         Kirigami.FormData.label: i18n("Reset:")
-                        text: i18n("Reset to Defaults")
+                        text: i18n("Reset to defaults")
                         icon.name: "edit-reset"
                         onClicked: kcm.resetEditorShortcuts()
                         ToolTip.visible: hovered

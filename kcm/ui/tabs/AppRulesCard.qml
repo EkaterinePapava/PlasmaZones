@@ -314,7 +314,7 @@ Kirigami.Card {
         }
 
         Label {
-            text: root.viewMode === 1 ? i18n("Rules are shared across modes. Zone numbers correspond to the algorithm's tile positions.") : i18n("Rules are checked in order. The first matching pattern determines the zone. Patterns are case-insensitive substring matches.")
+            text: root.viewMode === 1 ? i18n("Rules are shared across modes. Zone numbers correspond to the algorithm's tile positions.") : i18n("Rules are checked in order. The first match wins. Patterns match any part of the window class name, ignoring case.")
             font.italic: true
             opacity: 0.7
             wrapMode: Text.WordWrap

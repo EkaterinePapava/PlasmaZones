@@ -636,7 +636,7 @@ ScrollView {
                         enabled: snapAssistFeatureEnabledCheck.checked
                         opacity: enabled ? 1 : 0.6
                         ToolTip.visible: hovered && root.isCurrentTab
-                        ToolTip.text: i18n("When enabled, after every snap you can pick another window to fill empty zones. When disabled, hold the trigger below at drop to enable for that snap only.")
+                        ToolTip.text: i18n("When enabled, a window picker appears after every snap. When disabled, hold the trigger below while dropping to show the picker for that snap only.")
                     }
 
                     ModifierAndMouseCheckBoxes {
@@ -691,7 +691,7 @@ ScrollView {
 
                     CheckBox {
                         Kirigami.FormData.label: i18n("Resolution:")
-                        text: i18n("Keep windows in zones when resolution changes")
+                        text: i18n("Re-snap windows to their zones after resolution changes")
                         checked: kcm.keepWindowsInZonesOnResolutionChange
                         onToggled: kcm.keepWindowsInZonesOnResolutionChange = checked
                     }

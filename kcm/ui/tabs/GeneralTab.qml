@@ -499,7 +499,7 @@ ScrollView {
 
                         // Stagger interval (only relevant when one by one)
                         RowLayout {
-                            Kirigami.FormData.label: i18n("Stagger delay:")
+                            Kirigami.FormData.label: i18n("Delay between windows:")
                             visible: kcm.animationSequenceMode === 1
                             enabled: animationsEnabledCheck.checked
                             spacing: Kirigami.Units.smallSpacing
@@ -525,7 +525,7 @@ ScrollView {
 
                         // Minimum distance threshold
                         RowLayout {
-                            Kirigami.FormData.label: i18n("Min. distance:")
+                            Kirigami.FormData.label: i18n("Minimum distance:")
                             enabled: animationsEnabledCheck.checked
                             spacing: Kirigami.Units.smallSpacing
 

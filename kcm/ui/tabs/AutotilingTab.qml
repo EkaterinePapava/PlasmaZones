@@ -97,13 +97,13 @@ ScrollView {
                         textRole: "text"
                         valueRole: "value"
                         model: [{
-                            "text": i18n("Add to end of stack"),
+                            "text": i18n("Add after existing windows"),
                             "value": 0
                         }, {
                             "text": i18n("Insert after focused"),
                             "value": 1
                         }, {
-                            "text": i18n("Add as master"),
+                            "text": i18n("Add as main window"),
                             "value": 2
                         }]
                         currentIndex: Math.max(0, indexOfValue(kcm.autotileInsertPosition))
@@ -132,7 +132,7 @@ ScrollView {
                         checked: kcm.autotileRespectMinimumSize
                         onToggled: kcm.autotileRespectMinimumSize = checked
                         ToolTip.visible: hovered && root.isCurrentTab
-                        ToolTip.text: i18n("Windows won't be resized smaller than their minimum. May cause layout to not fill screen.")
+                        ToolTip.text: i18n("Windows will not be resized below their minimum size. This may leave gaps in the layout.")
                     }
 
                     CheckBox {

@@ -29,7 +29,7 @@ QString SpiralAlgorithm::name() const
 
 QString SpiralAlgorithm::description() const
 {
-    return i18n("Spiral subdivision rotating through four directions");
+    return i18n("Windows spiral inward from the edges");
 }
 
 QString SpiralAlgorithm::icon() const noexcept

@@ -254,7 +254,7 @@ private Q_SLOTS:
     void testBSP_metadata()
     {
         BSPAlgorithm algo;
-        QCOMPARE(algo.name(), QStringLiteral("BSP"));
+        QCOMPARE(algo.name(), QStringLiteral("Binary Split"));
         QVERIFY(!algo.icon().isEmpty());
         QVERIFY(!algo.supportsMasterCount());
         QVERIFY(algo.supportsSplitRatio());

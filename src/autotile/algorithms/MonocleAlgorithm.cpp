@@ -26,7 +26,7 @@ QString MonocleAlgorithm::name() const
 
 QString MonocleAlgorithm::description() const
 {
-    return i18n("Single fullscreen window, others hidden");
+    return i18n("One window fullscreen at a time, cycle through others");
 }
 
 QString MonocleAlgorithm::icon() const noexcept

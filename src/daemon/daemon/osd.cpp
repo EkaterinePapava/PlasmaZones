@@ -88,7 +88,7 @@ void Daemon::showLayoutOsd(Layout* layout, const QString& screenName)
                 QStringLiteral("org.kde.plasmashell"), QStringLiteral("/org/kde/osdService"),
                 QStringLiteral("org.kde.osdService"), QStringLiteral("showText"));
 
-            QString displayText = i18n("Zone Layout: %1", layoutName);
+            QString displayText = i18n("Layout: %1", layoutName);
             msg << QStringLiteral("plasmazones") << displayText;
 
             QDBusConnection::sessionBus().asyncCall(msg);
@@ -129,7 +129,7 @@ void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString
             QDBusMessage::createMethodCall(QStringLiteral("org.kde.plasmashell"), QStringLiteral("/org/kde/osdService"),
                                            QStringLiteral("org.kde.osdService"), QStringLiteral("showText"));
 
-        QString displayText = i18n("Zone Layout: %1", displayName);
+        QString displayText = i18n("Tiling: %1", displayName);
         msg << QStringLiteral("plasmazones") << displayText;
 
         QDBusConnection::sessionBus().asyncCall(msg);

@@ -485,12 +485,12 @@ void ShortcutManager::setupNavigationShortcuts()
                    &ShortcutManager::onFocusZoneDown);
 
     // Additional navigation shortcuts
-    SETUP_SHORTCUT(m_pushToEmptyZoneAction, "Push to Empty Zone", "push_to_empty_zone", pushToEmptyZoneShortcut,
+    SETUP_SHORTCUT(m_pushToEmptyZoneAction, "Move Window to Empty Zone", "push_to_empty_zone", pushToEmptyZoneShortcut,
                    &ShortcutManager::onPushToEmptyZone);
     SETUP_SHORTCUT(m_restoreWindowSizeAction, "Restore Window Size", "restore_window_size", restoreWindowSizeShortcut,
                    &ShortcutManager::onRestoreWindowSize);
-    SETUP_SHORTCUT(m_toggleWindowFloatAction, "Toggle Window Float", "toggle_window_float", toggleWindowFloatShortcut,
-                   &ShortcutManager::onToggleWindowFloat);
+    SETUP_SHORTCUT(m_toggleWindowFloatAction, "Toggle Window Floating", "toggle_window_float",
+                   toggleWindowFloatShortcut, &ShortcutManager::onToggleWindowFloat);
 
     qCInfo(lcShortcuts) << "Navigation shortcuts registered";
 }
@@ -561,7 +561,7 @@ void ShortcutManager::setupCycleWindowsShortcuts()
 
 void ShortcutManager::setupResnapToNewLayoutShortcut()
 {
-    SETUP_SHORTCUT(m_resnapToNewLayoutAction, "Resnap Windows to New Layout", "resnap_to_new_layout",
+    SETUP_SHORTCUT(m_resnapToNewLayoutAction, "Reapply Layout to Windows", "resnap_to_new_layout",
                    resnapToNewLayoutShortcut, &ShortcutManager::onResnapToNewLayout);
 
     qCInfo(lcShortcuts) << "Resnap to new layout shortcut registered (" << m_settings->resnapToNewLayoutShortcut()

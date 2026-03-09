@@ -152,7 +152,7 @@ Item {
                         height: Kirigami.Units.iconSizes.small
                         color: Kirigami.Theme.disabledTextColor
                         ToolTip.visible: filterIconHover.hovered
-                        ToolTip.text: i18n("This layout has per-screen/desktop/activity restrictions")
+                        ToolTip.text: i18n("This layout is restricted to specific screens, desktops, or activities")
 
                         HoverHandler {
                             id: filterIconHover

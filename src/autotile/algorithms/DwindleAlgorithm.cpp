@@ -29,7 +29,7 @@ QString DwindleAlgorithm::name() const
 
 QString DwindleAlgorithm::description() const
 {
-    return i18n("Dwindle subdivision with alternating vertical/horizontal splits");
+    return i18n("Each new window gets a smaller split, alternating direction");
 }
 
 QString DwindleAlgorithm::icon() const noexcept

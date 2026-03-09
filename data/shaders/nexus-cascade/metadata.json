@@ -1,7 +1,7 @@
 {
     "id": "nexus-cascade",
     "name": "Nexus Cascade",
-    "description": "Multi-pass multi-channel wow shader: plasma base → distortion layer → bloom combine, with chromatic aberration and zone masking",
+    "description": "Layered plasma energy with distortion, chromatic aberration, bloom, and zone masking",
     "author": "PlasmaZones",
     "version": "1.0",
     "multipass": true,

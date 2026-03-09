@@ -26,7 +26,7 @@ QString SpreadAlgorithm::name() const
 
 QString SpreadAlgorithm::description() const
 {
-    return i18n("Dispersed windows with even spacing");
+    return i18n("Windows spread evenly across the screen");
 }
 
 QString SpreadAlgorithm::icon() const noexcept

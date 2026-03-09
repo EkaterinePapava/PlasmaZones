@@ -247,7 +247,7 @@ ScrollView {
                 }
 
                 TipLabel {
-                    tipText: i18n("Per-layout gaps in gear button (top bar)")
+                    tipText: i18n("Per-layout gaps in layout settings (top bar)")
                 }
 
                 TipLabel {

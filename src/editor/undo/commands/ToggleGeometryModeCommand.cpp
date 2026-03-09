@@ -14,7 +14,7 @@ ToggleGeometryModeCommand::ToggleGeometryModeCommand(QPointer<EditorController> 
                                                      const QRectF& newRelativeGeo, const QRectF& oldFixedGeo,
                                                      const QRectF& newFixedGeo, const QString& text,
                                                      QUndoCommand* parent)
-    : QUndoCommand(text.isEmpty() ? i18nc("@action", "Toggle Zone Geometry Mode") : text, parent)
+    : QUndoCommand(text.isEmpty() ? i18nc("@action", "Toggle Relative/Fixed Size") : text, parent)
     , m_editorController(editorController)
     , m_zoneId(zoneId)
     , m_oldMode(oldMode)

@@ -61,7 +61,7 @@ Window {
             else if (action === "focus_master")
                 return i18n("No windows to focus");
             else if (action === "swap_master")
-                return reason === "already_master" ? i18n("Already master") : i18n("Nothing to swap");
+                return reason === "already_master" ? i18n("Already in main position") : i18n("Nothing to swap");
             else
                 return i18n("Failed");
         }
@@ -94,7 +94,7 @@ Window {
             if (targetZoneNumber > 0)
                 return i18n("→ Zone %1", targetZoneNumber);
 
-            return i18n("Pushed");
+            return i18n("Window pushed");
         } else if (action === "restore") {
             return i18n("Restored");
         } else if (action === "float") {
@@ -114,24 +114,24 @@ Window {
         } else if (action === "cycle") {
             return i18n("Next window");
         } else if (action === "focus_master") {
-            return i18n("Focus master");
+            return i18n("Focus main window");
         } else if (action === "swap_master") {
-            return i18n("Swapped with master");
+            return i18n("Swapped with main window");
         } else if (action === "master_ratio") {
-            return reason === "increased" ? i18n("Master ratio increased") : i18n("Master ratio decreased");
+            return reason === "increased" ? i18n("Main area enlarged") : i18n("Main area reduced");
         } else if (action === "master_count") {
-            return reason === "increased" ? i18n("Master count increased") : i18n("Master count decreased");
+            return reason === "increased" ? i18n("Main window count increased") : i18n("Main window count decreased");
         } else if (action === "retile") {
-            return i18n("Retiled");
+            return i18n("Layout refreshed");
         } else if (action === "resnap") {
             if (windowCount > 1)
-                return i18np("Resnapped %1 window", "Resnapped %1 windows", windowCount);
+                return i18np("Rearranged %1 window", "Rearranged %1 windows", windowCount);
 
-            return i18n("Resnapped");
+            return i18n("Windows rearranged");
         } else if (action === "algorithm") {
             return i18n("Autotile: %1", reason || "");
         } else {
-            return i18n("Done");
+            return i18n("Action completed");
         }
     }
 

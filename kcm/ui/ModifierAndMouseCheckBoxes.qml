@@ -284,7 +284,7 @@ Item {
 
                 QQC2.ToolButton {
                     icon.name: "edit-clear"
-                    Accessible.name: i18n("Reset to default")
+                    Accessible.name: i18n("Reset to defaults")
                     visible: !triggersEqual(root.triggers, root.defaultTriggers)
                     onClicked: {
                         var copy = [];
@@ -295,7 +295,7 @@ Item {
                         root.triggersModified(copy);
                     }
                     QQC2.ToolTip.visible: hovered && root.tooltipEnabled
-                    QQC2.ToolTip.text: i18n("Reset to default")
+                    QQC2.ToolTip.text: i18n("Reset to defaults")
                 }
 
             }
@@ -378,10 +378,10 @@ Item {
             icon.name: "edit-clear"
             z: 1
             Accessible.role: Accessible.Button
-            Accessible.name: i18n("Reset to default")
+            Accessible.name: i18n("Reset to defaults")
             onClicked: root.clearAll()
             QQC2.ToolTip.visible: hovered && root.tooltipEnabled
-            QQC2.ToolTip.text: i18n("Reset to default")
+            QQC2.ToolTip.text: i18n("Reset to defaults")
         }
 
         background: Rectangle {

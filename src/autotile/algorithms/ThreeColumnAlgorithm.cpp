@@ -29,7 +29,7 @@ QString ThreeColumnAlgorithm::name() const
 
 QString ThreeColumnAlgorithm::description() const
 {
-    return i18n("Center master with side columns");
+    return i18n("Master window centered with columns on each side");
 }
 
 QString ThreeColumnAlgorithm::icon() const noexcept

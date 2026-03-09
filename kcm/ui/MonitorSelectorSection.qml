@@ -107,12 +107,12 @@ ColumnLayout {
                     Kirigami.InlineMessage {
                         Layout.fillWidth: true
                         type: root.hasOverrides ? Kirigami.MessageType.Positive : Kirigami.MessageType.Information
-                        text: root.hasOverrides ? i18n("Custom settings for this monitor") : i18n("Using default settings — changes below create an override")
+                        text: root.hasOverrides ? i18n("Custom settings for this monitor") : i18n("Using default settings (editing below will create an override)")
                         visible: true
                     }
 
                     Button {
-                        text: i18n("Reset to Default")
+                        text: i18n("Reset to defaults")
                         icon.name: "edit-clear"
                         visible: root.hasOverrides
                         onClicked: root.resetClicked()

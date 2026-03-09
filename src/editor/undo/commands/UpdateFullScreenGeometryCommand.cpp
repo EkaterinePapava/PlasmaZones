@@ -12,7 +12,7 @@ using namespace PlasmaZones;
 UpdateFullScreenGeometryCommand::UpdateFullScreenGeometryCommand(QPointer<EditorController> editorController,
                                                                  bool oldValue, bool newValue, const QString& text,
                                                                  QUndoCommand* parent)
-    : QUndoCommand(text.isEmpty() ? i18nc("@action", "Toggle Full Screen Geometry") : text, parent)
+    : QUndoCommand(text.isEmpty() ? i18nc("@action", "Toggle Use Full Screen Area") : text, parent)
     , m_editorController(editorController)
     , m_oldValue(oldValue)
     , m_newValue(newValue)
