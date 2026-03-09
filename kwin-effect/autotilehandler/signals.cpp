@@ -157,6 +157,15 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
             }
         }
 
+        // Snapshot the full global stacking order (all screens) before restoring.
+        // After restoring geometries and per-window raises, we re-raise everything
+        // in the saved order so non-restored windows (e.g. Settings, windows on
+        // other screens) retain their original position in the stack.
+        QVector<QPointer<KWin::EffectWindow>> savedGlobalStack;
+        for (KWin::EffectWindow* w : windows) {
+            savedGlobalStack.append(QPointer<KWin::EffectWindow>(w));
+        }
+
         // Invalidate any pending stagger timers from prior autotile operations.
         ++m_autotileStaggerGeneration;
         m_autotileTargetZones.clear();
@@ -169,31 +178,40 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames)
         ++m_restoreStaggerGeneration;
         m_resnapOverriddenWindows.clear();
         const uint64_t restoreGen = m_restoreStaggerGeneration;
-        m_effect->applyStaggeredOrImmediate(toRestore.size(), [this, toRestore, restoreGen](int i) {
-            if (m_restoreStaggerGeneration != restoreGen) {
-                return;
-            }
-            const RestoreEntry& e = toRestore[i];
-            if (!e.window || e.window->isDeleted() || !m_effect->shouldHandleWindow(e.window)) {
-                return;
-            }
-            const QString windowId = m_effect->getWindowId(e.window);
-
-            // Apply geometry if we have it and resnap didn't handle this window
-            if (e.hasGeometry && !m_resnapOverriddenWindows.contains(windowId)) {
-                qCInfo(lcEffect) << "Restoring pre-autotile geometry for" << windowId << "to" << e.geometry;
-                m_effect->applySnapGeometry(e.window, e.geometry);
-            }
-
-            // Raise to restore pre-autotile stacking order (no focus steal)
-            KWin::Window* kw = e.window->window();
-            if (kw) {
-                auto* ws = KWin::Workspace::self();
-                if (ws) {
-                    ws->raiseWindow(kw);
+        m_effect->applyStaggeredOrImmediate(
+            toRestore.size(),
+            [this, toRestore, restoreGen](int i) {
+                if (m_restoreStaggerGeneration != restoreGen) {
+                    return;
                 }
-            }
-        });
+                const RestoreEntry& e = toRestore[i];
+                if (!e.window || e.window->isDeleted() || !m_effect->shouldHandleWindow(e.window)) {
+                    return;
+                }
+                const QString windowId = m_effect->getWindowId(e.window);
+
+                // Apply geometry if we have it and resnap didn't handle this window
+                if (e.hasGeometry && !m_resnapOverriddenWindows.contains(windowId)) {
+                    qCInfo(lcEffect) << "Restoring pre-autotile geometry for" << windowId << "to" << e.geometry;
+                    m_effect->applySnapGeometry(e.window, e.geometry);
+                }
+            },
+            [savedGlobalStack]() {
+                // onComplete: re-raise ALL windows in original global stacking order
+                // (bottom→top) so non-restored windows retain their position.
+                auto* ws = KWin::Workspace::self();
+                if (!ws) {
+                    return;
+                }
+                for (const auto& wPtr : savedGlobalStack) {
+                    if (wPtr && !wPtr->isDeleted()) {
+                        KWin::Window* kw = wPtr->window();
+                        if (kw) {
+                            ws->raiseWindow(kw);
+                        }
+                    }
+                }
+            });
     }
 
     m_autotileScreens = newScreens;

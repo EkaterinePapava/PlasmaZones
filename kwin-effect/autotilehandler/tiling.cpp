@@ -33,6 +33,16 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
     m_autotileTargetZones.clear();
     m_autotileRetried.clear();
 
+    // Snapshot the full global stacking order before tiling. After all
+    // moveResize calls (which implicitly raise on KWin 6 / Wayland),
+    // the onComplete callback re-raises in this order so non-tiled
+    // windows (e.g. Settings) retain their stacking position.
+    const auto allWindows = KWin::effects->stackingOrder();
+    QVector<QPointer<KWin::EffectWindow>> savedGlobalStack;
+    for (KWin::EffectWindow* w : allWindows) {
+        savedGlobalStack.append(QPointer<KWin::EffectWindow>(w));
+    }
+
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(tileRequestsJson.toUtf8(), &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isArray()) {
@@ -151,7 +161,7 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
 
     const uint64_t gen = m_autotileStaggerGeneration;
 
-    auto onComplete = [this, toApply, tiledWindowIds, tileScreenNames, gen]() {
+    auto onComplete = [this, toApply, tiledWindowIds, tileScreenNames, savedGlobalStack, gen]() {
         if (m_autotileStaggerGeneration != gen) {
             return;
         }
@@ -166,20 +176,22 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
         }
         auto* ws = KWin::Workspace::self();
         if (ws) {
-            for (int i = toApply.size() - 1; i >= 0; --i) {
-                const TileSnap& snap = toApply[i];
-                if (!snap.window) {
-                    continue;
-                }
-                KWin::Window* kw = snap.window->window();
-                if (kw) {
-                    ws->raiseWindow(kw);
+            // Restore the full global stacking order (all screens, all windows).
+            // This ensures non-tiled windows (e.g. Settings KCM, windows on
+            // other screens) retain their position instead of being buried.
+            for (const auto& wPtr : savedGlobalStack) {
+                if (wPtr && !wPtr->isDeleted()) {
+                    KWin::Window* kw = wPtr->window();
+                    if (kw) {
+                        ws->raiseWindow(kw);
+                    }
                 }
             }
+
             // Restore saved autotile stacking order from previous session.
-            // Preserves user's z-order choices (e.g. floated window raised to
-            // front) across mode toggles. Windows not in saved order keep
-            // default tiling z-order from the raise loop above.
+            // These raises go ON TOP of the global restore, preserving user's
+            // z-order choices (e.g. floated window raised to front) across
+            // mode toggles.
             for (const QString& screenName : tileScreenNames) {
                 const QStringList savedOrder = m_savedAutotileStackingOrder.value(screenName);
                 if (savedOrder.isEmpty()) {
@@ -207,6 +219,14 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
                     }
                 }
             }
+        }
+
+        // After daemon restart, the raise loop above puts all tiled windows on
+        // top, burying non-tiled windows (e.g. System Settings KCM) that had
+        // focus. Re-activate the previously focused window to restore stacking.
+        if (m_pendingReactivateWindow && !m_pendingReactivateWindow->isDeleted()) {
+            KWin::effects->activateWindow(m_pendingReactivateWindow);
+            m_pendingReactivateWindow = nullptr;
         }
 
         // Wayland centering is handled reactively by slotWindowFrameGeometryChanged

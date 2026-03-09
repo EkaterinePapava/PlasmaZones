@@ -149,7 +149,7 @@ private:
     void callDragMoved(const QString& windowId, const QPointF& cursorPos, Qt::KeyboardModifiers mods, int mouseButtons);
     void callDragStopped(KWin::EffectWindow* window, const QString& windowId);
     void callCancelSnap();
-    void callResolveWindowRestore(KWin::EffectWindow* window);
+    void callResolveWindowRestore(KWin::EffectWindow* window, std::function<void()> onComplete = nullptr);
     void ensureWindowTrackingInterface();
     void connectNavigationSignals();
     void syncFloatingWindowsFromDaemon();
@@ -253,7 +253,7 @@ private:
                           QPointer<KWin::EffectWindow> window, const QString& windowId, bool storePreSnap,
                           std::function<void()> fallback,
                           std::function<void(const QString&, const QString&)> onSnapSuccess = nullptr,
-                          bool skipAnimation = false);
+                          bool skipAnimation = false, std::function<void()> onComplete = nullptr);
 
     // Extract app identity from window ID (the portion before the '|' separator)
     // New format: "appId|internalUuid" → returns "appId"
@@ -468,6 +468,7 @@ private:
     // Updated via QDBusServiceWatcher signals (registration/unregistration) to avoid
     // synchronous isServiceRegistered() calls that block the compositor thread.
     bool m_daemonServiceRegistered = false;
+    bool m_daemonReadyRestoresDone = false; ///< set after slotDaemonReady snap restores dispatched
 
     // Cursor screen tracking (for daemon shortcut screen detection on Wayland)
     // Updated in slotMouseChanged() whenever the cursor crosses to a different monitor.

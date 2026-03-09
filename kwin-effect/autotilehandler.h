@@ -108,6 +108,13 @@ public:
         m_resnapOverriddenWindows = windowIds;
     }
 
+    // Set a window to re-activate after the next autotile raise loop completes.
+    // Used by slotDaemonReady() to preserve focus of non-tiled windows (e.g. KCM).
+    void setPendingReactivateWindow(KWin::EffectWindow* w)
+    {
+        m_pendingReactivateWindow = w;
+    }
+
 public Q_SLOTS:
     // Autotile D-Bus signal handlers
     void slotWindowsTileRequested(const QString& tileRequestsJson);
@@ -163,6 +170,7 @@ private:
     QSet<QString> m_autotileRetried; ///< windows that already got one retry of the full zone size
     QHash<QString, QRect> m_centeredWaylandZones; ///< zones where Wayland windows were last centered
     QString m_pendingAutotileFocusWindowId;
+    QPointer<KWin::EffectWindow> m_pendingReactivateWindow; ///< re-activate after raise loop (daemon restart)
     QSet<QString> m_monocleMaximizedWindows;
     int m_suppressMaximizeChanged = 0;
     // ── Focus follows mouse ──

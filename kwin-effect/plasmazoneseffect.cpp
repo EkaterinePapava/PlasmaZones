@@ -4,6 +4,7 @@
 #include "plasmazoneseffect.h"
 
 #include <algorithm>
+#include <memory>
 #include <QBuffer>
 #include <QDBusArgument>
 #include <QDBusConnection>
@@ -406,6 +407,7 @@ PlasmaZonesEffect::PlasmaZonesEffect()
     connect(serviceWatcher, &QDBusServiceWatcher::serviceUnregistered, this, [this]() {
         qCInfo(lcEffect) << "Daemon service unregistered";
         m_daemonServiceRegistered = false;
+        m_daemonReadyRestoresDone = false;
 
         // Restore borderless and monocle-maximized windows — daemon state is gone
         m_autotileHandler->restoreAllBorderless();
@@ -837,7 +839,16 @@ void PlasmaZonesEffect::slotDaemonReady()
     loadCachedSettings();
     connectNavigationSignals();
 
-    // Delegate autotile re-initialization to handler
+    // Delegate autotile re-initialization to handler.
+    // Snapshot the active window so the autotile raise loop can re-activate it
+    // after putting all tiled windows on top (which would bury non-tiled windows
+    // like the KCM settings panel). Only set if the active window is NOT on an
+    // autotile screen — autotile screens handle their own focus via
+    // m_pendingAutotileFocusWindowId in the onComplete callback.
+    KWin::EffectWindow* activeWin = KWin::effects->activeWindow();
+    if (activeWin && !m_autotileHandler->isAutotileScreen(getWindowScreenName(activeWin))) {
+        m_autotileHandler->setPendingReactivateWindow(activeWin);
+    }
     m_autotileHandler->onDaemonReady();
 
     // Re-announce all existing windows on autotile screens
@@ -859,6 +870,13 @@ void PlasmaZonesEffect::slotDaemonReady()
         auto* watcher = new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(msg), this);
         connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* w) {
             w->deleteLater();
+
+            // Guard: prevent slotPendingRestoresAvailable from double-processing
+            // the same windows. Set inside the callback so that if this D-Bus call
+            // fails, the flag stays false and slotPendingRestoresAvailable can
+            // still function as a fallback.
+            m_daemonReadyRestoresDone = true;
+
             QDBusPendingReply<QStringList> reply = *w;
             QSet<QString> trackedAppIds;
             if (reply.isValid()) {
@@ -871,8 +889,21 @@ void PlasmaZonesEffect::slotDaemonReady()
                 }
             }
 
+            // Snapshot the current stacking order before snap restores.
+            // moveResize() on KWin 6 / Wayland implicitly raises the target
+            // window. After all restores complete, we re-raise windows in
+            // their original order — same pattern as the autotile handler's
+            // onComplete raise loop in tiling.cpp.
             const auto allWindows = KWin::effects->stackingOrder();
-            int restored = 0;
+            QVector<QPointer<KWin::EffectWindow>> savedStackingOrder;
+            for (KWin::EffectWindow* w : allWindows) {
+                savedStackingOrder.append(QPointer<KWin::EffectWindow>(w));
+            }
+
+            // Collect windows that need snap restoration (untracked, non-autotile).
+            // Use QPointer for lifetime safety in case a window is destroyed
+            // between collection and the dispatch loop below.
+            QVector<QPointer<KWin::EffectWindow>> toRestore;
             for (KWin::EffectWindow* window : allWindows) {
                 if (!window || !shouldHandleWindow(window)) {
                     continue;
@@ -880,20 +911,73 @@ void PlasmaZonesEffect::slotDaemonReady()
                 if (window->isMinimized()) {
                     continue;
                 }
-                // Skip autotile screens — they're handled by notifyWindowAdded above
                 if (m_autotileHandler->isAutotileScreen(getWindowScreenName(window))) {
                     continue;
                 }
-                QString windowId = getWindowId(window);
-                QString appId = extractAppId(windowId);
+                QString appId = extractAppId(getWindowId(window));
                 if (trackedAppIds.contains(appId)) {
                     continue;
                 }
-                callResolveWindowRestore(window);
-                ++restored;
+                toRestore.append(QPointer<KWin::EffectWindow>(window));
             }
-            if (restored > 0) {
-                qCInfo(lcEffect) << "Triggered snap restore for" << restored << "untracked windows after daemon ready";
+
+            if (toRestore.isEmpty()) {
+                qCDebug(lcEffect) << "No untracked windows need snap restore after daemon ready";
+                return;
+            }
+
+            qCInfo(lcEffect) << "Triggered snap restore for" << toRestore.size()
+                             << "untracked windows after daemon ready";
+
+            // Track how many windows actually moved (moveResize was called).
+            // If none moved, skip the stacking restoration — no disruption occurred.
+            auto pending = std::make_shared<int>(toRestore.size());
+            auto movedCount = std::make_shared<int>(0);
+
+            for (const auto& safeWindow : toRestore) {
+                if (!safeWindow || safeWindow->isDeleted()) {
+                    // Window destroyed between collection and dispatch — count
+                    // it as done so the pending counter still reaches zero.
+                    if (--(*pending) == 0) {
+                        qCDebug(lcEffect) << "All restore targets gone — skipping stacking restore";
+                    }
+                    continue;
+                }
+                // Snapshot geometry before the async call; if it changes after
+                // applySnapGeometry, we know a moveResize happened.
+                QRectF geoBefore = safeWindow->frameGeometry();
+
+                callResolveWindowRestore(
+                    safeWindow.data(), [pending, movedCount, safeWindow, geoBefore, savedStackingOrder]() {
+                        // Detect whether moveResize actually fired by comparing geometry.
+                        if (safeWindow && !safeWindow->isDeleted() && safeWindow->frameGeometry() != geoBefore) {
+                            ++(*movedCount);
+                        }
+
+                        if (--(*pending) > 0) {
+                            return;
+                        }
+
+                        // All snap restores done.
+                        if (*movedCount == 0) {
+                            qCDebug(lcEffect) << "All windows already at target geometry — skipping stacking restore";
+                            return;
+                        }
+
+                        // Re-raise windows in original order (bottom-to-top).
+                        auto* ws = KWin::Workspace::self();
+                        if (!ws) {
+                            return;
+                        }
+                        for (const auto& wPtr : savedStackingOrder) {
+                            if (wPtr && !wPtr->isDeleted()) {
+                                KWin::Window* kw = wPtr->window();
+                                if (kw) {
+                                    ws->raiseWindow(kw);
+                                }
+                            }
+                        }
+                    });
             }
         });
     }
@@ -1724,6 +1808,15 @@ void PlasmaZonesEffect::slotCycleWindowsInZoneRequested(const QString& directive
 
 void PlasmaZonesEffect::slotPendingRestoresAvailable()
 {
+    // If slotDaemonReady already dispatched snap restores for this daemon
+    // session, skip — both signals fire during restart, and the second round
+    // of moveResize() calls would disrupt the stacking order that the first
+    // round carefully preserves via activateWindow(previouslyActive).
+    if (m_daemonReadyRestoresDone) {
+        qCInfo(lcEffect) << "Pending restores skipped — already handled by slotDaemonReady";
+        return;
+    }
+
     qCInfo(lcEffect) << "Pending restores available - retrying restoration for all visible windows";
 
     if (!ensureWindowTrackingReady("pending restores")) {
@@ -1895,13 +1988,17 @@ bool PlasmaZonesEffect::borderActivated(KWin::ElectricBorder border)
     return false;
 }
 
-void PlasmaZonesEffect::callResolveWindowRestore(KWin::EffectWindow* window)
+void PlasmaZonesEffect::callResolveWindowRestore(KWin::EffectWindow* window, std::function<void()> onComplete)
 {
     if (!window) {
+        if (onComplete)
+            onComplete();
         return;
     }
 
     if (!ensureWindowTrackingReady("resolve window restore")) {
+        if (onComplete)
+            onComplete();
         return;
     }
 
@@ -1915,7 +2012,7 @@ void PlasmaZonesEffect::callResolveWindowRestore(KWin::EffectWindow* window)
     // skipAnimation=true: window is being restored to its snap position on startup/reopen,
     // so teleport directly instead of sliding from KWin's saved position.
     tryAsyncSnapCall(*m_windowTrackingInterface, QStringLiteral("resolveWindowRestore"), {windowId, screenName, sticky},
-                     safeWindow, windowId, true, nullptr, nullptr, true);
+                     safeWindow, windowId, true, nullptr, nullptr, /*skipAnimation=*/true, onComplete);
 }
 
 void PlasmaZonesEffect::callDragStarted(const QString& windowId, const QRectF& geometry)
@@ -2109,19 +2206,21 @@ void PlasmaZonesEffect::tryAsyncSnapCall(QDBusAbstractInterface& iface, const QS
                                          const QList<QVariant>& args, QPointer<KWin::EffectWindow> window,
                                          const QString& windowId, bool storePreSnap, std::function<void()> fallback,
                                          std::function<void(const QString&, const QString&)> onSnapSuccess,
-                                         bool skipAnimation)
+                                         bool skipAnimation, std::function<void()> onComplete)
 {
     QDBusPendingCall call = iface.asyncCallWithArgumentList(method, args);
     auto* watcher = new QDBusPendingCallWatcher(call, this);
     connect(watcher, &QDBusPendingCallWatcher::finished, this,
-            [this, window, windowId, storePreSnap, method, fallback, onSnapSuccess, args,
-             skipAnimation](QDBusPendingCallWatcher* w) {
+            [this, window, windowId, storePreSnap, method, fallback, onSnapSuccess, args, skipAnimation,
+             onComplete](QDBusPendingCallWatcher* w) {
                 w->deleteLater();
                 QDBusPendingReply<int, int, int, int, bool> reply = *w;
                 if (reply.isError()) {
                     qCDebug(lcEffect) << method << "error:" << reply.error().message();
                     if (fallback)
                         fallback();
+                    if (onComplete)
+                        onComplete();
                     return;
                 }
                 if (reply.argumentAt<4>() && window) {
@@ -2135,10 +2234,14 @@ void PlasmaZonesEffect::tryAsyncSnapCall(QDBusAbstractInterface& iface, const QS
                     if (onSnapSuccess && args.size() >= 2) {
                         onSnapSuccess(windowId, args[1].toString());
                     }
+                    if (onComplete)
+                        onComplete();
                     return;
                 }
                 if (fallback)
                     fallback();
+                if (onComplete)
+                    onComplete();
             });
 }
 
@@ -2197,6 +2300,14 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
                                   << "zone=" << geometry.size() << "constrained=" << constrained << "adjusted=" << geo;
             }
         }
+    }
+
+    // Skip no-op: if window is already at the target geometry, calling
+    // moveResize() is redundant and can have subtle stacking side effects
+    // on some KWin versions (e.g. during daemon restart double-processing).
+    if (QRectF(geo) == window->frameGeometry()) {
+        qCDebug(lcEffect) << "Skipping moveResize — window already at target geometry:" << geo;
+        return;
     }
 
     qCDebug(lcEffect) << "Setting window geometry from" << window->frameGeometry() << "to" << geo;
