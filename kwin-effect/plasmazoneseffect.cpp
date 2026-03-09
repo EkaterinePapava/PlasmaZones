@@ -1676,6 +1676,15 @@ void PlasmaZonesEffect::slotApplyGeometryRequested(const QString& windowId, cons
         qCDebug(lcEffect) << "slotApplyGeometryRequested: window not found" << windowId;
         return;
     }
+    // Skip float-restore geometry on minimized windows: when a snapped window is minimized
+    // we float it (to free the zone slot), but applying the pre-tile geometry while minimized
+    // would poison what KWin restores to on unminimize, causing a visible flash of the
+    // pre-snap geometry before the unfloat re-snaps to the zone.
+    if (w->isMinimized() && zoneId.isEmpty()) {
+        qCDebug(lcEffect) << "slotApplyGeometryRequested: skipping float-restore geometry on minimized window:"
+                          << windowId;
+        return;
+    }
     qCInfo(lcEffect) << "slotApplyGeometryRequested:" << windowId << "geo:" << geometry << "zoneId:" << zoneId
                      << "screen:" << screenName << "floating:" << isWindowFloating(windowId)
                      << "currentFrame:" << w->frameGeometry();
