@@ -54,6 +54,10 @@ BuildRequires:  kf6-kcolorscheme-devel >= 6.6.0
 # for ABI safety. Patch releases (6.6.x) maintain ABI and IID compatibility.
 BuildRequires:  kwin-devel >= 6.6.0
 BuildRequires:  layer-shell-qt-devel >= 6.6.0
+BuildRequires:  libepoxy-devel
+BuildRequires:  wayland-devel
+BuildRequires:  libdrm-devel
+BuildRequires:  libxkbcommon-devel
 
 # Optional
 BuildRequires:  plasma-activities-devel

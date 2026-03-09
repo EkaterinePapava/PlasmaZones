@@ -478,7 +478,13 @@ jobs:
             echo "sudo apt-get install -f  # Install dependencies if needed"
             echo '```'
             echo ""
-            echo "**Fedora:**"
+            echo "**Fedora (COPR):**"
+            echo '```bash'
+            echo "sudo dnf copr enable fuddlesworth/plasmazones"
+            echo "sudo dnf install plasmazones"
+            echo '```'
+            echo ""
+            echo "**Fedora (manual RPM):**"
             echo '```bash'
             echo "sudo dnf install plasmazones-${VERSION}-1.fc43.x86_64.rpm"
             echo '```'
@@ -566,19 +572,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Arch package artifact
+      - name: Download generic tarball artifact
         uses: actions/download-artifact@v4
         with:
-          name: arch-package
+          name: generic-linux-tarball
           path: dist
 
-      - name: Calculate package hash
+      - name: Calculate tarball hash
         id: hash
         run: |
-          PKG_FILE=$(ls dist/*.pkg.tar.zst | head -1)
-          SHA256=$(sha256sum "$PKG_FILE" | cut -d' ' -f1)
+          TARBALL=$(ls dist/plasmazones-*-linux-x86_64.tar.gz | head -1)
+          SHA256=$(sha256sum "$TARBALL" | cut -d' ' -f1)
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
-          echo "Package: $PKG_FILE"
+          echo "Tarball: $TARBALL"
           echo "SHA256: $SHA256"
 
       - name: Setup SSH for AUR
@@ -681,3 +687,22 @@ jobs:
             git push
             echo "✅ Published plasmazones $VERSION to AUR"
           fi
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # COPR (Fedora Community Packages)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # COPR builds are triggered automatically via GitHub webhook (no CI job needed).
+  # When a tag is pushed, GitHub sends a webhook to COPR, which clones the repo
+  # at that tag, runs .copr/Makefile to produce the SRPM, and builds RPMs for
+  # all enabled chroots (Fedora 43, Rawhide, etc.).
+  #
+  # Setup (one-time):
+  #   1. Create COPR project "plasmazones" at copr.fedorainfracloud.org
+  #   2. Add package with SCM source, Clone URL = this repo,
+  #      Spec = packaging/rpm/plasmazones.spec, Method = make_srpm
+  #   3. Enable "Auto-rebuild" on the package
+  #   4. Copy the webhook URL from COPR project Settings → Webhooks
+  #   5. Add it as a GitHub webhook (Settings → Webhooks → Add webhook):
+  #      - Payload URL: <copr webhook URL>/plasmazones
+  #      - Content type: application/json
+  #      - Events: "Branch or tag creation"
