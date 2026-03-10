@@ -125,7 +125,9 @@ Enable autotiling per-screen and windows arrange themselves using one of 11 algo
 - Per-window floating toggle
 - Staggered tiling animations
 
-<!-- placeholder: autotiling gif/screenshot -->
+<p align="center">
+  <img src="docs/media/videos/autotiling.gif" alt="PlasmaZones Autotiling" width="800">
+</p>
 
 ### Shader Effects
 
@@ -158,7 +160,9 @@ Custom shaders supported — see the [Shader Guide](https://github.com/fuddleswo
 
 After snapping a window, an overlay shows the remaining empty zones with thumbnails of other windows. Click a thumbnail to snap it into a zone.
 
-<!-- placeholder: snap assist gif/screenshot -->
+<p align="center">
+  <img src="docs/media/videos/snap-assist.gif" alt="PlasmaZones Snap Assist" width="800">
+</p>
 
 ### Zone Selector
 
@@ -188,7 +192,9 @@ See a preview of the layout when switching, not just text.
 
 Move, focus, swap, rotate, and push actions show a brief overlay with the affected zone numbers.
 
-<!-- placeholder: navigation OSD gif/screenshot -->
+<p align="center">
+  <img src="docs/media/videos/navigation-osd.gif" alt="PlasmaZones Navigation OSD" width="800">
+</p>
 
 ### Multi-Monitor & Virtual Desktops
 
@@ -212,7 +218,9 @@ Full KCM module with 8 tabs:
 - **Exclusions** — Window class exclusion lists with interactive picker, minimum size thresholds
 - **About** — Version info, update checker with GitHub release notifications, links, credits
 
-<!-- placeholder: settings gif/screenshot -->
+<p align="center">
+  <img src="docs/media/videos/settings.gif" alt="PlasmaZones Settings" width="800">
+</p>
 
 ---
 
