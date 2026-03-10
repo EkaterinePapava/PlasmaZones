@@ -357,6 +357,15 @@ public:
     bool clearStalePendingAssignment(const QString& windowId);
 
     /**
+     * @brief Mark a window as reported by the effect (confirmed live)
+     *
+     * Called when the effect reports a window via windowOpened/resolveWindowRestore.
+     * Used by calculateRestoreFromSession's sibling check to distinguish live windows
+     * (daemon-only restart) from stale config entries (KWin restart where UUIDs changed).
+     */
+    void markWindowReported(const QString& windowId);
+
+    /**
      * @brief Mark a window as auto-snapped
      *
      * Auto-snapped windows should not update the last-used zone tracking
@@ -748,6 +757,11 @@ private:
 
     // Auto-snapped windows (to avoid updating last-used zone)
     QSet<QString> m_autoSnappedWindows;
+
+    // Windows confirmed as live by the effect (runtime only, not persisted).
+    // Used by the sibling check in calculateRestoreFromSession to distinguish
+    // live siblings (daemon-only restart) from stale config entries (KWin restart).
+    QSet<QString> m_effectReportedWindows;
 
     // Resnap buffer: when layout changes, store (windowId, zonePosition, screenId, vd)
     // for windows that were in the previous layout, so resnapToNewLayout can map them

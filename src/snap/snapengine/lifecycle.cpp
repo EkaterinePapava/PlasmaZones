@@ -23,6 +23,11 @@ void SnapEngine::windowOpened(const QString& windowId, const QString& screenName
         return;
     }
 
+    // Mark this window as reported by the effect (confirmed live). This lets the
+    // sibling check in calculateRestoreFromSession distinguish live windows from
+    // stale config entries after KWin restart (where UUIDs changed).
+    m_windowTracker->markWindowReported(windowId);
+
     // Guard: skip if already snapped (prevents double-assignment when both
     // windowOpened and the WTA D-Bus resolveWindowRestore path run for the
     // same window — e.g., effect calls windowOpened then D-Bus resolveWindowRestore).
@@ -66,6 +71,9 @@ SnapResult SnapEngine::resolveWindowRestore(const QString& windowId, const QStri
     if (windowId.isEmpty() || screenName.isEmpty()) {
         return SnapResult::noSnap();
     }
+
+    // Mark this window as reported by the effect (confirmed live).
+    m_windowTracker->markWindowReported(windowId);
 
     // Pre-check: if this window already has an exact zone assignment (loaded from
     // KConfig with full windowId after daemon-only restart), skip the restore chain.

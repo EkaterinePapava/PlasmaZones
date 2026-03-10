@@ -271,13 +271,15 @@ SnapResult WindowTrackingService::calculateRestoreFromSession(const QString& win
     // Guard against wrong-instance restore for multi-instance apps.
     // After daemon-only restart (KWin still running), m_windowZoneAssignments is
     // loaded with full windowIds (appId|uuid). If another instance of this app
-    // already has an exact full-ID match, that instance owns the pending entry —
-    // this window should not consume it. Without this check, whichever Ghostty
-    // instance the effect reports first would incorrectly grab the zone assignment.
+    // already has an exact full-ID match AND the effect has confirmed that sibling
+    // is live, that instance owns the pending entry — this window should not
+    // consume it. Only confirmed-live siblings block; stale entries from KWin
+    // restarts (where UUIDs changed and no window will ever match) are ignored.
     if (appId != windowId) { // windowId contains UUID (full format)
         for (auto it = m_windowZoneAssignments.constBegin(); it != m_windowZoneAssignments.constEnd(); ++it) {
-            if (it.key() != windowId && Utils::extractAppId(it.key()) == appId) {
-                qCDebug(lcCore) << "sessionRestore:" << windowId << "skipped — sibling instance" << it.key()
+            if (it.key() != windowId && Utils::extractAppId(it.key()) == appId
+                && m_effectReportedWindows.contains(it.key())) {
+                qCDebug(lcCore) << "sessionRestore:" << windowId << "skipped — live sibling" << it.key()
                                 << "has exact assignment";
                 return SnapResult::noSnap();
             }
@@ -426,6 +428,13 @@ bool WindowTrackingService::clearStalePendingAssignment(const QString& windowId)
         scheduleSaveState();
     }
     return hadPending;
+}
+
+void WindowTrackingService::markWindowReported(const QString& windowId)
+{
+    if (!windowId.isEmpty()) {
+        m_effectReportedWindows.insert(windowId);
+    }
 }
 
 void WindowTrackingService::markAsAutoSnapped(const QString& windowId)

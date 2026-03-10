@@ -109,6 +109,7 @@ void WindowTrackingService::windowClosed(const QString& windowId)
     m_savedSnapFloatingWindows.remove(windowId);
     m_windowStickyStates.remove(windowId);
     m_autoSnappedWindows.remove(windowId);
+    m_effectReportedWindows.remove(windowId);
 
     scheduleSaveState();
 }
