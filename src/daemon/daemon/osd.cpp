@@ -14,6 +14,7 @@
 #include "../../core/zonedetector.h"
 #include "../../autotile/AutotileEngine.h"
 #include "../../autotile/AlgorithmRegistry.h"
+#include "../../autotile/TilingState.h"
 #include "../config/settings.h"
 #include <QDBusConnection>
 #include <QDBusMessage>
@@ -138,7 +139,14 @@ void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString
 
     case OsdStyle::Preview:
         if (m_overlayService) {
-            QVariantList zones = AlgorithmRegistry::generatePreviewZones(algo);
+            int windowCount = 0;
+            if (m_autotileEngine) {
+                TilingState* state = m_autotileEngine->stateForScreen(screenName);
+                if (state) {
+                    windowCount = state->tiledWindowCount();
+                }
+            }
+            QVariantList zones = AlgorithmRegistry::generatePreviewZones(algo, windowCount > 0 ? windowCount : -1);
             QString layoutId = LayoutId::makeAutotileId(algorithmId);
             m_overlayService->showLayoutOsd(layoutId, displayName, zones, static_cast<int>(LayoutCategory::Autotile),
                                             false, screenName);
