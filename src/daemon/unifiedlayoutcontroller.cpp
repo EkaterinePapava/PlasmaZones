@@ -104,6 +104,8 @@ void UnifiedLayoutController::cycle(bool forward)
 {
     const auto list = layouts();
     if (list.isEmpty()) {
+        qCWarning(lcDaemon) << "cycle: layout list is empty (manual=" << m_includeManualLayouts
+                            << "autotile=" << m_includeAutotileLayouts << ")";
         return;
     }
 
@@ -119,6 +121,10 @@ void UnifiedLayoutController::cycle(bool forward)
     } else {
         nextIndex = (currentIndex - 1 + list.size()) % list.size();
     }
+
+    qCInfo(lcDaemon) << "cycle: listSize=" << list.size() << "currentIdx=" << currentIndex << "nextIdx=" << nextIndex
+                     << "from=" << (currentIndex < list.size() ? list[currentIndex].name : QStringLiteral("?"))
+                     << "to=" << (nextIndex < list.size() ? list[nextIndex].name : QStringLiteral("?"));
 
     applyLayoutByIndex(nextIndex);
 }

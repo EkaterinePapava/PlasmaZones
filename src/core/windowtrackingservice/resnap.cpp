@@ -36,8 +36,10 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromPreviousLayout(
 {
     QVector<RotationEntry> result;
     if (m_resnapBuffer.isEmpty()) {
+        qCDebug(lcCore) << "calculateResnapFromPreviousLayout: buffer is empty";
         return result;
     }
+    qCDebug(lcCore) << "calculateResnapFromPreviousLayout: buffer has" << m_resnapBuffer.size() << "entries";
 
     // Group resnap entries by screen so each screen uses its own layout
     QHash<QString, QVector<const ResnapEntry*>> entriesByScreen;

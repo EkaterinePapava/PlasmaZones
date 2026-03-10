@@ -118,6 +118,7 @@ void WindowTrackingService::onLayoutChanged()
     // Validate zone assignments against new layout
     Layout* newLayout = m_layoutManager->activeLayout();
     if (!newLayout) {
+        qCInfo(lcCore) << "onLayoutChanged: no active layout, clearing buffer";
         m_resnapBuffer.clear();
         return;
     }
@@ -141,6 +142,9 @@ void WindowTrackingService::onLayoutChanged()
     // on A, B has no windows), prev=B yields nothing - we keep the buffer from A->B so resnap on C works.
     Layout* prevLayout = m_layoutManager->previousLayout();
     const bool layoutSwitched = (prevLayout != newLayout);
+    qCDebug(lcCore) << "onLayoutChanged: newLayout=" << newLayout->name()
+                    << "prevLayout=" << (prevLayout ? prevLayout->name() : QStringLiteral("null"))
+                    << "switched=" << layoutSwitched << "windowAssignments=" << m_windowZoneAssignments.size();
     {
         QVector<ResnapEntry> newBuffer;
         QVector<Zone*> prevZones = prevLayout->zones();

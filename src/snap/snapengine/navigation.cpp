@@ -108,14 +108,18 @@ void SnapEngine::moveToPosition(const QString& windowId, int position, const QSt
 
 void SnapEngine::resnapToNewLayout()
 {
+    qCDebug(lcCore) << "resnapToNewLayout: calculating entries from previous layout buffer";
     QVector<RotationEntry> resnapEntries = m_windowTracker->calculateResnapFromPreviousLayout();
 
     if (resnapEntries.isEmpty()) {
         Layout* layout = m_layoutManager->activeLayout();
         if (!layout) {
+            qCWarning(lcCore) << "resnapToNewLayout: no active layout";
             Q_EMIT navigationFeedback(false, QStringLiteral("resnap"), QStringLiteral("no_active_layout"), QString(),
                                       QString(), m_lastActiveScreenName);
         } else {
+            qCWarning(lcCore) << "resnapToNewLayout: buffer empty, activeLayout=" << layout->name()
+                              << "zones=" << layout->zoneCount();
             Q_EMIT navigationFeedback(false, QStringLiteral("resnap"), QStringLiteral("no_windows_to_resnap"),
                                       QString(), QString(), m_lastActiveScreenName);
         }

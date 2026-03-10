@@ -303,8 +303,13 @@ void LayoutManager::setActiveLayout(Layout* layout)
     if (m_activeLayout != layout && (layout == nullptr || m_layouts.contains(layout))) {
         // Capture current as previous before changing (on first run, use layout as both)
         m_previousLayout = m_activeLayout ? m_activeLayout : layout;
+        qCInfo(lcLayout) << "setActiveLayout:" << (m_previousLayout ? m_previousLayout->name() : QStringLiteral("null"))
+                         << "->" << (layout ? layout->name() : QStringLiteral("null"));
         m_activeLayout = layout;
         Q_EMIT activeLayoutChanged(m_activeLayout);
+    } else if (m_activeLayout == layout) {
+        qCInfo(lcLayout) << "setActiveLayout: SKIPPED (already active):"
+                         << (layout ? layout->name() : QStringLiteral("null"));
     }
 }
 
