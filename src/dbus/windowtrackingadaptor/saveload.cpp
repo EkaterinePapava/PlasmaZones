@@ -145,6 +145,10 @@ void WindowTrackingAdaptor::saveState()
 
     // Save pre-tile geometries so float-toggle restores to the correct position
     // even after daemon restart (windows stay at their zone positions across restarts).
+    // Save full windowId format for daemon-only restarts (UUIDs stable, multi-instance distinction).
+    // Save appId format as fallback for KWin restarts (UUIDs change).
+    tracking.writeEntry(QStringLiteral("PreTileGeometriesFull"),
+                        serializeGeometryMapFull(m_service->preTileGeometries()));
     tracking.writeEntry(QStringLiteral("PreTileGeometries"), serializeGeometryMap(m_service->preTileGeometries()));
     // Remove old split keys if present (migration)
     tracking.deleteEntry(QStringLiteral("PreSnapGeometries"));
@@ -402,10 +406,48 @@ void WindowTrackingAdaptor::loadState()
         }
     };
 
+    // Load full windowId format first (preserves multi-instance distinction for
+    // daemon-only restarts where KWin UUIDs are still valid). Each entry stores
+    // both the full windowId key AND the appId key, mirroring storePreTileGeometry().
+    QString fullTileJson = tracking.readEntry(QStringLiteral("PreTileGeometriesFull"), QString());
+    if (!fullTileJson.isEmpty()) {
+        QJsonDocument doc = QJsonDocument::fromJson(fullTileJson.toUtf8());
+        if (doc.isArray()) {
+            for (const QJsonValue& val : doc.array()) {
+                if (!val.isObject()) {
+                    continue;
+                }
+                QJsonObject entry = val.toObject();
+                QString windowId = entry[QLatin1String("windowId")].toString();
+                if (windowId.isEmpty()) {
+                    continue;
+                }
+                QRect geom(entry[QLatin1String("x")].toInt(), entry[QLatin1String("y")].toInt(),
+                           entry[QLatin1String("width")].toInt(), entry[QLatin1String("height")].toInt());
+                if (geom.width() > 0 && geom.height() > 0) {
+                    preTileGeometries[windowId] = geom;
+                    // Also store under appId for fallback (mirrors storePreTileGeometry)
+                    QString appId = Utils::extractAppId(windowId);
+                    if (appId != windowId) {
+                        preTileGeometries[appId] = geom;
+                    }
+                }
+            }
+        }
+    }
+
+    // Load appId-keyed format (fallback for KWin restarts or entries without full format)
     QString tileJson = tracking.readEntry(QStringLiteral("PreTileGeometries"), QString());
     if (!tileJson.isEmpty()) {
-        loadGeometries(tileJson, preTileGeometries);
-    } else {
+        // Only fill in keys not already loaded from full format
+        QHash<QString, QRect> appIdGeometries;
+        loadGeometries(tileJson, appIdGeometries);
+        for (auto it = appIdGeometries.constBegin(); it != appIdGeometries.constEnd(); ++it) {
+            if (!preTileGeometries.contains(it.key())) {
+                preTileGeometries[it.key()] = it.value();
+            }
+        }
+    } else if (preTileGeometries.isEmpty()) {
         // Migration: merge old split keys
         loadGeometries(tracking.readEntry(QStringLiteral("PreAutotileGeometries"), QString()), preTileGeometries);
         loadGeometries(tracking.readEntry(QStringLiteral("PreSnapGeometries"), QString()), preTileGeometries);

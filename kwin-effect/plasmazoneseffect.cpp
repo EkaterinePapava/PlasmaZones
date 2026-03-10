@@ -2502,9 +2502,10 @@ KWin::EffectWindow* PlasmaZonesEffect::findWindowById(const QString& windowId) c
         return nullptr;
     }
 
-    // Single-pass lookup: check exact ID match and appId fallback.
+    // Single-pass lookup: exact ID match preferred, appId fallback only if unambiguous.
     const QString targetAppId = extractAppId(windowId);
     KWin::EffectWindow* appMatch = nullptr;
+    int matchCount = 0;
 
     const auto windows = KWin::effects->stackingOrder();
     for (KWin::EffectWindow* w : windows) {
@@ -2512,12 +2513,14 @@ KWin::EffectWindow* PlasmaZonesEffect::findWindowById(const QString& windowId) c
         if (wId == windowId) {
             return w; // Exact match — return immediately
         }
-        if (!appMatch && extractAppId(wId) == targetAppId) {
+        if (extractAppId(wId) == targetAppId) {
             appMatch = w;
+            ++matchCount;
         }
     }
 
-    return appMatch;
+    // Only use appId fallback when unambiguous (single instance of that app)
+    return (matchCount == 1) ? appMatch : nullptr;
 }
 
 QVector<KWin::EffectWindow*> PlasmaZonesEffect::findAllWindowsById(const QString& windowId) const

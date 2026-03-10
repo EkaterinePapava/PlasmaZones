@@ -36,24 +36,16 @@ AutotileHandler::AutotileHandler(PlasmaZonesEffect* effect, QObject* parent)
 
 QString AutotileHandler::findSavedGeometryKey(const QHash<QString, QRectF>& savedGeometries, const QString& windowId)
 {
+    // Exact windowId match only — no appId fallback.
+    // A window opened during autotile has no pre-autotile geometry and must NOT
+    // inherit another instance's geometry (e.g., 2 Ghostty windows: one snapped,
+    // one opened during autotile — the unsnapped one would briefly jump to the
+    // snapped one's zone position before being corrected by the daemon).
     auto it = savedGeometries.constFind(windowId);
     if (it != savedGeometries.constEnd()) {
         return it.key();
     }
-    const QString windowAppId = PlasmaZonesEffect::extractAppId(windowId);
-    if (windowAppId.isEmpty()) {
-        return QString();
-    }
-    QString matchKey;
-    for (auto i = savedGeometries.constBegin(); i != savedGeometries.constEnd(); ++i) {
-        if (PlasmaZonesEffect::extractAppId(i.key()) == windowAppId) {
-            if (!matchKey.isEmpty()) {
-                return QString(); // Multiple matches - ambiguous
-            }
-            matchKey = i.key();
-        }
-    }
-    return matchKey;
+    return QString();
 }
 
 bool AutotileHandler::hasSavedGeometryForWindow(const QHash<QString, QRectF>& savedGeometries, const QString& windowId)
