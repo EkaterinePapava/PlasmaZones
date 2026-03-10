@@ -233,7 +233,7 @@ void EditorController::setLayoutName(const QString& name)
 {
     if (m_layoutName != name) {
         if (!m_undoController) {
-            qCWarning(lcEditor) << "Cannot update layout name - undo controller is null";
+            qCWarning(lcEditor) << "setLayoutName: undo controller is null";
             return;
         }
 

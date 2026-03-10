@@ -29,7 +29,7 @@ bool queryShadersEnabled()
     QDBusInterface settingsIface = createSettingsInterface();
 
     if (!settingsIface.isValid()) {
-        qCWarning(lcDbus) << "Cannot query shaders: daemon D-Bus interface unavailable";
+        qCWarning(lcDbus) << "Shader query: daemon D-Bus interface unavailable";
         return false;
     }
 
@@ -42,7 +42,7 @@ QVariantList queryAvailableShaders()
     QDBusInterface settingsIface = createSettingsInterface();
 
     if (!settingsIface.isValid()) {
-        qCWarning(lcDbus) << "Cannot query shaders: daemon D-Bus interface unavailable";
+        qCWarning(lcDbus) << "Shader query: daemon D-Bus interface unavailable";
         return QVariantList();
     }
 

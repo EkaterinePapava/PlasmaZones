@@ -144,7 +144,7 @@ void Daemon::updateAutotileScreens()
         m_overlayService->setExcludedScreens(autotileScreens);
     }
 
-    qCDebug(lcDaemon) << "Updated autotile screens:" << autotileScreens;
+    qCDebug(lcDaemon) << "Updated autotile screens=" << autotileScreens;
 }
 
 /**

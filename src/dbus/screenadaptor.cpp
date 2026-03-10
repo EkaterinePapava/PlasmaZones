@@ -48,7 +48,7 @@ QStringList ScreenAdaptor::getScreens()
 QString ScreenAdaptor::getScreenInfo(const QString& screenName)
 {
     if (screenName.isEmpty()) {
-        qCWarning(lcDbus) << "Cannot get screen info - empty screen name";
+        qCWarning(lcDbus) << "getScreenInfo: empty screen name";
         return QString();
     }
 

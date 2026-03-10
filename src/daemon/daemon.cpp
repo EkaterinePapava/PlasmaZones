@@ -107,7 +107,7 @@ bool Daemon::init()
                 }
                 const WarmShaderBakeResult r = watcher->result();
                 if (!r.success) {
-                    qCWarning(lcDaemon) << "Shader bake failed for" << shaderId << ":" << r.errorMessage;
+                    qCWarning(lcDaemon) << "Shader bake: failed for" << shaderId << r.errorMessage;
                 }
                 registryPtr->reportShaderBakeFinished(shaderId, r.success, r.errorMessage);
                 watcher->deleteLater();
@@ -147,7 +147,7 @@ bool Daemon::init()
     if (auto* defLayout = m_layoutManager->defaultLayout()) {
         m_overlayService->setLayout(defLayout);
         m_zoneDetector->setLayout(defLayout);
-        qCInfo(lcDaemon) << "Overlay configured layout= " << defLayout->name() << " zones= " << defLayout->zoneCount();
+        qCInfo(lcDaemon) << "Overlay configured layout=" << defLayout->name() << "zones=" << defLayout->zoneCount();
     } else {
         qCWarning(lcDaemon) << "No default layout available for overlay";
     }
@@ -334,7 +334,7 @@ bool Daemon::init()
     // Register D-Bus service and object with error handling and retry logic
     auto bus = QDBusConnection::sessionBus();
     if (!bus.isConnected()) {
-        qCCritical(lcDaemon) << "Cannot connect to session D-Bus - daemon cannot function without D-Bus";
+        qCCritical(lcDaemon) << "Session D-Bus: cannot connect, daemon cannot function";
         return false;
     }
 
@@ -355,16 +355,16 @@ bool Daemon::init()
             // Transient error - retry with exponential backoff
             if (attempt < maxRetries - 1) {
                 const int delayMs = baseDelayMs * (1 << attempt);
-                qCWarning(lcDaemon) << "Failed to register D-Bus service (attempt" << (attempt + 1) << "/" << maxRetries
-                                    << "):" << error.message() << "- retrying in" << delayMs << "ms";
+                qCWarning(lcDaemon) << "D-Bus service registration: failed (attempt" << (attempt + 1) << "/"
+                                    << maxRetries << ")," << error.message() << "retrying in" << delayMs << "ms";
                 QThread::msleep(delayMs);
                 continue;
             }
         }
 
         // Non-retryable error or max retries reached
-        qCCritical(lcDaemon) << "Failed to register D-Bus service:" << DBus::ServiceName << "Error:" << error.message()
-                             << "Type:" << error.type();
+        qCCritical(lcDaemon) << "Failed to register D-Bus service=" << DBus::ServiceName << "error=" << error.message()
+                             << "type=" << error.type();
         return false;
     }
 
@@ -376,13 +376,13 @@ bool Daemon::init()
     // Register D-Bus object (no retry needed - service is already registered)
     if (!bus.registerObject(QString(DBus::ObjectPath), this)) {
         QDBusError error = bus.lastError();
-        qCCritical(lcDaemon) << "Failed to register D-Bus object:" << DBus::ObjectPath << "Error:" << error.message();
+        qCCritical(lcDaemon) << "Failed to register D-Bus object=" << DBus::ObjectPath << "error=" << error.message();
         // Cleanup: unregister service if object registration fails
         bus.unregisterService(QString(DBus::ServiceName));
         return false;
     }
 
-    qCInfo(lcDaemon) << "D-Bus service registered service= " << DBus::ServiceName << " path= " << DBus::ObjectPath;
+    qCInfo(lcDaemon) << "D-Bus service registered service=" << DBus::ServiceName << "path=" << DBus::ObjectPath;
 
     // Connect overlay adaptor signals to daemon overlay control
     connect(m_overlayAdaptor, &OverlayAdaptor::overlayVisibilityChanged, this, [this](bool visible) {

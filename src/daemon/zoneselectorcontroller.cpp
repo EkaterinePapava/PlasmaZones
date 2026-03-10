@@ -345,7 +345,7 @@ void ZoneSelectorController::toggle()
 
 void ZoneSelectorController::selectLayout(const QString& layoutId)
 {
-    qCInfo(lcOverlay) << "Layout selected:" << layoutId;
+    qCInfo(lcOverlay) << "Layout selected=" << layoutId;
 
     setActiveLayoutId(layoutId);
     Q_EMIT layoutSelected(layoutId);

@@ -68,7 +68,7 @@ void ScreenManager::queryKdePlasmaPanels(bool fromDelayedRequery)
         // Still emit panelGeometryReady so components don't hang waiting
         if (!m_panelGeometryReceived) {
             m_panelGeometryReceived = true;
-            qCInfo(lcScreen) << "Panel geometry ready (no Plasma shell) - emitting signal";
+            qCInfo(lcScreen) << "Panel geometry: ready, no Plasma shell";
             Q_EMIT panelGeometryReady();
         }
         return;
@@ -127,7 +127,7 @@ void ScreenManager::queryKdePlasmaPanels(bool fromDelayedRequery)
 
                 if (reply.isValid()) {
                     QString output = reply.value();
-                    qCDebug(lcScreen) << "queryKdePlasmaPanels D-Bus reply= " << output;
+                    qCDebug(lcScreen) << "queryKdePlasmaPanels D-Bus reply=" << output;
 
                     // Parse: PANEL:plasmaIndex:location:hiding:offset:floating:x,y,w,h
                     // Match panels to Qt screens by geometry (Plasma and Qt can have different screen orderings)
@@ -159,15 +159,15 @@ void ScreenManager::queryKdePlasmaPanels(bool fromDelayedRequery)
                         }
 
                         if (screenName.isEmpty()) {
-                            qCWarning(lcScreen) << "  Could not match Plasma screen" << plasmaIndex
-                                                << "to any Qt screen by geometry — skipping panel";
+                            qCWarning(lcScreen) << "Could not match Plasma screen" << plasmaIndex
+                                                << "to any Qt screen by geometry - skipping panel";
                             continue;
                         }
 
                         qCDebug(lcScreen)
-                            << "  Parsed panel screen=" << screenName << "(plasma idx" << plasmaIndex << ")"
-                            << " location=" << location << " offset=" << totalOffset << " floating=" << isFloating
-                            << " hiding=" << hiding;
+                            << "Parsed panel screen=" << screenName << " (plasma idx" << plasmaIndex << ")"
+                            << "location=" << location << "offset=" << totalOffset << "floating=" << isFloating
+                            << "hiding=" << hiding;
 
                         bool panelAutoHides =
                             (hiding == QLatin1String("autohide") || hiding == QLatin1String("dodgewindows")
@@ -198,7 +198,7 @@ void ScreenManager::queryKdePlasmaPanels(bool fromDelayedRequery)
 
                 // Log final panel offsets
                 for (auto it = m_panelOffsets.constBegin(); it != m_panelOffsets.constEnd(); ++it) {
-                    qCInfo(lcScreen) << "  Screen" << it.key() << "panel offsets T=" << it.value().top
+                    qCInfo(lcScreen) << "Screen" << it.key() << "panel offsets T=" << it.value().top
                                      << "B=" << it.value().bottom << "L=" << it.value().left
                                      << "R=" << it.value().right;
                 }
@@ -211,7 +211,7 @@ void ScreenManager::queryKdePlasmaPanels(bool fromDelayedRequery)
                 // Emit panelGeometryReady on first successful query
                 if (!m_panelGeometryReceived) {
                     m_panelGeometryReceived = true;
-                    qCInfo(lcScreen) << "Panel geometry ready - emitting signal";
+                    qCInfo(lcScreen) << "Panel geometry: ready";
                     Q_EMIT panelGeometryReady();
                 }
 

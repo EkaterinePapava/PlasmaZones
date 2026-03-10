@@ -73,7 +73,7 @@ void ScreenManager::start()
     m_plasmaShellWatcher = new QDBusServiceWatcher(QStringLiteral("org.kde.plasmashell"), QDBusConnection::sessionBus(),
                                                    QDBusServiceWatcher::WatchForRegistration, this);
     connect(m_plasmaShellWatcher, &QDBusServiceWatcher::serviceRegistered, this, [this]() {
-        qCInfo(lcScreen) << "org.kde.plasmashell registered — querying panels";
+        qCInfo(lcScreen) << "Plasmashell: registered, querying panels";
         queryKdePlasmaPanels();
     });
 
@@ -227,7 +227,7 @@ void ScreenManager::calculateAvailableGeometry(QScreen* screen)
     QRect screenGeom = screen->geometry();
     QString screenName = screen->name();
 
-    qCDebug(lcScreen) << "calculateAvailableGeometry screen=" << screenName << "geometry=" << screenGeom;
+    qCDebug(lcScreen) << "calculateAvailableGeometry: screen=" << screenName << "geometry=" << screenGeom;
 
     int topOffset = 0;
     int bottomOffset = 0;
@@ -327,8 +327,8 @@ void ScreenManager::calculateAvailableGeometry(QScreen* screen)
 
     QString source =
         hasSensorData ? QStringLiteral("sensor") : (hasDbusData ? QStringLiteral("D-Bus") : QStringLiteral("fallback"));
-    qCInfo(lcScreen) << "calculateAvailableGeometry screen= " << screenKey << " screenGeom= " << screenGeom
-                     << " available= " << availGeom << " source= " << source;
+    qCInfo(lcScreen) << "calculateAvailableGeometry: screen=" << screenKey << "screenGeom=" << screenGeom
+                     << "available=" << availGeom << "source=" << source;
 
     // Update cache and emit signal
     s_availableGeometryCache.insert(screenKey, availGeom);
@@ -348,8 +348,8 @@ void ScreenManager::onSensorGeometryChanged(QScreen* screen)
     }
 
     QRect sensorGeom = sensor->geometry();
-    qCDebug(lcScreen) << "onSensorGeometryChanged screen= " << screen->name() << " sensorGeometry= " << sensorGeom
-                      << " screenGeometry= " << screen->geometry();
+    qCDebug(lcScreen) << "onSensorGeometryChanged: screen=" << screen->name() << "sensorGeometry=" << sensorGeom
+                      << "screenGeometry=" << screen->geometry();
 
     if (!sensorGeom.isValid() || sensorGeom.width() <= 0 || sensorGeom.height() <= 0) {
         return;
@@ -381,7 +381,7 @@ QRect ScreenManager::actualAvailableGeometry(QScreen* screen)
     QRect availGeom = screen->availableGeometry();
     QRect screenGeom = screen->geometry();
 
-    qCInfo(lcScreen) << "actualAvailableGeometry: screen=" << screenKey << "NO CACHE — fallback qtAvail=" << availGeom
+    qCInfo(lcScreen) << "actualAvailableGeometry: screen=" << screenKey << "no cache, fallback qtAvail=" << availGeom
                      << "fullScreen=" << screenGeom
                      << "using=" << ((availGeom != screenGeom && availGeom.isValid()) ? "qtAvail" : "fullScreen");
 

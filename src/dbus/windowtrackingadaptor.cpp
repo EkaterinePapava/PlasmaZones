@@ -76,7 +76,7 @@ WindowTrackingAdaptor::WindowTrackingAdaptor(LayoutManager* layoutManager, IZone
     // are not re-registered because pendingRestoresAvailable was never emitted.
     if (!m_service->pendingRestoreQueues().isEmpty() && m_layoutManager->activeLayout()) {
         m_hasPendingRestores = true;
-        qCDebug(lcDbusWindow) << "Pending restores loaded at init - will emit when panel geometry ready";
+        qCDebug(lcDbusWindow) << "Pending restores: loaded at init, will emit when panel geometry ready";
     }
 }
 
@@ -142,7 +142,7 @@ void WindowTrackingAdaptor::windowSnapped(const QString& windowId, const QString
     }
 
     if (zoneId.isEmpty()) {
-        qCWarning(lcDbusWindow) << "Cannot track window snap - empty zone ID";
+        qCWarning(lcDbusWindow) << "Window snap: cannot track, empty zone ID";
         return;
     }
 
@@ -185,7 +185,7 @@ void WindowTrackingAdaptor::windowSnappedMultiZone(const QString& windowId, cons
     }
 
     if (zoneIds.isEmpty() || zoneIds.first().isEmpty()) {
-        qCWarning(lcDbusWindow) << "Cannot track multi-zone window snap - empty zone IDs";
+        qCWarning(lcDbusWindow) << "Multi-zone window snap: cannot track, empty zone IDs";
         return;
     }
 
@@ -311,7 +311,7 @@ QString WindowTrackingAdaptor::getZoneForWindow(const QString& windowId)
 QStringList WindowTrackingAdaptor::getWindowsInZone(const QString& zoneId)
 {
     if (zoneId.isEmpty()) {
-        qCWarning(lcDbusWindow) << "Cannot get windows in zone - empty zone ID";
+        qCWarning(lcDbusWindow) << "getWindowsInZone: empty zone ID";
         return QStringList();
     }
     // Delegate to service

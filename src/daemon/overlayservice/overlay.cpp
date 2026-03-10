@@ -318,7 +318,7 @@ void OverlayService::createOverlayWindow(QScreen* screen)
     }
 
     if (!Platform::isSupported()) {
-        qCWarning(lcOverlay) << "Platform not supported - PlasmaZones requires Wayland";
+        qCWarning(lcOverlay) << "Platform: not supported, requires Wayland";
     }
 
     window->setVisible(false);

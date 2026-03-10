@@ -54,7 +54,7 @@ inline QScreen* resolveShortcutScreen(const WindowTrackingAdaptor* trackingAdapt
     }
 
     // Last resort: primary screen (daemon just started, no KWin effect data yet)
-    qCDebug(lcDaemon) << "resolveShortcutScreen: falling back to primary screen";
+    qCDebug(lcDaemon) << "resolveShortcutScreen: using primary screen";
     return Utils::primaryScreen();
 }
 

@@ -155,7 +155,7 @@ void ShaderRegistry::setupFileWatcher()
     const QString userDir = userShaderDir();
     if (QDir(userDir).exists()) {
         m_watcher->addPath(userDir);
-        qCDebug(lcCore) << "Watching user shader directory= " << userDir;
+        qCDebug(lcCore) << "Watching user shader directory=" << userDir;
     }
 
     connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, &ShaderRegistry::onUserShaderDirChanged);
@@ -195,7 +195,7 @@ void ShaderRegistry::refresh()
         loadUserShaders();
     }
 
-    qCInfo(lcCore) << "Total shaders= " << m_shaders.size();
+    qCInfo(lcCore) << "Total shaders=" << m_shaders.size();
     Q_EMIT shadersChanged();
 }
 
@@ -240,7 +240,7 @@ void ShaderRegistry::loadSystemShaders()
             loadShaderFromDir(dir.filePath(entry), false);
         }
 
-        qCInfo(lcCore) << "Loaded shaders= " << (m_shaders.size() - beforeCount) << " from= " << shaderDir;
+        qCInfo(lcCore) << "Loaded shaders=" << (m_shaders.size() - beforeCount) << "from=" << shaderDir;
     }
 }
 
@@ -263,7 +263,7 @@ void ShaderRegistry::loadUserShaders()
     }
 
     if (m_shaders.size() != beforeCount) {
-        qCInfo(lcCore) << "Loaded shaders= " << (m_shaders.size() - beforeCount) << " from= " << userDir;
+        qCInfo(lcCore) << "Loaded shaders=" << (m_shaders.size() - beforeCount) << "from=" << userDir;
     }
 }
 
@@ -274,7 +274,7 @@ void ShaderRegistry::loadShaderFromDir(const QString& shaderDir, bool isUserShad
 
     // Metadata is required
     if (!QFile::exists(metadataPath)) {
-        qCDebug(lcCore) << "Skipping shader path= " << shaderDir << " reason= no metadata.json";
+        qCDebug(lcCore) << "Skipping shader path=" << shaderDir << "reason=no metadata.json";
         return;
     }
 
@@ -296,8 +296,8 @@ void ShaderRegistry::loadShaderFromDir(const QString& shaderDir, bool isUserShad
     // shaderUrl points directly to the raw GLSL fragment shader
     info.shaderUrl = QUrl::fromLocalFile(info.sourcePath);
 
-    qCDebug(lcCore) << "  Loaded shader name= " << info.name << " id= " << info.id
-                    << " source= " << (isUserShader ? "user" : "system") << " from= " << shaderDir;
+    qCDebug(lcCore) << "Loaded shader name=" << info.name << "id=" << info.id
+                    << "source=" << (isUserShader ? "user" : "system") << "from=" << shaderDir;
 
     // Check for preview image
     const QString previewPath = dir.filePath(QStringLiteral("preview.png"));

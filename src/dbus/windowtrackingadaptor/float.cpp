@@ -127,7 +127,7 @@ QStringList WindowTrackingAdaptor::getFloatingWindows()
 
 void WindowTrackingAdaptor::toggleFloatForWindow(const QString& windowId, const QString& screenName)
 {
-    qCInfo(lcDbusWindow) << "toggleFloatForWindow called: windowId=" << windowId << "screen=" << screenName;
+    qCInfo(lcDbusWindow) << "toggleFloatForWindow: windowId=" << windowId << "screen=" << screenName;
 
     if (!validateWindowId(windowId, QStringLiteral("toggle float"))) {
         Q_EMIT navigationFeedback(false, QStringLiteral("float"), QStringLiteral("invalid_window"), QString(),
@@ -147,12 +147,13 @@ bool WindowTrackingAdaptor::applyGeometryForFloat(const QString& windowId, const
 {
     auto geo = m_service->validatedPreTileGeometry(windowId);
     if (geo) {
-        qCInfo(lcDbusWindow) << "applyGeometryForFloat:" << windowId << "geo:" << *geo << "screen:" << screenName;
+        qCInfo(lcDbusWindow) << "applyGeometryForFloat: windowId=" << windowId << "geo=" << *geo
+                             << "screen=" << screenName;
         Q_EMIT applyGeometryRequested(windowId, GeometryUtils::rectToJson(*geo), QString(), screenName);
         return true;
     }
 
-    qCInfo(lcDbusWindow) << "applyGeometryForFloat: NO geometry found for" << windowId;
+    qCInfo(lcDbusWindow) << "applyGeometryForFloat: no geometry found for" << windowId;
     return false;
 }
 
@@ -171,7 +172,7 @@ void WindowTrackingAdaptor::setWindowFloatingForScreen(const QString& windowId, 
         return;
     }
 
-    qCInfo(lcDbusWindow) << "setWindowFloatingForScreen:" << windowId << "floating=" << floating
+    qCInfo(lcDbusWindow) << "setWindowFloatingForScreen: windowId=" << windowId << "floating=" << floating
                          << "screen=" << screenName;
 
     // Route to the correct engine based on screen mode

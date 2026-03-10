@@ -202,7 +202,7 @@ void migrateConnectorNames(QHash<QString, QVariantMap>& settings)
             if (resolved != it.key()) {
                 if (migrated.contains(resolved)) {
                     qCWarning(lcConfig) << "EDID collision during migration:" << it.key()
-                                        << "and another connector both resolve to" << resolved << "— later entry wins";
+                                        << "and another connector both resolve to" << resolved << "- later entry wins";
                 }
                 migrated[resolved] = it.value();
                 it = settings.erase(it);
@@ -400,7 +400,7 @@ void Settings::setPerScreenAutotileSetting(const QString& screenName, const QStr
 
     QVariant validated = validatePerScreenAutotileValue(key, value);
     if (!validated.isValid()) {
-        qCWarning(lcConfig) << "Rejected per-screen autotile setting:" << key << "=" << value;
+        qCWarning(lcConfig) << "Rejected per-screen autotile setting:" << key + QLatin1String("=") << value;
         return;
     }
 
@@ -442,7 +442,7 @@ void Settings::setPerScreenSnappingSetting(const QString& screenName, const QStr
 
     QVariant validated = validatePerScreenSnappingValue(key, value);
     if (!validated.isValid()) {
-        qCWarning(lcConfig) << "Rejected per-screen snapping setting:" << key << "=" << value;
+        qCWarning(lcConfig) << "Rejected per-screen snapping setting:" << key + QLatin1String("=") << value;
         return;
     }
 

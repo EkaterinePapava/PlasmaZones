@@ -69,7 +69,7 @@ void SnapEngine::windowFocused(const QString& windowId, const QString& screenNam
 void SnapEngine::assignToZones(const QString& windowId, const QStringList& zoneIds, const QString& screenName)
 {
     if (zoneIds.isEmpty()) {
-        qCWarning(lcCore) << "assignToZones: empty zoneIds for" << windowId << "— skipping";
+        qCWarning(lcCore) << "assignToZones: empty zoneIds for" << windowId << "- skipping";
         return;
     }
     int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;

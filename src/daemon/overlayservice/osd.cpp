@@ -105,7 +105,7 @@ void OverlayService::showLayoutOsd(Layout* layout, const QString& screenName)
     }
 
     if (layout->zones().isEmpty()) {
-        qCDebug(lcOverlay) << "Skipping OSD for empty layout:" << layout->name();
+        qCDebug(lcOverlay) << "Skipping OSD for empty layout=" << layout->name();
         return;
     }
 
@@ -129,14 +129,14 @@ void OverlayService::showLayoutOsd(Layout* layout, const QString& screenName)
 
     sizeAndCenterOsd(window, screenGeom, aspectRatio);
     QMetaObject::invokeMethod(window, "show");
-    qCInfo(lcOverlay) << "Showing layout OSD for:" << layout->name() << "on screen:" << screenName;
+    qCInfo(lcOverlay) << "Layout OSD: layout=" << layout->name() << "screen=" << screenName;
 }
 
 void OverlayService::showLayoutOsd(const QString& id, const QString& name, const QVariantList& zones, int category,
                                    bool autoAssign, const QString& screenName)
 {
     if (zones.isEmpty()) {
-        qCDebug(lcOverlay) << "Skipping OSD for empty layout:" << name;
+        qCDebug(lcOverlay) << "Skipping OSD for empty layout=" << name;
         return;
     }
 
@@ -160,7 +160,7 @@ void OverlayService::showLayoutOsd(const QString& id, const QString& name, const
 
     sizeAndCenterOsd(window, screenGeom, aspectRatio);
     QMetaObject::invokeMethod(window, "show");
-    qCInfo(lcOverlay) << "Showing layout OSD for:" << name << "category:" << category << "on screen:" << screenName;
+    qCInfo(lcOverlay) << "Layout OSD: name=" << name << "category=" << category << "screen=" << screenName;
 }
 
 void OverlayService::hideLayoutOsd()
@@ -295,10 +295,10 @@ void OverlayService::showNavigationOsd(bool success, const QString& action, cons
     if (!window) {
         // Only warn once per screen to prevent log spam
         if (!m_navigationOsdCreationFailed.value(screen, false)) {
-            qCWarning(lcOverlay) << "Failed to get navigation OSD window for screen:" << screen->name();
+            qCWarning(lcOverlay) << "Failed to get navigation OSD window for screen=" << screen->name();
             m_navigationOsdCreationFailed.insert(screen, true);
         }
-        qCDebug(lcOverlay) << "No navigation OSD window for screen:" << screen->name();
+        qCDebug(lcOverlay) << "No navigation OSD window for screen=" << screen->name();
         return;
     }
 

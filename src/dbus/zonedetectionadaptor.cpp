@@ -158,7 +158,7 @@ QStringList ZoneDetectionAdaptor::detectMultiZoneAtPosition(int x, int y)
 
     auto* layout = m_layoutManager->resolveLayoutForScreen(Utils::screenIdentifier(screen));
     if (!layout) {
-        qCWarning(lcDbus) << "Cannot detect multi-zone - no layout for screen" << screen->name();
+        qCWarning(lcDbus) << "detectMultiZone: no layout for screen" << screen->name();
         return zoneIds;
     }
 

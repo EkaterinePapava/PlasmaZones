@@ -158,14 +158,14 @@ void WindowTrackingAdaptor::onLayoutChanged()
     if (!m_service->pendingRestoreQueues().isEmpty()) {
         m_hasPendingRestores = true;
         qCDebug(lcDbusWindow) << "Layout available with" << m_service->pendingRestoreQueues().size()
-                              << "pending restores - checking if panel geometry is ready";
+                              << "pending restores, checking if panel geometry is ready";
         tryEmitPendingRestoresAvailable();
     }
 }
 
 void WindowTrackingAdaptor::onPanelGeometryReady()
 {
-    qCDebug(lcDbusWindow) << "Panel geometry ready - checking if pending restores available";
+    qCDebug(lcDbusWindow) << "Panel geometry: ready, checking if pending restores available";
     tryEmitPendingRestoresAvailable();
 }
 
@@ -178,7 +178,7 @@ void WindowTrackingAdaptor::tryEmitPendingRestoresAvailable()
 
     // Check both conditions: layout has pending restores AND panel geometry is known
     if (!m_hasPendingRestores) {
-        qCDebug(lcDbusWindow) << "Cannot emit pendingRestoresAvailable - no pending restores";
+        qCDebug(lcDbusWindow) << "pendingRestoresAvailable: cannot emit, no pending restores";
         return;
     }
 
@@ -186,17 +186,16 @@ void WindowTrackingAdaptor::tryEmitPendingRestoresAvailable()
     // If ScreenManager instance is null, we proceed anyway with a warning - this is
     // better than blocking window restoration indefinitely
     if (ScreenManager::instance() && !ScreenManager::isPanelGeometryReady()) {
-        qCDebug(lcDbusWindow) << "Cannot emit pendingRestoresAvailable - panel geometry not ready yet";
+        qCDebug(lcDbusWindow) << "pendingRestoresAvailable: cannot emit, panel geometry not ready yet";
         return;
     }
 
     // Both conditions met (or ScreenManager unavailable) - emit the signal
     m_pendingRestoresEmitted = true;
     if (!ScreenManager::instance()) {
-        qCWarning(lcDbusWindow)
-            << "Emitting pendingRestoresAvailable without ScreenManager - geometry may be incorrect";
+        qCWarning(lcDbusWindow) << "pendingRestoresAvailable: no ScreenManager, geometry may be incorrect";
     } else {
-        qCInfo(lcDbusWindow) << "Panel geometry ready AND pending restores available - notifying effect";
+        qCInfo(lcDbusWindow) << "Pending restores: panel geometry ready, notifying effect";
     }
     Q_EMIT pendingRestoresAvailable();
 }

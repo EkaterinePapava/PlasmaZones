@@ -326,7 +326,7 @@ Layout* LayoutManager::layoutForShortcut(int number) const
 
 void LayoutManager::applyQuickLayout(int number, const QString& screenId)
 {
-    qCInfo(lcLayout) << "applyQuickLayout called: number=" << number << "screen=" << screenId;
+    qCInfo(lcLayout) << "applyQuickLayout: number=" << number << "screen=" << screenId;
 
     auto layout = layoutForShortcut(number);
     if (layout) {
@@ -336,8 +336,7 @@ void LayoutManager::applyQuickLayout(int number, const QString& screenId)
         setActiveLayout(layout);
     } else {
         // No layout assigned to this quick slot - try to use layout at index (number-1) as fallback
-        qCInfo(lcLayout) << "No layout assigned to quick slot" << number << "- attempting fallback to layout index"
-                         << (number - 1);
+        qCInfo(lcLayout) << "No layout assigned to quick slot" << number << "- using layout index" << (number - 1);
         if (number >= 1 && number <= m_layouts.size()) {
             layout = m_layouts.at(number - 1);
             if (layout) {

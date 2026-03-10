@@ -132,7 +132,7 @@ void UpdateChecker::onRequestFinished(QNetworkReply* reply)
 
     if (reply->error() != QNetworkReply::NoError) {
         m_errorMessage = reply->errorString();
-        qCWarning(lcUpdateChecker) << "Update check failed:" << m_errorMessage;
+        qCWarning(lcUpdateChecker) << "Update check: failed," << m_errorMessage;
         Q_EMIT errorMessageChanged();
         Q_EMIT checkFinished(false);
         return;

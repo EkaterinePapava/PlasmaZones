@@ -66,7 +66,7 @@ SnapResult SnapEngine::resolveWindowRestore(const QString& windowId, const QStri
 
     // 0. Floating windows should not be auto-snapped — emit OSD feedback
     if (m_windowTracker->isWindowFloating(windowId)) {
-        qCInfo(lcCore) << "resolveWindowRestore: window" << windowId << "is floating — skipping snap";
+        qCInfo(lcCore) << "resolveWindowRestore: window" << windowId << "is floating, skipping snap";
         Q_EMIT navigationFeedback(true, QStringLiteral("float"), QStringLiteral("floated"), QString(), QString(),
                                   screenName);
         return SnapResult::noSnap();

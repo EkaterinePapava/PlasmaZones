@@ -177,7 +177,11 @@ void WindowTrackingAdaptor::saveState()
                         QString::fromUtf8(QJsonDocument(userSnappedArray).toJson(QJsonDocument::Compact)));
 
     config->sync();
-    qCInfo(lcDbusWindow) << "Saved state to KConfig";
+    qCInfo(lcDbusWindow) << "Saved state to KConfig:"
+                         << "zones=" << assignmentsObj.size() << "screens=" << screenAssignmentsObj.size()
+                         << "desktops=" << desktopAssignmentsObj.size() << "pending=" << pendingQueuesObj.size()
+                         << "preTile=" << m_service->preTileGeometries().size()
+                         << "preFloat=" << preFloatZonesObj.size() << "userSnapped=" << userSnappedArray.size();
 }
 
 void WindowTrackingAdaptor::requestReapplyWindowGeometries()
@@ -412,10 +416,10 @@ void WindowTrackingAdaptor::loadState()
     for (auto it = pendingQueues.constBegin(); it != pendingQueues.constEnd(); ++it) {
         totalPendingEntries += it.value().size();
         for (const auto& entry : it.value()) {
-            qCInfo(lcDbusWindow) << "  Pending snap app=" << it.key() << " zone=" << entry.zoneIds;
+            qCInfo(lcDbusWindow) << "  pending snap: app=" << it.key() << "zone=" << entry.zoneIds;
         }
     }
-    qCInfo(lcDbusWindow) << "Loaded state from KConfig pendingApps=" << pendingQueues.size()
+    qCInfo(lcDbusWindow) << "Loaded state from KConfig: pendingApps=" << pendingQueues.size()
                          << "totalEntries=" << totalPendingEntries;
     if (!pendingQueues.isEmpty()) {
         m_hasPendingRestores = true;

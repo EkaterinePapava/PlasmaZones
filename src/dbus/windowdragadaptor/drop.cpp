@@ -43,8 +43,8 @@ void WindowDragAdaptor::dragStopped(const QString& windowId, int cursorX, int cu
     QString releaseScreenName = releaseScreen ? releaseScreen->name() : QString();
     QString releaseScreenId = releaseScreen ? Utils::screenIdentifier(releaseScreen) : QString();
     releaseScreenNameOut = releaseScreenName;
-    qCDebug(lcDbusWindow) << "dragStopped cursor= (" << cursorX << "," << cursorY
-                          << ") releaseScreen= " << releaseScreenName;
+    qCDebug(lcDbusWindow) << "dragStopped: cursor=" << cursorX << "," << cursorY
+                          << "releaseScreen=" << releaseScreenName;
 
     // Capture zone state into locals right away. If another window starts dragging before
     // the async D-Bus reply for this dragStopped() is processed, dragMoved() would overwrite

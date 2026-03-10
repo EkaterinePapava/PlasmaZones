@@ -194,7 +194,7 @@ bool UnifiedLayoutController::applyEntry(const UnifiedLayoutEntry& entry)
             }
             m_autotileEngine->setAlgorithm(algoId);
             setCurrentLayoutId(entry.id);
-            qCInfo(lcDaemon) << "Applied autotile algorithm:" << entry.name;
+            qCInfo(lcDaemon) << "Applied autotile algorithm=" << entry.name;
             Q_EMIT autotileApplied(entry.name, 0);
             return true;
         }
@@ -215,7 +215,7 @@ bool UnifiedLayoutController::applyEntry(const UnifiedLayoutEntry& entry)
             // Always update global active layout (fires activeLayoutChanged)
             m_layoutManager->setActiveLayout(layout);
             setCurrentLayoutId(entry.id);
-            qCInfo(lcDaemon) << "Applied unified layout:" << entry.name << "to screen:" << m_currentScreenName;
+            qCInfo(lcDaemon) << "Applied unified layout=" << entry.name << "screen=" << m_currentScreenName;
             Q_EMIT layoutApplied(layout);
             return true;
         }

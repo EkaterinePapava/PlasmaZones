@@ -353,10 +353,10 @@ void OverlayService::onZoneSelected(const QString& layoutId, int zoneIndex, cons
     // Route to the correct signal based on whether this is an autotile algorithm or manual layout
     if (LayoutId::isAutotile(layoutId)) {
         const QString algoId = LayoutId::extractAlgorithmId(layoutId);
-        qCInfo(lcOverlay) << "Autotile algorithm selected from zone selector:" << algoId << "on screen:" << screenName;
+        qCInfo(lcOverlay) << "Zone selector: autotile algorithm selected, algoId=" << algoId << "screen=" << screenName;
         Q_EMIT autotileLayoutSelected(algoId, screenName);
     } else {
-        qCInfo(lcOverlay) << "Layout selected from zone selector:" << layoutId << "on screen:" << screenName;
+        qCInfo(lcOverlay) << "Zone selector: layout selected, layoutId=" << layoutId << "screen=" << screenName;
         Q_EMIT manualLayoutSelected(layoutId, screenName);
     }
 }

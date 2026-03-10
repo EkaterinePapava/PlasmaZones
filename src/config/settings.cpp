@@ -51,7 +51,7 @@ int Settings::readValidatedInt(const KConfigGroup& group, const char* key, int d
 {
     int value = group.readEntry(QLatin1String(key), defaultValue);
     if (value < min || value > max) {
-        qCWarning(lcConfig) << "Invalid" << settingName << ":" << value << "using default (must be" << min << "-" << max
+        qCWarning(lcConfig) << settingName << ":" << value << "invalid, using default (must be" << min << "-" << max
                             << ")";
         value = defaultValue;
     }
@@ -63,7 +63,7 @@ QColor Settings::readValidatedColor(const KConfigGroup& group, const char* key, 
 {
     QColor color = group.readEntry(QLatin1String(key), defaultValue);
     if (!color.isValid()) {
-        qCWarning(lcConfig) << "Invalid" << settingName << "color, using default";
+        qCWarning(lcConfig) << settingName << "color: invalid, using default";
         color = defaultValue;
     }
     return color;
@@ -99,7 +99,7 @@ std::optional<QVariantList> Settings::parseTriggerListJson(const QString& json)
             trigger[QStringLiteral("mouseButton")] = obj.value(QLatin1String("mouseButton")).toInt(0);
             result.append(trigger);
         } else {
-            qCWarning(lcConfig) << "Non-object element in trigger array (index" << result.size() << ") - skipping";
+            qCWarning(lcConfig) << "Trigger array: non-object element at index" << result.size() << ", skipping";
         }
     }
     if (result.size() > MaxTriggersPerAction) {
@@ -198,7 +198,7 @@ void Settings::load()
         applyAutotileBorderSystemColor();
     }
 
-    qCInfo(lcConfig) << "Settings loaded successfully";
+    qCInfo(lcConfig) << "Settings loaded";
     Q_EMIT settingsChanged();
 
     // Emit specific signals for settings with runtime side-effects

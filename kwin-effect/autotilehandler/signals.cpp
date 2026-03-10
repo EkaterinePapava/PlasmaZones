@@ -460,7 +460,7 @@ void AutotileHandler::slotWindowMaximizedStateChanged(KWin::EffectWindow* w, boo
     }
     m_monocleMaximizedWindows.remove(windowId);
     const QString screenName = m_effect->getWindowScreenName(w);
-    qCInfo(lcEffect) << "Monocle window manually unmaximized:" << windowId << "— floating";
+    qCInfo(lcEffect) << "Monocle window manually unmaximized:" << windowId << "- floating";
 
     if (m_effect->m_daemonServiceRegistered) {
         m_effect->fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("setWindowFloatingForScreen"),
@@ -483,7 +483,7 @@ void AutotileHandler::slotWindowFullScreenChanged(KWin::EffectWindow* w)
         }
     }
     if (m_monocleMaximizedWindows.remove(windowId)) {
-        qCInfo(lcEffect) << "Monocle window went fullscreen:" << windowId << "— removed from tracking";
+        qCInfo(lcEffect) << "Monocle window went fullscreen:" << windowId << "- removed from tracking";
     }
 }
 

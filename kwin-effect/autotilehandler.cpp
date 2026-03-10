@@ -475,7 +475,7 @@ void AutotileHandler::loadSettings()
                 }
             }
         } else {
-            qCDebug(lcEffect) << "Could not query autotile screens - daemon may not be running";
+            qCDebug(lcEffect) << "Autotile screens: query failed, daemon may not be running";
         }
     });
 }

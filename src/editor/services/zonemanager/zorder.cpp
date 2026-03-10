@@ -80,7 +80,7 @@ QString ZoneManager::splitZone(const QString& zoneId, bool horizontal)
         qreal splitDim = horizontal ? qRound(fixedGeo.height() / 2.0) : qRound(fixedGeo.width() / 2.0);
         qreal remainDim = horizontal ? (fixedGeo.height() - splitDim) : (fixedGeo.width() - splitDim);
         if (splitDim < minFixedSize || remainDim < minFixedSize) {
-            qCWarning(lcEditorZone) << "Cannot split fixed zone - resulting zones too small"
+            qCWarning(lcEditorZone) << "split fixed zone: resulting zones too small"
                                     << "(dimension:" << (horizontal ? fixedGeo.height() : fixedGeo.width())
                                     << "px, min:" << minFixedSize << "px)";
             return QString();
@@ -127,14 +127,14 @@ QString ZoneManager::splitZone(const QString& zoneId, bool horizontal)
     if (horizontal) {
         qreal newH = geom.height() / 2.0;
         if (newH < minSize) {
-            qCWarning(lcEditorZone) << "Cannot split horizontally - resulting zones would be too small"
+            qCWarning(lcEditorZone) << "split horizontally: resulting zones would be too small"
                                     << "(current height:" << geom.height() << ", min size:" << minSize << ")";
             return QString();
         }
     } else {
         qreal newW = geom.width() / 2.0;
         if (newW < minSize) {
-            qCWarning(lcEditorZone) << "Cannot split vertically - resulting zones would be too small"
+            qCWarning(lcEditorZone) << "split vertically: resulting zones would be too small"
                                     << "(current width:" << geom.width() << ", min size:" << minSize << ")";
             return QString();
         }

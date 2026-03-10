@@ -72,12 +72,12 @@ void OverlayAdaptor::highlightZone(const QString& zoneId)
 void OverlayAdaptor::highlightZones(const QStringList& zoneIds)
 {
     if (zoneIds.isEmpty()) {
-        qCWarning(lcDbus) << "Cannot highlight zones - empty zone ID list";
+        qCWarning(lcDbus) << "highlightZones: empty zone ID list";
         return;
     }
 
     if (!m_layoutManager || !m_layoutManager->activeLayout()) {
-        qCWarning(lcDbus) << "Cannot highlight zones - no active layout";
+        qCWarning(lcDbus) << "highlightZones: no active layout";
         return;
     }
 

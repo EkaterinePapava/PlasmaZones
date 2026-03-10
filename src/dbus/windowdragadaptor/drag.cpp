@@ -35,7 +35,7 @@ void WindowDragAdaptor::dragStarted(const QString& windowId, double x, double y,
 
     // Check exclusion list - if window is excluded, don't allow snapping
     if (m_settings->isWindowExcluded(appName, windowClass)) {
-        qCInfo(lcDbusWindow) << "Window excluded from snapping - appName:" << appName << "windowClass:" << windowClass;
+        qCInfo(lcDbusWindow) << "Snapping: window excluded, appName=" << appName << "windowClass=" << windowClass;
         m_snapCancelled = true;
         m_draggedWindowId.clear();
         return;

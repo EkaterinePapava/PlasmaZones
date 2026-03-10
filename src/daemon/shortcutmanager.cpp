@@ -202,7 +202,7 @@ void ShortcutManager::registerShortcuts()
 {
     if (m_registrationInProgress) {
         qCWarning(lcShortcuts) << "registerShortcuts() called while registration "
-                                  "is already in progress — ignoring";
+                                  "is already in progress - ignoring";
         return;
     }
     m_registrationInProgress = true;
@@ -347,7 +347,7 @@ void ShortcutManager::updateShortcuts()
     // If registration is still in progress, defer — the completion callback
     // will apply the current settings values when all grabs finish.
     if (m_registrationInProgress) {
-        qCDebug(lcShortcuts) << "Skipping updateShortcuts() — key grab activation in progress";
+        qCDebug(lcShortcuts) << "updateShortcuts: key grab activation in progress, skipping";
         m_settingsDirty = true;
         return;
     }
@@ -637,8 +637,7 @@ void ShortcutManager::setupResnapToNewLayoutShortcut()
     SETUP_SHORTCUT(m_resnapToNewLayoutAction, "Reapply Layout to Windows", "resnap_to_new_layout",
                    resnapToNewLayoutShortcut, &ShortcutManager::onResnapToNewLayout);
 
-    qCInfo(lcShortcuts) << "Resnap to new layout shortcut registered (" << m_settings->resnapToNewLayoutShortcut()
-                        << ")";
+    qCInfo(lcShortcuts) << "Resnap to new layout shortcut registered:" << m_settings->resnapToNewLayoutShortcut();
 }
 
 void ShortcutManager::setupSnapAllWindowsShortcut()
@@ -646,7 +645,7 @@ void ShortcutManager::setupSnapAllWindowsShortcut()
     SETUP_SHORTCUT(m_snapAllWindowsAction, "Snap All Windows to Zones", "snap_all_windows", snapAllWindowsShortcut,
                    &ShortcutManager::onSnapAllWindows);
 
-    qCInfo(lcShortcuts) << "Snap all windows shortcut registered (" << m_settings->snapAllWindowsShortcut() << ")";
+    qCInfo(lcShortcuts) << "Snap all windows shortcut registered:" << m_settings->snapAllWindowsShortcut();
 }
 
 void ShortcutManager::setupLayoutPickerShortcut()
@@ -654,7 +653,7 @@ void ShortcutManager::setupLayoutPickerShortcut()
     SETUP_SHORTCUT(m_layoutPickerAction, "Open Layout Picker", "layout_picker", layoutPickerShortcut,
                    &ShortcutManager::onLayoutPicker);
 
-    qCInfo(lcShortcuts) << "Layout picker shortcut registered (" << m_settings->layoutPickerShortcut() << ")";
+    qCInfo(lcShortcuts) << "Layout picker shortcut registered:" << m_settings->layoutPickerShortcut();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -262,7 +262,7 @@ QStringList WindowTrackingService::buildZoneOrderedWindowList(const QString& scr
             windowsByZone.append({numIt.value(), insertionIdx++, windowId});
         } else {
             qCWarning(lcCore) << "buildZoneOrderedWindowList: zone UUID" << zoneIds.first() << "for window" << windowId
-                              << "not found in layout — skipping";
+                              << "not found in layout - skipping";
         }
     }
 

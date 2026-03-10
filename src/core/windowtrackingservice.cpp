@@ -213,7 +213,7 @@ std::optional<QRect> WindowTrackingService::preTileGeometry(const QString& windo
         qCDebug(lcCore) << "preTileGeometry: found by appId" << appId << "=" << m_preTileGeometries.value(appId);
         return m_preTileGeometries.value(appId);
     }
-    qCDebug(lcCore) << "preTileGeometry: NOT FOUND for" << windowId;
+    qCDebug(lcCore) << "preTileGeometry: not found for" << windowId;
     return std::nullopt;
 }
 

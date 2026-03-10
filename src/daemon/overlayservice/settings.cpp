@@ -48,7 +48,7 @@ void OverlayService::setSettings(ISettings* settings)
                     // Only recreate if the overlay type actually needs to change
                     if (wasUsingShader != shouldUseShader) {
                         qCInfo(lcOverlay) << "Shader effects setting changed, recreating overlay windows"
-                                          << "(was:" << wasUsingShader << "now:" << shouldUseShader << ")";
+                                          << "- was=" << wasUsingShader << "now=" << shouldUseShader;
 
                         // Stop shader animation if it was running
                         if (wasUsingShader) {

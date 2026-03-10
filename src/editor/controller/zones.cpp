@@ -89,7 +89,7 @@ void EditorController::updateZoneGeometry(const QString& zoneId, qreal x, qreal 
                                           bool skipSnapping)
 {
     if (!m_undoController || !m_zoneManager || !m_snappingService) {
-        qCWarning(lcEditor) << "Cannot update zone geometry - services not initialized";
+        qCWarning(lcEditor) << "updateZoneGeometry: services not initialized";
         return;
     }
 
@@ -191,7 +191,7 @@ void EditorController::updateZoneGeometry(const QString& zoneId, qreal x, qreal 
 void EditorController::updateZoneName(const QString& zoneId, const QString& name)
 {
     if (!m_undoController || !m_zoneManager) {
-        qCWarning(lcEditor) << "Cannot update zone name - undo controller or zone manager is null";
+        qCWarning(lcEditor) << "updateZoneName: undo controller or zone manager is null";
         Q_EMIT zoneNameValidationError(zoneId, i18nc("@info", "Services not initialized"));
         return;
     }
@@ -227,7 +227,7 @@ void EditorController::updateZoneName(const QString& zoneId, const QString& name
 void EditorController::updateZoneNumber(const QString& zoneId, int number)
 {
     if (!m_undoController || !m_zoneManager) {
-        qCWarning(lcEditor) << "Cannot update zone number - undo controller or zone manager is null";
+        qCWarning(lcEditor) << "updateZoneNumber: undo controller or zone manager is null";
         Q_EMIT zoneNumberValidationError(zoneId, i18nc("@info", "Services not initialized"));
         return;
     }

@@ -51,7 +51,7 @@ void SnapEngine::setWindowFloat(const QString& windowId, bool shouldFloat)
         screenName = m_lastActiveScreenName;
     }
     if (screenName.isEmpty()) {
-        qCDebug(lcCore) << "setWindowFloat: no screen context for" << windowId << "- proceeding with empty screenName";
+        qCDebug(lcCore) << "setWindowFloat: no screen context for" << windowId << "- using empty screenName";
     }
 
     if (shouldFloat) {
@@ -97,7 +97,7 @@ bool SnapEngine::applyGeometryForFloat(const QString& windowId, const QString& s
         Q_EMIT applyGeometryRequested(windowId, GeometryUtils::rectToJson(*geo), QString(), screenName);
         return true;
     }
-    qCWarning(lcCore) << "applyGeometryForFloat:" << windowId << "NO pre-tile geometry found";
+    qCWarning(lcCore) << "applyGeometryForFloat:" << windowId << "no pre-tile geometry found";
     return false;
 }
 

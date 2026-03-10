@@ -56,8 +56,8 @@ SnapResult WindowTrackingService::calculateSnapToAppRule(const QString& windowId
         QScreen* screen = Utils::findScreenByIdOrName(effectiveScreen);
         if (!screen) {
             if (!match.targetScreen.isEmpty()) {
-                qCInfo(lcCore) << "App rule targetScreen" << match.targetScreen
-                               << "not found (disconnected?) - skipping rule";
+                qCInfo(lcCore) << "App rule: targetScreen" << match.targetScreen
+                               << "not found (disconnected?), skipping";
             }
             return SnapResult::noSnap();
         }
@@ -146,7 +146,7 @@ SnapResult WindowTrackingService::calculateSnapToLastZone(const QString& windowI
     // Check if window was floating - floating windows should NOT be auto-snapped
     // They should remain floating when reopened
     if (isWindowFloating(windowId)) {
-        qCDebug(lcCore) << "Window" << windowId << "was floating - skipping snap to last zone";
+        qCDebug(lcCore) << "snapToLastZone:" << windowId << "was floating, skipping";
         return SnapResult::noSnap();
     }
 
@@ -209,7 +209,7 @@ SnapResult WindowTrackingService::calculateSnapToEmptyZone(const QString& window
     if (isSticky && m_settings) {
         auto handling = m_settings->stickyWindowHandling();
         if (handling == StickyWindowHandling::IgnoreAll || handling == StickyWindowHandling::RestoreOnly) {
-            qCDebug(lcCore) << "snapToEmptyZone: no snap - window" << Utils::extractAppId(windowId) << "sticky handling"
+            qCDebug(lcCore) << "snapToEmptyZone: window" << Utils::extractAppId(windowId) << "sticky handling"
                             << static_cast<int>(handling);
             return SnapResult::noSnap();
         }
@@ -218,24 +218,24 @@ SnapResult WindowTrackingService::calculateSnapToEmptyZone(const QString& window
     // Check layout has autoAssign enabled
     Layout* layout = m_layoutManager->resolveLayoutForScreen(windowScreenName);
     if (!layout) {
-        qCDebug(lcCore) << "snapToEmptyZone: no snap - no layout for screen" << windowScreenName;
+        qCDebug(lcCore) << "snapToEmptyZone: no layout for screen" << windowScreenName;
         return SnapResult::noSnap();
     }
     if (!layout->autoAssign()) {
-        qCDebug(lcCore) << "snapToEmptyZone: no snap - layout" << layout->name() << "autoAssign=false";
+        qCDebug(lcCore) << "snapToEmptyZone: layout" << layout->name() << "autoAssign=false";
         return SnapResult::noSnap();
     }
 
     // Reuse findEmptyZoneInLayout() with already-resolved layout to avoid double resolution
     QString emptyZoneId = findEmptyZoneInLayout(layout, windowScreenName);
     if (emptyZoneId.isEmpty()) {
-        qCDebug(lcCore) << "snapToEmptyZone: no snap - no empty zone on" << windowScreenName;
+        qCDebug(lcCore) << "snapToEmptyZone: no empty zone on" << windowScreenName;
         return SnapResult::noSnap();
     }
 
     QRect geo = zoneGeometry(emptyZoneId, windowScreenName);
     if (!geo.isValid()) {
-        qCDebug(lcCore) << "snapToEmptyZone: no snap - invalid geometry for zone" << emptyZoneId;
+        qCDebug(lcCore) << "snapToEmptyZone: invalid geometry for zone" << emptyZoneId;
         return SnapResult::noSnap();
     }
 
@@ -250,7 +250,7 @@ SnapResult WindowTrackingService::calculateRestoreFromSession(const QString& win
     // Check if window was floating - floating windows should NOT be auto-snapped
     // They should remain floating when reopened
     if (isWindowFloating(windowId)) {
-        qCDebug(lcCore) << "Window" << windowId << "was floating - skipping session restore";
+        qCDebug(lcCore) << "sessionRestore:" << windowId << "was floating, skipping";
         return SnapResult::noSnap();
     }
 
@@ -299,17 +299,16 @@ SnapResult WindowTrackingService::calculateRestoreFromSession(const QString& win
 
         if (!currentLayout) {
             // No layout available at all - cannot validate, skip restore to be safe
-            qCDebug(lcCore) << "Window" << appId << "cannot validate layout (no current layout)"
-                            << "- skipping session restore";
+            qCDebug(lcCore) << "sessionRestore:" << appId << "no current layout, skipping";
             return SnapResult::noSnap();
         }
 
         // Use QUuid comparison to avoid string format issues (with/without braces)
         QUuid savedUuid = QUuid::fromString(savedLayoutId);
         if (!savedUuid.isNull() && currentLayout->id() != savedUuid) {
-            qCInfo(lcCore) << "Window" << appId << "was saved with layout" << savedLayoutId
+            qCInfo(lcCore) << "sessionRestore:" << appId << "saved layout" << savedLayoutId
                            << "but current layout for screen" << savedScreen << "desktop" << savedDesktop << "is"
-                           << currentLayout->id().toString() << "- skipping session restore";
+                           << currentLayout->id().toString() << ", skipping";
             return SnapResult::noSnap();
         }
     }
@@ -320,8 +319,8 @@ SnapResult WindowTrackingService::calculateRestoreFromSession(const QString& win
     if (!isSticky && m_virtualDesktopManager && savedDesktop > 0) {
         int currentDesktop = m_virtualDesktopManager->currentDesktop();
         if (currentDesktop != savedDesktop) {
-            qCDebug(lcCore) << "Window" << appId << "was saved on desktop" << savedDesktop << "but current desktop is"
-                            << currentDesktop << "- skipping session restore";
+            qCDebug(lcCore) << "sessionRestore:" << appId << "saved on desktop" << savedDesktop << "but current is"
+                            << currentDesktop << ", skipping";
             return SnapResult::noSnap();
         }
     }
@@ -354,9 +353,8 @@ SnapResult WindowTrackingService::calculateRestoreFromSession(const QString& win
                         zoneId = fallbackIds.first();
                         zoneIds = fallbackIds;
                         if (fallbackIds.size() < savedNumbers.size()) {
-                            qCWarning(lcCore)
-                                << "Zone-number fallback partial match for" << appId
-                                << "- requested:" << savedNumbers.size() << "zones, matched:" << fallbackIds.size();
+                            qCWarning(lcCore) << "zone-number fallback:" << appId << "partial match, requested"
+                                              << savedNumbers.size() << "zones, matched" << fallbackIds.size();
                         }
                         qCInfo(lcCore) << "Zone-number fallback for" << appId << "numbers:" << savedNumbers << "->"
                                        << fallbackIds;

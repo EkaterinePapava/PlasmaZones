@@ -54,7 +54,7 @@ void WindowTrackingAdaptor::snapToEmptyZone(const QString& windowId, const QStri
         return;
     }
 
-    qCDebug(lcDbusWindow) << "snapToEmptyZone called windowId= " << windowId << "screen= " << windowScreenName;
+    qCDebug(lcDbusWindow) << "snapToEmptyZone: windowId=" << windowId << "screen=" << windowScreenName;
     SnapResult result = m_service->calculateSnapToEmptyZone(windowId, windowScreenName, sticky);
     if (!result.shouldSnap) {
         qCDebug(lcDbusWindow) << "snapToEmptyZone: no snap";

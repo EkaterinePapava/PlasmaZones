@@ -61,7 +61,7 @@ OverlayService::OverlayService(QObject* parent)
         connect(qGuiApp, &QGuiApplication::screenAdded, this, &OverlayService::handleScreenAdded);
         connect(qGuiApp, &QGuiApplication::screenRemoved, this, &OverlayService::handleScreenRemoved);
     } else {
-        qCWarning(lcOverlay) << "Created before QGuiApplication - screen signals not connected";
+        qCWarning(lcOverlay) << "Overlay: created before QGuiApplication, screen signals not connected";
     }
 
     // Connect to system sleep/resume via logind to restart shader timer after wake
@@ -127,7 +127,7 @@ QQuickWindow* OverlayService::createQmlWindow(const QUrl& qmlUrl, QScreen* scree
     }
 
     if (component.status() != QQmlComponent::Ready) {
-        qCWarning(lcOverlay) << windowType << "QML component not ready, status:" << component.status();
+        qCWarning(lcOverlay) << windowType << "QML component not ready, status=" << component.status();
         return nullptr;
     }
 
@@ -346,7 +346,7 @@ void OverlayService::setCurrentActivity(const QString& activityId)
 {
     if (m_currentActivity != activityId) {
         m_currentActivity = activityId;
-        qCInfo(lcOverlay) << "Activity changed activity= " << activityId;
+        qCInfo(lcOverlay) << "Activity changed activity=" << activityId;
 
         // Update zone selector windows with the new active layout for this activity
         if (!m_zoneSelectorWindows.isEmpty()) {

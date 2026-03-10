@@ -102,7 +102,7 @@ void EditorController::cutZones(const QStringList& zoneIds)
 QStringList EditorController::pasteZones(bool withOffset)
 {
     if (!m_undoController || !m_zoneManager) {
-        qCWarning(lcEditor) << "Cannot paste zones - undo controller or zone manager is null";
+        qCWarning(lcEditor) << "pasteZones: undo controller or zone manager is null";
         Q_EMIT clipboardOperationFailed(i18nc("@info", "Zone manager not initialized"));
         return QStringList();
     }

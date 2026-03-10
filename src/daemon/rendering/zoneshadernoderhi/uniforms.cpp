@@ -472,8 +472,8 @@ void ZoneShaderNodeRhi::bakeBufferShaders()
             fragmentBaker.setSourceString(src.toUtf8(), QShader::FragmentStage);
             m_multiBufferFragmentShaders[i] = fragmentBaker.bake();
             if (!m_multiBufferFragmentShaders[i].isValid()) {
-                qCWarning(lcOverlay) << "Multi-buffer shader" << i << "compile failed:" << path
-                                     << fragmentBaker.errorMessage();
+                qCWarning(lcOverlay) << "Multi-buffer shader" << i << "compile failed, path=" << path
+                                     << "error=" << fragmentBaker.errorMessage();
                 allOk = false;
                 break;
             }
@@ -515,7 +515,8 @@ void ZoneShaderNodeRhi::bakeBufferShaders()
                 m_bufferPipeline.reset();
                 m_bufferSrb.reset();
             } else {
-                qCWarning(lcOverlay) << "Buffer shader compile failed:" << m_bufferPath << fragmentBaker.errorMessage();
+                qCWarning(lcOverlay) << "Buffer shader: compile failed, path=" << m_bufferPath
+                                     << "error=" << fragmentBaker.errorMessage();
                 m_bufferShaderDirty = true; // Retry next frame on failure
             }
         }

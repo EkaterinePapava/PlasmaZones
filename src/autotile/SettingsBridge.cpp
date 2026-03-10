@@ -156,8 +156,8 @@ void SettingsBridge::syncFromSettings(Settings* settings)
         m_engine->retile();
     }
 
-    qCInfo(lcAutotile) << "Settings synced - algorithm:" << m_engine->m_algorithmId
-                       << "autotileScreens:" << m_engine->m_autotileScreens.size();
+    qCInfo(lcAutotile) << "Settings: synced, algorithm=" << m_engine->m_algorithmId
+                       << "autotileScreens=" << m_engine->m_autotileScreens.size();
 }
 
 void SettingsBridge::connectToSettings(Settings* settings)
@@ -356,7 +356,7 @@ void SettingsBridge::saveState()
     group.writeEntry("screenStates", QString::fromUtf8(QJsonDocument(screensArray).toJson(QJsonDocument::Compact)));
     config->sync();
 
-    qCInfo(lcAutotile) << "Saved autotile state:" << m_engine->m_screenStates.size() << "screens";
+    qCInfo(lcAutotile) << "Autotile state: saved," << m_engine->m_screenStates.size() << "screens";
 }
 
 void SettingsBridge::loadState()
@@ -420,7 +420,7 @@ void SettingsBridge::loadState()
     // correct value with stale data (e.g., screens from a previous autotile session
     // that the user has since toggled back to manual mode).
 
-    qCInfo(lcAutotile) << "Loaded autotile state: algorithm=" << m_engine->m_algorithmId
+    qCInfo(lcAutotile) << "Autotile state: loaded, algorithm=" << m_engine->m_algorithmId
                        << "screenStates=" << screensArray.size();
 }
 
@@ -445,7 +445,7 @@ void SettingsBridge::processSettingsRetile()
     // Only retile if autotiling is enabled on any screen
     if (m_engine->isEnabled()) {
         m_engine->retile();
-        qCDebug(lcAutotile) << "Settings changed - retiled windows";
+        qCDebug(lcAutotile) << "Settings: changed, retiled windows";
     }
 }
 

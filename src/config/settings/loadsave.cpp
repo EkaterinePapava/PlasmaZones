@@ -52,7 +52,7 @@ void Settings::loadActivationConfig(KConfigGroup& activation)
     }
     int legacySpanMod = activation.readEntry(QLatin1String("ZoneSpanModifier"), ConfigDefaults::zoneSpanModifier());
     if (legacySpanMod < 0 || legacySpanMod > static_cast<int>(DragModifier::CtrlAltMeta)) {
-        qCWarning(lcConfig) << "Invalid ZoneSpanModifier value:" << legacySpanMod << "using default";
+        qCWarning(lcConfig) << "Invalid ZoneSpanModifier value:" << legacySpanMod << "- using default";
         legacySpanMod = ConfigDefaults::zoneSpanModifier();
     }
     m_zoneSpanModifier = static_cast<DragModifier>(legacySpanMod);

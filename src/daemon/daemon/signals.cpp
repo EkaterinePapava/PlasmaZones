@@ -396,8 +396,8 @@ void Daemon::connectLayoutSignals()
                 // Always update global active layout — fires activeLayoutChanged which
                 // populates the resnap buffer, cleans stale assignments, updates OSD, etc.
                 m_layoutManager->setActiveLayout(layout);
-                qCInfo(lcDaemon) << "Manual layout selected from zone selector:" << layout->name()
-                                 << "on screen:" << screenName;
+                qCInfo(lcDaemon) << "Zone selector: manual layout selected, layout=" << layout->name()
+                                 << "screen=" << screenName;
                 m_overlayService->showLayoutOsd(layout, screenName);
                 if (m_modeTracker) {
                     m_modeTracker->recordManualLayout(layout->id());

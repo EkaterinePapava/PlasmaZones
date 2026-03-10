@@ -33,10 +33,10 @@ void LayoutManager::loadLayouts()
     for (const QString& dir : allDirs) {
         int beforeCount = m_layouts.size();
         loadLayoutsFromDirectory(dir);
-        qCInfo(lcLayout) << "Loaded layouts= " << (m_layouts.size() - beforeCount) << " from= " << dir;
+        qCInfo(lcLayout) << "Loaded layouts=" << (m_layouts.size() - beforeCount) << "from=" << dir;
     }
 
-    qCInfo(lcLayout) << "Total layouts= " << m_layouts.size();
+    qCInfo(lcLayout) << "Total layouts=" << m_layouts.size();
 
     // Sort by defaultOrder (from layout JSON) so the preferred default is first when defaultLayoutId is empty
     std::stable_sort(m_layouts.begin(), m_layouts.end(), [](Layout* a, Layout* b) {
@@ -47,8 +47,8 @@ void LayoutManager::loadLayouts()
     if (!m_activeLayout && !m_layouts.isEmpty()) {
         Layout* initial = defaultLayout();
         if (initial) {
-            qCInfo(lcLayout) << "Active layout name= " << initial->name() << " id= " << initial->id().toString()
-                             << " zones= " << initial->zoneCount();
+            qCInfo(lcLayout) << "Active layout name=" << initial->name() << "id=" << initial->id().toString()
+                             << "zones=" << initial->zoneCount();
         }
         setActiveLayout(initial);
     }
@@ -123,9 +123,8 @@ void LayoutManager::loadLayoutsFromDirectory(const QString& directory)
                 connect(layout, &Layout::layoutModified, this, [this, layout]() {
                     saveLayout(layout);
                 });
-                qCInfo(lcLayout) << "  Loaded layout name= " << layout->name() << " zones= " << layout->zoneCount()
-                                 << " source= " << (layout->isSystemLayout() ? "system" : "user")
-                                 << " from= " << filePath;
+                qCInfo(lcLayout) << "Loaded layout name=" << layout->name() << "zones=" << layout->zoneCount()
+                                 << "source=" << (layout->isSystemLayout() ? "system" : "user") << "from=" << filePath;
             } else {
                 // Duplicate ID found - user layouts (from .local) should override system layouts
                 if (!layout->isSystemLayout() && existing->isSystemLayout()) {
@@ -144,17 +143,16 @@ void LayoutManager::loadLayoutsFromDirectory(const QString& directory)
                         saveLayout(layout);
                     });
                     delete existing;
-                    qCInfo(lcLayout) << "  User layout overrides system layout name= " << layout->name()
-                                     << " from= " << filePath;
+                    qCInfo(lcLayout) << "User layout overrides system layout name=" << layout->name()
+                                     << "from=" << filePath;
                 } else {
                     // Same source type or system trying to override user - skip
-                    qCInfo(lcLayout) << "  Skipping duplicate layout name= " << layout->name()
-                                     << " id= " << layout->id();
+                    qCInfo(lcLayout) << "Skipping duplicate layout name=" << layout->name() << "id=" << layout->id();
                     delete layout;
                 }
             }
         } else {
-            qCWarning(lcLayout) << "Skipping invalid layout entry= " << entry << " reason= empty name or no zones";
+            qCWarning(lcLayout) << "Skipping invalid layout entry=" << entry << "reason=empty name or no zones";
             // Clean up orphaned file from user directory (don't delete system layouts)
             if (!layout->isSystemLayout()) {
                 QFile::remove(filePath);
@@ -312,16 +310,15 @@ void LayoutManager::loadAssignments()
         }
     }
 
-    qCInfo(lcLayout) << "Loaded assignments= " << m_assignments.size()
-                     << " quickShortcuts= " << m_quickLayoutShortcuts.size();
+    qCInfo(lcLayout) << "Loaded assignments=" << m_assignments.size()
+                     << "quickShortcuts=" << m_quickLayoutShortcuts.size();
     for (auto it = m_assignments.constBegin(); it != m_assignments.constEnd(); ++it) {
         Layout* layout = LayoutId::isAutotile(it.value()) ? nullptr : layoutById(QUuid::fromString(it.value()));
         QString layoutName =
             layout ? layout->name() : (LayoutId::isAutotile(it.value()) ? it.value() : QStringLiteral("(unknown)"));
-        qCDebug(lcLayout) << "  Assignment screenId= " << it.key().screenId << " desktop= " << it.key().virtualDesktop
-                          << " activity= "
-                          << (it.key().activity.isEmpty() ? QStringLiteral("(all)") : it.key().activity)
-                          << " layout= " << layoutName;
+        qCDebug(lcLayout) << "Assignment screenId=" << it.key().screenId << "desktop=" << it.key().virtualDesktop
+                          << "activity=" << (it.key().activity.isEmpty() ? QStringLiteral("(all)") : it.key().activity)
+                          << "layout=" << layoutName;
     }
 }
 
@@ -418,7 +415,7 @@ void LayoutManager::importLayout(const QString& filePath)
     // Regenerate IDs if UUID collides with an existing layout
     Layout* layout = parsed;
     if (layoutById(parsed->id())) {
-        qCInfo(lcLayout) << "Imported layout UUID collides with existing layout — regenerating IDs";
+        qCInfo(lcLayout) << "importLayout: UUID collision, regenerating IDs";
         layout = new Layout(*parsed);
         delete parsed;
     }
@@ -431,7 +428,7 @@ void LayoutManager::importLayout(const QString& filePath)
 
     addLayout(layout);
 
-    qCInfo(lcLayout) << "Successfully imported layout:" << layout->name() << "from" << filePath;
+    qCInfo(lcLayout) << "Imported layout:" << layout->name() << "from" << filePath;
 }
 
 void LayoutManager::exportLayout(Layout* layout, const QString& filePath)
@@ -464,7 +461,7 @@ void LayoutManager::exportLayout(Layout* layout, const QString& filePath)
         qCWarning(lcLayout) << "Failed to flush layout export file:" << filePath << "Error:" << file.errorString();
     }
 
-    qCInfo(lcLayout) << "Successfully exported layout:" << layout->name() << "to" << filePath;
+    qCInfo(lcLayout) << "Exported layout:" << layout->name() << "to" << filePath;
 }
 
 Layout* LayoutManager::restoreSystemLayout(const QUuid& id, const QString& systemPath)

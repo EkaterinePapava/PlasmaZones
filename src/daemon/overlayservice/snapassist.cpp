@@ -89,7 +89,7 @@ void OverlayService::showSnapAssist(const QString& screenName, const QString& em
             }
             m_snapAssistCandidates.append(cand);
         }
-        qCDebug(lcOverlay) << "showSnapAssist: " << m_thumbnailCache.size() << "cached,"
+        qCDebug(lcOverlay) << "showSnapAssist:" << m_thumbnailCache.size() << "cached,"
                            << m_thumbnailCaptureQueue.size() << "to capture";
         processNextThumbnailCapture();
     } else {
@@ -418,7 +418,7 @@ void OverlayService::destroyLayoutPickerWindow()
 
 void OverlayService::onLayoutPickerSelected(const QString& layoutId)
 {
-    qCInfo(lcOverlay) << "Layout picker selected:" << layoutId;
+    qCInfo(lcOverlay) << "Layout picker selected=" << layoutId;
     hideLayoutPicker();
     Q_EMIT layoutPickerSelected(layoutId);
 }

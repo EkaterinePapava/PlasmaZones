@@ -235,7 +235,7 @@ void CavaService::onProcessFinished(int exitCode, QProcess::ExitStatus /*exitSta
     }
     if (exitCode != 0) {
         const QByteArray stderrOutput = m_process ? m_process->readAllStandardError().left(500) : QByteArray();
-        qCWarning(lcOverlay) << "CAVA exited with code" << exitCode << "stderr:" << stderrOutput;
+        qCWarning(lcOverlay) << "CAVA exited with code=" << exitCode << "stderr=" << stderrOutput;
     }
 }
 
@@ -246,7 +246,7 @@ void CavaService::onProcessError(QProcess::ProcessError error)
         return;
     }
     const QString msg = m_process ? m_process->errorString() : QStringLiteral("Unknown error");
-    qCWarning(lcOverlay) << "CAVA process error:" << error << msg;
+    qCWarning(lcOverlay) << "CAVA process error=" << error << msg;
     Q_EMIT errorOccurred(msg);
 }
 

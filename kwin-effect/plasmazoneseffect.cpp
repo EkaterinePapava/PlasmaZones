@@ -80,7 +80,7 @@ static void ensureInterface(InterfacePtr& interface, const QString& interfaceNam
     // QDBusServiceWatcher signals) instead of calling isServiceRegistered() which
     // is a synchronous D-Bus call that blocks the compositor thread.
     if (!serviceRegistered) {
-        qCDebug(lcEffect) << "Skipping" << logName << "interface - service not registered";
+        qCDebug(lcEffect) << logName << "interface: service not registered, skipping";
         return;
     }
 
@@ -415,7 +415,7 @@ PlasmaZonesEffect::PlasmaZonesEffect()
         clearActiveBorder();
     });
     connect(serviceWatcher, &QDBusServiceWatcher::serviceRegistered, this, [this]() {
-        qCInfo(lcEffect) << "Daemon service registered — waiting for daemonReady signal";
+        qCInfo(lcEffect) << "Daemon registered: waiting for daemonReady signal";
 
         // DO NOT set m_daemonServiceRegistered = true here.
         // The daemon registers its D-Bus service name in init(), BEFORE start()
@@ -475,7 +475,7 @@ PlasmaZonesEffect::PlasmaZonesEffect()
         m_lastCursorScreenName = initialScreen->name();
     }
 
-    qCInfo(lcEffect) << "Initialized - C++ effect with D-Bus support and mouseChanged connection";
+    qCInfo(lcEffect) << "initialized: C++ effect with D-Bus support and mouseChanged connection";
 }
 
 PlasmaZonesEffect::~PlasmaZonesEffect()
@@ -527,7 +527,7 @@ void PlasmaZonesEffect::grabbedKeyboardEvent(QKeyEvent* e)
         // so Escape never reaches the interactive move handler. The daemon
         // hides the overlay and sets snapCancelled; the drag continues as
         // a plain window move without zone snapping.
-        qCInfo(lcEffect) << "Escape pressed during drag — dismissing overlay, continuing drag";
+        qCInfo(lcEffect) << "Drag escape: overlay hidden, drag continues";
         callCancelSnap();
     }
     // All other keys are silently consumed by the grab. Modifier state is
@@ -780,7 +780,7 @@ void PlasmaZonesEffect::slotDaemonReady()
     }
 
     m_daemonServiceRegistered = true;
-    qCInfo(lcEffect) << "Daemon ready — re-pushing state";
+    qCInfo(lcEffect) << "daemon ready: re-pushing state";
 
     // CRITICAL: Do NOT call ensureWindowTrackingReady() or any method that
     // creates QDBusInterface here. The daemonReady signal is emitted at the
@@ -944,7 +944,7 @@ void PlasmaZonesEffect::slotDaemonReady()
                     // Window destroyed between collection and dispatch — count
                     // it as done so the pending counter still reaches zero.
                     if (--(*pending) == 0) {
-                        qCDebug(lcEffect) << "All restore targets gone — skipping stacking restore";
+                        qCDebug(lcEffect) << "Stacking restore: all targets gone, skipping";
                     }
                     continue;
                 }
@@ -965,7 +965,7 @@ void PlasmaZonesEffect::slotDaemonReady()
 
                         // All snap restores done.
                         if (*movedCount == 0) {
-                            qCDebug(lcEffect) << "All windows already at target geometry — skipping stacking restore";
+                            qCDebug(lcEffect) << "Stacking restore: all windows at target geometry, skipping";
                             return;
                         }
 
@@ -990,7 +990,7 @@ void PlasmaZonesEffect::slotDaemonReady()
 
 void PlasmaZonesEffect::slotSettingsChanged()
 {
-    qCInfo(lcEffect) << "Daemon signaled settingsChanged - reloading settings";
+    qCInfo(lcEffect) << "settingsChanged: reloading settings";
     loadCachedSettings();
     // Note: loadAutotileSettings() is intentionally NOT called here.
     // Autotile screen changes are tracked via the dedicated autotileScreensChanged
@@ -1320,7 +1320,7 @@ void PlasmaZonesEffect::loadCachedSettings()
             w->deleteLater();
             QDBusPendingReply<QVariant> reply = *w;
             if (!reply.isValid()) {
-                qCWarning(lcEffect) << "Failed to load dragActivationTriggers — gating remains permissive";
+                qCWarning(lcEffect) << "dragActivationTriggers: load failed, gating remains permissive";
                 return;
             }
             QVariant triggerVariant = reply.value();
@@ -1368,7 +1368,7 @@ void PlasmaZonesEffect::loadCachedSettings()
                 });
             if (!m_parsedTriggers.isEmpty() && !anyValid) {
                 qCWarning(lcEffect) << "All triggers have modifier=0 mouseButton=0"
-                                    << "— possible deserialization issue";
+                                    << "- possible deserialization issue";
             }
             m_triggersLoaded = true;
         });
@@ -1827,11 +1827,11 @@ void PlasmaZonesEffect::slotPendingRestoresAvailable()
     // of moveResize() calls would disrupt the stacking order that the first
     // round carefully preserves via activateWindow(previouslyActive).
     if (m_daemonReadyRestoresDone) {
-        qCInfo(lcEffect) << "Pending restores skipped — already handled by slotDaemonReady";
+        qCInfo(lcEffect) << "Pending restores: already handled by slotDaemonReady, skipping";
         return;
     }
 
-    qCInfo(lcEffect) << "Pending restores available - retrying restoration for all visible windows";
+    qCInfo(lcEffect) << "Pending restores: retrying restoration for all visible windows";
 
     if (!ensureWindowTrackingReady("pending restores")) {
         return;
@@ -1990,7 +1990,7 @@ void PlasmaZonesEffect::slotRunningWindowsRequested()
     if (m_settingsInterface && m_settingsInterface->isValid()) {
         m_settingsInterface->asyncCall(QStringLiteral("provideRunningWindows"), jsonString);
     } else {
-        qCWarning(lcEffect) << "Cannot provide running windows - Settings interface not available";
+        qCWarning(lcEffect) << "provideRunningWindows: Settings interface not available";
     }
 }
 
@@ -2162,7 +2162,7 @@ void PlasmaZonesEffect::callDragStopped(KWin::EffectWindow* window, const QStrin
                             if (qAbs(frame.width() - snapWidth) <= 1 && qAbs(frame.height() - snapHeight) <= 1) {
                                 shouldApply = false;
                                 qCDebug(lcEffect)
-                                    << "Skip restore apply - already at correct size from during-drag restore";
+                                    << "restore apply: already at correct size from during-drag restore, skipping";
                             }
                         } else {
                             snapGeometry = QRect(snapX, snapY, snapWidth, snapHeight);
@@ -2276,21 +2276,21 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
                                           int retriesLeft, bool skipAnimation)
 {
     if (!window) {
-        qCWarning(lcEffect) << "Cannot apply geometry - window is null";
+        qCWarning(lcEffect) << "applyGeometry: window is null";
         return;
     }
 
     // Normalize so width/height are non-negative; reject invalid rects
     QRect geo = geometry.normalized();
     if (!geo.isValid() || geo.width() <= 0 || geo.height() <= 0) {
-        qCWarning(lcEffect) << "Cannot apply geometry - geometry is invalid or empty:" << geometry;
+        qCWarning(lcEffect) << "applyGeometry: invalid or empty geometry:" << geometry;
         return;
     }
 
     // Don't call moveResize() on fullscreen windows, it can crash KWin.
     // See KDE bugs #429752, #301529, #489546.
     if (window->isFullScreen()) {
-        qCDebug(lcEffect) << "Skipping geometry change - window is fullscreen";
+        qCDebug(lcEffect) << "applyGeometry: window is fullscreen, skipping";
         return;
     }
 
@@ -2324,7 +2324,7 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
     // moveResize() is redundant and can have subtle stacking side effects
     // on some KWin versions (e.g. during daemon restart double-processing).
     if (QRectF(geo) == window->frameGeometry()) {
-        qCDebug(lcEffect) << "Skipping moveResize — window already at target geometry:" << geo;
+        qCDebug(lcEffect) << "moveResize: window already at target geometry, skipping:" << geo;
         return;
     }
 
@@ -2338,7 +2338,7 @@ void PlasmaZonesEffect::applySnapGeometry(KWin::EffectWindow* window, const QRec
     // When allowDuringDrag is true: apply immediately (snap-on-hover during drag)
     if (!allowDuringDrag && (window->isUserMove() || window->isUserResize())) {
         if (retriesLeft <= 0) {
-            qCWarning(lcEffect) << "Giving up snap geometry — window still in user move after"
+            qCWarning(lcEffect) << "snap geometry: window still in user move after"
                                 << "20 retries (2s). This may indicate a KWin state bug.";
             return;
         }

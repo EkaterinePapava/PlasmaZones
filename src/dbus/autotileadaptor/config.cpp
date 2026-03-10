@@ -180,7 +180,7 @@ void AutotileAdaptor::increaseMasterRatio(double delta)
         qCWarning(lcDbusAutotile) << "increaseMasterRatio: invalid delta" << delta << "(must be > 0 and <= 1.0)";
         return;
     }
-    qCDebug(lcDbusAutotile) << "D-Bus increaseMasterRatio:" << delta;
+    qCDebug(lcDbusAutotile) << "increaseMasterRatio: delta=" << delta;
     // Note: This modifies per-screen TilingState, not global config.
     // tilingChanged signal is emitted by engine after retile.
     m_engine->increaseMasterRatio(delta);
@@ -196,7 +196,7 @@ void AutotileAdaptor::decreaseMasterRatio(double delta)
         qCWarning(lcDbusAutotile) << "decreaseMasterRatio: invalid delta" << delta << "(must be > 0 and <= 1.0)";
         return;
     }
-    qCDebug(lcDbusAutotile) << "D-Bus decreaseMasterRatio:" << delta;
+    qCDebug(lcDbusAutotile) << "decreaseMasterRatio: delta=" << delta;
     // Note: This modifies per-screen TilingState, not global config.
     // tilingChanged signal is emitted by engine after retile.
     m_engine->decreaseMasterRatio(delta);
@@ -207,7 +207,7 @@ void AutotileAdaptor::increaseMasterCount()
     if (!ensureEngine("increaseMasterCount")) {
         return;
     }
-    qCDebug(lcDbusAutotile) << "D-Bus increaseMasterCount";
+    qCDebug(lcDbusAutotile) << "increaseMasterCount";
     // Note: This modifies per-screen TilingState, not global config.
     // tilingChanged signal is emitted by engine after retile.
     m_engine->increaseMasterCount();
@@ -218,7 +218,7 @@ void AutotileAdaptor::decreaseMasterCount()
     if (!ensureEngine("decreaseMasterCount")) {
         return;
     }
-    qCDebug(lcDbusAutotile) << "D-Bus decreaseMasterCount";
+    qCDebug(lcDbusAutotile) << "decreaseMasterCount";
     // Note: This modifies per-screen TilingState, not global config.
     // tilingChanged signal is emitted by engine after retile.
     m_engine->decreaseMasterCount();

@@ -78,7 +78,7 @@ void Daemon::showLayoutOsd(Layout* layout, const QString& screenName)
     switch (style) {
     case OsdStyle::None:
         // No OSD
-        qCInfo(lcDaemon) << "OSD disabled, skipping for layout:" << layoutName;
+        qCInfo(lcDaemon) << "OSD disabled, skipping for layout=" << layoutName;
         return;
 
     case OsdStyle::Text:
@@ -92,7 +92,7 @@ void Daemon::showLayoutOsd(Layout* layout, const QString& screenName)
             msg << QStringLiteral("plasmazones") << displayText;
 
             QDBusConnection::sessionBus().asyncCall(msg);
-            qCInfo(lcDaemon) << "Showing text OSD for layout:" << layoutName;
+            qCInfo(lcDaemon) << "Showing text OSD for layout=" << layoutName;
         }
         break;
 
@@ -100,7 +100,7 @@ void Daemon::showLayoutOsd(Layout* layout, const QString& screenName)
         // Use visual layout preview OSD
         if (m_overlayService) {
             m_overlayService->showLayoutOsd(layout, screenName);
-            qCInfo(lcDaemon) << "Showing preview OSD for layout:" << layoutName << "on screen:" << screenName;
+            qCInfo(lcDaemon) << "Preview OSD: layout=" << layoutName << "screen=" << screenName;
         } else {
             qCWarning(lcDaemon) << "Overlay service not available for preview OSD";
         }
@@ -113,7 +113,7 @@ void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString
 {
     auto* algo = AlgorithmRegistry::instance()->algorithm(algorithmId);
     if (!algo) {
-        qCWarning(lcDaemon) << "Algorithm not found for OSD:" << algorithmId;
+        qCWarning(lcDaemon) << "OSD: algorithm not found, algorithmId=" << algorithmId;
         return;
     }
 
@@ -121,7 +121,7 @@ void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString
 
     switch (style) {
     case OsdStyle::None:
-        qCInfo(lcDaemon) << "OSD disabled, skipping for algorithm:" << displayName;
+        qCInfo(lcDaemon) << "OSD disabled, skipping for algorithm=" << displayName;
         return;
 
     case OsdStyle::Text: {
@@ -133,7 +133,7 @@ void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString
         msg << QStringLiteral("plasmazones") << displayText;
 
         QDBusConnection::sessionBus().asyncCall(msg);
-        qCInfo(lcDaemon) << "Showing text OSD for algorithm:" << displayName;
+        qCInfo(lcDaemon) << "Showing text OSD for algorithm=" << displayName;
     } break;
 
     case OsdStyle::Preview:
@@ -142,7 +142,7 @@ void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString
             QString layoutId = LayoutId::makeAutotileId(algorithmId);
             m_overlayService->showLayoutOsd(layoutId, displayName, zones, static_cast<int>(LayoutCategory::Autotile),
                                             false, screenName);
-            qCInfo(lcDaemon) << "Showing preview OSD for algorithm:" << displayName << "on screen:" << screenName;
+            qCInfo(lcDaemon) << "Preview OSD: algorithm=" << displayName << "screen=" << screenName;
         } else {
             qCWarning(lcDaemon) << "Overlay service not available for preview OSD";
         }

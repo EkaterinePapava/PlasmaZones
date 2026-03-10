@@ -57,18 +57,19 @@ bool SnappingService::validateGeometry(qreal x, qreal y, qreal width, qreal heig
 {
     // Reject invalid or degenerate geometry
     if (!qIsFinite(x) || !qIsFinite(y) || !qIsFinite(width) || !qIsFinite(height)) {
-        qCDebug(PlasmaZones::lcSnapping) << "Rejected non-finite geometry - x:" << x << "y:" << y << "w:" << width
-                                         << "h:" << height;
+        qCDebug(PlasmaZones::lcSnapping) << "Geometry validation: rejected non-finite, x:" << x << "y:" << y
+                                         << "w:" << width << "h:" << height;
         return false;
     }
     if (width <= 0 || height <= 0) {
-        qCDebug(PlasmaZones::lcSnapping) << "Rejected non-positive dimensions - w:" << width << "h:" << height;
+        qCDebug(PlasmaZones::lcSnapping) << "Geometry validation: rejected non-positive dimensions, w:" << width
+                                         << "h:" << height;
         return false;
     }
     // Allow some tolerance for coordinates slightly outside [0,1] due to floating point
     constexpr qreal tolerance = EditorConstants::GeometryBoundsTolerance;
     if (x < -tolerance || y < -tolerance || x + width > 1.0 + tolerance || y + height > 1.0 + tolerance) {
-        qCDebug(PlasmaZones::lcSnapping) << "Rejected out-of-bounds geometry - x:" << x << "y:" << y
+        qCDebug(PlasmaZones::lcSnapping) << "Geometry validation: rejected out-of-bounds, x:" << x << "y:" << y
                                          << "right:" << (x + width) << "bottom:" << (y + height);
         return false;
     }
@@ -496,7 +497,7 @@ QRectF SnappingService::snapToGridSelective(const QRectF& rect, bool snapLeft, b
     if (width < minSize || height < minSize || !qIsFinite(left) || !qIsFinite(top) || !qIsFinite(width)
         || !qIsFinite(height)) {
         // Fallback to original rect if snapping produced invalid result
-        qCDebug(PlasmaZones::lcSnapping) << "Snapping produced invalid result, using original rect - computed w:"
+        qCDebug(PlasmaZones::lcSnapping) << "Snapping: produced invalid result, using original rect, computed w:"
                                          << width << "h:" << height;
         return rect;
     }

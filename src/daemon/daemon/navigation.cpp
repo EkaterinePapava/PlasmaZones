@@ -42,7 +42,7 @@ void Daemon::handleRotate(bool clockwise)
 {
     QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
     if (!screen) {
-        qCDebug(lcDaemon) << "No screen info for rotate shortcut — skipping";
+        qCDebug(lcDaemon) << "Rotate shortcut: no screen info";
         return;
     }
     if (auto* engine = engineForScreen(screen->name())) {
@@ -100,7 +100,7 @@ void Daemon::handlePush()
 {
     QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
     if (!screen) {
-        qCDebug(lcDaemon) << "No screen info for pushToEmptyZone shortcut — skipping";
+        qCDebug(lcDaemon) << "PushToEmptyZone shortcut: no screen info";
         return;
     }
     if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
@@ -145,7 +145,7 @@ void Daemon::handleSnap(int zoneNumber)
 {
     QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
     if (!screen) {
-        qCDebug(lcDaemon) << "No screen info for snapToZone shortcut — skipping";
+        qCDebug(lcDaemon) << "SnapToZone shortcut: no screen info";
         return;
     }
     if (auto* engine = engineForScreen(screen->name())) {
@@ -184,7 +184,7 @@ void Daemon::handleSnapAll()
 {
     QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
     if (!screen) {
-        qCDebug(lcDaemon) << "No screen info for snapAllWindows shortcut — skipping";
+        qCDebug(lcDaemon) << "SnapAllWindows shortcut: no screen info";
         return;
     }
     if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {

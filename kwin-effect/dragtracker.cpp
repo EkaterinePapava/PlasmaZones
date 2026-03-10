@@ -102,7 +102,7 @@ void DragTracker::finishDrag(bool cancelled)
 void DragTracker::handleWindowClosed(KWin::EffectWindow* window)
 {
     if (m_draggedWindow == window) {
-        qCInfo(lcEffect) << "Dragged window closed during drag — cancelling";
+        qCInfo(lcEffect) << "Drag: window closed, cancelled";
         // Don't call finishDrag() — it would pass the mid-destruction window pointer
         // through dragStopped, causing use-after-free in callDragStopped's geometry queries.
         // Instead, clear state and emit with nullptr so the receiver skips the snap.

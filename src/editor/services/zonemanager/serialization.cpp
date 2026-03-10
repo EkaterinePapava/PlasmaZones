@@ -28,7 +28,7 @@ QString ZoneManager::addZoneFromMap(const QVariantMap& zoneData, bool allowIdReu
     // Validate required fields
     if (!zoneData.contains(JsonKeys::Id) || !zoneData.contains(JsonKeys::X) || !zoneData.contains(JsonKeys::Y)
         || !zoneData.contains(JsonKeys::Width) || !zoneData.contains(JsonKeys::Height)) {
-        qCWarning(lcEditorZone) << "Invalid zone data - missing required fields";
+        qCWarning(lcEditorZone) << "Zone data: invalid, missing required fields";
         return QString();
     }
 
@@ -225,7 +225,7 @@ void ZoneManager::restoreZones(const QVariantList& zones)
         // Validate required fields
         if (!zone.contains(JsonKeys::Id) || !zone.contains(JsonKeys::X) || !zone.contains(JsonKeys::Y)
             || !zone.contains(JsonKeys::Width) || !zone.contains(JsonKeys::Height)) {
-            qCWarning(lcEditorZone) << "Invalid zone data in restoreZones - missing required fields";
+            qCWarning(lcEditorZone) << "restoreZones: invalid zone data, missing required fields";
             return; // Don't restore if invalid
         }
 

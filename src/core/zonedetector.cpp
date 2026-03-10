@@ -162,7 +162,7 @@ QVector<Zone*> expandZonesByIntersection(Layout* layout, const QVector<Zone*>& s
     }
 
     if (iterations >= maxIterations) {
-        qCWarning(lcZone) << "Max iterations reached in zone expansion - possible infinite loop";
+        qCWarning(lcZone) << "Zone expansion: max iterations reached, possible infinite loop";
     }
 
     // Preserve layout order for consistent output

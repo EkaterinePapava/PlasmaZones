@@ -96,7 +96,7 @@ void VirtualDesktopManager::refreshFromKWin()
         int newCount = countVar.toInt();
         if (newCount != m_desktopCount) {
             m_desktopCount = newCount;
-            qCDebug(lcCore) << "Desktop count= " << m_desktopCount;
+            qCDebug(lcCore) << "Desktop count=" << m_desktopCount;
         }
     }
 
@@ -181,7 +181,7 @@ void VirtualDesktopManager::refreshFromKWin()
                             }
                             m_desktopNames.append(name);
                             qCDebug(lcCore)
-                                << "Desktop " << (desktop.position + 1) << " id= " << desktop.id << " name= " << name;
+                                << "Desktop" << (desktop.position + 1) << "id=" << desktop.id << "name=" << name;
                         }
                     }
                 } else {
@@ -198,7 +198,7 @@ void VirtualDesktopManager::refreshFromKWin()
                     int idx = m_desktopIds.indexOf(currentId);
                     if (idx >= 0) {
                         m_currentDesktop = idx + 1; // Convert to 1-based
-                        qCDebug(lcCore) << "Current desktop= " << m_currentDesktop << " id= " << currentId;
+                        qCDebug(lcCore) << "Current desktop=" << m_currentDesktop << "id=" << currentId;
                     }
                 }
 
@@ -222,7 +222,7 @@ void VirtualDesktopManager::onKWinCurrentChanged(const QString& desktopId)
     }
 
     m_currentDesktop = newDesktop;
-    qCInfo(lcCore) << "Virtual desktop changed desktop= " << m_currentDesktop << " id= " << desktopId;
+    qCInfo(lcCore) << "Virtual desktop changed desktop=" << m_currentDesktop << "id=" << desktopId;
 
     updateActiveLayout();
     Q_EMIT currentDesktopChanged(m_currentDesktop);

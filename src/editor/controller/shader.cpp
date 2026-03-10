@@ -474,7 +474,7 @@ void EditorController::startAudioCapture()
         return;
     }
     if (!CavaService::isAvailable()) {
-        qCDebug(lcEditor) << "CAVA not available — audio spectrum disabled";
+        qCDebug(lcEditor) << "Audio spectrum: CAVA not available, disabled";
         return;
     }
     if (!m_cavaService) {

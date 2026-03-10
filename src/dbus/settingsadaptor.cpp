@@ -26,7 +26,7 @@ SettingsAdaptor::SettingsAdaptor(ISettings* settings, QObject* parent)
     m_saveTimer->setInterval(SaveDebounceMs);
     connect(m_saveTimer, &QTimer::timeout, this, [this]() {
         m_settings->save();
-        qCInfo(lcDbusSettings) << "Debounced settings save completed";
+        qCInfo(lcDbusSettings) << "Settings save completed";
     });
 
     // Connect to interface signals (DIP)
@@ -40,7 +40,7 @@ SettingsAdaptor::~SettingsAdaptor()
     if (m_saveTimer->isActive()) {
         m_saveTimer->stop();
         m_settings->save();
-        qCInfo(lcDbusSettings) << "Flushed pending settings save on destruction";
+        qCInfo(lcDbusSettings) << "Flushed pending save on destruction";
     }
 }
 
@@ -162,6 +162,18 @@ void SettingsAdaptor::initializeRegistry()
         int val = v.toInt();
         if (val >= 0 && val <= 2) {
             m_settings->setOsdStyle(static_cast<OsdStyle>(val));
+            return true;
+        }
+        return false;
+    };
+    // overlayDisplayMode: enum (0=ZoneRectangles, 1=LayoutPreview)
+    m_getters[QStringLiteral("overlayDisplayMode")] = [this]() {
+        return static_cast<int>(m_settings->overlayDisplayMode());
+    };
+    m_setters[QStringLiteral("overlayDisplayMode")] = [this](const QVariant& v) {
+        int val = v.toInt();
+        if (val >= 0 && val <= 1) {
+            m_settings->setOverlayDisplayMode(static_cast<OverlayDisplayMode>(val));
             return true;
         }
         return false;
@@ -299,7 +311,7 @@ QString SettingsAdaptor::getAllSettings()
 QDBusVariant SettingsAdaptor::getSetting(const QString& key)
 {
     if (key.isEmpty()) {
-        qCWarning(lcDbusSettings) << "Cannot get setting - empty key";
+        qCWarning(lcDbusSettings) << "getSetting: empty key";
         // Return a valid but empty QDBusVariant to avoid marshalling errors
         // (QDBusVariant() with no argument creates an invalid variant that can't be sent)
         return QDBusVariant(QVariant(QString()));
@@ -325,7 +337,7 @@ QDBusVariant SettingsAdaptor::getSetting(const QString& key)
 bool SettingsAdaptor::setSetting(const QString& key, const QDBusVariant& value)
 {
     if (key.isEmpty()) {
-        qCWarning(lcDbusSettings) << "Cannot set setting - empty key";
+        qCWarning(lcDbusSettings) << "setSetting: empty key";
         return false;
     }
 

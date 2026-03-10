@@ -20,7 +20,7 @@ namespace PlasmaZones {
 void SnapEngine::moveInDirection(const QString& direction)
 {
     if (direction.isEmpty()) {
-        qCWarning(lcCore) << "SnapEngine::moveInDirection - empty direction";
+        qCWarning(lcCore) << "SnapEngine::moveInDirection: empty direction";
         Q_EMIT navigationFeedback(false, QStringLiteral("move"), QStringLiteral("invalid_direction"), QString(),
                                   QString(), m_lastActiveScreenName);
         return;
@@ -31,7 +31,7 @@ void SnapEngine::moveInDirection(const QString& direction)
 
 void SnapEngine::pushToEmptyZone(const QString& screenName)
 {
-    qCInfo(lcCore) << "SnapEngine::pushToEmptyZone on screen:" << screenName;
+    qCInfo(lcCore) << "SnapEngine::pushToEmptyZone on screen=" << screenName;
     Q_EMIT moveWindowToZoneRequested(QStringLiteral("push"), screenName);
 }
 
@@ -40,7 +40,7 @@ void SnapEngine::focusInDirection(const QString& direction, const QString& actio
     Q_UNUSED(action)
 
     if (direction.isEmpty()) {
-        qCWarning(lcCore) << "SnapEngine::focusInDirection - empty direction";
+        qCWarning(lcCore) << "SnapEngine::focusInDirection: empty direction";
         Q_EMIT navigationFeedback(false, QStringLiteral("focus"), QStringLiteral("invalid_direction"), QString(),
                                   QString(), m_lastActiveScreenName);
         return;
@@ -54,7 +54,7 @@ void SnapEngine::swapInDirection(const QString& direction, const QString& action
     Q_UNUSED(action)
 
     if (direction.isEmpty()) {
-        qCWarning(lcCore) << "SnapEngine::swapInDirection - empty direction";
+        qCWarning(lcCore) << "SnapEngine::swapInDirection: empty direction";
         Q_EMIT navigationFeedback(false, QStringLiteral("swap"), QStringLiteral("invalid_direction"), QString(),
                                   QString(), m_lastActiveScreenName);
         return;
@@ -93,7 +93,7 @@ void SnapEngine::moveToPosition(const QString& windowId, int position, const QSt
     Q_UNUSED(windowId)
 
     if (position < 1 || position > 9) {
-        qCWarning(lcCore) << "SnapEngine::moveToPosition - invalid zone number:" << position;
+        qCWarning(lcCore) << "SnapEngine::moveToPosition: invalid zone number=" << position;
         Q_EMIT navigationFeedback(false, QStringLiteral("snap"), QStringLiteral("invalid_zone_number"), QString(),
                                   QString(), screenName);
         return;
@@ -148,7 +148,7 @@ void SnapEngine::resnapFromAutotileOrder(const QStringList& autotileWindowOrder,
     QVector<RotationEntry> entries = m_windowTracker->calculateResnapFromAutotileOrder(autotileWindowOrder, screenName);
 
     if (entries.isEmpty()) {
-        qCDebug(lcCore) << "No resnap entries from autotile order, falling back to current assignments";
+        qCDebug(lcCore) << "Resnap: no entries from autotile order, using current assignments";
         resnapCurrentAssignments(screenName);
         return;
     }
@@ -168,13 +168,13 @@ QString SnapEngine::calculateSnapAllWindows(const QStringList& windowIds, const 
 
 void SnapEngine::snapAllWindows(const QString& screenName)
 {
-    qCDebug(lcCore) << "snapAllWindows called for screen:" << screenName;
+    qCDebug(lcCore) << "snapAllWindows called for screen=" << screenName;
     Q_EMIT snapAllWindowsRequested(screenName);
 }
 
 void SnapEngine::cycleWindowsInZone(bool forward)
 {
-    qCDebug(lcCore) << "cycleWindowsInZone called, forward:" << forward;
+    qCDebug(lcCore) << "cycleWindowsInZone called, forward=" << forward;
     QString directive = forward ? QStringLiteral("cycle:forward") : QStringLiteral("cycle:backward");
     Q_EMIT cycleWindowsInZoneRequested(directive, QString());
 }

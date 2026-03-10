@@ -93,7 +93,7 @@ void Daemon::connectScreenSignals()
     // Don't pre-create overlay windows at startup. On Wayland with LayerShellQt
     // this can cause visibility issues. Create on-demand in show() instead,
     // which also avoids the overlay flashing during login.
-    qCInfo(lcDaemon) << "Overlay service ready -" << m_screenManager->screens().count()
+    qCInfo(lcDaemon) << "Overlay service: ready," << m_screenManager->screens().count()
                      << "screens available (windows created on-demand)";
 }
 
@@ -182,7 +182,7 @@ void Daemon::connectShortcutSignals()
         if (screen) {
             m_unifiedLayoutController->setCurrentScreenName(Utils::screenIdentifier(screen));
         } else {
-            qCDebug(lcDaemon) << "No screen info for quickLayout shortcut — skipping";
+            qCDebug(lcDaemon) << "QuickLayout shortcut: no screen info";
             return;
         }
         if (!m_unifiedLayoutController->applyLayoutByNumber(number)) {
@@ -200,7 +200,7 @@ void Daemon::connectShortcutSignals()
         if (screen) {
             m_unifiedLayoutController->setCurrentScreenName(Utils::screenIdentifier(screen));
         } else {
-            qCDebug(lcDaemon) << "No screen info for previousLayout shortcut — skipping";
+            qCDebug(lcDaemon) << "PreviousLayout shortcut: no screen info";
             return;
         }
         m_unifiedLayoutController->cyclePrevious();
@@ -214,7 +214,7 @@ void Daemon::connectShortcutSignals()
         if (screen) {
             m_unifiedLayoutController->setCurrentScreenName(Utils::screenIdentifier(screen));
         } else {
-            qCDebug(lcDaemon) << "No screen info for nextLayout shortcut — skipping";
+            qCDebug(lcDaemon) << "NextLayout shortcut: no screen info";
             return;
         }
         m_unifiedLayoutController->cycleNext();
@@ -268,7 +268,7 @@ void Daemon::connectShortcutSignals()
         }
         QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
         if (!screen) {
-            qCDebug(lcDaemon) << "No screen info for layoutPicker shortcut — skipping";
+            qCDebug(lcDaemon) << "LayoutPicker shortcut: no screen info";
             return;
         }
         const QString screenName = Utils::screenIdentifier(screen);

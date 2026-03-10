@@ -435,7 +435,7 @@ void AutotileHandler::reportDiscoveredMinSize(const QString& windowId, int minWi
     }
 
     qCInfo(lcEffect) << "Discovered min size for" << windowId << ":" << minWidth << "x" << minHeight
-                     << "— reporting to daemon for future retiles";
+                     << "- reporting to daemon for future retiles";
 
     m_effect->fireAndForgetDBusCall(DBus::Interface::Autotile, QStringLiteral("windowMinSizeUpdated"),
                                     {windowId, minWidth, minHeight}, QStringLiteral("windowMinSizeUpdated"));

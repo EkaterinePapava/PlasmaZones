@@ -32,7 +32,7 @@ void ModeTracker::setCurrentMode(TilingMode mode)
     // debouncing. KSharedConfig internally buffers writes.
     save();
     Q_EMIT currentModeChanged(mode);
-    qCInfo(lcDaemon) << "Mode changed to:" << (mode == TilingMode::Autotile ? "Autotile" : "Manual");
+    qCInfo(lcDaemon) << "Mode changed to" << (mode == TilingMode::Autotile ? "Autotile" : "Manual");
 }
 
 // toggleMode() emits two signals with distinct purposes:
@@ -66,7 +66,7 @@ void ModeTracker::recordManualLayout(const QString& layoutId)
         // critical for correct session restore, so we write synchronously rather than
         // debouncing. KSharedConfig internally buffers writes.
         save();
-        qCInfo(lcDaemon) << "Recorded manual layout:" << layoutId;
+        qCInfo(lcDaemon) << "Recorded manual layout=" << layoutId;
     }
 }
 
@@ -88,7 +88,7 @@ void ModeTracker::recordAutotileAlgorithm(const QString& algorithmId)
         // critical for correct session restore, so we write synchronously rather than
         // debouncing. KSharedConfig internally buffers writes.
         save();
-        qCInfo(lcDaemon) << "Recorded autotile algorithm:" << algorithmId;
+        qCInfo(lcDaemon) << "Recorded autotile algorithm=" << algorithmId;
     }
 }
 

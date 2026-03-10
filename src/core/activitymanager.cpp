@@ -106,14 +106,14 @@ bool ActivityManager::init()
                        << activityName(m_currentActivity) << ")";
     } else if (status == KActivities::Controller::Unknown) {
         // Service status unknown - it may become available later
-        qCInfo(lcCore) << "KActivities service status unknown - waiting for connection";
+        qCInfo(lcCore) << "KActivities: service status unknown, waiting for connection";
     } else {
-        qCInfo(lcCore) << "KActivities service not running - activity support disabled";
+        qCInfo(lcCore) << "KActivities: service not running, activity support disabled";
     }
 
     return true; // Always return true - activities are optional
 #else
-    qCInfo(lcCore) << "KActivities support not compiled in - activity support disabled";
+    qCInfo(lcCore) << "KActivities: not compiled in, activity support disabled";
     m_activitiesAvailable = false;
     return true; // Return true since activities are optional
 #endif
@@ -126,7 +126,7 @@ void ActivityManager::start()
     }
 
     if (!m_activitiesAvailable) {
-        qCDebug(lcCore) << "Activities not available - skipping activity manager start";
+        qCDebug(lcCore) << "ActivityManager: not available, skipping start";
         return;
     }
 
@@ -202,7 +202,7 @@ void ActivityManager::onCurrentActivityChanged(const QString& activityId)
     }
 
     m_currentActivity = activityId;
-    qCInfo(lcCore) << "Activity changed activity= " << activityId << " name= " << activityName(activityId);
+    qCInfo(lcCore) << "Activity changed activity=" << activityId << "name=" << activityName(activityId);
 
     updateActiveLayout();
     Q_EMIT currentActivityChanged(activityId);
@@ -210,13 +210,13 @@ void ActivityManager::onCurrentActivityChanged(const QString& activityId)
 
 void ActivityManager::onActivityAdded(const QString& activityId)
 {
-    qCInfo(lcCore) << "Activity added activity= " << activityId << " name= " << activityName(activityId);
+    qCInfo(lcCore) << "Activity added activity=" << activityId << "name=" << activityName(activityId);
     Q_EMIT activitiesChanged();
 }
 
 void ActivityManager::onActivityRemoved(const QString& activityId)
 {
-    qCInfo(lcCore) << "Activity removed activity= " << activityId;
+    qCInfo(lcCore) << "Activity removed activity=" << activityId;
     Q_EMIT activitiesChanged();
 }
 
