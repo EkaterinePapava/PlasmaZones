@@ -4,7 +4,7 @@
 
 <img src="icons/hicolor/scalable/apps/plasmazones.svg" alt="PlasmaZones" width="96">
 
-**Advanced window zone management for KDE Plasma 6**
+**Window zone management for KDE Plasma 6**
 
 Define zones on your screen. Drag windows into them. Done.
 
@@ -55,12 +55,12 @@ Hold **Alt** (or your configured modifier) while dragging a window. Zones light 
 
 **Snapping**
 - Drag with modifier key or mouse button to snap windows to zones
-- Always-active mode: zones activate on every drag without a modifier key
-- Snapping enable/disable toggle
+- Always-active mode: zones activate on every drag without a modifier
+- Enable/disable snapping globally
 - Snap all visible windows to zones at once
 - Auto-assign windows to first empty zone per layout
-- Multi-zone snapping support
-- App-to-zone rules: auto-snap specific applications to designated zones
+- Snap to multiple zones at once
+- App-to-zone rules: auto-snap apps to specific zones on launch
 
 **Movement**
 - Move windows between zones with keyboard shortcuts
@@ -69,11 +69,11 @@ Hold **Alt** (or your configured modifier) while dragging a window. Zones light 
 - Push window to first empty zone
 - Restore original size on unsnap
 - Per-window floating toggle
-- Staggered window animations with configurable easing curves (including elastic and bounce)
+- Staggered animations with elastic and bounce easing curves
 
 **Focus & Cycling**
 - Focus adjacent zones without mouse
-- Cycle through windows stacked in the same zone (monocle-style)
+- Cycle through windows stacked in the same zone
 
 <p align="center">
   <img src="docs/media/videos/keyboard-nav.gif" alt="Keyboard Navigation" />
@@ -89,7 +89,7 @@ Hold **Alt** (or your configured modifier) while dragging a window. Zones light 
 - Fill available space / auto-expand
 - Fullscreen editing mode
 - Per-zone colors and styling
-- Layout visibility filtering: restrict layouts to specific screens, desktops, or activities
+- Restrict layouts to specific screens, desktops, or activities
 
 <p align="center">
   <img src="docs/media/videos/editor.gif" alt="Layout Editor" />
@@ -97,56 +97,56 @@ Hold **Alt** (or your configured modifier) while dragging a window. Zones light 
 
 ### Autotiling
 
-Automatic tiling window manager built into PlasmaZones. Enable per-screen and windows are automatically arranged using one of 11 layout algorithms:
+Enable autotiling per-screen and windows arrange themselves using one of 11 algorithms:
 
 | Algorithm | Description |
 |-----------|-------------|
-| Master+Stack | Primary master area with stacked secondaries |
-| Centered Master | Master in the center, stacks on both sides |
+| Master+Stack | Main window with a stack beside it |
+| Centered Master | Main window centered, stacks on both sides |
 | Three Column | Even three-column split |
 | Columns | Equal vertical columns |
 | Rows | Equal horizontal rows |
 | Grid | Automatic grid arrangement |
-| Dwindle | Recursive halving (alternating direction) |
-| Spiral | Recursive halving in a spiral pattern |
+| Dwindle | Recursive halving, alternating direction |
+| Spiral | Recursive halving in a spiral |
 | BSP | Binary space partitioning |
-| Wide | Horizontal master with stacked columns below |
-| Monocle | Fullscreen one-at-a-time with cycling |
+| Wide | Horizontal main area with stacked columns below |
+| Monocle | One window at a time, cycle between them |
 
-- **Per-screen algorithm selection** with independent settings
-- **Configurable master ratio and master count** (per-algorithm for Centered Master vs Master+Stack)
-- **Inner and outer gaps** with per-side outer gap control (top/bottom/left/right independently)
-- **Smart gaps**: automatically remove gaps when only one window is tiled
-- **Max windows cap**: overflow windows are floated automatically
-- **Title bar hiding** on tiled windows with configurable colored borders
-- **Window insertion position**: end, after focused, or as master
-- **Focus follows mouse** and **focus new windows** options
-- **Minimize/unminimize tracking**: minimized windows are floated, unminimized windows rejoin the tiling
-- **Per-window floating toggle** (`Meta+F`)
-- **Staggered tiling animations** with cascading overlap
+- Per-screen algorithm selection with independent settings
+- Configurable master ratio and master count (separate settings for Centered Master vs Master+Stack)
+- Inner and outer gaps with per-side control (top/bottom/left/right)
+- Smart gaps — no gaps when only one window is tiled
+- Max windows cap — overflow windows float automatically
+- Hide title bars on tiled windows, with colored borders
+- Window insertion position: end, after focused, or as master
+- Focus follows mouse and focus new windows
+- Minimized windows float, unminimized windows rejoin tiling
+- Per-window floating toggle
+- Staggered tiling animations
 
 <!-- placeholder: autotiling gif/screenshot -->
 
 ### Shader Effects
 
-GPU-accelerated zone overlays with 12 built-in effects, including multipass shaders and audio-reactive visuals:
+12 built-in GLSL shader effects for zone overlays, including audio-reactive visuals:
 
 | Effect | Description |
 |--------|-------------|
-| Aretha Shell | Cyberpunk effect with color grading, hex grid, and data streams |
-| Berry Drift | Organic metaball blobs in berry and violet tones with mint sparkles |
-| Cosmic Flow | Flowing fractal noise with animated color palette |
-| Liquid Canvas | Desktop wallpaper as a living liquid painting with flow-field distortion |
-| Magnetic Field | Mouse-reactive magnetic field with orbiting particles |
-| Mosaic Pulse | Audio-reactive stained glass mosaic with pulsing shapes and sparkles |
-| Nexus Cascade | Multi-pass plasma with distortion, bloom, and chromatic aberration |
-| Prismata | Crystalline prismatic facets and caustics with audio-reactive chromatic fracture |
-| Sonic Ripple | Audio-reactive concentric rings with bass shockwaves and spectrum visualization |
-| Spectrum Bloom | Polar spectrum contour with frequency-driven shape morphing and aurora effects |
-| Spectrum Pulse | Audio-reactive neon energy with bass glow, spectrum aurora, and CAVA integration |
-| Toxic Circuit | Glowing circuit traces with toxic drip and digital corruption |
+| Aretha Shell | Cyberpunk hex grid with data streams |
+| Berry Drift | Metaball blobs in berry and violet tones |
+| Cosmic Flow | Fractal noise with animated colors |
+| Liquid Canvas | Wallpaper as a liquid painting with flow distortion |
+| Magnetic Field | Mouse-reactive field with orbiting particles |
+| Mosaic Pulse | Audio-reactive stained glass mosaic |
+| Nexus Cascade | Plasma with distortion, bloom, and chromatic aberration |
+| Prismata | Prismatic facets with audio-reactive chromatic fracture |
+| Sonic Ripple | Audio-reactive concentric rings with bass shockwaves |
+| Spectrum Bloom | Polar contour with frequency-driven shape morphing |
+| Spectrum Pulse | Audio-reactive neon energy with CAVA integration |
+| Toxic Circuit | Glowing circuit traces with digital corruption |
 
-Shaders support up to 4 user-supplied image textures with configurable wrap modes. Shaders can also sample the current desktop wallpaper as a texture input.
+Up to 4 custom image textures per shader, plus desktop wallpaper sampling.
 
 <p align="center">
   <img src="docs/media/videos/shaders.gif" alt="Shader effects showcase" />
@@ -156,13 +156,13 @@ Custom shaders supported — see the [Shader Guide](https://github.com/fuddleswo
 
 ### Snap Assist
 
-After snapping a window, a Snap Assist overlay shows remaining empty zones with window candidates. Click any window thumbnail to snap it into a zone without dragging.
+After snapping a window, an overlay shows the remaining empty zones with thumbnails of other windows. Click a thumbnail to snap it into a zone.
 
 <!-- placeholder: snap assist gif/screenshot -->
 
 ### Zone Selector
 
-Drag to screen edge to reveal a layout picker. Choose any layout and zone without cycling.
+Drag to screen edge to reveal a layout picker. Jump straight to any layout and zone.
 
 <p align="center">
   <img src="docs/media/videos/zone-selector.gif" alt="Zone Selector" />
@@ -170,7 +170,7 @@ Drag to screen edge to reveal a layout picker. Choose any layout and zone withou
 
 ### Layout Picker
 
-Press `Meta+Alt+Space` to open a fullscreen layout picker overlay. Browse all layouts visually and switch with a single click.
+Press `Meta+Alt+Space` to open a fullscreen layout picker. Click any layout to switch.
 
 <p align="center">
   <img src="docs/media/screenshots/layout-popup.png" alt="Layout Picker" />
@@ -186,7 +186,7 @@ See a preview of the layout when switching, not just text.
 
 ### Navigation OSD
 
-Keyboard navigation actions (move, focus, swap, rotate, push) show brief feedback overlays with zone numbers and directional context.
+Move, focus, swap, rotate, and push actions show a brief overlay with the affected zone numbers.
 
 <!-- placeholder: navigation OSD gif/screenshot -->
 
@@ -201,7 +201,7 @@ Keyboard navigation actions (move, focus, swap, rotate, push) show brief feedbac
 
 ### System Settings Integration
 
-Full KCM module with 8 tabs — no config file editing required. Includes built-in update checker with GitHub release notifications.
+Full KCM module with 8 tabs. Includes update checker with GitHub release notifications.
 
 <details>
 <summary>Screenshots</summary>
@@ -222,12 +222,12 @@ Per-monitor, virtual desktop, and activity layout assignments; quick-switch keyb
 ![Assignments](docs/media/screenshots/kcm-assignments.png)
 
 #### 4. Snapping
-Colors, opacity, borders, blur, shader effects, zone numbers, animations, activation modifiers, always-active mode, multi-zone selection, zone padding, per-side edge gaps, zone selector popup, and window snap behavior.
+Zone appearance (colors, opacity, borders, blur, shaders), activation behavior, animations, zone selector popup, and snap settings.
 
 ![Snapping](docs/media/screenshots/kcm-snapping.png)
 
 #### 5. Tiling
-Enable/disable autotiling per-screen, select algorithm, configure master ratio, master count, inner/outer gaps, per-side outer gaps, smart gaps, max windows, title bar hiding, border rendering, insertion position, focus behavior.
+Per-screen algorithm selection, master ratio/count, gaps, title bar hiding, insertion order, and focus behavior.
 
 ![Tiling](docs/media/screenshots/kcm-tiling.png)
 
@@ -351,7 +351,7 @@ cd plasmazones-linux-x86_64
 ./install.sh
 ```
 
-The script will install PlasmaZones to `~/.local` and help you configure your environment variables.
+The script installs PlasmaZones to `~/.local` and sets up your environment variables.
 
 **Or use the one-liner:**
 
@@ -459,7 +459,7 @@ All configurable in **System Settings → Shortcuts → PlasmaZones**.
 
 </details>
 
-**Shortcut pattern:** Designed to avoid conflicts with KDE defaults:
+**Shortcut pattern** (avoids conflicts with KDE defaults):
 - `Meta+Alt+{key}` — Layout operations and actions
 - `Meta+Alt+Shift+Arrow` — Zone movement (avoids KDE's `Meta+Shift+Arrow` screen movement)
 - `Meta+Ctrl+Alt+Arrow` — Swap windows (avoids KDE's `Meta+Ctrl+Arrow` desktop switching)
