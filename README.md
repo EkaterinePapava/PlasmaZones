@@ -580,39 +580,50 @@ Full API documentation: [wiki — D-Bus API](https://github.com/fuddlesworth/Pla
 
 ```
 src/
-├── autotile/       # Autotiling engine, algorithms, per-screen config
-│   └── algorithms/ # 11 tiling algorithms (master-stack, dwindle, grid, etc.)
-├── core/           # Zone, Layout, LayoutManager, ShaderRegistry
-├── daemon/         # Background service, overlay windows
-│   └── rendering/  # GPU rendering (QRhi), label texture builder
-├── editor/         # Visual layout editor
-│   ├── qml/        # Editor QML UI
-│   ├── helpers/    # D-Bus queries, serialization, batch operations
-│   ├── services/   # Editor services (snapping, templates, zone manager)
-│   └── undo/       # Undo/redo command system
-├── dbus/           # D-Bus adaptors (7 interfaces)
-├── config/         # Settings (KConfig), update checker
-├── ui/             # QML components (OSD, overlays, zone selector)
-└── shared/         # Shared QML components and plugins
-kcm/                # System Settings module (KCM)
-└── ui/             # KCM QML pages
-    └── tabs/       # Tab components (8 tabs)
-kwin-effect/        # KWin effect plugin (modifier detection, autotile handler)
+├── autotile/           # Autotiling engine, per-screen config
+│   └── algorithms/     # 14 tiling algorithms (master-stack, dwindle, bsp, etc.)
+├── snap/               # Snap engine (zone matching, multi-zone selection)
+├── core/               # Zone, Layout, LayoutManager, ShaderRegistry
+│   ├── geometryutils/  # Geometry math helpers
+│   ├── layout/         # Layout model and serialization
+│   ├── layoutmanager/  # Layout lifecycle and assignment
+│   ├── screenmanager/  # Screen tracking and resolution
+│   ├── shaderregistry/ # Shader discovery and loading
+│   └── windowtrackingservice/  # Window-to-zone tracking
+├── daemon/             # Background service, overlay windows
+│   ├── daemon/         # Startup, signals, navigation handlers
+│   ├── overlayservice/ # Overlay window lifecycle
+│   ├── rendering/      # GPU rendering (QRhi), label textures
+│   └── shortcutmanager/  # Global shortcut handlers
+├── editor/             # Visual layout editor
+│   ├── qml/            # Editor QML UI
+│   ├── controller/     # Editor operations (gaps, layout, selection, etc.)
+│   ├── helpers/        # D-Bus queries, serialization, batch operations
+│   ├── services/       # Snapping, templates, zone manager
+│   └── undo/           # Undo/redo command system
+├── dbus/               # D-Bus adaptors (7 interfaces)
+├── config/             # Settings (KConfig), update checker
+├── ui/                 # QML components (OSD, overlays, zone selector)
+└── shared/             # Shared QML components and plugins
+kcm/                    # System Settings module (KCM)
+└── ui/tabs/            # 8 tab components
+kwin-effect/            # KWin effect plugin
+└── autotilehandler/    # Autotile event handling from KWin
 data/
-├── layouts/        # Default layout templates (12)
-├── shaders/        # Built-in GLSL shader effects (12) + shared utilities
-└── shader-presets/ # Bundled shader preset configurations
+├── layouts/            # Default layout templates (12)
+└── shaders/            # Built-in GLSL shader effects (13) + shared utilities
 packaging/
-├── arch/           # AUR PKGBUILD (source, binary, git)
-├── debian/         # Debian packaging (control, changelog, triggers)
-├── nix/            # Nix flake package
-└── rpm/            # RPM spec
-cmake/              # CMake helpers (extract-pot, format-qml, uninstall)
-tests/              # Unit and integration tests
-dbus/               # D-Bus XML interface definitions (7 interfaces)
-icons/              # Application icons (hicolor + hicolor-light)
-po/                 # Translations (KI18n/Gettext)
-docs/               # Documentation and media
+├── arch/               # AUR PKGBUILD (source, binary, git)
+├── debian/             # Debian packaging
+├── local-install/      # Portable tarball installer
+├── nix/                # Nix flake package
+└── rpm/                # RPM spec
+cmake/                  # CMake helpers (extract-pot, format-qml, uninstall)
+tests/unit/             # Unit tests (autotile, config, core, helpers, ui)
+dbus/                   # D-Bus XML interface definitions (7 interfaces)
+icons/                  # Application icons (hicolor + hicolor-light)
+po/                     # Translations (KI18n/Gettext)
+docs/                   # Documentation and media
 ```
 
 ---
