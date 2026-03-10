@@ -26,7 +26,10 @@ void SnapEngine::windowOpened(const QString& windowId, const QString& screenName
     // Guard: skip if already snapped (prevents double-assignment when both
     // windowOpened and the WTA D-Bus resolveWindowRestore path run for the
     // same window — e.g., effect calls windowOpened then D-Bus resolveWindowRestore).
+    // Also consume the appId-based pending entry so other instances of the same app
+    // (with different UUIDs) don't incorrectly steal this window's zone.
     if (m_windowTracker->isWindowSnapped(windowId)) {
+        m_windowTracker->consumePendingAssignment(windowId);
         qCDebug(lcCore) << "SnapEngine::windowOpened: window" << windowId << "already snapped, skipping";
         return;
     }
@@ -61,6 +64,16 @@ void SnapEngine::windowOpened(const QString& windowId, const QString& screenName
 SnapResult SnapEngine::resolveWindowRestore(const QString& windowId, const QString& screenName, bool sticky)
 {
     if (windowId.isEmpty() || screenName.isEmpty()) {
+        return SnapResult::noSnap();
+    }
+
+    // Pre-check: if this window already has an exact zone assignment (loaded from
+    // KConfig with full windowId after daemon-only restart), skip the restore chain.
+    // Consume the appId-based pending entry to prevent other instances of the same
+    // app from incorrectly stealing this window's zone assignment.
+    if (m_windowTracker->isWindowSnapped(windowId)) {
+        m_windowTracker->consumePendingAssignment(windowId);
+        qCDebug(lcCore) << "resolveWindowRestore:" << windowId << "already has assignment, skipping";
         return SnapResult::noSnap();
     }
 

@@ -268,6 +268,22 @@ SnapResult WindowTrackingService::calculateRestoreFromSession(const QString& win
         return SnapResult::noSnap();
     }
 
+    // Guard against wrong-instance restore for multi-instance apps.
+    // After daemon-only restart (KWin still running), m_windowZoneAssignments is
+    // loaded with full windowIds (appId|uuid). If another instance of this app
+    // already has an exact full-ID match, that instance owns the pending entry —
+    // this window should not consume it. Without this check, whichever Ghostty
+    // instance the effect reports first would incorrectly grab the zone assignment.
+    if (appId != windowId) { // windowId contains UUID (full format)
+        for (auto it = m_windowZoneAssignments.constBegin(); it != m_windowZoneAssignments.constEnd(); ++it) {
+            if (it.key() != windowId && Utils::extractAppId(it.key()) == appId) {
+                qCDebug(lcCore) << "sessionRestore:" << windowId << "skipped — sibling instance" << it.key()
+                                << "has exact assignment";
+                return SnapResult::noSnap();
+            }
+        }
+    }
+
     // Take the first entry (FIFO — mirrors KWin's takeSessionInfo pattern)
     const PendingRestore& entry = queueIt->first();
 
