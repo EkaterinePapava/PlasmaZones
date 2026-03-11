@@ -20,6 +20,10 @@ qt_add_qml_module(plasmazones_shared_qml
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml/org/plasmazones/common
 )
 
+# Static lib is linked into shared objects (KCM, editor) so it must be PIC.
+# Fedora RPM macros add -fPIC globally; openSUSE does not.
+set_target_properties(plasmazones_shared_qml PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 target_link_libraries(plasmazones_shared_qml
     PUBLIC
         Qt6::Quick
