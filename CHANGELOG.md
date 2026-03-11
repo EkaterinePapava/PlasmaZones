@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-03-11
+
+### Fixed
+- **Arch lib64 file conflict with generic tarball** (fixes [#203](https://github.com/fuddlesworth/PlasmaZones/discussions/203)): Force `CMAKE_INSTALL_LIBDIR=lib` in the generic tarball build so it doesn't inherit Fedora's `lib64` default, which conflicts with Arch's `filesystem` package owning `/usr/lib64` as a symlink
+- **Global show-zone-numbers toggle ignored when layout active** (fixes [#208](https://github.com/fuddlesworth/PlasmaZones/discussions/208)): Changed zone number visibility so the global toggle is a master switch — per-layout setting can only further restrict, not override it
+- **Easing preset dropdown UX** (fixes [#207](https://github.com/fuddlesworth/PlasmaZones/discussions/207)): Replaced single 30+ item flat dropdown with two-dropdown Style + Direction selector; clamped elastic/bounce preview animation to prevent overshoot overflow
+- **Modifier key capture silently broken by qmlformat** (fixes [#205](https://github.com/fuddlesworth/PlasmaZones/discussions/205)): Replaced large Qt::KeyboardModifier integer literals with bit-shift expressions (`1 << 25` etc.) that qmlformat cannot mangle into lossy scientific notation
+- **Fedora COPR repo name case sensitivity**: Fixed COPR repo reference to use correct casing
+
+### Added
+- **Fedora COPR and openSUSE OBS install instructions** in README (fixes [#209](https://github.com/fuddlesworth/PlasmaZones/discussions/209))
+
 ## [2.0.0] - 2026-03-10
 
 ### Added
@@ -702,7 +714,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/fuddlesworth/PlasmaZones/compare/v1.15.15...v2.0.0
 [1.15.15]: https://github.com/fuddlesworth/PlasmaZones/compare/v1.15.14...v1.15.15
 [1.15.14]: https://github.com/fuddlesworth/PlasmaZones/compare/v1.15.13...v1.15.14
