@@ -7,7 +7,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     # Allow manual triggers
 
@@ -199,24 +199,24 @@ jobs:
         run: |
           VERSION="${{ needs.version.outputs.version }}"
           DIRNAME="plasmazones-linux-x86_64"
-          
+
           mkdir -p "$DIRNAME"
           mv AppDir/usr "$DIRNAME/"
-          
+
           # Copy installer and uninstaller scripts to root of tarball
           cp packaging/local-install/install.sh "$DIRNAME/"
           cp packaging/local-install/uninstall.sh "$DIRNAME/"
           chmod +x "$DIRNAME/install.sh"
           chmod +x "$DIRNAME/uninstall.sh"
-          
+
           # Create VERSION file for version detection
           echo "$VERSION" > "$DIRNAME/VERSION"
-          
+
           # Copy uninstall.sh to the installed location so it's available after install
           mkdir -p "$DIRNAME/usr/share/plasmazones"
           cp packaging/local-install/uninstall.sh "$DIRNAME/usr/share/plasmazones/"
           chmod +x "$DIRNAME/usr/share/plasmazones/uninstall.sh"
-          
+
           # Create tarball
           tar czf plasmazones-${VERSION}-linux-x86_64.tar.gz "$DIRNAME"
 
@@ -480,7 +480,7 @@ jobs:
             echo ""
             echo "**Fedora (COPR):**"
             echo '```bash'
-            echo "sudo dnf copr enable fuddlesworth/plasmazones"
+            echo "sudo dnf copr enable fuddlesworth/PlasmaZones"
             echo "sudo dnf install plasmazones"
             echo '```'
             echo ""
