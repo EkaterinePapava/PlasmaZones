@@ -49,7 +49,7 @@ jobs:
           apt-get install -y --no-install-recommends git ca-certificates
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install build dependencies
         run: |
@@ -79,7 +79,7 @@ jobs:
           mv ../*.ddeb dist/ 2>/dev/null || true
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: deb-kde-neon
           path: dist/*.*deb
@@ -100,7 +100,7 @@ jobs:
         run: dnf install -y git rpm-build rpmdevtools
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install build dependencies
         run: |
@@ -141,7 +141,7 @@ jobs:
           cp ~/rpmbuild/RPMS/*/*.rpm dist/
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: rpm-fedora-43
           path: dist/*.rpm
@@ -162,7 +162,7 @@ jobs:
         run: dnf install -y git tar
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install build dependencies
         run: |
@@ -224,7 +224,7 @@ jobs:
           tar czf plasmazones-${VERSION}-linux-x86_64.tar.gz "$DIRNAME"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: generic-linux-tarball
           path: plasmazones-*-linux-x86_64.tar.gz
@@ -251,7 +251,7 @@ jobs:
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install build dependencies
         run: |
@@ -335,7 +335,7 @@ jobs:
           mv packaging/arch/*.pkg.tar.zst dist/
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: arch-package
           path: dist/*.pkg.tar.zst
@@ -351,15 +351,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@v8
 
       - name: Build via flake
         run: nix build -L .#default
@@ -427,7 +424,7 @@ jobs:
           cat plasmazones.nix
 
       - name: Upload Nix package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: nix-package
           path: plasmazones.nix
@@ -443,12 +440,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
 
@@ -581,10 +578,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download generic tarball artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: generic-linux-tarball
           path: dist
