@@ -25,19 +25,51 @@ ExclusiveArch:  x86_64 aarch64
 
 # Build tools
 BuildRequires:  cmake >= 3.16
-BuildRequires:  ninja-build
 BuildRequires:  extra-cmake-modules >= 6.6.0
 BuildRequires:  gcc-c++
+%if 0%{?suse_version}
+BuildRequires:  ninja
+BuildRequires:  gettext-tools
+%else
+BuildRequires:  ninja-build
 BuildRequires:  gettext
+%endif
 
 # Qt6
+%if 0%{?suse_version}
+BuildRequires:  cmake(Qt6Core) >= 6.6.0
+BuildRequires:  cmake(Qt6DBus)
+BuildRequires:  cmake(Qt6Gui)
+BuildRequires:  cmake(Qt6Qml)
+BuildRequires:  cmake(Qt6Quick)
+BuildRequires:  cmake(Qt6QuickControls2)
+BuildRequires:  cmake(Qt6Widgets)
+BuildRequires:  cmake(Qt6Concurrent)
+BuildRequires:  cmake(Qt6ShaderTools)
+BuildRequires:  cmake(Qt6ShaderToolsPrivate)
+BuildRequires:  qt6-core-private-devel
+BuildRequires:  qt6-gui-private-devel
+%else
 BuildRequires:  qt6-qtbase-devel >= 6.6.0
 BuildRequires:  qt6-qtbase-private-devel
 BuildRequires:  qt6-qtdeclarative-devel
 BuildRequires:  qt6-qttools-devel
 BuildRequires:  qt6-qtshadertools-devel
+%endif
 
 # KDE Frameworks 6 (6.6+ for Plasma 6.6 API)
+%if 0%{?suse_version}
+BuildRequires:  cmake(KF6Config) >= 6.6.0
+BuildRequires:  cmake(KF6ConfigWidgets)
+BuildRequires:  cmake(KF6CoreAddons)
+BuildRequires:  cmake(KF6DBusAddons)
+BuildRequires:  cmake(KF6I18n)
+BuildRequires:  cmake(KF6KCMUtils)
+BuildRequires:  cmake(KF6WindowSystem)
+BuildRequires:  cmake(KF6GlobalAccel)
+BuildRequires:  cmake(KF6Notifications)
+BuildRequires:  cmake(KF6ColorScheme)
+%else
 BuildRequires:  kf6-kconfig-devel >= 6.6.0
 BuildRequires:  kf6-kconfigwidgets-devel >= 6.6.0
 BuildRequires:  kf6-kcoreaddons-devel >= 6.6.0
@@ -48,25 +80,31 @@ BuildRequires:  kf6-kwindowsystem-devel >= 6.6.0
 BuildRequires:  kf6-kglobalaccel-devel >= 6.6.0
 BuildRequires:  kf6-knotifications-devel >= 6.6.0
 BuildRequires:  kf6-kcolorscheme-devel >= 6.6.0
+%endif
 
 # Plasma 6.6 / KWin 6.6 (effect API), LayerShellQt 6.6 (setScreen API)
 # The KWin effect plugin links against libkwin; RPM auto-generates soname deps
 # for ABI safety. Patch releases (6.6.x) maintain ABI and IID compatibility.
+%if 0%{?suse_version}
+BuildRequires:  kwin6-devel
+BuildRequires:  cmake(LayerShellQt) >= 6.6.0
+BuildRequires:  cmake(PlasmaActivities)
+BuildRequires:  pkgconfig(systemd)
+%else
 BuildRequires:  kwin-devel >= 6.6.0
 BuildRequires:  layer-shell-qt-devel >= 6.6.0
 BuildRequires:  libepoxy-devel
 BuildRequires:  wayland-devel
 BuildRequires:  libdrm-devel
 BuildRequires:  libxkbcommon-devel
-
-# Optional
 BuildRequires:  plasma-activities-devel
-
-# Systemd macros
 BuildRequires:  systemd-rpm-macros
+%endif
 %{?systemd_requires}
 
-# Runtime dependencies (Plasma 6.6+)
+# Runtime dependencies — RPM auto-generates most from sonames;
+# explicit Requires ensure minimum versions on Fedora.
+%if !0%{?suse_version}
 Requires:       qt6-qtbase >= 6.6.0
 Requires:       qt6-qtdeclarative
 Requires:       qt6-qtshadertools
@@ -81,8 +119,8 @@ Requires:       kf6-kglobalaccel >= 6.6.0
 Requires:       kf6-knotifications >= 6.6.0
 Requires:       kf6-kcolorscheme >= 6.6.0
 Requires:       layer-shell-qt >= 6.6.0
-# KWin: require minimum version; RPM auto-deps track soname for ABI safety
 Requires:       kwin >= 6.6.0
+%endif
 Requires:       hicolor-icon-theme
 
 %description

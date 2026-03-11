@@ -148,6 +148,70 @@ jobs:
           retention-days: 30
 
   # ═══════════════════════════════════════════════════════════════════════════
+  # Build RPM Package (openSUSE Tumbleweed)
+  # ═══════════════════════════════════════════════════════════════════════════
+  build-rpm-opensuse:
+    name: Build .rpm (openSUSE Tumbleweed)
+    needs: version
+    runs-on: ubuntu-latest
+    container:
+      image: opensuse/tumbleweed:latest
+
+    steps:
+      - name: Install prerequisites
+        run: zypper -n install git rpm-build rpmdevtools
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        run: |
+          zypper -n install \
+            cmake ninja extra-cmake-modules gettext-tools gcc-c++ \
+            qt6-core-private-devel qt6-gui-private-devel \
+            'cmake(Qt6Core)' 'cmake(Qt6DBus)' 'cmake(Qt6Gui)' \
+            'cmake(Qt6Qml)' 'cmake(Qt6Quick)' 'cmake(Qt6QuickControls2)' \
+            'cmake(Qt6Widgets)' 'cmake(Qt6Concurrent)' \
+            'cmake(Qt6ShaderTools)' 'cmake(Qt6ShaderToolsPrivate)' \
+            'cmake(KF6Config)' 'cmake(KF6ConfigWidgets)' \
+            'cmake(KF6CoreAddons)' 'cmake(KF6DBusAddons)' \
+            'cmake(KF6I18n)' 'cmake(KF6KCMUtils)' \
+            'cmake(KF6WindowSystem)' 'cmake(KF6GlobalAccel)' \
+            'cmake(KF6Notifications)' 'cmake(KF6ColorScheme)' \
+            kwin6-devel 'cmake(LayerShellQt)' 'cmake(PlasmaActivities)' \
+            'pkgconfig(systemd)'
+
+      - name: Setup rpmbuild
+        run: rpmdev-setuptree
+
+      - name: Create source tarball
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          mkdir -p PlasmaZones-${VERSION}
+          tar --exclude='.git' --exclude='build' -cf - . | tar -xf - -C PlasmaZones-${VERSION}/
+          tar czf ~/rpmbuild/SOURCES/plasmazones-${VERSION}.tar.gz PlasmaZones-${VERSION}
+
+      - name: Generate RPM changelog and set version from CHANGELOG.md
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          sed -i "s/^Version:.*/Version:        $VERSION/" packaging/rpm/plasmazones.spec
+          bash packaging/generate-changelog.sh rpm
+
+      - name: Build RPM
+        run: |
+          cp packaging/rpm/plasmazones.spec ~/rpmbuild/SPECS/
+          rpmbuild -bb ~/rpmbuild/SPECS/plasmazones.spec
+          mkdir -p dist
+          cp ~/rpmbuild/RPMS/*/*.rpm dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: rpm-opensuse-tumbleweed
+          path: dist/*.rpm
+          retention-days: 30
+
+  # ═══════════════════════════════════════════════════════════════════════════
   # Build Generic Linux Tarball (Portable)
   # ═══════════════════════════════════════════════════════════════════════════
   build-generic:
@@ -435,7 +499,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════════
   release:
     name: Create GitHub Release
-    needs: [version, build-deb, build-rpm, build-arch, build-generic, build-nix]
+    needs: [version, build-deb, build-rpm, build-rpm-opensuse, build-arch, build-generic, build-nix]
     runs-on: ubuntu-latest
 
     steps:
@@ -487,6 +551,11 @@ jobs:
             echo "**Fedora (manual RPM):**"
             echo '```bash'
             echo "sudo dnf install plasmazones-${VERSION}-1.fc43.x86_64.rpm"
+            echo '```'
+            echo ""
+            echo "**openSUSE Tumbleweed (manual RPM):**"
+            echo '```bash'
+            echo "sudo zypper install plasmazones-${VERSION}-1.x86_64.rpm"
             echo '```'
             echo ""
             echo "**openSUSE Tumbleweed (OBS):**"
