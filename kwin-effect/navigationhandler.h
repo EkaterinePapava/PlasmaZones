@@ -9,6 +9,7 @@
 #include <QRectF>
 #include <QSet>
 #include <QString>
+#include <functional>
 
 class QDBusInterface;
 class QDBusPendingCallWatcher;
@@ -88,7 +89,8 @@ private:
      * @param resolveFullWindowId If true, resolve full windowId via getWindowId() (resnap)
      */
     BatchSnapResult applyBatchSnapFromJson(const QString& jsonData, bool filterCurrentDesktop = false,
-                                           bool resolveFullWindowId = false);
+                                           bool resolveFullWindowId = false,
+                                           const std::function<void()>& onComplete = nullptr);
 
     // Move-to-zone directive handlers (decomposed from handleMoveWindowToZone)
     void handleNavigateMove(KWin::EffectWindow* activeWindow, const QString& windowId, const QString& screenName,

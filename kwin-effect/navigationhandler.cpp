@@ -781,8 +781,10 @@ void NavigationHandler::handleSwapWindows(const QString& targetZoneId, const QSt
             });
 }
 
-NavigationHandler::BatchSnapResult
-NavigationHandler::applyBatchSnapFromJson(const QString& jsonData, bool filterCurrentDesktop, bool resolveFullWindowId)
+NavigationHandler::BatchSnapResult NavigationHandler::applyBatchSnapFromJson(const QString& jsonData,
+                                                                             bool filterCurrentDesktop,
+                                                                             bool resolveFullWindowId,
+                                                                             const std::function<void()>& onComplete)
 {
     BatchSnapResult result;
 
@@ -898,17 +900,20 @@ NavigationHandler::applyBatchSnapFromJson(const QString& jsonData, bool filterCu
         }
     }
 
-    m_effect->applyStaggeredOrImmediate(pending.size(), [this, pending](int i) {
-        const PendingSnap& p = pending[i];
-        if (!p.window) {
-            return;
-        }
-        m_effect->applySnapGeometry(p.window, p.geometry);
-        auto* wiface = m_effect->windowTrackingInterface();
-        if (wiface && wiface->isValid()) {
-            wiface->asyncCall(QStringLiteral("windowSnapped"), p.snapWindowId, p.targetZoneId, p.windowScreen);
-        }
-    });
+    m_effect->applyStaggeredOrImmediate(
+        pending.size(),
+        [this, pending](int i) {
+            const PendingSnap& p = pending[i];
+            if (!p.window) {
+                return;
+            }
+            m_effect->applySnapGeometry(p.window, p.geometry);
+            auto* wiface = m_effect->windowTrackingInterface();
+            if (wiface && wiface->isValid()) {
+                wiface->asyncCall(QStringLiteral("windowSnapped"), p.snapWindowId, p.targetZoneId, p.windowScreen);
+            }
+        },
+        onComplete);
 
     return result;
 }
@@ -942,8 +947,20 @@ void NavigationHandler::handleResnapToNewLayout(const QString& resnapData)
     KWin::EffectWindow* activeWindow = m_effect->getActiveWindow();
     QString screenName = activeWindow ? m_effect->getWindowScreenName(activeWindow) : QString();
 
+    // When "Always show after snapping" is on, show snap assist after all
+    // resnap windowSnapped D-Bus calls have been dispatched. We defer via
+    // onComplete so that staggered snaps finish first — otherwise
+    // getEmptyZonesJson() would return stale data.
+    const bool showSnapAssistAfterResnap = m_effect->m_snapAssistHandler->isEnabled();
+    std::function<void()> onResnapComplete;
+    if (showSnapAssistAfterResnap && !screenName.isEmpty()) {
+        onResnapComplete = [this, screenName]() {
+            m_effect->m_snapAssistHandler->showContinuationIfNeeded(screenName);
+        };
+    }
+
     BatchSnapResult result = applyBatchSnapFromJson(resnapData, /*filterCurrentDesktop=*/true,
-                                                    /*resolveFullWindowId=*/true);
+                                                    /*resolveFullWindowId=*/true, onResnapComplete);
 
     // Tell AutotileHandler which windows the resnap covered so pending
     // stagger-restore callbacks skip them (they're already in their zones).
@@ -958,11 +975,6 @@ void NavigationHandler::handleResnapToNewLayout(const QString& resnapData)
         QString reason = QStringLiteral("resnap:%1").arg(result.successCount);
         m_effect->emitNavigationFeedback(true, QStringLiteral("resnap"), reason, QString(), result.firstTargetZoneId,
                                          screenName);
-        // Note: Do NOT call showContinuationIfNeeded() here. Resnap is an automatic
-        // repositioning triggered by layout change — not a user-initiated snap.
-        // The async windowSnapped D-Bus calls haven't been processed by the daemon yet,
-        // so getEmptyZonesJson() would return stale data showing zones as "empty",
-        // causing snap assist to flash briefly with incorrect empty zone data.
     } else {
         m_effect->emitNavigationFeedback(false, QStringLiteral("resnap"), QStringLiteral("no_resnaps"), QString(),
                                          QString(), screenName);
