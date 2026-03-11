@@ -13,20 +13,21 @@ import org.kde.kirigami as Kirigami
 RowLayout {
     // Qt.MetaModifier
     // Qt::MetaModifier
+    // 0x10000000 Qt::MetaModifier
 
     id: root
 
     property int modifierValue: 0 // Qt::KeyboardModifier bitmask
     property bool showPreview: true // Show active combination label
     property bool tooltipEnabled: true // Allow tooltips to be shown (set to false when tab is inactive)
-    // Qt::KeyboardModifier flag values (exact, not float approximations)
-    readonly property int shiftFlag: 3.35544e+07
-    // Qt::ShiftModifier
-    readonly property int ctrlFlag: 6.71089e+07
-    // Qt::ControlModifier
-    readonly property int altFlag: 1.34218e+08
-    // Qt::AltModifier
-    readonly property int metaFlag: 2.68435e+08
+    // Qt::KeyboardModifier bits — use bit shifts so qmlformat cannot mangle them
+    readonly property int shiftFlag: (1 << 25)
+    // 0x02000000 Qt::ShiftModifier
+    readonly property int ctrlFlag: (1 << 26)
+    // 0x04000000 Qt::ControlModifier
+    readonly property int altFlag: (1 << 27)
+    // 0x08000000 Qt::AltModifier
+    readonly property int metaFlag: (1 << 28)
 
     signal valueModified(int value) // Signal when user changes the value (not property change)
 

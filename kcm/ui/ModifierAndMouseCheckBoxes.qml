@@ -46,10 +46,15 @@ Item {
     readonly property int maxTriggers: 4
     // -1 = adding a new trigger, >= 0 = editing trigger at that index
     property int editingTriggerIndex: -1
-    readonly property int shiftFlag: 3.35544e+07
-    readonly property int ctrlFlag: 6.71089e+07
-    readonly property int altFlag: 1.34218e+08
-    readonly property int metaFlag: 2.68435e+08
+    // Qt::KeyboardModifier bits — use bit shifts so qmlformat cannot mangle them
+    readonly property int shiftFlag: (1 << 25)
+    // 0x02000000 Qt::ShiftModifier
+    readonly property int ctrlFlag: (1 << 26)
+    // 0x04000000 Qt::ControlModifier
+    readonly property int altFlag: (1 << 27)
+    // 0x08000000 Qt::AltModifier
+    readonly property int metaFlag: (1 << 28)
+    // 0x10000000 Qt::MetaModifier
     readonly property var modifierChips: [{
         "bit": shiftFlag,
         "label": i18n("Shift")

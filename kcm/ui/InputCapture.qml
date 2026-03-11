@@ -25,11 +25,15 @@ Control {
     property string placeholderText: acceptMode === acceptModeMetaOnly ? i18n("Click to capture modifier") : (acceptMode === acceptModeMouseOnly ? i18n("Click to capture mouse button") : i18n("Click to capture"))
     property string capturingText: acceptMode === acceptModeMetaOnly ? i18n("Press modifier(s)…") : (acceptMode === acceptModeMouseOnly ? i18n("Press mouse button…") : i18n("Press key, modifier, or mouse…"))
     property bool tooltipEnabled: true
-    // Qt::KeyboardModifier bits (match Qt)
-    readonly property int shiftFlag: 3.35544e+07
-    readonly property int ctrlFlag: 6.71089e+07
-    readonly property int altFlag: 1.34218e+08
-    readonly property int metaFlag: 2.68435e+08
+    // Qt::KeyboardModifier bits — use bit shifts so qmlformat cannot mangle them
+    readonly property int shiftFlag: (1 << 25)
+    // 0x02000000 Qt::ShiftModifier
+    readonly property int ctrlFlag: (1 << 26)
+    // 0x04000000 Qt::ControlModifier
+    readonly property int altFlag: (1 << 27)
+    // 0x08000000 Qt::AltModifier
+    readonly property int metaFlag: (1 << 28)
+    // 0x10000000 Qt::MetaModifier
     property int pendingModifierMask: 0
     property bool nonModifierKeyPressed: false
 
