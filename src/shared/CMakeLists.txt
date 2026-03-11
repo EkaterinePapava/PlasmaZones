@@ -3,7 +3,12 @@
 #
 # PlasmaZones Shared QML Components
 
-# Let qt_add_qml_module create the static library target directly
+# Static QML module is linked into shared objects (KCM, editor) so all
+# targets created by qt_add_qml_module (including resource sub-targets)
+# must be compiled with -fPIC. Setting this before the call ensures all
+# generated targets inherit it.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 qt_add_qml_module(plasmazones_shared_qml
     URI org.plasmazones.common
     VERSION 1.0
@@ -19,10 +24,6 @@ qt_add_qml_module(plasmazones_shared_qml
         ZoneShaderRenderer.qml
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml/org/plasmazones/common
 )
-
-# Static lib is linked into shared objects (KCM, editor) so it must be PIC.
-# Fedora RPM macros add -fPIC globally; openSUSE does not.
-set_target_properties(plasmazones_shared_qml PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(plasmazones_shared_qml
     PUBLIC
