@@ -96,6 +96,11 @@ void AutotileAdaptor::retile(const QString& screenName)
     m_engine->retile(screenName);
 }
 
+void AutotileAdaptor::retileAllScreens()
+{
+    retile(QString());
+}
+
 void AutotileAdaptor::swapWindows(const QString& windowId1, const QString& windowId2)
 {
     if (!ensureEngine("swapWindows")) {
@@ -292,7 +297,7 @@ void AutotileAdaptor::onWindowsTiled(const QString& tileRequestsJson)
         QRect geo(obj.value(QLatin1String("x")).toInt(), obj.value(QLatin1String("y")).toInt(),
                   obj.value(QLatin1String("width")).toInt(), obj.value(QLatin1String("height")).toInt());
         if (geo.width() <= 0 || geo.height() <= 0) {
-            qCWarning(lcDbusAutotile) << "onWindowsTiled: invalid geometry for" << windowId << geo;
+            qCDebug(lcDbusAutotile) << "onWindowsTiled: invalid geometry for" << windowId << geo;
             continue;
         }
         outArr.append(obj);

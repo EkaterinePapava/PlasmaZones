@@ -102,6 +102,14 @@ public Q_SLOTS:
     void retile(const QString& screenName);
 
     /**
+     * @brief Force retiling of all autotile screens
+     *
+     * Convenience slot called by KWin effect (e.g. after border width change).
+     * Equivalent to retile("").
+     */
+    void retileAllScreens();
+
+    /**
      * @brief Swap positions of two tiled windows
      * @param windowId1 First window ID
      * @param windowId2 Second window ID

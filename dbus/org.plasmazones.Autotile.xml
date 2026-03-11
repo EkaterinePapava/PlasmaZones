@@ -48,6 +48,10 @@
             </arg>
         </method>
 
+        <method name="retileAllScreens">
+            <annotation name="org.gtk.GDBus.DocString" value="Force retiling of all autotile screens. Convenience method equivalent to retile with empty screen name."/>
+        </method>
+
         <method name="swapWindows">
             <annotation name="org.gtk.GDBus.DocString" value="Swap positions of two tiled windows."/>
             <arg name="windowId1" type="s" direction="in">

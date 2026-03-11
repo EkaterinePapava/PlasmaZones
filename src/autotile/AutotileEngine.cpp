@@ -1278,6 +1278,17 @@ void AutotileEngine::recalculateLayout(const QString& screenName)
         GeometryUtils::enforceWindowMinSizes(zones, minSizes, threshold, innerGap);
     }
 
+    // Clamp zones to minimum 1x1 — algorithms or the constraint solver can
+    // produce non-positive dimensions when minimum sizes exceed available space.
+    for (QRect& zone : zones) {
+        if (zone.width() < 1) {
+            zone.setWidth(1);
+        }
+        if (zone.height() < 1) {
+            zone.setHeight(1);
+        }
+    }
+
     // Store calculated zones in the state for later application
     state->setCalculatedZones(zones);
 }
