@@ -182,9 +182,12 @@ jobs:
         run: |
           # Install to /usr inside the AppDir
           # The installer script will copy this structure to ~/.local
+          # IMPORTANT: Force lib (not lib64) so the tarball works on Arch
+          # where /usr/lib64 is a symlink owned by the filesystem package
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_INSTALL_LIBDIR=lib \
             -DBUILD_TESTING=OFF
 
       - name: Build
