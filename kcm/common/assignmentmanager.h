@@ -3,32 +3,32 @@
 
 #pragma once
 
-#include <QDBusMessage>
-#include <QDBusPendingCall>
 #include <QHash>
 #include <QMap>
 #include <QObject>
 #include <QSet>
 #include <QVariantList>
 #include <QVariantMap>
+#include <functional>
 
 namespace PlasmaZones {
 
-class KCMPlasmaZones;
 class Settings;
 
 /**
  * @brief Manages screen/desktop/activity assignments, quick layout slots, and app-to-zone rules
  *
  * Owns all assignment caches, pending state, and save/load logic.
- * Uses the back-pointer pattern to access KCM's Settings, screens, and D-Bus helpers.
+ * Uses a callback to access the screen list (decoupled from KCM).
  */
 class AssignmentManager : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit AssignmentManager(KCMPlasmaZones* kcm, Settings* settings, QObject* parent = nullptr);
+    using ScreenListProvider = std::function<QVariantList()>;
+
+    explicit AssignmentManager(Settings* settings, ScreenListProvider screenListProvider, QObject* parent = nullptr);
 
     // ── Accessors ──────────────────────────────────────────────────────────
     const QVariantMap& screenAssignments() const
@@ -127,10 +127,8 @@ Q_SIGNALS:
     void refreshScreensRequested();
 
 private:
-    QDBusMessage callDaemon(const QString& interface, const QString& method, const QVariantList& args = {}) const;
-
-    KCMPlasmaZones* m_kcm = nullptr;
     Settings* m_settings = nullptr;
+    ScreenListProvider m_screenListProvider;
 
     // Screens and assignments
     QVariantMap m_screenAssignments;
