@@ -3,10 +3,9 @@
 
 #include "kcmeditor.h"
 #include <QDBusConnection>
-#include <QDBusMessage>
-#include <QDBusPendingCall>
 #include <KPluginFactory>
 #include <KSharedConfig>
+#include "../common/dbusutils.h"
 #include "../../src/core/constants.h"
 
 K_PLUGIN_CLASS_WITH_JSON(PlasmaZones::KCMEditor, "kcm_plasmazones_editor.json")
@@ -47,10 +46,7 @@ void KCMEditor::save()
 {
     // Settings are written immediately to KConfig on each setter call,
     // so we just need to notify the daemon to reload.
-    QDBusMessage msg =
-        QDBusMessage::createMethodCall(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                       QString(DBus::Interface::Settings), QStringLiteral("reloadSettings"));
-    QDBusConnection::sessionBus().asyncCall(msg);
+    KCMDBus::notifyReload();
 
     KQuickConfigModule::save();
     setNeedsSave(false);

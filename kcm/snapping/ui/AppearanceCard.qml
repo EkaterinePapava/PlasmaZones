@@ -149,6 +149,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     visible: false
                     type: Kirigami.MessageType.Positive
+                    Accessible.name: text
                 }
 
                 Timer {

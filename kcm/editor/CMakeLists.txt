@@ -25,6 +25,7 @@ qt_add_resources(kcm_plasmazones_editor "kcm_editor_shared_qml"
 target_link_libraries(kcm_plasmazones_editor
     PRIVATE
         plasmazones_core
+        plasmazones_kcm_common
         Qt6::DBus
         KF6::KCMUtils
         KF6::ConfigWidgets

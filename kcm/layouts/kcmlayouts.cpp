@@ -44,6 +44,11 @@ KCMLayouts::KCMLayouts(QObject* parent, const KPluginMetaData& data)
 
     // Listen for screen changes
     connectScreenChangeSignals(this);
+
+    // Reload when another sub-KCM or process saves settings
+    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                          QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
+                                          SLOT(load()));
 }
 
 KCMLayouts::~KCMLayouts() = default;
@@ -108,6 +113,7 @@ void KCMLayouts::defaults()
 
     // Reset all layout hidden/auto-assign states
     m_layoutManager->resetAllToDefaults();
+    setNeedsSave(true);
 }
 
 // ── Layout list ──────────────────────────────────────────────────────────

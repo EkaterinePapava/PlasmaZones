@@ -103,6 +103,11 @@ KCMAssignments::KCMAssignments(QObject* parent, const KPluginMetaData& data)
     QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
                                           QString(DBus::Interface::LayoutManager), QStringLiteral("activitiesChanged"),
                                           this, SLOT(onActivitiesChanged()));
+
+    // Reload when another sub-KCM or process saves settings
+    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                          QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
+                                          SLOT(load()));
 }
 
 KCMAssignments::~KCMAssignments() = default;
@@ -148,6 +153,7 @@ void KCMAssignments::defaults()
 {
     KQuickConfigModule::defaults();
     m_assignmentManager->resetToDefaults();
+    setNeedsSave(true);
 }
 
 // ── Assignment view mode ─────────────────────────────────────────────────

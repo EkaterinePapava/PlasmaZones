@@ -44,7 +44,7 @@ KCMUtils.SimpleKCM {
                 }
 
                 contentItem: Kirigami.FormLayout {
-                    PlasmaZonesKeySequenceInput {
+                    KeySequenceInput {
                         id: editorDuplicateShortcutField
 
                         Layout.fillWidth: true
@@ -58,7 +58,7 @@ KCMUtils.SimpleKCM {
                         ToolTip.text: i18n("Keyboard shortcut to duplicate the selected zone")
                     }
 
-                    PlasmaZonesKeySequenceInput {
+                    KeySequenceInput {
                         id: editorSplitHorizontalShortcutField
 
                         Layout.fillWidth: true
@@ -72,7 +72,7 @@ KCMUtils.SimpleKCM {
                         ToolTip.text: i18n("Keyboard shortcut to split selected zone horizontally")
                     }
 
-                    PlasmaZonesKeySequenceInput {
+                    KeySequenceInput {
                         id: editorSplitVerticalShortcutField
 
                         Layout.fillWidth: true
@@ -86,7 +86,7 @@ KCMUtils.SimpleKCM {
                         ToolTip.text: i18n("Keyboard shortcut to split selected zone vertically")
                     }
 
-                    PlasmaZonesKeySequenceInput {
+                    KeySequenceInput {
                         id: editorFillShortcutField
 
                         Layout.fillWidth: true
