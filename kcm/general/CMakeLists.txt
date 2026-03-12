@@ -28,15 +28,6 @@ qt_add_resources(kcm_plasmazones_general "kcm_general_shared_qml"
         ../ui/WideComboBox.qml
 )
 
-# Embed local QML components (extracted from main.qml)
-qt_add_resources(kcm_plasmazones_general "kcm_general_local_qml"
-    PREFIX "${_kcm_qml_prefix}"
-    BASE "ui"
-    FILES
-        ui/EasingSettings.qml
-        ui/OsdCard.qml
-)
-
 target_link_libraries(kcm_plasmazones_general
     PRIVATE
         plasmazones_core

@@ -6,7 +6,6 @@
 #include <QDBusMessage>
 #include <QGuiApplication>
 #include "../common/dbusutils.h"
-#include "../common/screenprovider.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -385,15 +384,34 @@ bool KCMAssignments::hasExplicitTilingAssignmentForScreenActivity(const QString&
 
 bool KCMAssignments::isMonitorDisabled(const QString& screenName) const
 {
-    return isMonitorDisabledFor(m_settings, screenName);
+    return m_settings && m_settings->isMonitorDisabled(screenName);
 }
 
 void KCMAssignments::setMonitorDisabled(const QString& screenName, bool disabled)
 {
-    setMonitorDisabledFor(m_settings, screenName, disabled, [this]() {
-        Q_EMIT disabledMonitorsChanged();
-        setNeedsSave(true);
-    });
+    if (!m_settings || screenName.isEmpty())
+        return;
+
+    QString id = Utils::screenIdForName(screenName);
+    QStringList list = m_settings->disabledMonitors();
+    if (disabled) {
+        if (!list.contains(id)) {
+            list.append(id);
+            m_settings->setDisabledMonitors(list);
+            Q_EMIT disabledMonitorsChanged();
+            setNeedsSave(true);
+        }
+    } else {
+        bool changed = list.removeAll(id) > 0;
+        if (id != screenName) {
+            changed |= list.removeAll(screenName) > 0;
+        }
+        if (changed) {
+            m_settings->setDisabledMonitors(list);
+            Q_EMIT disabledMonitorsChanged();
+            setNeedsSave(true);
+        }
+    }
 }
 
 // ── Quick layout slots ───────────────────────────────────────────────────
@@ -450,7 +468,67 @@ void KCMAssignments::removeAppRuleFromLayout(const QString& layoutId, int index)
 
 void KCMAssignments::refreshScreens()
 {
-    m_screens = screenInfoListToVariantList(fetchScreens());
+    QVariantList newScreens;
+
+    QString primaryScreenName;
+    QDBusMessage primaryReply =
+        KCMDBus::callDaemon(QString(DBus::Interface::Screen), QStringLiteral("getPrimaryScreen"));
+    if (primaryReply.type() == QDBusMessage::ReplyMessage && !primaryReply.arguments().isEmpty()) {
+        primaryScreenName = primaryReply.arguments().first().toString();
+    }
+
+    QDBusMessage screenReply = KCMDBus::callDaemon(QString(DBus::Interface::Screen), QStringLiteral("getScreens"));
+
+    if (screenReply.type() == QDBusMessage::ReplyMessage && !screenReply.arguments().isEmpty()) {
+        QStringList screenNames = screenReply.arguments().first().toStringList();
+        for (const QString& screenName : screenNames) {
+            QDBusMessage infoReply =
+                KCMDBus::callDaemon(QString(DBus::Interface::Screen), QStringLiteral("getScreenInfo"), {screenName});
+
+            if (infoReply.type() == QDBusMessage::ReplyMessage && !infoReply.arguments().isEmpty()) {
+                QString infoJson = infoReply.arguments().first().toString();
+                QJsonDocument doc = QJsonDocument::fromJson(infoJson.toUtf8());
+                if (!doc.isNull() && doc.isObject()) {
+                    QJsonObject jsonObj = doc.object();
+                    QVariantMap screenInfo;
+                    screenInfo[QStringLiteral("name")] = screenName;
+                    screenInfo[QStringLiteral("isPrimary")] = (screenName == primaryScreenName);
+                    if (jsonObj.contains(QStringLiteral("manufacturer")))
+                        screenInfo[QStringLiteral("manufacturer")] = jsonObj[QStringLiteral("manufacturer")].toString();
+                    if (jsonObj.contains(QStringLiteral("model")))
+                        screenInfo[QStringLiteral("model")] = jsonObj[QStringLiteral("model")].toString();
+                    if (jsonObj.contains(QStringLiteral("geometry"))) {
+                        QJsonObject geom = jsonObj[QStringLiteral("geometry")].toObject();
+                        screenInfo[QStringLiteral("resolution")] = QStringLiteral("%1\u00d7%2")
+                                                                       .arg(geom[QStringLiteral("width")].toInt())
+                                                                       .arg(geom[QStringLiteral("height")].toInt());
+                    }
+                    newScreens.append(screenInfo);
+                    continue;
+                }
+            }
+            QVariantMap screenInfo;
+            screenInfo[QStringLiteral("name")] = screenName;
+            screenInfo[QStringLiteral("isPrimary")] = (screenName == primaryScreenName);
+            newScreens.append(screenInfo);
+        }
+    }
+
+    if (newScreens.isEmpty()) {
+        QScreen* primaryScreen = QGuiApplication::primaryScreen();
+        for (QScreen* screen : QGuiApplication::screens()) {
+            QVariantMap screenInfo;
+            screenInfo[QStringLiteral("name")] = screen->name();
+            screenInfo[QStringLiteral("isPrimary")] = (screen == primaryScreen);
+            screenInfo[QStringLiteral("resolution")] =
+                QStringLiteral("%1\u00d7%2").arg(screen->geometry().width()).arg(screen->geometry().height());
+            screenInfo[QStringLiteral("manufacturer")] = screen->manufacturer();
+            screenInfo[QStringLiteral("model")] = screen->model();
+            newScreens.append(screenInfo);
+        }
+    }
+
+    m_screens = newScreens;
     Q_EMIT screensChanged();
 }
 

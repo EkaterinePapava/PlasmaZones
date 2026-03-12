@@ -10,16 +10,12 @@ kconfig_add_kcfg_files(kcm_common_kcfg_SRCS
 
 add_library(plasmazones_kcm_common STATIC
     assignmentmanager.cpp
-    assignmentmanager_saveload.cpp
     assignmentmanager.h
     daemoncontroller.cpp
     daemoncontroller.h
     dbusutils.h
     layoutmanager.cpp
     layoutmanager.h
-    perscreenhelpers.h
-    screenprovider.cpp
-    screenprovider.h
     ${kcm_common_kcfg_SRCS}
 )
 

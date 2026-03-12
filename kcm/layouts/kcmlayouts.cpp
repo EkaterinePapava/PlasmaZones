@@ -6,7 +6,6 @@
 #include <QDBusMessage>
 #include <QGuiApplication>
 #include "../common/dbusutils.h"
-#include "../common/screenprovider.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QScreen>
@@ -264,7 +263,41 @@ QString KCMLayouts::currentScreenName() const
 
 void KCMLayouts::refreshScreens()
 {
-    m_screens = screenInfoListToVariantList(fetchScreens());
+    QVariantList newScreens;
+
+    // Get primary screen name from daemon
+    QString primaryScreenName;
+    QDBusMessage primaryReply =
+        KCMDBus::callDaemon(QString(DBus::Interface::Screen), QStringLiteral("getPrimaryScreen"));
+    if (primaryReply.type() == QDBusMessage::ReplyMessage && !primaryReply.arguments().isEmpty()) {
+        primaryScreenName = primaryReply.arguments().first().toString();
+    }
+
+    // Get screens from daemon
+    QDBusMessage screenReply = KCMDBus::callDaemon(QString(DBus::Interface::Screen), QStringLiteral("getScreens"));
+
+    if (screenReply.type() == QDBusMessage::ReplyMessage && !screenReply.arguments().isEmpty()) {
+        QStringList screenNames = screenReply.arguments().first().toStringList();
+        for (const QString& screenName : screenNames) {
+            QVariantMap screenInfo;
+            screenInfo[QStringLiteral("name")] = screenName;
+            screenInfo[QStringLiteral("isPrimary")] = (screenName == primaryScreenName);
+            newScreens.append(screenInfo);
+        }
+    }
+
+    // Fallback: if no screens from daemon, get from Qt
+    if (newScreens.isEmpty()) {
+        QScreen* primaryScreen = QGuiApplication::primaryScreen();
+        for (QScreen* screen : QGuiApplication::screens()) {
+            QVariantMap screenInfo;
+            screenInfo[QStringLiteral("name")] = screen->name();
+            screenInfo[QStringLiteral("isPrimary")] = (screen == primaryScreen);
+            newScreens.append(screenInfo);
+        }
+    }
+
+    m_screens = newScreens;
     Q_EMIT screensChanged();
 }
 
