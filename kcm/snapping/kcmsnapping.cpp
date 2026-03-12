@@ -4,7 +4,9 @@
 #include "kcmsnapping.h"
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QTimer>
 #include "../common/dbusutils.h"
+#include "../common/screenhelper.h"
 #include "../common/screenprovider.h"
 #include <KPluginFactory>
 #include "../../src/config/configdefaults.h"
@@ -23,15 +25,21 @@ KCMSnapping::KCMSnapping(QObject* parent, const KPluginMetaData& data)
     m_settings = new Settings(this);
     setButtons(Apply | Default);
 
-    refreshScreens();
+    m_screenHelper = std::make_unique<ScreenHelper>(m_settings, this);
+    connect(m_screenHelper.get(), &ScreenHelper::screensChanged, this, &KCMSnapping::screensChanged);
+    connect(m_screenHelper.get(), &ScreenHelper::needsSave, this, [this]() {
+        setNeedsSave(true);
+    });
+
+    m_screenHelper->refreshScreens();
 
     // Reload when another process or sub-KCM saves settings
     QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
                                           QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
-                                          SLOT(load()));
+                                          SLOT(onExternalSettingsChanged()));
 
     // Listen for screen changes from the daemon
-    connectScreenChangeSignals(this);
+    m_screenHelper->connectToDaemonSignals();
 }
 
 // ── Load / Save ─────────────────────────────────────────────────────────
@@ -40,19 +48,30 @@ void KCMSnapping::load()
 {
     KQuickConfigModule::load();
     m_settings->load();
-    refreshScreens();
+    m_screenHelper->refreshScreens();
     emitAllChanged();
     setNeedsSave(false);
 }
 
 void KCMSnapping::save()
 {
+    m_saving = true;
     m_settings->save();
 
     KCMDBus::notifyReload();
 
     KQuickConfigModule::save();
     setNeedsSave(false);
+    QTimer::singleShot(0, this, [this]() {
+        m_saving = false;
+    });
+}
+
+void KCMSnapping::onExternalSettingsChanged()
+{
+    if (!m_saving) {
+        load();
+    }
 }
 
 void KCMSnapping::defaults()

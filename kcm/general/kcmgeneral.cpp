@@ -4,6 +4,7 @@
 #include "kcmgeneral.h"
 #include <QDBusConnection>
 #include <QDBusPendingCall>
+#include <QTimer>
 #include <KPluginFactory>
 #include "../common/dbusutils.h"
 #include "../../src/config/configdefaults.h"
@@ -22,7 +23,7 @@ KCMGeneral::KCMGeneral(QObject* parent, const KPluginMetaData& data)
 
     QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
                                           QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
-                                          SLOT(load()));
+                                          SLOT(onExternalSettingsChanged()));
 }
 
 // ── Load / Save / Defaults ──────────────────────────────────────────────
@@ -37,12 +38,23 @@ void KCMGeneral::load()
 
 void KCMGeneral::save()
 {
+    m_saving = true;
     m_settings->save();
 
     KCMDBus::notifyReload();
 
     KQuickConfigModule::save();
     setNeedsSave(false);
+    QTimer::singleShot(0, this, [this]() {
+        m_saving = false;
+    });
+}
+
+void KCMGeneral::onExternalSettingsChanged()
+{
+    if (!m_saving) {
+        load();
+    }
 }
 
 void KCMGeneral::defaults()

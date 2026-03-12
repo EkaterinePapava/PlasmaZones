@@ -10,6 +10,7 @@
 namespace PlasmaZones {
 
 class LayoutManager;
+class ScreenHelper;
 class Settings;
 
 /**
@@ -80,6 +81,7 @@ public Q_SLOTS:
     void save() override;
     void defaults() override;
     void refreshScreens();
+    void onExternalSettingsChanged();
 
 Q_SIGNALS:
     void layoutsChanged();
@@ -100,8 +102,9 @@ private:
     QString currentScreenName() const;
 
     Settings* m_settings = nullptr;
+    bool m_saving = false;
     std::unique_ptr<LayoutManager> m_layoutManager;
-    QVariantList m_screens;
+    std::unique_ptr<ScreenHelper> m_screenHelper;
 };
 
 } // namespace PlasmaZones

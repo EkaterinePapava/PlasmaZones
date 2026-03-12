@@ -6,9 +6,11 @@
 #include <KQuickConfigModule>
 #include <QColor>
 #include <functional>
+#include <memory>
 
 namespace PlasmaZones {
 
+class ScreenHelper;
 class Settings;
 
 /**
@@ -75,7 +77,7 @@ class KCMAutotiling : public KQuickConfigModule
 
 public:
     KCMAutotiling(QObject* parent, const KPluginMetaData& data);
-    ~KCMAutotiling() override = default;
+    ~KCMAutotiling() override;
 
     // Enable
     bool autotileEnabled() const;
@@ -156,6 +158,7 @@ public Q_SLOTS:
     void save() override;
     void defaults() override;
     void refreshScreens();
+    void onExternalSettingsChanged();
 
 Q_SIGNALS:
     // Enable
@@ -198,7 +201,8 @@ private:
     void emitAllChanged();
 
     Settings* m_settings = nullptr;
-    QVariantList m_screens;
+    std::unique_ptr<ScreenHelper> m_screenHelper;
+    bool m_saving = false;
 };
 
 } // namespace PlasmaZones

@@ -4,6 +4,7 @@
 #include "kcmexclusions.h"
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QTimer>
 #include <QJsonArray>
 #include "../common/dbusutils.h"
 #include <QJsonDocument>
@@ -26,7 +27,7 @@ KCMExclusions::KCMExclusions(QObject* parent, const KPluginMetaData& data)
 
     QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
                                           QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
-                                          SLOT(load()));
+                                          SLOT(onExternalSettingsChanged()));
 }
 
 // ── Load / Save ─────────────────────────────────────────────────────────
@@ -41,12 +42,23 @@ void KCMExclusions::load()
 
 void KCMExclusions::save()
 {
+    m_saving = true;
     m_settings->save();
 
     KCMDBus::notifyReload();
 
     KQuickConfigModule::save();
     setNeedsSave(false);
+    QTimer::singleShot(0, this, [this]() {
+        m_saving = false;
+    });
+}
+
+void KCMExclusions::onExternalSettingsChanged()
+{
+    if (!m_saving) {
+        load();
+    }
 }
 
 void KCMExclusions::defaults()

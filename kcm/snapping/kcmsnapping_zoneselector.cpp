@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QFontDatabase>
 #include "../common/perscreenhelpers.h"
+#include "../common/screenhelper.h"
 #include "../common/screenprovider.h"
 #include "../../src/config/settings.h"
 #include "../../src/core/utils.h"
@@ -280,13 +281,12 @@ void KCMSnapping::setZoneSelectorMaxRows(int rows)
 
 QVariantList KCMSnapping::screens() const
 {
-    return m_screens;
+    return m_screenHelper->screens();
 }
 
 void KCMSnapping::refreshScreens()
 {
-    m_screens = screenInfoListToVariantList(fetchScreens());
-    Q_EMIT screensChanged();
+    m_screenHelper->refreshScreens();
 }
 
 // ── Font helpers ────────────────────────────────────────────────────────
@@ -394,14 +394,12 @@ bool KCMSnapping::hasPerScreenZoneSelectorSettings(const QString& screenName) co
 
 bool KCMSnapping::isMonitorDisabled(const QString& screenName) const
 {
-    return isMonitorDisabledFor(m_settings, screenName);
+    return m_screenHelper->isMonitorDisabled(screenName);
 }
 
 void KCMSnapping::setMonitorDisabled(const QString& screenName, bool disabled)
 {
-    setMonitorDisabledFor(m_settings, screenName, disabled, [this]() {
-        setNeedsSave(true);
-    });
+    m_screenHelper->setMonitorDisabled(screenName, disabled);
 }
 
 } // namespace PlasmaZones

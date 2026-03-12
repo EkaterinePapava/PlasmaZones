@@ -54,6 +54,7 @@ public Q_SLOTS:
     void load() override;
     void save() override;
     void defaults() override;
+    void onExternalSettingsChanged();
 
 Q_SIGNALS:
     void excludedApplicationsChanged();
@@ -66,6 +67,7 @@ private:
     void emitAllChanged();
 
     Settings* m_settings = nullptr;
+    bool m_saving = false;
 };
 
 } // namespace PlasmaZones

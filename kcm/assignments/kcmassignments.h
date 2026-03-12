@@ -11,6 +11,7 @@ namespace PlasmaZones {
 
 class AssignmentManager;
 class LayoutManager;
+class ScreenHelper;
 class Settings;
 
 /**
@@ -141,6 +142,7 @@ public Q_SLOTS:
     void refreshScreens();
     void refreshVirtualDesktops();
     void refreshActivities();
+    void onExternalSettingsChanged();
 
 Q_SIGNALS:
     void assignmentViewModeChanged();
@@ -170,9 +172,10 @@ private:
     void onActivitiesChanged();
 
     Settings* m_settings = nullptr;
+    bool m_saving = false;
     std::unique_ptr<AssignmentManager> m_assignmentManager;
     std::unique_ptr<LayoutManager> m_layoutManager;
-    QVariantList m_screens;
+    std::unique_ptr<ScreenHelper> m_screenHelper;
 
     // Virtual desktops
     int m_virtualDesktopCount = 1;

@@ -4,7 +4,9 @@
 #include "kcmassignments.h"
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QTimer>
 #include "../common/dbusutils.h"
+#include "../common/screenhelper.h"
 #include "../common/screenprovider.h"
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -27,12 +29,21 @@ KCMAssignments::KCMAssignments(QObject* parent, const KPluginMetaData& data)
     m_settings = new Settings(this);
     setButtons(Apply | Default);
 
+    m_screenHelper = std::make_unique<ScreenHelper>(m_settings, this);
+    connect(m_screenHelper.get(), &ScreenHelper::screensChanged, this, &KCMAssignments::screensChanged);
+    connect(m_screenHelper.get(), &ScreenHelper::disabledMonitorsChanged, this,
+            &KCMAssignments::disabledMonitorsChanged);
+    connect(m_screenHelper.get(), &ScreenHelper::needsSave, this, [this]() {
+        setNeedsSave(true);
+    });
+
     // Create layout manager (for combo boxes)
     m_layoutManager = std::make_unique<LayoutManager>(
         m_settings,
         [this]() -> QString {
-            if (!m_screens.isEmpty())
-                return m_screens.first().toMap().value(QStringLiteral("name")).toString();
+            auto scr = m_screenHelper->screens();
+            if (!scr.isEmpty())
+                return scr.first().toMap().value(QStringLiteral("name")).toString();
             return QString();
         },
         this);
@@ -42,7 +53,7 @@ KCMAssignments::KCMAssignments(QObject* parent, const KPluginMetaData& data)
     m_assignmentManager = std::make_unique<AssignmentManager>(
         m_settings,
         [this]() {
-            return m_screens;
+            return m_screenHelper->screens();
         },
         this);
 
@@ -70,7 +81,7 @@ KCMAssignments::KCMAssignments(QObject* parent, const KPluginMetaData& data)
     connect(m_assignmentManager.get(), &AssignmentManager::refreshScreensRequested, this,
             &KCMAssignments::refreshScreens);
 
-    refreshScreens();
+    m_screenHelper->refreshScreens();
     refreshVirtualDesktops();
     refreshActivities();
 
@@ -78,7 +89,7 @@ KCMAssignments::KCMAssignments(QObject* parent, const KPluginMetaData& data)
     m_layoutManager->connectToDaemonSignals();
 
     // Listen for screen changes
-    connectScreenChangeSignals(this);
+    m_screenHelper->connectToDaemonSignals();
 
     // Listen for screen layout assignment changes (routed to AssignmentManager)
     QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
@@ -107,7 +118,7 @@ KCMAssignments::KCMAssignments(QObject* parent, const KPluginMetaData& data)
     // Reload when another sub-KCM or process saves settings
     QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
                                           QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
-                                          SLOT(load()));
+                                          SLOT(onExternalSettingsChanged()));
 }
 
 KCMAssignments::~KCMAssignments() = default;
@@ -120,7 +131,7 @@ void KCMAssignments::load()
     m_settings->load();
     m_assignmentManager->load();
     m_layoutManager->loadSync();
-    refreshScreens();
+    m_screenHelper->refreshScreens();
     refreshVirtualDesktops();
     refreshActivities();
     emitAllChanged();
@@ -129,6 +140,7 @@ void KCMAssignments::load()
 
 void KCMAssignments::save()
 {
+    m_saving = true;
     m_layoutManager->setSaveInProgress(true);
 
     m_settings->save();
@@ -147,6 +159,16 @@ void KCMAssignments::save()
 
     KQuickConfigModule::save();
     setNeedsSave(false);
+    QTimer::singleShot(0, this, [this]() {
+        m_saving = false;
+    });
+}
+
+void KCMAssignments::onExternalSettingsChanged()
+{
+    if (!m_saving) {
+        load();
+    }
 }
 
 void KCMAssignments::defaults()
@@ -194,7 +216,7 @@ QString KCMAssignments::autotileAlgorithm() const
 
 QVariantList KCMAssignments::screens() const
 {
-    return m_screens;
+    return m_screenHelper->screens();
 }
 
 // ── Virtual desktops ─────────────────────────────────────────────────────
@@ -363,15 +385,12 @@ bool KCMAssignments::hasExplicitTilingAssignmentForScreenActivity(const QString&
 
 bool KCMAssignments::isMonitorDisabled(const QString& screenName) const
 {
-    return isMonitorDisabledFor(m_settings, screenName);
+    return m_screenHelper->isMonitorDisabled(screenName);
 }
 
 void KCMAssignments::setMonitorDisabled(const QString& screenName, bool disabled)
 {
-    setMonitorDisabledFor(m_settings, screenName, disabled, [this]() {
-        Q_EMIT disabledMonitorsChanged();
-        setNeedsSave(true);
-    });
+    m_screenHelper->setMonitorDisabled(screenName, disabled);
 }
 
 // ── Quick layout slots ───────────────────────────────────────────────────
@@ -466,8 +485,7 @@ QVariantList KCMAssignments::getRunningWindows() const
 
 void KCMAssignments::refreshScreens()
 {
-    m_screens = screenInfoListToVariantList(fetchScreens());
-    Q_EMIT screensChanged();
+    m_screenHelper->refreshScreens();
 }
 
 void KCMAssignments::refreshVirtualDesktops()

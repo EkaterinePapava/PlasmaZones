@@ -18,6 +18,8 @@ add_library(plasmazones_kcm_common STATIC
     layoutmanager.cpp
     layoutmanager.h
     perscreenhelpers.h
+    screenhelper.cpp
+    screenhelper.h
     screenprovider.cpp
     screenprovider.h
     ${kcm_common_kcfg_SRCS}

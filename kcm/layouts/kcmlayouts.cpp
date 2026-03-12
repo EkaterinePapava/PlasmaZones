@@ -5,7 +5,9 @@
 #include "../plasmazonesmoduledata.h"
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QTimer>
 #include "../common/dbusutils.h"
+#include "../common/screenhelper.h"
 #include "../common/screenprovider.h"
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -37,18 +39,21 @@ KCMLayouts::KCMLayouts(QObject* parent, const KPluginMetaData& data)
         setNeedsSave(true);
     });
 
-    refreshScreens();
+    m_screenHelper = std::make_unique<ScreenHelper>(m_settings, this);
+    connect(m_screenHelper.get(), &ScreenHelper::screensChanged, this, &KCMLayouts::screensChanged);
+
+    m_screenHelper->refreshScreens();
 
     // Listen for layout changes from the daemon
     m_layoutManager->connectToDaemonSignals();
 
     // Listen for screen changes
-    connectScreenChangeSignals(this);
+    m_screenHelper->connectToDaemonSignals();
 
     // Reload when another sub-KCM or process saves settings
     QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
                                           QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
-                                          SLOT(load()));
+                                          SLOT(onExternalSettingsChanged()));
 }
 
 KCMLayouts::~KCMLayouts() = default;
@@ -61,13 +66,14 @@ void KCMLayouts::load()
     m_settings->load();
     m_layoutManager->clearPendingStates();
     m_layoutManager->loadSync();
-    refreshScreens();
+    m_screenHelper->refreshScreens();
     emitAllChanged();
     setNeedsSave(false);
 }
 
 void KCMLayouts::save()
 {
+    m_saving = true;
     m_layoutManager->setSaveInProgress(true);
 
     // Save settings (defaultLayoutId, autotileAlgorithm)
@@ -90,6 +96,16 @@ void KCMLayouts::save()
 
     KQuickConfigModule::save();
     setNeedsSave(false);
+    QTimer::singleShot(0, this, [this]() {
+        m_saving = false;
+    });
+}
+
+void KCMLayouts::onExternalSettingsChanged()
+{
+    if (!m_saving) {
+        load();
+    }
 }
 
 void KCMLayouts::defaults()
@@ -238,22 +254,22 @@ void KCMLayouts::setLayoutAutoAssign(const QString& layoutId, bool enabled)
 
 QVariantList KCMLayouts::screens() const
 {
-    return m_screens;
+    return m_screenHelper->screens();
 }
 
 QString KCMLayouts::currentScreenName() const
 {
     // Return first screen name for editor targeting
-    if (!m_screens.isEmpty()) {
-        return m_screens.first().toMap().value(QStringLiteral("name")).toString();
+    const auto s = m_screenHelper->screens();
+    if (!s.isEmpty()) {
+        return s.first().toMap().value(QStringLiteral("name")).toString();
     }
     return QString();
 }
 
 void KCMLayouts::refreshScreens()
 {
-    m_screens = screenInfoListToVariantList(fetchScreens());
-    Q_EMIT screensChanged();
+    m_screenHelper->refreshScreens();
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────

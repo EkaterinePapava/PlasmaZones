@@ -6,9 +6,11 @@
 #include <KQuickConfigModule>
 #include <QColor>
 #include <functional>
+#include <memory>
 
 namespace PlasmaZones {
 
+class ScreenHelper;
 class Settings;
 
 /**
@@ -294,6 +296,7 @@ public Q_SLOTS:
     void save() override;
     void defaults() override;
     void refreshScreens();
+    void onExternalSettingsChanged();
 
 Q_SIGNALS:
     // Activation
@@ -380,7 +383,8 @@ private:
     static QVariantList convertTriggersForStorage(const QVariantList& triggers);
 
     Settings* m_settings = nullptr;
-    QVariantList m_screens;
+    std::unique_ptr<ScreenHelper> m_screenHelper;
+    bool m_saving = false;
 };
 
 } // namespace PlasmaZones
