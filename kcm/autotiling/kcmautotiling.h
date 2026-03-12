@@ -197,17 +197,6 @@ Q_SIGNALS:
 private:
     void emitAllChanged();
 
-    // Per-screen settings helpers (same pattern as snapping KCM)
-    using PerScreenGetter = QVariantMap (Settings::*)(const QString&) const;
-    using PerScreenSetter = void (Settings::*)(const QString&, const QString&, const QVariant&);
-    using PerScreenClearer = void (Settings::*)(const QString&);
-    using PerScreenChecker = bool (Settings::*)(const QString&) const;
-    QVariantMap getPerScreenSettingsImpl(const QString& screenName, PerScreenGetter getter) const;
-    void setPerScreenSettingImpl(const QString& screenName, const QString& key, const QVariant& value,
-                                 PerScreenSetter setter);
-    void clearPerScreenSettingsImpl(const QString& screenName, PerScreenClearer clearer);
-    bool hasPerScreenSettingsImpl(const QString& screenName, PerScreenChecker checker) const;
-
     Settings* m_settings = nullptr;
     QVariantList m_screens;
 };

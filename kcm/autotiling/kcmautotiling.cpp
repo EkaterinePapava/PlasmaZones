@@ -3,19 +3,14 @@
 
 #include "kcmautotiling.h"
 #include <QDBusConnection>
-#include <QDBusMessage>
-#include <QDBusPendingCall>
-#include <QGuiApplication>
 #include "../common/dbusutils.h"
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QScreen>
+#include "../common/perscreenhelpers.h"
+#include "../common/screenprovider.h"
 #include <KPluginFactory>
 #include "../../src/config/configdefaults.h"
 #include "../../src/config/settings.h"
 #include "../../src/core/constants.h"
 #include "../../src/core/interfaces.h"
-#include "../../src/core/utils.h"
 #include "../../src/autotile/AlgorithmRegistry.h"
 #include "../../src/autotile/TilingAlgorithm.h"
 #include "../../src/autotile/TilingState.h"
@@ -481,92 +476,7 @@ QVariantList KCMAutotiling::screens() const
 
 void KCMAutotiling::refreshScreens()
 {
-    QVariantList newScreens;
-
-    // Get primary screen name from daemon for isPrimary flag
-    QString primaryScreenName;
-    QDBusMessage primaryReply =
-        KCMDBus::callDaemon(QString(DBus::Interface::Screen), QStringLiteral("getPrimaryScreen"));
-    if (primaryReply.type() == QDBusMessage::ReplyMessage && !primaryReply.arguments().isEmpty()) {
-        primaryScreenName = primaryReply.arguments().first().toString();
-    }
-
-    // Get screens from daemon via D-Bus
-    QDBusMessage screenReply = KCMDBus::callDaemon(QString(DBus::Interface::Screen), QStringLiteral("getScreens"));
-
-    if (screenReply.type() == QDBusMessage::ReplyMessage && !screenReply.arguments().isEmpty()) {
-        QStringList screenNames = screenReply.arguments().first().toStringList();
-
-        for (const QString& screenName : screenNames) {
-            // Get screen info
-            QDBusMessage infoReply =
-                KCMDBus::callDaemon(QString(DBus::Interface::Screen), QStringLiteral("getScreenInfo"), {screenName});
-
-            if (infoReply.type() == QDBusMessage::ReplyMessage && !infoReply.arguments().isEmpty()) {
-                QString infoJson = infoReply.arguments().first().toString();
-                QJsonDocument doc = QJsonDocument::fromJson(infoJson.toUtf8());
-                if (!doc.isNull() && doc.isObject()) {
-                    QJsonObject jsonObj = doc.object();
-                    QVariantMap screenInfo;
-                    screenInfo[QStringLiteral("name")] = screenName;
-                    screenInfo[QStringLiteral("isPrimary")] = (screenName == primaryScreenName);
-
-                    // Include stable EDID-based screen ID from daemon
-                    if (jsonObj.contains(JsonKeys::ScreenId)) {
-                        screenInfo[QStringLiteral("screenId")] = jsonObj[JsonKeys::ScreenId].toString();
-                    } else {
-                        screenInfo[QStringLiteral("screenId")] = screenName;
-                    }
-
-                    // Forward manufacturer/model for display
-                    if (jsonObj.contains(JsonKeys::Manufacturer)) {
-                        screenInfo[QStringLiteral("manufacturer")] = jsonObj[JsonKeys::Manufacturer].toString();
-                    }
-                    if (jsonObj.contains(JsonKeys::Model)) {
-                        screenInfo[QStringLiteral("model")] = jsonObj[JsonKeys::Model].toString();
-                    }
-
-                    // Create resolution string from geometry for QML display
-                    if (jsonObj.contains(JsonKeys::Geometry)) {
-                        QJsonObject geom = jsonObj[JsonKeys::Geometry].toObject();
-                        int width = geom[JsonKeys::Width].toInt();
-                        int height = geom[JsonKeys::Height].toInt();
-                        screenInfo[QStringLiteral("resolution")] = QStringLiteral("%1\u00d7%2").arg(width).arg(height);
-                    }
-
-                    newScreens.append(screenInfo);
-                } else {
-                    QVariantMap screenInfo;
-                    screenInfo[QStringLiteral("name")] = screenName;
-                    screenInfo[QStringLiteral("isPrimary")] = (screenName == primaryScreenName);
-                    newScreens.append(screenInfo);
-                }
-            } else {
-                QVariantMap screenInfo;
-                screenInfo[QStringLiteral("name")] = screenName;
-                screenInfo[QStringLiteral("isPrimary")] = (screenName == primaryScreenName);
-                newScreens.append(screenInfo);
-            }
-        }
-    }
-
-    // Fallback: if no screens from daemon, get from Qt
-    if (newScreens.isEmpty()) {
-        QScreen* primaryScreen = QGuiApplication::primaryScreen();
-        for (QScreen* screen : QGuiApplication::screens()) {
-            QVariantMap screenInfo;
-            screenInfo[QStringLiteral("name")] = screen->name();
-            screenInfo[QStringLiteral("isPrimary")] = (screen == primaryScreen);
-            screenInfo[QStringLiteral("resolution")] =
-                QStringLiteral("%1\u00d7%2").arg(screen->geometry().width()).arg(screen->geometry().height());
-            screenInfo[QStringLiteral("manufacturer")] = screen->manufacturer();
-            screenInfo[QStringLiteral("model")] = screen->model();
-            screenInfo[QStringLiteral("screenId")] = screen->name();
-            newScreens.append(screenInfo);
-        }
-    }
-
-    m_screens = newScreens;
+    m_screens = screenInfoListToVariantList(fetchScreens());
     Q_EMIT screensChanged();
 }
 
@@ -612,90 +522,42 @@ QVariantList KCMAutotiling::generateAlgorithmPreview(const QString& algorithmId,
     return AlgorithmRegistry::zonesToRelativeGeometry(zones, previewRect);
 }
 
-// ── Per-screen settings helpers ─────────────────────────────────────────
+// ── Per-screen settings ─────────────────────────────────────────────────
 
-QVariantMap KCMAutotiling::getPerScreenSettingsImpl(const QString& screenName, PerScreenGetter getter) const
-{
-    return m_settings ? (m_settings->*getter)(Utils::screenIdForName(screenName)) : QVariantMap();
-}
-
-void KCMAutotiling::setPerScreenSettingImpl(const QString& screenName, const QString& key, const QVariant& value,
-                                            PerScreenSetter setter)
-{
-    if (!m_settings || screenName.isEmpty()) {
-        return;
-    }
-    (m_settings->*setter)(Utils::screenIdForName(screenName), key, value);
-    setNeedsSave(true);
-}
-
-void KCMAutotiling::clearPerScreenSettingsImpl(const QString& screenName, PerScreenClearer clearer)
-{
-    if (!m_settings || screenName.isEmpty()) {
-        return;
-    }
-    (m_settings->*clearer)(Utils::screenIdForName(screenName));
-    setNeedsSave(true);
-}
-
-bool KCMAutotiling::hasPerScreenSettingsImpl(const QString& screenName, PerScreenChecker checker) const
-{
-    return m_settings ? (m_settings->*checker)(Utils::screenIdForName(screenName)) : false;
-}
-
-// Per-screen autotiling
 QVariantMap KCMAutotiling::getPerScreenAutotileSettings(const QString& screenName) const
 {
-    return getPerScreenSettingsImpl(screenName, &Settings::getPerScreenAutotileSettings);
+    return PerScreen::get(m_settings, screenName, &Settings::getPerScreenAutotileSettings);
 }
 
 void KCMAutotiling::setPerScreenAutotileSetting(const QString& screenName, const QString& key, const QVariant& value)
 {
-    setPerScreenSettingImpl(screenName, key, value, &Settings::setPerScreenAutotileSetting);
+    PerScreen::set(m_settings, screenName, key, value, &Settings::setPerScreenAutotileSetting);
+    setNeedsSave(true);
 }
 
 void KCMAutotiling::clearPerScreenAutotileSettings(const QString& screenName)
 {
-    clearPerScreenSettingsImpl(screenName, &Settings::clearPerScreenAutotileSettings);
+    PerScreen::clear(m_settings, screenName, &Settings::clearPerScreenAutotileSettings);
+    setNeedsSave(true);
 }
 
 bool KCMAutotiling::hasPerScreenAutotileSettings(const QString& screenName) const
 {
-    return hasPerScreenSettingsImpl(screenName, &Settings::hasPerScreenAutotileSettings);
+    return PerScreen::has(m_settings, screenName, &Settings::hasPerScreenAutotileSettings);
 }
 
 // ── Monitor disable ─────────────────────────────────────────────────────
 
 bool KCMAutotiling::isMonitorDisabled(const QString& screenName) const
 {
-    return m_settings && m_settings->isMonitorDisabled(screenName);
+    return isMonitorDisabledFor(m_settings, screenName);
 }
 
 void KCMAutotiling::setMonitorDisabled(const QString& screenName, bool disabled)
 {
-    if (!m_settings || screenName.isEmpty()) {
-        return;
-    }
-    // Translate connector name to stable EDID-based screen ID for storage
-    QString id = Utils::screenIdForName(screenName);
-    QStringList list = m_settings->disabledMonitors();
-    if (disabled) {
-        if (!list.contains(id)) {
-            list.append(id);
-            m_settings->setDisabledMonitors(list);
-            setNeedsSave(true);
-        }
-    } else {
-        // Remove both screen ID and any legacy connector name entries
-        bool changed = list.removeAll(id) > 0;
-        if (id != screenName) {
-            changed |= list.removeAll(screenName) > 0;
-        }
-        if (changed) {
-            m_settings->setDisabledMonitors(list);
-            setNeedsSave(true);
-        }
-    }
+    setMonitorDisabledFor(m_settings, screenName, disabled, [this]() {
+        setNeedsSave(true);
+    });
 }
 
 } // namespace PlasmaZones
