@@ -3,10 +3,12 @@
 
 #pragma once
 
+#include <QDBusConnection>
 #include <QList>
 #include <QString>
 #include <QVariantList>
 #include <functional>
+#include "../../src/core/constants.h"
 
 namespace PlasmaZones {
 
@@ -58,5 +60,20 @@ bool isMonitorDisabledFor(const Settings* settings, const QString& screenName);
  */
 void setMonitorDisabledFor(Settings* settings, const QString& screenName, bool disabled,
                            const std::function<void()>& onChanged);
+
+/**
+ * @brief Connect D-Bus screen change signals to a receiver's refreshScreens() slot.
+ *
+ * Call this in KCM constructors that need screen change tracking.
+ */
+inline void connectScreenChangeSignals(QObject* receiver)
+{
+    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                          QString(DBus::Interface::Screen), QStringLiteral("screenAdded"), receiver,
+                                          SLOT(refreshScreens()));
+    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                          QString(DBus::Interface::Screen), QStringLiteral("screenRemoved"), receiver,
+                                          SLOT(refreshScreens()));
+}
 
 } // namespace PlasmaZones

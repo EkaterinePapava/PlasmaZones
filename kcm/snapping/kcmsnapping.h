@@ -370,9 +370,11 @@ Q_SIGNALS:
 
     // Color import
     void colorImportError(const QString& error);
+    void colorImportSuccess();
 
 private:
     void emitAllChanged();
+    void emitColorChanged();
 
     static QVariantList convertTriggersForQml(const QVariantList& triggers);
     static QVariantList convertTriggersForStorage(const QVariantList& triggers);

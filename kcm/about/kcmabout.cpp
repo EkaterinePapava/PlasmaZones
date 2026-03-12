@@ -24,7 +24,7 @@ KCMAbout::KCMAbout(QObject* parent, const KPluginMetaData& data)
     setButtons({});
 
     // Daemon lifecycle management
-    m_daemonController = std::make_unique<DaemonController>(this);
+    m_daemonController = std::make_unique<DaemonController>(nullptr);
     connect(m_daemonController.get(), &DaemonController::runningChanged, this, &KCMAbout::daemonRunningChanged);
     connect(m_daemonController.get(), &DaemonController::enabledChanged, this, &KCMAbout::daemonEnabledChanged);
 
@@ -33,6 +33,7 @@ KCMAbout::KCMAbout(QObject* parent, const KPluginMetaData& data)
     connect(m_updateChecker, &UpdateChecker::updateAvailableChanged, this, &KCMAbout::updateAvailableChanged);
     connect(m_updateChecker, &UpdateChecker::latestVersionChanged, this, &KCMAbout::latestVersionChanged);
     connect(m_updateChecker, &UpdateChecker::checkingChanged, this, &KCMAbout::checkingForUpdatesChanged);
+    connect(m_updateChecker, &UpdateChecker::releaseUrlChanged, this, &KCMAbout::releaseUrlChanged);
 
     // Restore persisted dismissed version
     KSharedConfig::Ptr config = KSharedConfig::openConfig(QStringLiteral("plasmazonesrc"));

@@ -452,6 +452,8 @@ void AssignmentManager::resetToDefaults()
     m_assignmentViewMode = 0;
     clearPendingStates();
 
+    Q_EMIT screenAssignmentsChanged();
+    Q_EMIT quickLayoutSlotsChanged();
     Q_EMIT tilingScreenAssignmentsChanged();
     Q_EMIT tilingActivityAssignmentsChanged();
     Q_EMIT tilingDesktopAssignmentsChanged();

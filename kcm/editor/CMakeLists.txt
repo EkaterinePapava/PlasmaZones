@@ -20,7 +20,6 @@ qt_add_resources(kcm_plasmazones_editor "kcm_editor_shared_qml"
         ../ui/KeySequenceInput.qml
         ../ui/ModifierAndMouseCheckBoxes.qml
         ../ui/InputCapture.qml
-        ../ui/qmldir
 )
 
 target_link_libraries(kcm_plasmazones_editor

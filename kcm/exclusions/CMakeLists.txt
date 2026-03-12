@@ -6,15 +6,8 @@ set(kcm_exclusions_SRCS
     kcmexclusions.h
 )
 
-# KConfigXT — own copy of generated symbols (needed by ConfigDefaults, which
-# is header-only and instantiates PlasmaZonesConfig inline)
-kconfig_add_kcfg_files(kcm_exclusions_kcfg_SRCS
-    ../../src/config/plasmazones.kcfgc
-    GENERATE_MOC
-)
-
 kcmutils_add_qml_kcm(kcm_plasmazones_exclusions
-    SOURCES ${kcm_exclusions_SRCS} ${kcm_exclusions_kcfg_SRCS}
+    SOURCES ${kcm_exclusions_SRCS}
 )
 
 # Embed shared QML components used by this KCM
@@ -30,6 +23,7 @@ qt_add_resources(kcm_plasmazones_exclusions "kcm_exclusions_shared_qml"
 
 target_link_libraries(kcm_plasmazones_exclusions
     PRIVATE
+        plasmazones_kcm_common
         plasmazones_core
         Qt6::DBus
         KF6::KCMUtils

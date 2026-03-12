@@ -539,6 +539,7 @@ void AssignmentManager::onQuickLayoutSlotsChanged()
                 }
             }
         }
+        Q_EMIT quickLayoutSlotsChanged();
     });
 }
 

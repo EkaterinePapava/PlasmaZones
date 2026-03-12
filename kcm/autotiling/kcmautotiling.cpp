@@ -27,13 +27,13 @@ KCMAutotiling::KCMAutotiling(QObject* parent, const KPluginMetaData& data)
 
     refreshScreens();
 
+    // Reload when another process or sub-KCM saves settings
+    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                          QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
+                                          SLOT(load()));
+
     // Listen for screen changes from the daemon
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::Screen), QStringLiteral("screenAdded"), this,
-                                          SLOT(refreshScreens()));
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::Screen), QStringLiteral("screenRemoved"), this,
-                                          SLOT(refreshScreens()));
+    connectScreenChangeSignals(this);
 }
 
 // ── Load / Save ─────────────────────────────────────────────────────────

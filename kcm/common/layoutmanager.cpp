@@ -29,6 +29,23 @@ LayoutManager::LayoutManager(Settings* settings, ScreenNameResolver screenNameRe
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// D-Bus daemon signal connections
+// ═══════════════════════════════════════════════════════════════════════════════
+
+void LayoutManager::connectToDaemonSignals()
+{
+    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                          QString(DBus::Interface::LayoutManager), QStringLiteral("layoutCreated"),
+                                          this, SLOT(scheduleLoad()));
+    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                          QString(DBus::Interface::LayoutManager), QStringLiteral("layoutDeleted"),
+                                          this, SLOT(scheduleLoad()));
+    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                          QString(DBus::Interface::LayoutManager), QStringLiteral("layoutUpdated"),
+                                          this, SLOT(scheduleLoad()));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // D-Bus helpers
 // ═══════════════════════════════════════════════════════════════════════════════
 

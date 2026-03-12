@@ -296,7 +296,7 @@ KCMUtils.SimpleKCM {
             Layout.fillWidth: true
             visible: kcm.updateAvailable && kcm.dismissedUpdateVersion !== kcm.latestVersion
             type: Kirigami.MessageType.Information
-            text: i18n("A new version is available: %1 (installed: %2)", kcm.latestVersion, kcm.currentVersion)
+            text: i18n("A new version is available: %1 (installed: %2)", kcm.latestVersion, kcm.currentVersion.length > 0 ? kcm.currentVersion : i18n("unknown"))
             actions: [
                 Kirigami.Action {
                     text: i18n("View Release")

@@ -58,6 +58,7 @@ Q_SIGNALS:
     void updateAvailableChanged();
     void latestVersionChanged();
     void dismissedUpdateVersionChanged();
+    void releaseUrlChanged();
 
 private:
     std::unique_ptr<DaemonController> m_daemonController;

@@ -26,10 +26,9 @@ class KCMAssignments : public KQuickConfigModule
 
     // Layout list (for combo boxes)
     Q_PROPERTY(QVariantList layouts READ layouts NOTIFY layoutsChanged)
-    Q_PROPERTY(QString defaultLayoutId READ defaultLayoutId WRITE setDefaultLayoutId NOTIFY defaultLayoutIdChanged)
+    Q_PROPERTY(QString defaultLayoutId READ defaultLayoutId NOTIFY defaultLayoutIdChanged)
     Q_PROPERTY(bool autotileEnabled READ autotileEnabled NOTIFY autotileEnabledChanged)
-    Q_PROPERTY(
-        QString autotileAlgorithm READ autotileAlgorithm WRITE setAutotileAlgorithm NOTIFY autotileAlgorithmChanged)
+    Q_PROPERTY(QString autotileAlgorithm READ autotileAlgorithm NOTIFY autotileAlgorithmChanged)
 
     // Screens
     Q_PROPERTY(QVariantList screens READ screens NOTIFY screensChanged)
@@ -57,10 +56,8 @@ public:
     // Layout list
     QVariantList layouts() const;
     QString defaultLayoutId() const;
-    void setDefaultLayoutId(const QString& layoutId);
     bool autotileEnabled() const;
     QString autotileAlgorithm() const;
-    void setAutotileAlgorithm(const QString& algorithm);
 
     // Screens
     QVariantList screens() const;
@@ -126,6 +123,9 @@ public:
     Q_INVOKABLE QString getQuickLayoutShortcut(int slotNumber) const;
     Q_INVOKABLE QString getTilingQuickLayoutSlot(int slotNumber) const;
     Q_INVOKABLE void setTilingQuickLayoutSlot(int slotNumber, const QString& layoutId);
+
+    // ── Running windows (for WindowPickerDialog) ──────────────────────────
+    Q_INVOKABLE QVariantList getRunningWindows() const;
 
     // ── App-to-zone rules ──────────────────────────────────────────────────
     Q_INVOKABLE QVariantList getAppRulesForLayout(const QString& layoutId) const;

@@ -11,6 +11,11 @@
 
 K_PLUGIN_CLASS_WITH_JSON(PlasmaZones::KCMEditor, "kcm_plasmazones_editor.json")
 
+namespace {
+constexpr int ShiftMod = static_cast<int>(Qt::ShiftModifier);
+constexpr int CtrlMod = static_cast<int>(Qt::ControlModifier);
+}
+
 namespace PlasmaZones {
 
 KCMEditor::KCMEditor(QObject* parent, const KPluginMetaData& data)
@@ -167,7 +172,7 @@ qreal KCMEditor::editorSnapIntervalY() const
 
 int KCMEditor::editorSnapOverrideModifier() const
 {
-    return editorConfigGroup().readEntry(QLatin1String("SnapOverrideModifier"), 0x02000000); // Qt::ShiftModifier
+    return editorConfigGroup().readEntry(QLatin1String("SnapOverrideModifier"), ShiftMod);
 }
 
 // ── Snapping setters ─────────────────────────────────────────────────────
@@ -238,7 +243,7 @@ bool KCMEditor::fillOnDropEnabled() const
 
 int KCMEditor::fillOnDropModifier() const
 {
-    return editorConfigGroup().readEntry(QLatin1String("FillOnDropModifier"), 0x04000000); // Qt::ControlModifier
+    return editorConfigGroup().readEntry(QLatin1String("FillOnDropModifier"), CtrlMod);
 }
 
 // ── Fill on drop setters ─────────────────────────────────────────────────
@@ -289,12 +294,12 @@ QString KCMEditor::defaultEditorFillShortcut() const
 
 int KCMEditor::defaultEditorSnapOverrideModifier() const
 {
-    return 0x02000000; // Qt::ShiftModifier
+    return ShiftMod;
 }
 
 int KCMEditor::defaultFillOnDropModifier() const
 {
-    return 0x04000000; // Qt::ControlModifier
+    return CtrlMod;
 }
 
 // ── Reset shortcuts ──────────────────────────────────────────────────────

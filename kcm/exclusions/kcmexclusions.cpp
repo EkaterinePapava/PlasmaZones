@@ -4,7 +4,6 @@
 #include "kcmexclusions.h"
 #include <QDBusConnection>
 #include <QDBusMessage>
-#include <QDBusPendingCall>
 #include <QJsonArray>
 #include "../common/dbusutils.h"
 #include <QJsonDocument>
@@ -24,6 +23,10 @@ KCMExclusions::KCMExclusions(QObject* parent, const KPluginMetaData& data)
 {
     m_settings = new Settings(this);
     setButtons(Apply | Default);
+
+    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                          QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
+                                          SLOT(load()));
 }
 
 // ── Load / Save ─────────────────────────────────────────────────────────

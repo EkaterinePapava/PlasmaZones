@@ -2,20 +2,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "kcmlayouts.h"
+#include "../plasmazonesmoduledata.h"
 #include <QDBusConnection>
 #include <QDBusMessage>
-#include <QGuiApplication>
 #include "../common/dbusutils.h"
 #include "../common/screenprovider.h"
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QScreen>
 #include <KPluginFactory>
 #include "../../src/config/settings.h"
 #include "../../src/core/constants.h"
 #include "../common/layoutmanager.h"
 
-K_PLUGIN_CLASS_WITH_JSON(PlasmaZones::KCMLayouts, "kcm_plasmazones_layouts.json")
+K_PLUGIN_FACTORY_WITH_JSON(KCMLayoutsFactory, "kcm_plasmazones_layouts.json", registerPlugin<PlasmaZones::KCMLayouts>();
+                           registerPlugin<PlasmaZones::PlasmaZonesModuleData>();)
 
 namespace PlasmaZones {
 
@@ -40,23 +40,10 @@ KCMLayouts::KCMLayouts(QObject* parent, const KPluginMetaData& data)
     refreshScreens();
 
     // Listen for layout changes from the daemon
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::LayoutManager), QStringLiteral("layoutCreated"),
-                                          m_layoutManager.get(), SLOT(scheduleLoad()));
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::LayoutManager), QStringLiteral("layoutDeleted"),
-                                          m_layoutManager.get(), SLOT(scheduleLoad()));
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::LayoutManager), QStringLiteral("layoutUpdated"),
-                                          m_layoutManager.get(), SLOT(scheduleLoad()));
+    m_layoutManager->connectToDaemonSignals();
 
     // Listen for screen changes
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::Screen), QStringLiteral("screenAdded"), this,
-                                          SLOT(refreshScreens()));
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::Screen), QStringLiteral("screenRemoved"), this,
-                                          SLOT(refreshScreens()));
+    connectScreenChangeSignals(this);
 }
 
 KCMLayouts::~KCMLayouts() = default;
@@ -84,6 +71,10 @@ void KCMLayouts::save()
     // Save pending layout states (hidden, auto-assign) via D-Bus
     QStringList failedOperations;
     m_layoutManager->savePendingStates(failedOperations);
+
+    if (!failedOperations.isEmpty()) {
+        qWarning() << "Failed operations during save:" << failedOperations;
+    }
 
     KCMDBus::notifyReload();
 
@@ -186,15 +177,6 @@ void KCMLayouts::setDefaultLayoutId(const QString& layoutId)
     if (m_settings->defaultLayoutId() != layoutId) {
         m_settings->setDefaultLayoutId(layoutId);
         Q_EMIT defaultLayoutIdChanged();
-        setNeedsSave(true);
-    }
-}
-
-void KCMLayouts::setAutotileAlgorithm(const QString& algorithm)
-{
-    if (m_settings->autotileAlgorithm() != algorithm) {
-        m_settings->setAutotileAlgorithm(algorithm);
-        Q_EMIT autotileAlgorithmChanged();
         setNeedsSave(true);
     }
 }

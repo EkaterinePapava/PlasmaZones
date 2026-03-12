@@ -55,6 +55,7 @@ qt_add_resources(kcm_plasmazones_assignments "kcm_assignments_shared_qmldir"
 target_link_libraries(kcm_plasmazones_assignments
     PRIVATE
         plasmazones_kcm_common
+        plasmazones_core
         Qt6::DBus
         KF6::KCMUtils
         KF6::ConfigWidgets

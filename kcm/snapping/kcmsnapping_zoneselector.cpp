@@ -323,12 +323,7 @@ void KCMSnapping::loadColorsFromPywal()
         return;
     }
 
-    Q_EMIT highlightColorChanged();
-    Q_EMIT inactiveColorChanged();
-    Q_EMIT borderColorChanged();
-    Q_EMIT labelFontColorChanged();
-    Q_EMIT useSystemColorsChanged();
-    setNeedsSave(true);
+    emitColorChanged();
 }
 
 void KCMSnapping::loadColorsFromFile(const QString& filePath)
@@ -339,11 +334,17 @@ void KCMSnapping::loadColorsFromFile(const QString& filePath)
         return;
     }
 
+    emitColorChanged();
+}
+
+void KCMSnapping::emitColorChanged()
+{
     Q_EMIT highlightColorChanged();
     Q_EMIT inactiveColorChanged();
     Q_EMIT borderColorChanged();
     Q_EMIT labelFontColorChanged();
     Q_EMIT useSystemColorsChanged();
+    Q_EMIT colorImportSuccess();
     setNeedsSave(true);
 }
 

@@ -53,6 +53,9 @@ public:
     void setLayoutHidden(const QString& layoutId, bool hidden);
     void setLayoutAutoAssign(const QString& layoutId, bool enabled);
 
+    // D-Bus daemon signal connections
+    void connectToDaemonSignals();
+
     // Load operations
     void scheduleLoad();
     void loadAsync();

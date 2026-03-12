@@ -4,13 +4,12 @@
 #include "kcmassignments.h"
 #include <QDBusConnection>
 #include <QDBusMessage>
-#include <QGuiApplication>
 #include "../common/dbusutils.h"
 #include "../common/screenprovider.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QScreen>
+#include <QJsonParseError>
 #include <KPluginFactory>
 #include "../../src/config/settings.h"
 #include "../../src/core/constants.h"
@@ -76,23 +75,10 @@ KCMAssignments::KCMAssignments(QObject* parent, const KPluginMetaData& data)
     refreshActivities();
 
     // Listen for layout changes from the daemon
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::LayoutManager), QStringLiteral("layoutCreated"),
-                                          m_layoutManager.get(), SLOT(scheduleLoad()));
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::LayoutManager), QStringLiteral("layoutDeleted"),
-                                          m_layoutManager.get(), SLOT(scheduleLoad()));
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::LayoutManager), QStringLiteral("layoutUpdated"),
-                                          m_layoutManager.get(), SLOT(scheduleLoad()));
+    m_layoutManager->connectToDaemonSignals();
 
     // Listen for screen changes
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::Screen), QStringLiteral("screenAdded"), this,
-                                          SLOT(refreshScreens()));
-    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
-                                          QString(DBus::Interface::Screen), QStringLiteral("screenRemoved"), this,
-                                          SLOT(refreshScreens()));
+    connectScreenChangeSignals(this);
 
     // Listen for screen layout assignment changes (routed to AssignmentManager)
     QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
@@ -145,6 +131,10 @@ void KCMAssignments::save()
     QStringList failedOperations;
     m_assignmentManager->save(failedOperations);
 
+    if (!failedOperations.isEmpty()) {
+        qWarning() << "Failed operations during save:" << failedOperations;
+    }
+
     KCMDBus::notifyReload();
 
     m_layoutManager->setSaveInProgress(false);
@@ -184,15 +174,6 @@ QString KCMAssignments::defaultLayoutId() const
     return m_settings->defaultLayoutId();
 }
 
-void KCMAssignments::setDefaultLayoutId(const QString& layoutId)
-{
-    if (m_settings->defaultLayoutId() != layoutId) {
-        m_settings->setDefaultLayoutId(layoutId);
-        Q_EMIT defaultLayoutIdChanged();
-        setNeedsSave(true);
-    }
-}
-
 bool KCMAssignments::autotileEnabled() const
 {
     return m_settings->autotileEnabled();
@@ -201,15 +182,6 @@ bool KCMAssignments::autotileEnabled() const
 QString KCMAssignments::autotileAlgorithm() const
 {
     return m_settings->autotileAlgorithm();
-}
-
-void KCMAssignments::setAutotileAlgorithm(const QString& algorithm)
-{
-    if (m_settings->autotileAlgorithm() != algorithm) {
-        m_settings->setAutotileAlgorithm(algorithm);
-        Q_EMIT autotileAlgorithmChanged();
-        setNeedsSave(true);
-    }
 }
 
 // ── Screens ──────────────────────────────────────────────────────────────
@@ -444,6 +416,44 @@ void KCMAssignments::addAppRuleToLayout(const QString& layoutId, const QString& 
 void KCMAssignments::removeAppRuleFromLayout(const QString& layoutId, int index)
 {
     m_assignmentManager->removeAppRuleFromLayout(layoutId, index);
+}
+
+// ── Running windows ──────────────────────────────────────────────────
+
+QVariantList KCMAssignments::getRunningWindows() const
+{
+    QDBusMessage reply = KCMDBus::callDaemon(QString(DBus::Interface::Settings), QStringLiteral("getRunningWindows"));
+
+    if (reply.type() == QDBusMessage::ErrorMessage || reply.arguments().isEmpty()) {
+        return {};
+    }
+
+    QString json = reply.arguments().at(0).toString();
+    if (json.isEmpty()) {
+        return {};
+    }
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isArray()) {
+        return {};
+    }
+
+    QVariantList result;
+    const QJsonArray array = doc.array();
+    for (const QJsonValue& value : array) {
+        if (!value.isObject()) {
+            continue;
+        }
+        QJsonObject obj = value.toObject();
+        QVariantMap item;
+        item[QStringLiteral("windowClass")] = obj[QLatin1String("windowClass")].toString();
+        item[QStringLiteral("appName")] = obj[QLatin1String("appName")].toString();
+        item[QStringLiteral("caption")] = obj[QLatin1String("caption")].toString();
+        result.append(item);
+    }
+
+    return result;
 }
 
 // ── Refresh helpers ──────────────────────────────────────────────────────

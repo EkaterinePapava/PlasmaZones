@@ -143,6 +143,21 @@ ColumnLayout {
 
                 }
 
+                Kirigami.InlineMessage {
+                    id: colorImportMessage
+
+                    Layout.fillWidth: true
+                    visible: false
+                    type: Kirigami.MessageType.Positive
+                }
+
+                Timer {
+                    id: colorImportHideTimer
+
+                    interval: 3000
+                    onTriggered: colorImportMessage.visible = false
+                }
+
                 Kirigami.Separator {
                     Kirigami.FormData.isSection: true
                 }
@@ -525,6 +540,13 @@ ColumnLayout {
         function onColorImportError(message) {
             colorImportErrorDialog.subtitle = message;
             colorImportErrorDialog.open();
+        }
+
+        function onColorImportSuccess() {
+            colorImportMessage.type = Kirigami.MessageType.Positive;
+            colorImportMessage.text = i18n("Colors imported successfully");
+            colorImportMessage.visible = true;
+            colorImportHideTimer.restart();
         }
 
         target: cardRoot.kcm

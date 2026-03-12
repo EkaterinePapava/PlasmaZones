@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "kcmgeneral.h"
+#include <QDBusConnection>
 #include <QDBusPendingCall>
 #include <KPluginFactory>
 #include "../common/dbusutils.h"
@@ -18,6 +19,10 @@ KCMGeneral::KCMGeneral(QObject* parent, const KPluginMetaData& data)
 {
     m_settings = new Settings(this);
     setButtons(Apply | Default);
+
+    QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                          QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
+                                          SLOT(load()));
 }
 
 // ── Load / Save / Defaults ──────────────────────────────────────────────
