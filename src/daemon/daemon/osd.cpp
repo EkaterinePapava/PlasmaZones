@@ -13,6 +13,8 @@
 #include "../../core/utils.h"
 #include "../../core/zonedetector.h"
 #include "../../autotile/AutotileEngine.h"
+#include "../../dbus/windowtrackingadaptor.h"
+#include "helpers.h"
 #include "../../autotile/AlgorithmRegistry.h"
 #include "../../autotile/TilingState.h"
 #include "../config/settings.h"
@@ -193,11 +195,29 @@ void Daemon::updateLayoutFilter()
         return;
     }
 
-    // Exclusive mode based on runtime tiling mode, gated by the feature toggle.
-    // autotileEnabled is the feature gate (can autotile be used at all?).
-    // ModeTracker tracks what's actually active right now.
-    const bool autotileActive = m_settings->autotileEnabled() && m_modeTracker && m_modeTracker->isAutotileMode();
-    const bool includeManual = !autotileActive;
+    // Derive autotile state from the CURRENT desktop's actual assignments,
+    // not from the global ModeTracker. This ensures the layout filter reflects
+    // the per-desktop tiling mode, not the last-toggled global mode.
+    // In mixed-mode multi-monitor (some screens autotile, some manual), include
+    // both layout types so cycling works correctly on both screens.
+    bool autotileActive = false;
+    bool manualActive = false;
+    if (m_settings->autotileEnabled() && m_layoutManager && m_screenManager) {
+        const int desktop = currentDesktop();
+        const QString activity = currentActivity();
+        for (QScreen* screen : m_screenManager->screens()) {
+            const QString screenId = Utils::screenIdentifier(screen);
+            const QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
+            if (LayoutId::isAutotile(assignmentId)) {
+                autotileActive = true;
+            } else {
+                manualActive = true;
+            }
+        }
+    } else {
+        manualActive = true;
+    }
+    const bool includeManual = manualActive || !autotileActive;
     const bool includeAutotile = autotileActive;
 
     if (m_overlayService) {
@@ -208,6 +228,115 @@ void Daemon::updateLayoutFilter()
     }
 
     qCDebug(lcDaemon) << "Layout filter updated: manual=" << includeManual << "autotile=" << includeAutotile;
+}
+
+void Daemon::syncModeFromAssignments()
+{
+    if (!m_layoutManager || !m_screenManager) {
+        return;
+    }
+
+    const int desktop = currentDesktop();
+    const QString activity = currentActivity();
+
+    // Derive the tiling mode from actual per-desktop assignments.
+    // If ANY screen has an autotile assignment on this desktop, mode is Autotile.
+    bool anyAutotile = false;
+    for (QScreen* screen : m_screenManager->screens()) {
+        const QString screenId = Utils::screenIdentifier(screen);
+        const QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
+        if (LayoutId::isAutotile(assignmentId)) {
+            anyAutotile = true;
+            break;
+        }
+    }
+
+    // Update ModeTracker to reflect this desktop's actual state.
+    // Use QSignalBlocker to prevent the mode change from triggering
+    // updateLayoutFilter() via currentModeChanged — we call it ourselves
+    // at the end to ensure a single consistent update.
+    if (m_modeTracker) {
+        QSignalBlocker blocker(m_modeTracker.get());
+        m_modeTracker->setCurrentMode(anyAutotile ? TilingMode::Autotile : TilingMode::Manual);
+    }
+
+    // Sync UnifiedLayoutController's current layout ID to match this desktop.
+    // Without this, layout cycling uses the old desktop's current index.
+    if (m_unifiedLayoutController) {
+        QScreen* screen = m_windowTrackingAdaptor ? resolveShortcutScreen(m_windowTrackingAdaptor) : nullptr;
+        if (!screen && !m_screenManager->screens().isEmpty()) {
+            screen = m_screenManager->screens().first();
+        }
+        if (screen) {
+            const QString screenId = Utils::screenIdentifier(screen);
+            const QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
+            m_unifiedLayoutController->setCurrentScreenName(screenId);
+            // Pass the per-desktop assignment as override — syncFromExternalState()
+            // without override only reads the global active layout, which doesn't
+            // reflect per-desktop autotile assignments.
+            m_unifiedLayoutController->syncFromExternalState(assignmentId);
+
+            // Populate m_lastManualAssignments / m_lastAutotileAssignments for this
+            // desktop so the first toggle on a desktop that was never toggled has a
+            // correct fallback (instead of falling through to global last-used).
+            DesktopContextKey ctxKey{screenId, desktop, activity};
+            if (LayoutId::isAutotile(assignmentId)) {
+                if (!m_lastAutotileAssignments.contains(ctxKey)) {
+                    m_lastAutotileAssignments[ctxKey] = assignmentId;
+                }
+            } else {
+                if (!m_lastManualAssignments.contains(ctxKey)) {
+                    m_lastManualAssignments[ctxKey] = assignmentId;
+                }
+            }
+
+            // Update the global active layout to match this desktop's per-screen
+            // assignment. Without this, LayoutManager::activeLayout() returns the
+            // previous desktop's layout, causing zone detection, overlay, and
+            // onLayoutChanged to operate on the wrong zones.
+            // Use QSignalBlocker to prevent activeLayoutChanged from firing
+            // onLayoutChanged → resnap buffer population. Desktop switch is not
+            // a layout change — the resnap buffer entries would be stale and corrupt
+            // the next real manual layout switch.
+            if (!anyAutotile && !LayoutId::isAutotile(assignmentId)) {
+                Layout* desktopLayout = m_layoutManager->layoutForScreen(screenId, desktop, activity);
+                if (desktopLayout && desktopLayout != m_layoutManager->activeLayout()) {
+                    QSignalBlocker blocker(m_layoutManager.get());
+                    m_layoutManager->setActiveLayout(desktopLayout);
+                }
+            }
+        }
+    }
+
+    updateLayoutFilter();
+}
+
+void Daemon::showDesktopSwitchOsd(int desktop, const QString& activity)
+{
+    if (!m_settings || !m_settings->showOsdOnLayoutSwitch() || !m_overlayService || !m_layoutManager
+        || !m_screenManager) {
+        return;
+    }
+    QScreen* screen = m_windowTrackingAdaptor ? resolveShortcutScreen(m_windowTrackingAdaptor) : nullptr;
+    if (!screen && !m_screenManager->screens().isEmpty()) {
+        screen = m_screenManager->screens().first();
+    }
+    if (!screen) {
+        return;
+    }
+    const QString screenId = Utils::screenIdentifier(screen);
+    const QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
+    if (LayoutId::isAutotile(assignmentId)) {
+        const QString algoId = LayoutId::extractAlgorithmId(assignmentId);
+        auto* algo = AlgorithmRegistry::instance()->algorithm(algoId);
+        const QString displayName = algo ? algo->name() : algoId;
+        showAlgorithmOsdDeferred(algoId, displayName, screenId);
+    } else {
+        Layout* layout = m_layoutManager->layoutForScreen(screenId, desktop, activity);
+        if (layout) {
+            showLayoutOsdDeferred(layout->id(), screenId);
+        }
+    }
 }
 
 int Daemon::currentDesktop() const

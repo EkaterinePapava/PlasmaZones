@@ -179,46 +179,38 @@ bool AssignmentManager::hasExplicitAssignmentForScreenDesktop(const QString& scr
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Tiling per-desktop screen assignments
+// Tiling per-desktop screen assignments — delegates to snapping equivalents
+// (daemon-backed pending cache + D-Bus queries, shared code path)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 void AssignmentManager::assignTilingLayoutToScreenDesktop(const QString& screenName, int virtualDesktop,
                                                           const QString& layoutId)
 {
-    if (screenName.isEmpty()) {
-        qCWarning(lcKcm) << "Cannot assign tiling layout - empty screen name";
-        return;
-    }
     if (virtualDesktop < 1) {
         qCWarning(lcKcm) << "Cannot assign tiling layout - invalid desktop number:" << virtualDesktop;
         return;
     }
-    QString key = QStringLiteral("%1|%2").arg(screenName).arg(virtualDesktop);
-    if (layoutId.isEmpty()) {
-        m_tilingDesktopAssignments.remove(key);
-    } else {
-        m_tilingDesktopAssignments[key] = layoutId;
-    }
-    m_tilingDesktopAssignmentsDirty = true;
+    assignLayoutToScreenDesktop(screenName, virtualDesktop, layoutId);
     Q_EMIT tilingDesktopAssignmentsChanged();
-    Q_EMIT needsSave();
 }
 
 void AssignmentManager::clearTilingScreenDesktopAssignment(const QString& screenName, int virtualDesktop)
 {
-    assignTilingLayoutToScreenDesktop(screenName, virtualDesktop, QString());
+    clearScreenDesktopAssignment(screenName, virtualDesktop);
+    Q_EMIT tilingDesktopAssignmentsChanged();
 }
 
 QString AssignmentManager::getTilingLayoutForScreenDesktop(const QString& screenName, int virtualDesktop) const
 {
-    QString key = QStringLiteral("%1|%2").arg(screenName).arg(virtualDesktop);
-    return m_tilingDesktopAssignments.value(key);
+    const QString id = getLayoutForScreenDesktop(screenName, virtualDesktop);
+    return LayoutId::isAutotile(id) ? id : QString();
 }
 
 bool AssignmentManager::hasExplicitTilingAssignmentForScreenDesktop(const QString& screenName, int virtualDesktop) const
 {
-    QString key = QStringLiteral("%1|%2").arg(screenName).arg(virtualDesktop);
-    return m_tilingDesktopAssignments.contains(key);
+    if (!hasExplicitAssignmentForScreenDesktop(screenName, virtualDesktop))
+        return false;
+    return LayoutId::isAutotile(getLayoutForScreenDesktop(screenName, virtualDesktop));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -285,43 +277,35 @@ bool AssignmentManager::hasExplicitAssignmentForScreenActivity(const QString& sc
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Tiling per-activity screen assignments
+// Tiling per-activity screen assignments — delegates to snapping equivalents
+// (daemon-backed pending cache + D-Bus queries, shared code path)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 void AssignmentManager::assignTilingLayoutToScreenActivity(const QString& screenName, const QString& activityId,
                                                            const QString& layoutId)
 {
-    if (screenName.isEmpty() || activityId.isEmpty()) {
-        qCWarning(lcKcm) << "Cannot assign tiling layout - empty screen name or activity ID";
-        return;
-    }
-    QString key = QStringLiteral("%1|%2").arg(screenName, activityId);
-    if (layoutId.isEmpty()) {
-        m_tilingActivityAssignments.remove(key);
-    } else {
-        m_tilingActivityAssignments[key] = layoutId;
-    }
-    m_tilingActivityAssignmentsDirty = true;
+    assignLayoutToScreenActivity(screenName, activityId, layoutId);
     Q_EMIT tilingActivityAssignmentsChanged();
-    Q_EMIT needsSave();
 }
 
 void AssignmentManager::clearTilingScreenActivityAssignment(const QString& screenName, const QString& activityId)
 {
-    assignTilingLayoutToScreenActivity(screenName, activityId, QString());
+    clearScreenActivityAssignment(screenName, activityId);
+    Q_EMIT tilingActivityAssignmentsChanged();
 }
 
 QString AssignmentManager::getTilingLayoutForScreenActivity(const QString& screenName, const QString& activityId) const
 {
-    QString key = QStringLiteral("%1|%2").arg(screenName, activityId);
-    return m_tilingActivityAssignments.value(key);
+    const QString id = getLayoutForScreenActivity(screenName, activityId);
+    return LayoutId::isAutotile(id) ? id : QString();
 }
 
 bool AssignmentManager::hasExplicitTilingAssignmentForScreenActivity(const QString& screenName,
                                                                      const QString& activityId) const
 {
-    QString key = QStringLiteral("%1|%2").arg(screenName, activityId);
-    return m_tilingActivityAssignments.contains(key);
+    if (!hasExplicitAssignmentForScreenActivity(screenName, activityId))
+        return false;
+    return LayoutId::isAutotile(getLayoutForScreenActivity(screenName, activityId));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

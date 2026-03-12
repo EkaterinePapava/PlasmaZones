@@ -129,9 +129,11 @@ void UnifiedLayoutController::cycle(bool forward)
     applyLayoutByIndex(nextIndex);
 }
 
-void UnifiedLayoutController::syncFromExternalState()
+void UnifiedLayoutController::syncFromExternalState(const QString& overrideId)
 {
-    if (m_layoutManager && m_layoutManager->activeLayout()) {
+    if (!overrideId.isEmpty()) {
+        m_currentLayoutId = overrideId;
+    } else if (m_layoutManager && m_layoutManager->activeLayout()) {
         m_currentLayoutId = m_layoutManager->activeLayout()->id().toString();
     } else {
         m_currentLayoutId.clear();

@@ -333,7 +333,7 @@ void SettingsBridge::saveState()
     // here, to avoid stale data overriding the authoritative layout assignments)
     group.writeEntry(QStringLiteral("algorithm"), m_engine->m_algorithmId);
 
-    // Save per-screen state as JSON array
+    // Save per-screen state as JSON array, including desktop/activity key
     QJsonArray screensArray;
     for (auto it = m_engine->m_screenStates.constBegin(); it != m_engine->m_screenStates.constEnd(); ++it) {
         const TilingState* state = it.value();
@@ -341,8 +341,11 @@ void SettingsBridge::saveState()
             continue;
         }
 
+        const TilingStateKey& key = it.key();
         QJsonObject screenObj;
-        screenObj[QStringLiteral("screen")] = it.key();
+        screenObj[QStringLiteral("screen")] = key.screenName;
+        screenObj[QStringLiteral("desktop")] = key.desktop;
+        screenObj[QStringLiteral("activity")] = key.activity;
         screenObj[QStringLiteral("masterCount")] = state->masterCount();
         screenObj[QStringLiteral("splitRatio")] = state->splitRatio();
 
@@ -356,7 +359,7 @@ void SettingsBridge::saveState()
     group.writeEntry("screenStates", QString::fromUtf8(QJsonDocument(screensArray).toJson(QJsonDocument::Compact)));
     config->sync();
 
-    qCInfo(lcAutotile) << "Autotile state: saved," << m_engine->m_screenStates.size() << "screens";
+    qCInfo(lcAutotile) << "Autotile state: saved," << m_engine->m_screenStates.size() << "states";
 }
 
 void SettingsBridge::loadState()
@@ -402,7 +405,23 @@ void SettingsBridge::loadState()
             continue;
         }
 
+        // Restore desktop/activity context from saved state (defaults to 0/"" for
+        // backward compatibility with pre-per-desktop save format).
+        const int desktop = screenObj[QStringLiteral("desktop")].toInt(0);
+        const QString activity = screenObj[QStringLiteral("activity")].toString();
+
+        // Temporarily set engine context to match the saved state's desktop/activity
+        // so stateForScreen() creates the state under the correct key.
+        const int savedDesktop = m_engine->m_currentDesktop;
+        const QString savedActivity = m_engine->m_currentActivity;
+        m_engine->m_currentDesktop = (desktop > 0) ? desktop : savedDesktop;
+        m_engine->m_currentActivity = !activity.isEmpty() ? activity : savedActivity;
+
         TilingState* state = m_engine->stateForScreen(screenName);
+
+        m_engine->m_currentDesktop = savedDesktop;
+        m_engine->m_currentActivity = savedActivity;
+
         if (!state) {
             continue;
         }

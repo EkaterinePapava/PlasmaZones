@@ -120,7 +120,7 @@ public Q_SLOTS:
     void slotWindowsTileRequested(const QString& tileRequestsJson);
     void slotFocusWindowRequested(const QString& windowId);
     void slotEnabledChanged(bool enabled);
-    void slotScreensChanged(const QStringList& screenNames);
+    void slotScreensChanged(const QStringList& screenNames, bool isDesktopSwitch);
     void slotWindowFloatingChanged(const QString& windowId, bool isFloating, const QString& screenName);
 
     // Window state change handlers (connected per-window in setupWindowConnections)
@@ -161,6 +161,7 @@ private:
     QHash<QString, QStringList> m_savedSnapStackingOrder; ///< snap-mode stacking order, restored on autotile→snap
     QHash<QString, QStringList> m_savedAutotileStackingOrder; ///< autotile stacking order, restored on snap→autotile
     QSet<QString> m_notifiedWindows;
+    QSet<QString> m_savedNotifiedForDesktopReturn; ///< windows removed from m_notifiedWindows on desktop switch
     QSet<QString> m_pendingCloses;
     QSet<QString> m_minimizeFloatedWindows;
     uint64_t m_autotileStaggerGeneration = 0;

@@ -135,29 +135,10 @@ void AssignmentManager::save(QStringList& failedOperations)
             screenGroup.writeEntry(QStringLiteral("Assignment"), it.value().toString());
         }
 
-        // Write tiling activity assignments
-        for (auto it = m_tilingActivityAssignments.constBegin(); it != m_tilingActivityAssignments.constEnd(); ++it) {
-            int sepIdx = it.key().lastIndexOf(QLatin1Char('|'));
-            if (sepIdx <= 0)
-                continue;
-            QString connectorName = it.key().left(sepIdx);
-            QString activityId = it.key().mid(sepIdx + 1);
-            QString screenId = safeScreenId(connectorName);
-            KConfigGroup actGroup = config->group(QStringLiteral("TilingActivity:%1|%2").arg(screenId, activityId));
-            actGroup.writeEntry(QStringLiteral("Assignment"), it.value());
-        }
-
-        // Write tiling per-desktop assignments
-        for (auto it = m_tilingDesktopAssignments.constBegin(); it != m_tilingDesktopAssignments.constEnd(); ++it) {
-            int sepIdx = it.key().lastIndexOf(QLatin1Char('|'));
-            if (sepIdx <= 0)
-                continue;
-            QString connectorName = it.key().left(sepIdx);
-            QString desktopNum = it.key().mid(sepIdx + 1);
-            QString screenId = safeScreenId(connectorName);
-            KConfigGroup deskGroup = config->group(QStringLiteral("TilingDesktop:%1|%2").arg(screenId, desktopNum));
-            deskGroup.writeEntry(QStringLiteral("Assignment"), it.value());
-        }
+        // Tiling per-desktop and per-activity assignments are now stored via the
+        // shared pending cache (m_pendingDesktopAssignments / m_pendingActivityAssignments)
+        // and pushed to the daemon in the batch D-Bus calls below. No separate
+        // KConfig shadow write needed — the daemon is the source of truth.
 
         // Tiling quick layout slots
         KConfigGroup tilingSlots = config->group(QStringLiteral("TilingQuickLayoutSlots"));
@@ -169,11 +150,11 @@ void AssignmentManager::save(QStringList& failedOperations)
         config->sync();
     }
 
-    // ── Per-Desktop assignments (batch) ────────────────────────────────────
-    syncAutotileAssignmentIds(m_tilingDesktopAssignments, false);
+    // ── Per-Desktop assignments (batch — shared by snapping and tiling) ────
+    // Sync autotile IDs in pending assignments before push
+    syncAutotileAssignmentIds(m_pendingDesktopAssignments, false);
 
-    if (!m_pendingDesktopAssignments.isEmpty() || !m_clearedDesktopAssignments.isEmpty()
-        || m_tilingDesktopAssignmentsDirty) {
+    if (!m_pendingDesktopAssignments.isEmpty() || !m_clearedDesktopAssignments.isEmpty()) {
         QVariantMap desktopAssignments;
         QDBusMessage currentReply = KCMDBus::callDaemon(layoutInterface, QStringLiteral("getAllDesktopAssignments"));
         if (currentReply.type() == QDBusMessage::ReplyMessage && !currentReply.arguments().isEmpty()) {
@@ -185,10 +166,6 @@ void AssignmentManager::save(QStringList& failedOperations)
         for (auto it = m_pendingDesktopAssignments.begin(); it != m_pendingDesktopAssignments.end(); ++it) {
             desktopAssignments[it.key()] = it.value();
         }
-        for (auto it = m_tilingDesktopAssignments.constBegin(); it != m_tilingDesktopAssignments.constEnd(); ++it) {
-            if (!it.value().isEmpty())
-                desktopAssignments[it.key()] = it.value();
-        }
         QDBusMessage desktopReply =
             KCMDBus::callDaemon(layoutInterface, QStringLiteral("setAllDesktopAssignments"), {desktopAssignments});
         if (desktopReply.type() == QDBusMessage::ErrorMessage) {
@@ -196,14 +173,13 @@ void AssignmentManager::save(QStringList& failedOperations)
         }
         m_clearedDesktopAssignments.clear();
         m_pendingDesktopAssignments.clear();
-        m_tilingDesktopAssignmentsDirty = false;
     }
 
-    // ── Per-Activity assignments (batch) ───────────────────────────────────
-    syncAutotileAssignmentIds(m_tilingActivityAssignments, false);
+    // ── Per-Activity assignments (batch — shared by snapping and tiling) ───
+    // Sync autotile IDs in pending assignments before push
+    syncAutotileAssignmentIds(m_pendingActivityAssignments, false);
 
-    if (!m_pendingActivityAssignments.isEmpty() || !m_clearedActivityAssignments.isEmpty()
-        || m_tilingActivityAssignmentsDirty) {
+    if (!m_pendingActivityAssignments.isEmpty() || !m_clearedActivityAssignments.isEmpty()) {
         QVariantMap activityAssignments;
         QDBusMessage currentReply = KCMDBus::callDaemon(layoutInterface, QStringLiteral("getAllActivityAssignments"));
         if (currentReply.type() == QDBusMessage::ReplyMessage && !currentReply.arguments().isEmpty()) {
@@ -215,10 +191,6 @@ void AssignmentManager::save(QStringList& failedOperations)
         for (auto it = m_pendingActivityAssignments.begin(); it != m_pendingActivityAssignments.end(); ++it) {
             activityAssignments[it.key()] = it.value();
         }
-        for (auto it = m_tilingActivityAssignments.constBegin(); it != m_tilingActivityAssignments.constEnd(); ++it) {
-            if (!it.value().isEmpty())
-                activityAssignments[it.key()] = it.value();
-        }
         QDBusMessage activityReply =
             KCMDBus::callDaemon(layoutInterface, QStringLiteral("setAllActivityAssignments"), {activityAssignments});
         if (activityReply.type() == QDBusMessage::ErrorMessage) {
@@ -226,7 +198,6 @@ void AssignmentManager::save(QStringList& failedOperations)
         }
         m_clearedActivityAssignments.clear();
         m_pendingActivityAssignments.clear();
-        m_tilingActivityAssignmentsDirty = false;
     }
 
     // ── App-to-zone rules ──────────────────────────────────────────────────
@@ -281,11 +252,7 @@ void AssignmentManager::load()
 
     m_screenAssignments.clear();
     m_tilingScreenAssignments.clear();
-    m_tilingActivityAssignments.clear();
-    m_tilingDesktopAssignments.clear();
     m_tilingQuickLayoutSlots.clear();
-    m_tilingDesktopAssignmentsDirty = false;
-    m_tilingActivityAssignmentsDirty = false;
     {
         auto config = KSharedConfig::openConfig(QStringLiteral("plasmazonesrc"));
         const QStringList allGroups = config->groupList();
@@ -308,29 +275,6 @@ void AssignmentManager::load()
                         QString connectorName = resolveScreenId(screenId);
                         if (!connectorName.isEmpty())
                             target[connectorName] = layoutId;
-                    }
-                }
-            }
-        };
-
-        auto loadCompoundAssignments = [&](const QLatin1String& prefix, QMap<QString, QString>& target) {
-            for (const QString& groupName : allGroups) {
-                if (groupName.startsWith(prefix)) {
-                    QString compoundKey = groupName.mid(prefix.size());
-                    int sepIdx = compoundKey.lastIndexOf(QLatin1Char('|'));
-                    if (sepIdx <= 0)
-                        continue;
-                    QString screenId = compoundKey.left(sepIdx);
-                    QString suffix = compoundKey.mid(sepIdx + 1);
-                    if (screenId.isEmpty() || suffix.isEmpty())
-                        continue;
-                    KConfigGroup group = config->group(groupName);
-                    QString layoutId = group.readEntry(QStringLiteral("Assignment"), QString());
-                    if (!layoutId.isEmpty()) {
-                        QString connectorName = resolveScreenId(screenId);
-                        if (!connectorName.isEmpty()) {
-                            target[QStringLiteral("%1|%2").arg(connectorName, suffix)] = layoutId;
-                        }
                     }
                 }
             }
@@ -399,9 +343,8 @@ void AssignmentManager::load()
             }
         }
 
-        // Tiling activity and desktop assignments
-        loadCompoundAssignments(QLatin1String("TilingActivity:"), m_tilingActivityAssignments);
-        loadCompoundAssignments(QLatin1String("TilingDesktop:"), m_tilingDesktopAssignments);
+        // Tiling per-desktop and per-activity assignments are loaded on-demand
+        // from the daemon via D-Bus (shared code path with snapping).
 
         // Tiling quick layout slots
         KConfigGroup tilingSlots = config->group(QStringLiteral("TilingQuickLayoutSlots"));
@@ -444,11 +387,7 @@ void AssignmentManager::resetToDefaults()
     m_screenAssignments.clear();
     m_quickLayoutSlots.clear();
     m_tilingScreenAssignments.clear();
-    m_tilingActivityAssignments.clear();
-    m_tilingDesktopAssignments.clear();
     m_tilingQuickLayoutSlots.clear();
-    m_tilingDesktopAssignmentsDirty = false;
-    m_tilingActivityAssignmentsDirty = false;
     m_assignmentViewMode = 0;
     clearPendingStates();
 

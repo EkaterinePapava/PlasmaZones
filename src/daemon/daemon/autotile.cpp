@@ -267,7 +267,7 @@ QHash<QString, QStringList> Daemon::captureAutotileOrders() const
     return orders;
 }
 
-void Daemon::restoreAutotileOnlyGeometries()
+void Daemon::restoreAutotileOnlyGeometries(const QSet<QString>& excludeWindows)
 {
     if (!m_windowTrackingAdaptor || m_lastAutotileOrders.isEmpty()) {
         return;
@@ -279,6 +279,8 @@ void Daemon::restoreAutotileOnlyGeometries()
     for (auto it = m_lastAutotileOrders.constBegin(); it != m_lastAutotileOrders.constEnd(); ++it) {
         const QString& screenName = it.key();
         for (const QString& windowId : it.value()) {
+            if (excludeWindows.contains(windowId))
+                continue;
             if (wts->isWindowSnapped(windowId))
                 continue;
             m_windowTrackingAdaptor->applyGeometryForFloat(windowId, screenName);

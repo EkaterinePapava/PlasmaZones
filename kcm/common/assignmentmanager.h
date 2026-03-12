@@ -135,21 +135,15 @@ private:
     QVariantMap m_tilingScreenAssignments;
     QMap<int, QString> m_quickLayoutSlots;
     QMap<int, QString> m_tilingQuickLayoutSlots;
-    QMap<QString, QString> m_tilingActivityAssignments;
-    QMap<QString, QString> m_tilingDesktopAssignments;
     int m_assignmentViewMode = 0;
 
-    // Pending per-desktop assignments
+    // Pending per-desktop assignments (shared by snapping and tiling)
     QMap<QString, QString> m_pendingDesktopAssignments;
     QSet<QString> m_clearedDesktopAssignments;
 
-    // Pending per-activity assignments
+    // Pending per-activity assignments (shared by snapping and tiling)
     QMap<QString, QString> m_pendingActivityAssignments;
     QSet<QString> m_clearedActivityAssignments;
-
-    // Dirty flags for tiling per-desktop/per-activity
-    bool m_tilingDesktopAssignmentsDirty = false;
-    bool m_tilingActivityAssignmentsDirty = false;
 
     // Pending app-to-zone rules
     QHash<QString, QVariantList> m_pendingAppRules;

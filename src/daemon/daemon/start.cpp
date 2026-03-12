@@ -16,6 +16,9 @@
 #include "../../dbus/layoutadaptor.h"
 #include "../../dbus/windowtrackingadaptor.h"
 #include "../../autotile/AutotileEngine.h"
+#include "../../autotile/AlgorithmRegistry.h"
+#include "../../autotile/TilingAlgorithm.h"
+#include "../config/settings.h"
 #include <QGuiApplication>
 #include <QScreen>
 
@@ -113,11 +116,23 @@ void Daemon::connectDesktopActivity()
         if (m_unifiedLayoutController) {
             m_unifiedLayoutController->setCurrentVirtualDesktop(desktop);
         }
+        // Set engine's desktop context BEFORE updateAutotileScreens() so it
+        // resolves TilingStates for the correct desktop. Without this, the
+        // engine would look up/create states under the OLD desktop's key.
+        if (m_autotileEngine) {
+            m_autotileEngine->setCurrentDesktop(desktop);
+        }
         // Per-desktop assignments may differ — recompute autotile screens
         updateAutotileScreens();
+        // Sync mode, layout filter, and controller state from per-desktop assignments.
+        // This ensures ModeTracker, layout filter, and cycling index reflect the
+        // new desktop — not the old one's global state.
+        syncModeFromAssignments();
         if (m_overlayService->isVisible()) {
             m_overlayService->updateGeometries();
         }
+
+        showDesktopSwitchOsd(desktop, currentActivity());
     });
 
     // Set initial virtual desktop on components that maintain their own copy
@@ -143,11 +158,19 @@ void Daemon::connectDesktopActivity()
                     if (m_unifiedLayoutController) {
                         m_unifiedLayoutController->setCurrentActivity(activityId);
                     }
+                    // Set engine's activity context BEFORE updateAutotileScreens()
+                    if (m_autotileEngine) {
+                        m_autotileEngine->setCurrentActivity(activityId);
+                    }
                     // Per-activity assignments may differ — recompute autotile screens
                     updateAutotileScreens();
+                    // Sync mode, layout filter, and controller state from per-activity assignments.
+                    syncModeFromAssignments();
                     if (m_overlayService->isVisible()) {
                         m_overlayService->updateGeometries();
                     }
+
+                    showDesktopSwitchOsd(currentDesktop(), activityId);
                 });
     }
 }

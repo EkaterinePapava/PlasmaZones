@@ -8,6 +8,7 @@
 #include <QTimer>
 #include <QHash>
 #include <QRect>
+#include <QSet>
 #include <memory>
 
 #include "shortcutmanager.h"
@@ -195,12 +196,24 @@ private:
      * window that has no zone assignment (never manually snapped). Zone-snapped
      * windows are already handled by resnapCurrentAssignments.
      */
-    void restoreAutotileOnlyGeometries();
+    void restoreAutotileOnlyGeometries(const QSet<QString>& excludeWindows = {});
 
     /** @brief Show layout OSD deferred (avoids blocking on first-time QML compilation) */
     void showLayoutOsdDeferred(const QUuid& layoutId, const QString& screenName);
     /** @brief Show algorithm OSD deferred (avoids blocking on first-time QML compilation) */
     void showAlgorithmOsdDeferred(const QString& algorithmId, const QString& algorithmName, const QString& screenName);
+
+    /**
+     * @brief Show OSD for the current desktop's layout/algorithm on desktop or activity switch
+     *
+     * Resolves the focused screen, reads the per-desktop assignment, and shows
+     * the appropriate OSD (layout or algorithm). DRY helper for both
+     * currentDesktopChanged and currentActivityChanged handlers.
+     *
+     * @param desktop Current virtual desktop number
+     * @param activity Current activity ID
+     */
+    void showDesktopSwitchOsd(int desktop, const QString& activity);
 
     /**
      * @brief Recompute which screens use autotile from layout assignments
@@ -219,6 +232,15 @@ private:
      * Shows both manual and autotile layouts when the feature gate is enabled.
      */
     void updateLayoutFilter();
+
+    /**
+     * @brief Sync ModeTracker and UnifiedLayoutController from per-desktop assignments
+     *
+     * Derives the tiling mode (Manual vs Autotile) and current layout from the
+     * actual per-desktop assignment for the focused screen. Must be called on
+     * every desktop/activity switch so global state reflects the new context.
+     */
+    void syncModeFromAssignments();
 
     std::unique_ptr<LayoutManager> m_layoutManager;
     std::unique_ptr<Settings> m_settings;
@@ -266,6 +288,28 @@ private:
     // Used to re-seed the autotile engine with the same order on re-entry,
     // producing deterministic arrangements across mode toggles.
     QHash<QString, QStringList> m_lastAutotileOrders;
+
+    // Per-desktop last autotile assignment, keyed by (screenId, desktop, activity).
+    // Saved when toggling FROM autotile so re-entry restores the same algorithm.
+    struct DesktopContextKey
+    {
+        QString screenId;
+        int desktop;
+        QString activity;
+        bool operator==(const DesktopContextKey& o) const
+        {
+            return screenId == o.screenId && desktop == o.desktop && activity == o.activity;
+        }
+    };
+    friend size_t qHash(const DesktopContextKey& k, size_t seed)
+    {
+        seed = ::qHash(k.screenId, seed);
+        seed = ::qHash(k.desktop, seed);
+        seed = ::qHash(k.activity, seed);
+        return seed;
+    }
+    QHash<DesktopContextKey, QString> m_lastAutotileAssignments;
+    QHash<DesktopContextKey, QString> m_lastManualAssignments;
 
     // State tracking for settingsChanged delta detection (replaces individual signal handlers)
     // Initialized from m_settings in init() before settingsChanged is connected.

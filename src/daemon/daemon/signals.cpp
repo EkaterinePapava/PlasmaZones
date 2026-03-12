@@ -209,9 +209,23 @@ void Daemon::initializeAutotile()
                 m_lastAutotileOrders = captureAutotileOrders();
             }
 
+            DesktopContextKey ctxKey{screenId, desktop, activity};
+
             if (wasAutotile) {
-                // Autotile → Snapping: switch to last manual layout.
-                QString layoutId = m_modeTracker->lastManualLayoutId();
+                // Save per-desktop autotile assignment for re-entry
+                m_lastAutotileAssignments[ctxKey] = currentAssignment;
+
+                // Autotile → Snapping: restore this desktop's last manual layout.
+                // Per-desktop lookup first (set when toggling TO autotile), then
+                // fall back to global last manual layout.
+                QString layoutId;
+                auto manualIt = m_lastManualAssignments.constFind(ctxKey);
+                if (manualIt != m_lastManualAssignments.constEnd()) {
+                    layoutId = manualIt.value();
+                }
+                if (layoutId.isEmpty()) {
+                    layoutId = m_modeTracker->lastManualLayoutId();
+                }
                 if (!layoutId.isEmpty()) {
                     applied = m_unifiedLayoutController->applyLayoutById(layoutId);
                 }
@@ -227,6 +241,9 @@ void Daemon::initializeAutotile()
                     }
                 }
             } else {
+                // Save per-desktop manual assignment for re-exit
+                m_lastManualAssignments[ctxKey] = currentAssignment;
+
                 // Pre-save snap-float state before autotile entry so rapid
                 // toggles don't lose snap-mode floats (see presaveSnapFloats doc).
                 presaveSnapFloats();
@@ -237,7 +254,17 @@ void Daemon::initializeAutotile()
                 for (QScreen* s : m_screenManager->screens()) {
                     seedAutotileOrderForScreen(s->name());
                 }
-                const QString algoId = resolveAlgorithmId();
+
+                // Resolve algorithm: prefer this desktop's last-used algorithm,
+                // then fall back to global last-used → settings → default.
+                QString algoId;
+                auto savedIt = m_lastAutotileAssignments.constFind(ctxKey);
+                if (savedIt != m_lastAutotileAssignments.constEnd()) {
+                    algoId = LayoutId::extractAlgorithmId(savedIt.value());
+                }
+                if (algoId.isEmpty()) {
+                    algoId = resolveAlgorithmId();
+                }
                 if (!algoId.isEmpty()) {
                     applied = m_unifiedLayoutController->applyLayoutById(LayoutId::makeAutotileId(algoId));
                 }
@@ -248,17 +275,34 @@ void Daemon::initializeAutotile()
                 updateLayoutFilter();
             }
 
-            // Resnap ALL autotile screens (not just focused) using pre-autotile
-            // zone assignments. Zone assignments are preserved during autotile
-            // (onLayoutChanged skips autotile screens) so resnap restores windows
-            // to their original snap positions. Windows never zone-snapped stay in place.
+            // Resnap autotiled windows into the new manual layout's zones using
+            // autotile window order. resnapFromAutotileOrder maps window N to zone N,
+            // giving a deterministic layout-fill. resnapCurrentAssignments can't be
+            // used here because zone assignments are keyed by window ID globally —
+            // it would find zone assignments from OTHER desktops' windows that happen
+            // to share the same screen, producing wrong results.
+            // Windows that were autotile-only (never zone-snapped) get their
+            // pre-autotile floating geometry restored by restoreAutotileOnlyGeometries.
             if (applied && wasAutotile && m_snapEngine) {
                 m_suppressResnapOsd = m_lastAutotileOrders.size();
+                // Build exclusion set: windows that fit into the target layout's zones
+                // will be zone-snapped by the resnap D-Bus signal. Without excluding them,
+                // restoreAutotileOnlyGeometries sends float-geometry D-Bus calls that
+                // arrive AFTER the resnap and overwrite the zone positions.
+                // Use per-screen zone count (not global activeLayout) because each screen
+                // may have a different layout assigned with a different zone count.
+                QSet<QString> resnappedWindows;
                 for (auto it = m_lastAutotileOrders.constBegin(); it != m_lastAutotileOrders.constEnd(); ++it) {
-                    m_snapEngine->resnapCurrentAssignments(it.key());
+                    const QStringList& windowOrder = it.value();
+                    Layout* screenLayout = m_layoutManager->resolveLayoutForScreen(it.key());
+                    int zoneCount = screenLayout ? screenLayout->zoneCount() : 0;
+                    for (int i = 0; i < std::min(static_cast<int>(windowOrder.size()), zoneCount); ++i) {
+                        resnappedWindows.insert(windowOrder.at(i));
+                    }
+                    m_snapEngine->resnapFromAutotileOrder(windowOrder, it.key());
                 }
 
-                restoreAutotileOnlyGeometries();
+                restoreAutotileOnlyGeometries(resnappedWindows);
             }
         });
 

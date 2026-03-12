@@ -114,10 +114,19 @@ QString LayoutManager::assignmentIdForScreen(const QString& screenId, int virtua
         return m_assignments[desktopKey];
     }
 
-    // Try screen only (any desktop, any activity)
+    // Try screen only (any desktop, any activity).
+    // Skip autotile base assignments — autotile state is per-desktop and
+    // must be explicitly assigned for each desktop. Without this guard,
+    // a base autotile entry leaks to ALL desktops that lack an explicit
+    // per-desktop override, making the shortcut toggle appear global.
     LayoutAssignmentKey screenKey{screenId, 0, QString()};
     if (m_assignments.contains(screenKey)) {
-        return m_assignments[screenKey];
+        const QString& baseId = m_assignments[screenKey];
+        if (!LayoutId::isAutotile(baseId)) {
+            return baseId;
+        }
+        // Autotile base entry exists but is not inherited — return empty
+        // so this desktop defaults to manual mode.
     }
 
     // Fallback: if screenId looks like a connector name, try resolving to screen ID

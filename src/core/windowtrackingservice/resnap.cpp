@@ -179,8 +179,21 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromCurrentAssignme
     }
 
     qCInfo(lcCore) << "Resnap from current assignments:" << result.size() << "windows"
+                   << "(total zone assignments:" << m_windowZoneAssignments.size() << ")"
                    << (screenFilter.isEmpty() ? QStringLiteral("(all screens)")
                                               : QStringLiteral("(screen: %1)").arg(screenFilter));
+    if (result.isEmpty() && !m_windowZoneAssignments.isEmpty()) {
+        for (auto it = m_windowZoneAssignments.constBegin(); it != m_windowZoneAssignments.constEnd(); ++it) {
+            QString screen = m_windowScreenAssignments.value(it.key());
+            bool floating = isWindowFloating(it.key());
+            QRect geo = it.value().isEmpty() ? QRect()
+                                             : (it.value().size() > 1 ? multiZoneGeometry(it.value(), screen)
+                                                                      : zoneGeometry(it.value().first(), screen));
+            qCDebug(lcCore) << "  skipped:" << it.key() << "zones=" << it.value() << "screen=" << screen
+                            << "floating=" << floating << "geoValid=" << geo.isValid()
+                            << "screenMatch=" << (screenFilter.isEmpty() || screen == screenFilter);
+        }
+    }
     return result;
 }
 
