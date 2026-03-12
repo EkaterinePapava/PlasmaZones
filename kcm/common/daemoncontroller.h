@@ -29,6 +29,7 @@ class DaemonController : public QObject
 
 public:
     explicit DaemonController(QObject* parent = nullptr);
+    ~DaemonController() override;
 
     bool isRunning() const;
     bool isEnabled() const;

@@ -49,6 +49,20 @@ DaemonController::DaemonController(QObject* parent)
     refreshEnabledState();
 }
 
+DaemonController::~DaemonController()
+{
+    // Kill any running systemctl processes before destruction to prevent
+    // QProcess::finished callbacks from firing with a dangling 'this'.
+    const auto children = findChildren<QProcess*>();
+    for (auto* proc : children) {
+        proc->disconnect();
+        if (proc->state() != QProcess::NotRunning) {
+            proc->kill();
+            proc->waitForFinished(500);
+        }
+    }
+}
+
 bool DaemonController::isRunning() const
 {
     return QDBusConnection::sessionBus().interface()->isServiceRegistered(QString(DBus::ServiceName));
@@ -93,7 +107,9 @@ void DaemonController::refreshEnabledState()
     runSystemctl(
         {QStringLiteral("--user"), QStringLiteral("is-enabled"), QLatin1String(KCMConstants::SystemdServiceName)},
         [this](bool /*success*/, const QString& output) {
-            bool enabled = (output == QLatin1String("enabled"));
+            // systemctl is-enabled returns: enabled, enabled-runtime, static,
+            // linked, indirect, disabled, masked, not-found, etc.
+            bool enabled = output.startsWith(QLatin1String("enabled"));
             if (m_enabled != enabled) {
                 m_enabled = enabled;
                 Q_EMIT enabledChanged();
