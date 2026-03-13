@@ -247,9 +247,12 @@ QVariantMap SnappingService::snapGeometry(qreal x, qreal y, qreal width, qreal h
             maxTop = gridAlignedMaxTop;
         }
 
-        // Clamp position to grid-aligned valid range
-        left = qBound(0.0, left, maxLeft);
-        top = qBound(0.0, top, maxTop);
+        // Clamp position to grid-aligned valid range.
+        // Only apply grid-aligned max when grid snap was actually used for this axis.
+        // Edge-snapped positions must use the standard max (1.0 - size) so they can
+        // reach the canvas boundary — the grid-aligned floor would pull them back.
+        left = qBound(0.0, left, (leftSnapped || rightSnapped) ? (1.0 - originalWidth) : maxLeft);
+        top = qBound(0.0, top, (topSnapped || bottomSnapped) ? (1.0 - originalHeight) : maxTop);
 
         rect = QRectF(left, top, originalWidth, originalHeight);
     }

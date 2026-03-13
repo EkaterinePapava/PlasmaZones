@@ -81,11 +81,17 @@ Item {
     readonly property real relY: zoneData ? (zoneData.y || 0) : 0
     readonly property real relWidth: zoneData ? (zoneData.width || 0) : 0
     readonly property real relHeight: zoneData ? (zoneData.height || 0) : 0
+    // During drag/resize, use visual position for gap calculation instead of stale model data.
+    // This ensures zones dragged to a screen edge get edgeGap (not zoneSpacing/2).
+    readonly property real effectiveRelX: operationState !== EditorZone.State.Idle && canvasWidth > 0 ? visualX / canvasWidth : relX
+    readonly property real effectiveRelY: operationState !== EditorZone.State.Idle && canvasHeight > 0 ? visualY / canvasHeight : relY
+    readonly property real effectiveRelWidth: operationState !== EditorZone.State.Idle && canvasWidth > 0 ? visualWidth / canvasWidth : relWidth
+    readonly property real effectiveRelHeight: operationState !== EditorZone.State.Idle && canvasHeight > 0 ? visualHeight / canvasHeight : relHeight
     // Calculate gap for each edge: edgeGap if at screen boundary, zoneSpacing/2 otherwise
-    readonly property real leftGap: relX < edgeTolerance ? edgeGap : zoneSpacing / 2
-    readonly property real topGap: relY < edgeTolerance ? edgeGap : zoneSpacing / 2
-    readonly property real rightGap: (relX + relWidth) > (1 - edgeTolerance) ? edgeGap : zoneSpacing / 2
-    readonly property real bottomGap: (relY + relHeight) > (1 - edgeTolerance) ? edgeGap : zoneSpacing / 2
+    readonly property real leftGap: effectiveRelX < edgeTolerance ? edgeGap : zoneSpacing / 2
+    readonly property real topGap: effectiveRelY < edgeTolerance ? edgeGap : zoneSpacing / 2
+    readonly property real rightGap: (effectiveRelX + effectiveRelWidth) > (1 - edgeTolerance) ? edgeGap : zoneSpacing / 2
+    readonly property real bottomGap: (effectiveRelY + effectiveRelHeight) > (1 - edgeTolerance) ? edgeGap : zoneSpacing / 2
 
     // Signals
     signal clicked(var event)
