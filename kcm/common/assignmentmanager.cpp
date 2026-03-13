@@ -154,10 +154,10 @@ QString AssignmentManager::getLayoutForScreenDesktop(const QString& screenName, 
     if (m_clearedDesktopAssignments.contains(key)) {
         return QString();
     }
-    QDBusMessage reply = KCMDBus::callDaemon(QString(DBus::Interface::LayoutManager),
-                                             QStringLiteral("getLayoutForScreenDesktop"), {screenName, virtualDesktop});
-    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
-        return reply.arguments().first().toString();
+    // Check cached KConfig entry
+    auto cacheIt = m_cachedDesktopAssignments.constFind(key);
+    if (cacheIt != m_cachedDesktopAssignments.constEnd()) {
+        return cacheIt->activeLayoutId();
     }
     return QString();
 }
@@ -166,16 +166,34 @@ bool AssignmentManager::hasExplicitAssignmentForScreenDesktop(const QString& scr
 {
     QString key = QStringLiteral("%1|%2").arg(Utils::screenIdForName(screenName)).arg(virtualDesktop);
     if (m_pendingDesktopAssignments.contains(key))
-        return true;
+        return !LayoutId::isAutotile(m_pendingDesktopAssignments.value(key));
     if (m_clearedDesktopAssignments.contains(key))
         return false;
-    QDBusMessage reply =
-        KCMDBus::callDaemon(QString(DBus::Interface::LayoutManager),
-                            QStringLiteral("hasExplicitAssignmentForScreenDesktop"), {screenName, virtualDesktop});
-    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
-        return reply.arguments().first().toBool();
+    // Check cached KConfig entry for explicit snapping layout
+    auto cacheIt = m_cachedDesktopAssignments.constFind(key);
+    if (cacheIt != m_cachedDesktopAssignments.constEnd()) {
+        return !cacheIt->snappingLayout.isEmpty();
     }
     return false;
+}
+
+QString AssignmentManager::getSnappingLayoutForScreenDesktop(const QString& screenName, int virtualDesktop) const
+{
+    QString key = QStringLiteral("%1|%2").arg(Utils::screenIdForName(screenName)).arg(virtualDesktop);
+    // Check pending first
+    if (m_pendingDesktopAssignments.contains(key)) {
+        const QString id = m_pendingDesktopAssignments.value(key);
+        if (!LayoutId::isAutotile(id))
+            return id;
+    }
+    if (m_clearedDesktopAssignments.contains(key))
+        return QString();
+    // Check cached KConfig entry
+    auto cacheIt = m_cachedDesktopAssignments.constFind(key);
+    if (cacheIt != m_cachedDesktopAssignments.constEnd()) {
+        return cacheIt->snappingLayout;
+    }
+    return QString();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -206,25 +224,36 @@ void AssignmentManager::clearTilingScreenDesktopAssignment(const QString& screen
 
 QString AssignmentManager::getTilingLayoutForScreenDesktop(const QString& screenName, int virtualDesktop) const
 {
-    const QString id = getLayoutForScreenDesktop(screenName, virtualDesktop);
-    return LayoutId::isAutotile(id) ? id : QString();
+    QString key = QStringLiteral("%1|%2").arg(Utils::screenIdForName(screenName)).arg(virtualDesktop);
+    // Check pending first
+    if (m_pendingDesktopAssignments.contains(key)) {
+        const QString id = m_pendingDesktopAssignments.value(key);
+        if (LayoutId::isAutotile(id))
+            return id;
+    }
+    if (m_clearedDesktopAssignments.contains(key))
+        return QString();
+    // Check cached KConfig entry
+    auto cacheIt = m_cachedDesktopAssignments.constFind(key);
+    if (cacheIt != m_cachedDesktopAssignments.constEnd() && !cacheIt->tilingAlgorithm.isEmpty()) {
+        return LayoutId::makeAutotileId(cacheIt->tilingAlgorithm);
+    }
+    return QString();
 }
 
 bool AssignmentManager::hasExplicitTilingAssignmentForScreenDesktop(const QString& screenName, int virtualDesktop) const
 {
-    // Single-call path: getLayoutForScreenDesktop checks pending cache first
-    // (no D-Bus), and returns empty if cleared. Only hits D-Bus once (if needed).
-    const QString id = getLayoutForScreenDesktop(screenName, virtualDesktop);
-    if (id.isEmpty())
-        return false;
-    // Verify it's an explicit assignment, not a fallback — check pending/cleared cache
     QString key = QStringLiteral("%1|%2").arg(Utils::screenIdForName(screenName)).arg(virtualDesktop);
     if (m_pendingDesktopAssignments.contains(key))
-        return LayoutId::isAutotile(id);
+        return LayoutId::isAutotile(m_pendingDesktopAssignments.value(key));
     if (m_clearedDesktopAssignments.contains(key))
         return false;
-    // D-Bus result — verify explicit via hasExplicit (already cached in the same D-Bus call path)
-    return LayoutId::isAutotile(id) && hasExplicitAssignmentForScreenDesktop(screenName, virtualDesktop);
+    // Check cached KConfig entry for explicit tiling algorithm
+    auto cacheIt = m_cachedDesktopAssignments.constFind(key);
+    if (cacheIt != m_cachedDesktopAssignments.constEnd()) {
+        return !cacheIt->tilingAlgorithm.isEmpty();
+    }
+    return false;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -265,10 +294,10 @@ QString AssignmentManager::getLayoutForScreenActivity(const QString& screenName,
     if (m_clearedActivityAssignments.contains(key)) {
         return QString();
     }
-    QDBusMessage reply = KCMDBus::callDaemon(QString(DBus::Interface::LayoutManager),
-                                             QStringLiteral("getLayoutForScreenActivity"), {screenName, activityId});
-    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
-        return reply.arguments().first().toString();
+    // Check cached KConfig entry
+    auto cacheIt = m_cachedActivityAssignments.constFind(key);
+    if (cacheIt != m_cachedActivityAssignments.constEnd()) {
+        return cacheIt->activeLayoutId();
     }
     return QString();
 }
@@ -278,16 +307,35 @@ bool AssignmentManager::hasExplicitAssignmentForScreenActivity(const QString& sc
 {
     QString key = QStringLiteral("%1|%2").arg(Utils::screenIdForName(screenName), activityId);
     if (m_pendingActivityAssignments.contains(key))
-        return true;
+        return !LayoutId::isAutotile(m_pendingActivityAssignments.value(key));
     if (m_clearedActivityAssignments.contains(key))
         return false;
-    QDBusMessage reply =
-        KCMDBus::callDaemon(QString(DBus::Interface::LayoutManager),
-                            QStringLiteral("hasExplicitAssignmentForScreenActivity"), {screenName, activityId});
-    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
-        return reply.arguments().first().toBool();
+    // Check cached KConfig entry for explicit snapping layout
+    auto cacheIt = m_cachedActivityAssignments.constFind(key);
+    if (cacheIt != m_cachedActivityAssignments.constEnd()) {
+        return !cacheIt->snappingLayout.isEmpty();
     }
     return false;
+}
+
+QString AssignmentManager::getSnappingLayoutForScreenActivity(const QString& screenName,
+                                                              const QString& activityId) const
+{
+    QString key = QStringLiteral("%1|%2").arg(Utils::screenIdForName(screenName), activityId);
+    // Check pending first
+    if (m_pendingActivityAssignments.contains(key)) {
+        const QString id = m_pendingActivityAssignments.value(key);
+        if (!LayoutId::isAutotile(id))
+            return id;
+    }
+    if (m_clearedActivityAssignments.contains(key))
+        return QString();
+    // Check cached KConfig entry
+    auto cacheIt = m_cachedActivityAssignments.constFind(key);
+    if (cacheIt != m_cachedActivityAssignments.constEnd()) {
+        return cacheIt->snappingLayout;
+    }
+    return QString();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -310,22 +358,37 @@ void AssignmentManager::clearTilingScreenActivityAssignment(const QString& scree
 
 QString AssignmentManager::getTilingLayoutForScreenActivity(const QString& screenName, const QString& activityId) const
 {
-    const QString id = getLayoutForScreenActivity(screenName, activityId);
-    return LayoutId::isAutotile(id) ? id : QString();
+    QString key = QStringLiteral("%1|%2").arg(Utils::screenIdForName(screenName), activityId);
+    // Check pending first
+    if (m_pendingActivityAssignments.contains(key)) {
+        const QString id = m_pendingActivityAssignments.value(key);
+        if (LayoutId::isAutotile(id))
+            return id;
+    }
+    if (m_clearedActivityAssignments.contains(key))
+        return QString();
+    // Check cached KConfig entry
+    auto cacheIt = m_cachedActivityAssignments.constFind(key);
+    if (cacheIt != m_cachedActivityAssignments.constEnd() && !cacheIt->tilingAlgorithm.isEmpty()) {
+        return LayoutId::makeAutotileId(cacheIt->tilingAlgorithm);
+    }
+    return QString();
 }
 
 bool AssignmentManager::hasExplicitTilingAssignmentForScreenActivity(const QString& screenName,
                                                                      const QString& activityId) const
 {
-    const QString id = getLayoutForScreenActivity(screenName, activityId);
-    if (id.isEmpty())
-        return false;
     QString key = QStringLiteral("%1|%2").arg(Utils::screenIdForName(screenName), activityId);
     if (m_pendingActivityAssignments.contains(key))
-        return LayoutId::isAutotile(id);
+        return LayoutId::isAutotile(m_pendingActivityAssignments.value(key));
     if (m_clearedActivityAssignments.contains(key))
         return false;
-    return LayoutId::isAutotile(id) && hasExplicitAssignmentForScreenActivity(screenName, activityId);
+    // Check cached KConfig entry for explicit tiling algorithm
+    auto cacheIt = m_cachedActivityAssignments.constFind(key);
+    if (cacheIt != m_cachedActivityAssignments.constEnd()) {
+        return !cacheIt->tilingAlgorithm.isEmpty();
+    }
+    return false;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -485,7 +548,7 @@ void AssignmentManager::removeAppRuleFromLayout(const QString& layoutId, int ind
 // D-Bus event handlers
 // ═══════════════════════════════════════════════════════════════════════════════
 
-void AssignmentManager::onScreenLayoutChanged(const QString& screenName, const QString& layoutId)
+void AssignmentManager::onScreenLayoutChanged(const QString& screenName, const QString& layoutId, int virtualDesktop)
 {
     if (screenName.isEmpty())
         return;
@@ -500,17 +563,46 @@ void AssignmentManager::onScreenLayoutChanged(const QString& screenName, const Q
 
     const bool isAutotile = layoutId.startsWith(QLatin1String("autotile:"));
 
-    if (layoutId.isEmpty()) {
-        m_tilingScreenAssignments.remove(connectorName);
-        Q_EMIT tilingScreenAssignmentsChanged();
-    } else if (isAutotile) {
-        m_tilingScreenAssignments[connectorName] = layoutId;
-        Q_EMIT tilingScreenAssignmentsChanged();
-    } else {
-        m_screenAssignments[connectorName] = layoutId;
-        Q_EMIT screenAssignmentsChanged();
+    if (virtualDesktop == 0) {
+        // Update display-level defaults (base screen assignments)
+        if (layoutId.isEmpty()) {
+            m_screenAssignments.remove(connectorName);
+            m_tilingScreenAssignments.remove(connectorName);
+        } else if (isAutotile) {
+            m_tilingScreenAssignments[connectorName] = layoutId;
+        } else {
+            m_screenAssignments[connectorName] = layoutId;
+        }
     }
 
+    // Update cached per-desktop AssignmentEntry so QML getters return fresh data.
+    // The daemon writes KConfig and emits this signal — we mirror the change
+    // into our in-memory cache to avoid requiring a full load() round-trip.
+    if (virtualDesktop > 0 && !screenName.isEmpty()) {
+        QString screenId = Utils::screenIdForName(screenName);
+        if (screenId.isEmpty())
+            screenId = screenName;
+        QString key = QStringLiteral("%1|%2").arg(screenId).arg(virtualDesktop);
+
+        if (layoutId.isEmpty()) {
+            m_cachedDesktopAssignments.remove(key);
+        } else {
+            // Preserve existing entry fields, update the changed side
+            AssignmentEntry entry = m_cachedDesktopAssignments.value(key);
+            if (isAutotile) {
+                entry.mode = AssignmentEntry::Autotile;
+                entry.tilingAlgorithm = LayoutId::extractAlgorithmId(layoutId);
+            } else {
+                entry.mode = AssignmentEntry::Snapping;
+                entry.snappingLayout = layoutId;
+            }
+            m_cachedDesktopAssignments[key] = entry;
+        }
+        Q_EMIT tilingDesktopAssignmentsChanged();
+    }
+
+    Q_EMIT screenAssignmentsChanged();
+    Q_EMIT tilingScreenAssignmentsChanged();
     Q_EMIT refreshScreensRequested();
 }
 

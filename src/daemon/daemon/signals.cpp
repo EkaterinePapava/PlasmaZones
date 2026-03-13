@@ -32,31 +32,8 @@ namespace PlasmaZones {
 
 void Daemon::initializeAutotile()
 {
-    // Initialize mode tracker for last-used layout
-    m_modeTracker = std::make_unique<ModeTracker>(m_settings.get(), this);
-    m_modeTracker->load();
-
-    // Reconcile persisted mode with actual state: if the mode tracker says
-    // Autotile but no screen has an autotile assignment (or the feature is
-    // disabled), force back to Manual so the popup shows the right layouts.
-    if (m_modeTracker->isAutotileMode()) {
-        bool hasAutotileAssignment = false;
-        if (m_settings->autotileEnabled() && m_layoutManager) {
-            for (QScreen* screen : Utils::allScreens()) {
-                const QString screenId = Utils::screenIdentifier(screen);
-                const int desktop = currentDesktop();
-                const QString activity = currentActivity();
-                const QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
-                if (LayoutId::isAutotile(assignmentId)) {
-                    hasAutotileAssignment = true;
-                    break;
-                }
-            }
-        }
-        if (!hasAutotileAssignment) {
-            m_modeTracker->setCurrentMode(TilingMode::Manual);
-        }
-    }
+    // Initialize mode tracker (thin delegate to LayoutManager's per-context AssignmentEntry)
+    m_modeTracker = std::make_unique<ModeTracker>(m_settings.get(), m_layoutManager.get(), this);
 
     // Connect autotile engine signals
     if (m_autotileEngine) {
@@ -64,14 +41,11 @@ void Daemon::initializeAutotile()
         // Show OSD when algorithm changes (not on every retile — tilingChanged
         // fires for float, swap, window open/close, etc. which is too noisy)
         connect(m_autotileEngine.get(), &AutotileEngine::algorithmChanged, this, [this](const QString& algorithmId) {
-            if (m_modeTracker) {
-                m_modeTracker->recordAutotileAlgorithm(algorithmId);
-            }
             // Only show OSD when actually in autotile mode — loadState() emits
             // algorithmChanged during startup even if we're in manual mode.
             // Defer OSD display (same rationale as autotileApplied handler above).
-            if (m_modeTracker && m_modeTracker->isAutotileMode() && m_settings && m_settings->showOsdOnLayoutSwitch()
-                && m_overlayService) {
+            if (m_modeTracker && m_modeTracker->isAnyScreenAutotile() && m_settings
+                && m_settings->showOsdOnLayoutSwitch() && m_overlayService) {
                 auto* algo = AlgorithmRegistry::instance()->algorithm(algorithmId);
                 QString displayName = algo ? algo->name() : algorithmId;
                 QString screenName =
@@ -176,7 +150,7 @@ void Daemon::initializeAutotile()
             if (!m_settings || !m_settings->autotileEnabled()) {
                 return;
             }
-            if (!m_modeTracker || !m_unifiedLayoutController || !m_layoutManager) {
+            if (!m_unifiedLayoutController || !m_layoutManager) {
                 return;
             }
 
@@ -188,6 +162,11 @@ void Daemon::initializeAutotile()
             QString screenId = Utils::screenIdentifier(screen);
             int desktop = currentDesktop();
             QString activity = currentActivity();
+
+            // Set context so ModeTracker reads from the correct per-desktop entry
+            if (m_modeTracker) {
+                m_modeTracker->setContext(screenId, desktop, activity);
+            }
 
             // Set the screen context so applyEntry knows which screen to assign
             m_unifiedLayoutController->setCurrentScreenName(screenId);
@@ -213,27 +192,14 @@ void Daemon::initializeAutotile()
                 }
             }
 
-            DesktopContextKey ctxKey{screenId, desktop, activity};
-
             if (wasAutotile) {
-                // Save per-desktop autotile assignment for re-entry
-                m_lastAutotileAssignments[ctxKey] = currentAssignment;
-
-                // Autotile → Snapping: restore this desktop's last manual layout.
-                // Per-desktop lookup first (set when toggling TO autotile), then
-                // fall back to global last manual layout.
-                QString layoutId;
-                auto manualIt = m_lastManualAssignments.constFind(ctxKey);
-                if (manualIt != m_lastManualAssignments.constEnd()) {
-                    layoutId = manualIt.value();
-                }
-                if (layoutId.isEmpty()) {
-                    layoutId = m_modeTracker->lastManualLayoutId();
-                }
+                // Autotile → Snapping: restore this context's snappingLayout
+                // from the AssignmentEntry (preserved even when mode is Autotile).
+                QString layoutId = m_layoutManager->snappingLayoutForScreen(screenId, desktop, QString());
                 if (!layoutId.isEmpty()) {
                     applied = m_unifiedLayoutController->applyLayoutById(layoutId);
                 }
-                // Fallback when lastManualLayoutId is empty (fresh install) or stale
+                // Fallback when snappingLayout is empty (fresh install) or stale
                 // (layout was deleted). Use the active layout or first available layout.
                 if (!applied) {
                     Layout* fallback = m_layoutManager->activeLayout();
@@ -245,9 +211,6 @@ void Daemon::initializeAutotile()
                     }
                 }
             } else {
-                // Save per-desktop manual assignment for re-exit
-                m_lastManualAssignments[ctxKey] = currentAssignment;
-
                 // Pre-save snap-float state before autotile entry so rapid
                 // toggles don't lose snap-mode floats (see presaveSnapFloats doc).
                 presaveSnapFloats();
@@ -259,19 +222,10 @@ void Daemon::initializeAutotile()
                     seedAutotileOrderForScreen(s->name());
                 }
 
-                // Resolve algorithm: prefer this desktop's last-used algorithm,
-                // then fall back to the user's configured default (settings).
-                // Do NOT use resolveAlgorithmId() here — it checks the global
-                // ModeTracker lastAutotileAlgorithm first, which is whatever
-                // algorithm was last used on ANY desktop. The default autotile
-                // setting should behave like the default snapping layout: each
-                // desktop without an explicit per-desktop assignment gets the
-                // configured default, not the global last-used.
-                QString algoId;
-                auto savedIt = m_lastAutotileAssignments.constFind(ctxKey);
-                if (savedIt != m_lastAutotileAssignments.constEnd()) {
-                    algoId = LayoutId::extractAlgorithmId(savedIt.value());
-                }
+                // Resolve algorithm from the AssignmentEntry's tilingAlgorithm
+                // (preserved even when mode is Snapping), then fall back to the
+                // user's configured default (settings).
+                QString algoId = m_layoutManager->tilingAlgorithmForScreen(screenId, desktop, QString());
                 if (algoId.isEmpty() && m_settings) {
                     algoId = m_settings->autotileAlgorithm();
                 }
@@ -341,7 +295,7 @@ void Daemon::initializeAutotile()
                 }
                 m_suppressResnapOsd = resnapScreenCount;
 
-                restoreAutotileOnlyGeometries(resnappedWindows);
+                restoreAutotileOnlyGeometries(resnappedWindows, desktop, activity);
             }
         });
 
@@ -406,25 +360,26 @@ void Daemon::connectLayoutSignals()
         });
     }
 
-    // Update layout filter when tiling mode changes at runtime
-    connect(m_modeTracker.get(), &ModeTracker::currentModeChanged, this, &Daemon::updateLayoutFilter);
-
     // Note: autotileEnabledChanged, snappingEnabledChanged, and perScreenAutotileSettingsChanged
     // are handled by the settingsChanged handler above (consolidated for single-pass processing).
     // Individual autotile signals only fire from runtime setters, where settingsChanged also
     // fires and handles the transitions — no separate handlers needed.
 
-    // Re-derive autotile screens when assignments change (e.g., from D-Bus, layout picker)
-    connect(m_layoutManager.get(), &LayoutManager::layoutAssigned, this, [this]() {
-        updateAutotileScreens();
-    });
+    // Re-derive autotile screens and layout filter when assignments change
+    // (e.g., from D-Bus, layout picker, unified controller).
+    // Do NOT call syncModeFromAssignments() here — it sets the global active
+    // layout with QSignalBlocker, which steals the activeLayoutChanged transition
+    // from user-initiated layout switches (applyEntry, zone selector) and leaves
+    // the resnap buffer empty. syncModeFromAssignments() is called directly by
+    // desktop/activity change handlers where the active layout update is needed.
+    connect(m_layoutManager.get(), &LayoutManager::layoutAssigned, this,
+            [this](const QString& /*screenId*/, int /*virtualDesktop*/, Layout* /*layout*/) {
+                updateAutotileScreens();
+                updateLayoutFilter();
+            });
 
-    // Connect unified layout controller signals for OSD display and mode tracking
+    // Connect unified layout controller signals for OSD display
     connect(m_unifiedLayoutController.get(), &UnifiedLayoutController::layoutApplied, this, [this](Layout* layout) {
-        if (m_modeTracker) {
-            m_modeTracker->setCurrentMode(TilingMode::Manual);
-            m_modeTracker->recordManualLayout(layout->id());
-        }
         // Defer OSD display (same rationale as autotileApplied — first-time QML
         // compilation of LayoutOsd.qml blocks the event loop ~100-300ms).
         // Capture layout ID (not raw pointer) to avoid use-after-free if the
@@ -439,9 +394,6 @@ void Daemon::connectLayoutSignals()
     connect(m_unifiedLayoutController.get(), &UnifiedLayoutController::autotileApplied, this,
             [this](const QString& algorithmName, int windowCount) {
                 Q_UNUSED(windowCount)
-                if (m_modeTracker) {
-                    m_modeTracker->setCurrentMode(TilingMode::Autotile);
-                }
                 // Defer OSD display so QML window creation (first-time ~100-300ms for
                 // LayoutOsd.qml compilation + scene graph) doesn't block the daemon event
                 // loop while the effect is sending windowOpened D-Bus calls.  Without this,
@@ -468,22 +420,32 @@ void Daemon::connectLayoutSignals()
                 if (!layout) {
                     return;
                 }
-                if (!screenName.isEmpty()) {
-                    QString screenId = Utils::screenIdForName(screenName);
-                    m_layoutManager->assignLayout(screenId, m_virtualDesktopManager->currentDesktop(),
-                                                  m_activityManager && ActivityManager::isAvailable()
-                                                      ? m_activityManager->currentActivity()
-                                                      : QString(),
-                                                  layout);
+                const QString screenId = screenName.isEmpty() ? QString() : Utils::screenIdForName(screenName);
+                const int desktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
+                const QString activity = (m_activityManager && ActivityManager::isAvailable())
+                    ? m_activityManager->currentActivity()
+                    : QString();
+
+                if (!screenId.isEmpty()) {
+                    // Write per-desktop assignment with empty activity so it applies
+                    // regardless of which activity is active.
+                    if (!activity.isEmpty()) {
+                        m_layoutManager->clearAssignment(screenId, desktop, activity);
+                    }
+                    // assignLayout FIRST so resolveLayoutForScreen() sees the new
+                    // assignment when onLayoutChanged() populates the resnap buffer.
+                    m_layoutManager->assignLayout(screenId, desktop, QString(), layout);
                 }
-                // Always update global active layout — fires activeLayoutChanged which
-                // populates the resnap buffer, cleans stale assignments, updates OSD, etc.
+                // Update global active layout — fires activeLayoutChanged →
+                // onLayoutChanged → resnap buffer population.
                 m_layoutManager->setActiveLayout(layout);
                 qCInfo(lcDaemon) << "Zone selector: manual layout selected, layout=" << layout->name()
                                  << "screen=" << screenName;
                 m_overlayService->showLayoutOsd(layout, screenName);
-                if (m_modeTracker) {
-                    m_modeTracker->recordManualLayout(layout->id());
+                // Resnap windows to the new layout's zones
+                if (m_snapEngine) {
+                    m_suppressResnapOsd = 1;
+                    m_snapEngine->resnapToNewLayout();
                 }
             });
 }

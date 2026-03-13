@@ -181,7 +181,7 @@ bool Daemon::init()
     // Only update if this is a DIFFERENT layout than the active one
     // (to avoid double-processing when both signals fire for the same layout)
     connect(m_layoutManager.get(), &LayoutManager::layoutAssigned, this,
-            [this](const QString& screenName, Layout* layout) {
+            [this](const QString& screenName, int /*virtualDesktop*/, Layout* layout) {
                 if (!layout) {
                     return;
                 }
@@ -245,7 +245,8 @@ bool Daemon::init()
         // Handle snapping toggle → autotile activation.
         // Guard: skip if already in autotile mode to avoid resetting per-screen
         // algorithm customizations with the global algorithm.
-        if (snappingToggled && !snappingNow && autotileNow && !(m_modeTracker && m_modeTracker->isAutotileMode())) {
+        if (snappingToggled && !snappingNow && autotileNow
+            && !(m_modeTracker && m_modeTracker->isAnyScreenAutotile())) {
             handleSnappingToAutotile();
         }
 
@@ -431,6 +432,14 @@ void Daemon::start()
     initializeUnifiedController();
     connectLayoutSignals();
     connectOverlaySignals();
+
+    // Initial layout resolution: set the active layout from per-desktop assignments.
+    // Must run after connectLayoutSignals() (which sets up autotile screens and filter)
+    // and after connectDesktopActivity() (which sets current desktop/activity).
+    // VirtualDesktopManager and ActivityManager no longer resolve layouts — this is
+    // the single code path that understands autotile vs snapping mode.
+    syncModeFromAssignments();
+
     finalizeStartup();
 
     m_running = true;
@@ -458,10 +467,7 @@ void Daemon::stop()
         m_windowTrackingAdaptor->saveStateOnShutdown();
     }
 
-    // Save mode tracker state (ensures last mode/layout survives shutdown)
-    if (m_modeTracker) {
-        m_modeTracker->save();
-    }
+    // ModeTracker delegates to LayoutManager's KConfig — no separate save needed
 
     m_reapplyGeometriesTimer.stop();
 

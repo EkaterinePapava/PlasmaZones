@@ -217,7 +217,8 @@ private:
      * window that has no zone assignment (never manually snapped). Zone-snapped
      * windows are already handled by resnapCurrentAssignments.
      */
-    void restoreAutotileOnlyGeometries(const QSet<QString>& excludeWindows = {});
+    void restoreAutotileOnlyGeometries(const QSet<QString>& excludeWindows = {}, int desktop = -1,
+                                       const QString& activity = QString());
 
     /** @brief Show layout OSD deferred (avoids blocking on first-time QML compilation) */
     void showLayoutOsdDeferred(const QUuid& layoutId, const QString& screenName);
@@ -299,10 +300,7 @@ private:
     int currentDesktop() const;
     QString currentActivity() const;
 
-    /** @brief Resolve algorithm ID with fallback: last used → settings → default */
-    QString resolveAlgorithmId() const;
-
-    /** @brief Prune m_lastAutotileAssignments, m_lastManualAssignments, m_lastAutotileOrders for stale desktops */
+    /** @brief Prune m_lastAutotileOrders for stale desktops */
     void pruneContextMapsForDesktop(int maxDesktop);
     /** @brief Prune context maps for removed activities */
     void pruneContextMapsForActivities(const QSet<QString>& validActivities);
@@ -316,11 +314,6 @@ private:
     // Keyed by DesktopContextKey (not plain screen name) so cross-desktop toggles
     // don't overwrite each other's ordering.
     QHash<DesktopContextKey, QStringList> m_lastAutotileOrders;
-
-    // Per-desktop last autotile assignment, keyed by (screenId, desktop, activity).
-    // Saved when toggling FROM autotile so re-entry restores the same algorithm.
-    QHash<DesktopContextKey, QString> m_lastAutotileAssignments;
-    QHash<DesktopContextKey, QString> m_lastManualAssignments;
 
     // State tracking for settingsChanged delta detection (replaces individual signal handlers)
     // Initialized from m_settings in init() before settingsChanged is connected.

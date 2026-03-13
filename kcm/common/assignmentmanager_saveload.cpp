@@ -89,7 +89,7 @@ void AssignmentManager::save(QStringList& failedOperations)
         failedOperations.append(QStringLiteral("Quick layout slots"));
     }
 
-    // ── KConfig shadow save ────────────────────────────────────────────────
+    // ── KConfig save ────────────────────────────────────────────────────────
     {
         auto config = KSharedConfig::openConfig(QStringLiteral("plasmazonesrc"));
         const QStringList allGroups = config->groupList();
@@ -103,12 +103,13 @@ void AssignmentManager::save(QStringList& failedOperations)
             return screenId;
         };
 
-        // Delete old per-screen groups (all types in one pass)
+        // Delete old per-screen groups (all old formats + new Assignment: in one pass)
         for (const QString& groupName : allGroups) {
             if (groupName.startsWith(QLatin1String("SnappingScreen:"))
                 || groupName.startsWith(QLatin1String("TilingScreen:"))
                 || groupName.startsWith(QLatin1String("TilingActivity:"))
-                || groupName.startsWith(QLatin1String("TilingDesktop:"))) {
+                || groupName.startsWith(QLatin1String("TilingDesktop:"))
+                || groupName.startsWith(QLatin1String("Assignment:"))) {
                 config->deleteGroup(groupName);
             }
         }
@@ -121,24 +122,44 @@ void AssignmentManager::save(QStringList& failedOperations)
                 legacy.deleteGroup();
         }
 
-        // Write snapping per-screen groups
-        for (auto it = m_screenAssignments.constBegin(); it != m_screenAssignments.constEnd(); ++it) {
-            QString screenId = safeScreenId(it.key());
-            KConfigGroup screenGroup = config->group(QStringLiteral("SnappingScreen:") + screenId);
-            screenGroup.writeEntry(QStringLiteral("Assignment"), it.value().toString());
+        // Write unified [Assignment:screenId] groups with explicit fields
+        // Collect all screen names from both maps
+        QSet<QString> allScreenNames;
+        for (auto it = m_screenAssignments.constBegin(); it != m_screenAssignments.constEnd(); ++it)
+            allScreenNames.insert(it.key());
+        for (auto it = m_tilingScreenAssignments.constBegin(); it != m_tilingScreenAssignments.constEnd(); ++it)
+            allScreenNames.insert(it.key());
+
+        for (const QString& screenName : std::as_const(allScreenNames)) {
+            QString screenId = safeScreenId(screenName);
+            KConfigGroup grp = config->group(QStringLiteral("Assignment:") + screenId);
+
+            QString snappingId = m_screenAssignments.value(screenName).toString();
+            QString tilingId = m_tilingScreenAssignments.value(screenName).toString();
+
+            // Determine mode: if tiling assignment exists and is autotile, mode is Autotile
+            int mode = 0; // Snapping
+            QString tilingAlgorithm;
+            if (!tilingId.isEmpty() && LayoutId::isAutotile(tilingId)) {
+                tilingAlgorithm = LayoutId::extractAlgorithmId(tilingId);
+            }
+
+            // If we have a tiling assignment, check if it's the active mode
+            // (tiling takes precedence if screen has a tiling assignment)
+            if (!tilingAlgorithm.isEmpty()) {
+                mode = 1; // Autotile
+            }
+
+            grp.writeEntry(QStringLiteral("Mode"), mode);
+            if (!snappingId.isEmpty())
+                grp.writeEntry(QStringLiteral("SnappingLayout"), snappingId);
+            if (!tilingAlgorithm.isEmpty())
+                grp.writeEntry(QStringLiteral("TilingAlgorithm"), tilingAlgorithm);
         }
 
-        // Write tiling per-screen groups
-        for (auto it = m_tilingScreenAssignments.constBegin(); it != m_tilingScreenAssignments.constEnd(); ++it) {
-            QString screenId = safeScreenId(it.key());
-            KConfigGroup screenGroup = config->group(QStringLiteral("TilingScreen:") + screenId);
-            screenGroup.writeEntry(QStringLiteral("Assignment"), it.value().toString());
-        }
-
-        // Tiling per-desktop and per-activity assignments are now stored via the
-        // shared pending cache (m_pendingDesktopAssignments / m_pendingActivityAssignments)
-        // and pushed to the daemon in the batch D-Bus calls below. No separate
-        // KConfig shadow write needed — the daemon is the source of truth.
+        // Tiling per-desktop and per-activity assignments are stored via the
+        // shared pending cache and pushed to the daemon in the batch D-Bus calls
+        // below. The daemon writes its own [Assignment:*:Desktop:*] KConfig groups.
 
         // Tiling quick layout slots
         KConfigGroup tilingSlots = config->group(QStringLiteral("TilingQuickLayoutSlots"));
@@ -253,8 +274,11 @@ void AssignmentManager::load()
     m_screenAssignments.clear();
     m_tilingScreenAssignments.clear();
     m_tilingQuickLayoutSlots.clear();
+    m_cachedDesktopAssignments.clear();
+    m_cachedActivityAssignments.clear();
     {
         auto config = KSharedConfig::openConfig(QStringLiteral("plasmazonesrc"));
+        config->reparseConfiguration(); // Re-read from disk (daemon may have written)
         const QStringList allGroups = config->groupList();
 
         auto resolveScreenId = [](const QString& screenId) -> QString {
@@ -263,88 +287,130 @@ void AssignmentManager::load()
             return Utils::screenNameForId(screenId);
         };
 
-        auto loadPerScreenAssignments = [&](const QLatin1String& prefix, QVariantMap& target) {
-            for (const QString& groupName : allGroups) {
-                if (groupName.startsWith(prefix)) {
-                    QString screenId = groupName.mid(prefix.size());
-                    if (screenId.isEmpty())
-                        continue;
-                    KConfigGroup screenGroup = config->group(groupName);
-                    QString layoutId = screenGroup.readEntry(QStringLiteral("Assignment"), QString());
-                    if (!layoutId.isEmpty()) {
-                        QString connectorName = resolveScreenId(screenId);
-                        if (!connectorName.isEmpty())
-                            target[connectorName] = layoutId;
-                    }
-                }
-            }
-        };
-
-        // Snapping screen assignments
-        const QLatin1String snappingPrefix("SnappingScreen:");
-        bool foundSnappingGroups = false;
+        // ── Read all [Assignment:*] KConfig groups (written by daemon) ──
+        const QLatin1String assignmentPrefix("Assignment:");
+        bool foundAssignmentGroups = false;
         for (const QString& groupName : allGroups) {
-            if (groupName.startsWith(snappingPrefix)) {
-                foundSnappingGroups = true;
-                break;
+            if (!groupName.startsWith(assignmentPrefix))
+                continue;
+
+            foundAssignmentGroups = true;
+
+            // Parse group name: Assignment:screenId[:Desktop:N][:Activity:id]
+            QString remainder = groupName.mid(assignmentPrefix.size());
+            if (remainder.isEmpty())
+                continue;
+
+            QString screenId;
+            int virtualDesktop = 0;
+            QString activity;
+
+            // Extract :Activity:id suffix first (activity IDs may contain colons)
+            int actIdx = remainder.indexOf(QLatin1String(":Activity:"));
+            if (actIdx >= 0) {
+                activity = remainder.mid(actIdx + 10);
+                remainder = remainder.left(actIdx);
+            }
+
+            // Extract :Desktop:N suffix
+            int deskIdx = remainder.indexOf(QLatin1String(":Desktop:"));
+            if (deskIdx >= 0) {
+                bool ok = false;
+                virtualDesktop = remainder.mid(deskIdx + 9).toInt(&ok);
+                if (!ok)
+                    virtualDesktop = 0;
+                remainder = remainder.left(deskIdx);
+            }
+
+            screenId = remainder;
+            if (screenId.isEmpty())
+                continue;
+
+            KConfigGroup grp = config->group(groupName);
+            AssignmentEntry entry;
+            entry.mode = static_cast<AssignmentEntry::Mode>(grp.readEntry(QStringLiteral("Mode"), 0));
+            entry.snappingLayout = grp.readEntry(QStringLiteral("SnappingLayout"), QString());
+            entry.tilingAlgorithm = grp.readEntry(QStringLiteral("TilingAlgorithm"), QString());
+
+            if (!entry.isValid())
+                continue;
+
+            if (virtualDesktop == 0 && activity.isEmpty()) {
+                // Base screen assignment → populate the existing split maps for QML compat
+                QString connectorName = resolveScreenId(screenId);
+                if (connectorName.isEmpty())
+                    continue;
+                if (!entry.snappingLayout.isEmpty())
+                    m_screenAssignments[connectorName] = entry.snappingLayout;
+                if (!entry.tilingAlgorithm.isEmpty())
+                    m_tilingScreenAssignments[connectorName] = LayoutId::makeAutotileId(entry.tilingAlgorithm);
+            } else if (virtualDesktop > 0 && activity.isEmpty()) {
+                // Per-desktop assignment
+                QString key = QStringLiteral("%1|%2").arg(screenId).arg(virtualDesktop);
+                m_cachedDesktopAssignments[key] = entry;
+            } else if (!activity.isEmpty()) {
+                // Per-activity assignment
+                QString key = QStringLiteral("%1|%2").arg(screenId, activity);
+                m_cachedActivityAssignments[key] = entry;
             }
         }
-        if (foundSnappingGroups) {
-            loadPerScreenAssignments(snappingPrefix, m_screenAssignments);
-        } else {
-            KConfigGroup legacySnapping = config->group(QStringLiteral("SnappingScreenAssignments"));
-            if (legacySnapping.exists()) {
-                const QStringList keys = legacySnapping.keyList();
-                for (const QString& key : keys) {
-                    QString layoutId = legacySnapping.readEntry(key, QString());
-                    if (!layoutId.isEmpty())
-                        m_screenAssignments[key] = layoutId;
-                }
-            } else {
-                // Fallback: load from daemon for first run
-                QDBusMessage assignmentsReply =
-                    KCMDBus::callDaemon(layoutInterface, QStringLiteral("getAllScreenAssignments"));
-                if (assignmentsReply.type() == QDBusMessage::ReplyMessage && !assignmentsReply.arguments().isEmpty()) {
-                    QString assignmentsJson = assignmentsReply.arguments().first().toString();
-                    QJsonDocument doc = QJsonDocument::fromJson(assignmentsJson.toUtf8());
-                    if (doc.isObject()) {
-                        QJsonObject root = doc.object();
-                        for (auto it = root.begin(); it != root.end(); ++it) {
-                            QString screenName = it.key();
-                            QJsonObject screenObj = it.value().toObject();
-                            if (screenObj.contains(QStringLiteral("default"))) {
-                                QString layoutId = screenObj.value(QStringLiteral("default")).toString();
-                                if (!layoutId.isEmpty()) {
-                                    if (layoutId.startsWith(QLatin1String("autotile:"))) {
-                                        m_tilingScreenAssignments[screenName] = layoutId;
-                                    } else {
-                                        m_screenAssignments[screenName] = layoutId;
-                                    }
-                                }
-                            }
+
+        if (!foundAssignmentGroups) {
+            // ── Fall back to old SnappingScreen:/TilingScreen: groups ──
+            auto loadPerScreenAssignments = [&](const QLatin1String& prefix, QVariantMap& target) {
+                for (const QString& groupName : allGroups) {
+                    if (groupName.startsWith(prefix)) {
+                        QString sid = groupName.mid(prefix.size());
+                        if (sid.isEmpty())
+                            continue;
+                        KConfigGroup screenGroup = config->group(groupName);
+                        QString layoutId = screenGroup.readEntry(QStringLiteral("Assignment"), QString());
+                        if (!layoutId.isEmpty()) {
+                            QString connectorName = resolveScreenId(sid);
+                            if (!connectorName.isEmpty())
+                                target[connectorName] = layoutId;
                         }
                     }
                 }
-            }
-        }
+            };
 
-        // Tiling screen assignments
-        const QLatin1String tilingPrefix("TilingScreen:");
-        loadPerScreenAssignments(tilingPrefix, m_tilingScreenAssignments);
-        if (m_tilingScreenAssignments.isEmpty()) {
-            KConfigGroup legacyTiling = config->group(QStringLiteral("TilingScreenAssignments"));
-            if (legacyTiling.exists()) {
-                const QStringList keys = legacyTiling.keyList();
-                for (const QString& key : keys) {
-                    QString layoutId = legacyTiling.readEntry(key, QString());
-                    if (!layoutId.isEmpty())
-                        m_tilingScreenAssignments[key] = layoutId;
+            const QLatin1String snappingPrefix("SnappingScreen:");
+            bool foundSnappingGroups = false;
+            for (const QString& groupName : allGroups) {
+                if (groupName.startsWith(snappingPrefix)) {
+                    foundSnappingGroups = true;
+                    break;
+                }
+            }
+            if (foundSnappingGroups) {
+                loadPerScreenAssignments(snappingPrefix, m_screenAssignments);
+            } else {
+                KConfigGroup legacySnapping = config->group(QStringLiteral("SnappingScreenAssignments"));
+                if (legacySnapping.exists()) {
+                    const QStringList keys = legacySnapping.keyList();
+                    for (const QString& key : keys) {
+                        QString layoutId = legacySnapping.readEntry(key, QString());
+                        if (!layoutId.isEmpty())
+                            m_screenAssignments[key] = layoutId;
+                    }
+                }
+            }
+
+            // Tiling screen assignments (old format)
+            const QLatin1String tilingPrefix("TilingScreen:");
+            loadPerScreenAssignments(tilingPrefix, m_tilingScreenAssignments);
+            if (m_tilingScreenAssignments.isEmpty()) {
+                KConfigGroup legacyTiling = config->group(QStringLiteral("TilingScreenAssignments"));
+                if (legacyTiling.exists()) {
+                    const QStringList keys = legacyTiling.keyList();
+                    for (const QString& key : keys) {
+                        QString layoutId = legacyTiling.readEntry(key, QString());
+                        if (!layoutId.isEmpty())
+                            m_tilingScreenAssignments[key] = layoutId;
+                    }
                 }
             }
         }
-
-        // Tiling per-desktop and per-activity assignments are loaded on-demand
-        // from the daemon via D-Bus (shared code path with snapping).
 
         // Tiling quick layout slots
         KConfigGroup tilingSlots = config->group(QStringLiteral("TilingQuickLayoutSlots"));
@@ -388,6 +454,8 @@ void AssignmentManager::resetToDefaults()
     m_quickLayoutSlots.clear();
     m_tilingScreenAssignments.clear();
     m_tilingQuickLayoutSlots.clear();
+    m_cachedDesktopAssignments.clear();
+    m_cachedActivityAssignments.clear();
     m_assignmentViewMode = 0;
     clearPendingStates();
 

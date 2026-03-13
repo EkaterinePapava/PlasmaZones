@@ -143,7 +143,13 @@ void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString
         if (m_overlayService) {
             int windowCount = 0;
             if (m_autotileEngine) {
-                TilingState* state = m_autotileEngine->stateForScreen(screenName);
+                // AutotileEngine uses connector names (e.g. "DP-2"), not screen
+                // IDs (e.g. "LG Electronics:LG Ultra HD:115107"). Convert if needed.
+                QString connectorName = Utils::screenNameForId(screenName);
+                if (connectorName.isEmpty()) {
+                    connectorName = screenName; // already a connector name
+                }
+                TilingState* state = m_autotileEngine->stateForScreen(connectorName);
                 if (state) {
                     windowCount = state->tiledWindowCount();
                 }
@@ -239,27 +245,6 @@ void Daemon::syncModeFromAssignments()
     const int desktop = currentDesktop();
     const QString activity = currentActivity();
 
-    // Derive the tiling mode from actual per-desktop assignments.
-    // If ANY screen has an autotile assignment on this desktop, mode is Autotile.
-    bool anyAutotile = false;
-    for (QScreen* screen : m_screenManager->screens()) {
-        const QString screenId = Utils::screenIdentifier(screen);
-        const QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
-        if (LayoutId::isAutotile(assignmentId)) {
-            anyAutotile = true;
-            break;
-        }
-    }
-
-    // Update ModeTracker to reflect this desktop's actual state.
-    // Use QSignalBlocker to prevent the mode change from triggering
-    // updateLayoutFilter() via currentModeChanged — we call it ourselves
-    // at the end to ensure a single consistent update.
-    if (m_modeTracker) {
-        QSignalBlocker blocker(m_modeTracker.get());
-        m_modeTracker->setCurrentMode(anyAutotile ? TilingMode::Autotile : TilingMode::Manual);
-    }
-
     // Sync UnifiedLayoutController's current layout ID to match this desktop.
     // Without this, layout cycling uses the old desktop's current index.
     if (m_unifiedLayoutController) {
@@ -294,22 +279,9 @@ void Daemon::syncModeFromAssignments()
             }
         }
 
-        // Populate m_lastManualAssignments / m_lastAutotileAssignments for ALL
-        // screens on this desktop so the first toggle has a correct fallback
-        // (not just the focused screen — multi-monitor needs all screens seeded).
-        for (QScreen* screen : m_screenManager->screens()) {
-            const QString screenId = Utils::screenIdentifier(screen);
-            const QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
-            DesktopContextKey ctxKey{screenId, desktop, activity};
-            if (LayoutId::isAutotile(assignmentId)) {
-                if (!m_lastAutotileAssignments.contains(ctxKey)) {
-                    m_lastAutotileAssignments[ctxKey] = assignmentId;
-                }
-            } else {
-                if (!m_lastManualAssignments.contains(ctxKey)) {
-                    m_lastManualAssignments[ctxKey] = assignmentId;
-                }
-            }
+        // Update ModeTracker context to reflect this desktop
+        if (m_modeTracker && focusedScreen) {
+            m_modeTracker->setContext(Utils::screenIdentifier(focusedScreen), desktop, activity);
         }
     }
 

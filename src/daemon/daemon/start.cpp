@@ -161,6 +161,10 @@ void Daemon::connectDesktopActivity()
     // (WindowDragAdaptor reads from LayoutManager directly via resolveLayoutForScreen())
     const int initialDesktop = m_virtualDesktopManager->currentDesktop();
     m_overlayService->setCurrentVirtualDesktop(initialDesktop);
+    m_layoutManager->setCurrentVirtualDesktop(initialDesktop);
+    if (m_autotileEngine) {
+        m_autotileEngine->setCurrentDesktop(initialDesktop);
+    }
 
     // Initialize and start activity manager
     // Connect to VirtualDesktopManager for desktop+activity coordinate lookup
@@ -181,7 +185,12 @@ void Daemon::connectDesktopActivity()
         });
 
         // Set initial activity on components that maintain their own copy
-        m_overlayService->setCurrentActivity(m_activityManager->currentActivity());
+        const QString initialActivity = m_activityManager->currentActivity();
+        m_overlayService->setCurrentActivity(initialActivity);
+        m_layoutManager->setCurrentActivity(initialActivity);
+        if (m_autotileEngine) {
+            m_autotileEngine->setCurrentActivity(initialActivity);
+        }
 
         // Connect activity changes: update all components
         connect(m_activityManager.get(), &ActivityManager::currentActivityChanged, this,
@@ -349,36 +358,26 @@ void Daemon::connectShortcutSignals()
 
 void Daemon::pruneContextMapsForDesktop(int maxDesktop)
 {
-    auto pruneByDesktop = [maxDesktop](auto& map) {
-        auto it = map.begin();
-        while (it != map.end()) {
-            if (it.key().desktop > maxDesktop) {
-                it = map.erase(it);
-            } else {
-                ++it;
-            }
+    auto it = m_lastAutotileOrders.begin();
+    while (it != m_lastAutotileOrders.end()) {
+        if (it.key().desktop > maxDesktop) {
+            it = m_lastAutotileOrders.erase(it);
+        } else {
+            ++it;
         }
-    };
-    pruneByDesktop(m_lastAutotileAssignments);
-    pruneByDesktop(m_lastManualAssignments);
-    pruneByDesktop(m_lastAutotileOrders);
+    }
 }
 
 void Daemon::pruneContextMapsForActivities(const QSet<QString>& validActivities)
 {
-    auto pruneByActivity = [&validActivities](auto& map) {
-        auto it = map.begin();
-        while (it != map.end()) {
-            if (!it.key().activity.isEmpty() && !validActivities.contains(it.key().activity)) {
-                it = map.erase(it);
-            } else {
-                ++it;
-            }
+    auto it = m_lastAutotileOrders.begin();
+    while (it != m_lastAutotileOrders.end()) {
+        if (!it.key().activity.isEmpty() && !validActivities.contains(it.key().activity)) {
+            it = m_lastAutotileOrders.erase(it);
+        } else {
+            ++it;
         }
-    };
-    pruneByActivity(m_lastAutotileAssignments);
-    pruneByActivity(m_lastManualAssignments);
-    pruneByActivity(m_lastAutotileOrders);
+    }
 }
 
 } // namespace PlasmaZones
