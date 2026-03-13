@@ -1414,8 +1414,13 @@ void AutotileEngine::removeWindow(const QString& windowId)
     }
 
     // Clean up saved floating state for closed windows
-    for (auto it = m_savedFloatingWindows.begin(); it != m_savedFloatingWindows.end(); ++it) {
+    for (auto it = m_savedFloatingWindows.begin(); it != m_savedFloatingWindows.end();) {
         it.value().remove(windowId);
+        if (it.value().isEmpty()) {
+            it = m_savedFloatingWindows.erase(it);
+        } else {
+            ++it;
+        }
     }
 
     // Purge closed window from pending initial orders.
