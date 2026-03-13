@@ -168,7 +168,6 @@ private:
     uint64_t m_restoreStaggerGeneration = 0;
     QSet<QString> m_resnapOverriddenWindows; ///< windows resnapped by handleResnapToNewLayout (skip stagger restore)
     QHash<QString, QRect> m_autotileTargetZones;
-    QSet<QString> m_autotileRetried; ///< windows that already got one retry of the full zone size
     QHash<QString, QRect> m_centeredWaylandZones; ///< zones where Wayland windows were last centered
     QString m_pendingAutotileFocusWindowId;
     QPointer<KWin::EffectWindow> m_pendingReactivateWindow; ///< re-activate after raise loop (daemon restart)

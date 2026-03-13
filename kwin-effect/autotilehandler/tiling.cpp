@@ -31,7 +31,6 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
 
     ++m_autotileStaggerGeneration;
     m_autotileTargetZones.clear();
-    m_autotileRetried.clear();
 
     // Snapshot the full global stacking order before tiling. After all
     // moveResize calls (which implicitly raise on KWin 6 / Wayland),
@@ -338,34 +337,10 @@ void AutotileHandler::slotWindowFrameGeometryChanged(KWin::EffectWindow* w, cons
         return;
     }
 
-    // Window doesn't match zone size — either undersized (Wayland race or genuine
-    // constraint) or oversized (refused to shrink, e.g., Wayland min size constraint).
-    //
-    // On first mismatch: retry the full zone moveResize once. This handles Wayland
-    // configure races where the client committed a buffer for an intermediate configure
-    // event (e.g., from unmaximize) instead of the final zone configure.
-    //
-    // On second mismatch (after retry): accept the client's actual size and center it
-    // within the zone so it's visually balanced rather than stuck at the zone origin.
+    // Window doesn't match zone — center it within the zone so it's visually
+    // balanced rather than stuck at the zone origin.
     if (dw > MinCenteringDelta || dh > MinCenteringDelta || dw < -MinCenteringDelta || dh < -MinCenteringDelta) {
-        // First mismatch for this window — retry full zone size before centering.
-        // This gives the Wayland client one more chance to process the correct configure.
-        if (!m_autotileRetried.contains(windowId)) {
-            m_autotileRetried.insert(windowId);
-            KWin::Window* kw = w->window();
-            if (kw) {
-                qCDebug(lcEffect) << "Retrying full zone moveResize for" << windowId << "actual=" << actual.size()
-                                  << "zone=" << targetZone.size();
-                m_effect->m_windowAnimator->removeAnimation(w);
-                kw->moveResize(QRectF(targetZone));
-            } else {
-                // No KWin::Window — consume stale entry to prevent perpetual lookups
-                m_autotileTargetZones.erase(it);
-            }
-            return;
-        }
-
-        // Second mismatch — genuine constraint or persistent race. Center the window.
+        // Window doesn't match zone — center it.
         const qreal dx = dw / 2.0;
         const qreal dy = dh / 2.0;
         const QRectF centered(targetZone.x() + dx, targetZone.y() + dy, actual.width(), actual.height());
