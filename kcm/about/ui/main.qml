@@ -168,7 +168,7 @@ KCMUtils.SimpleKCM {
                 id: updateCheckColumn
 
                 anchors.fill: parent
-                spacing: Kirigami.Units.smallSpacing
+                spacing: Kirigami.Units.largeSpacing
 
                 Button {
                     id: checkUpdateButton
