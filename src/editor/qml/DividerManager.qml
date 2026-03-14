@@ -34,13 +34,15 @@ Item {
     property var dividers: []
     // Track if we've done an initial update when drawing area becomes ready
     property bool initialUpdateDone: false
+    // Grouping threshold for divider edge alignment (fraction of drawing area)
+    readonly property real dividerThreshold: 0.01
 
     // Update dividers when zones change
     function updateDividers() {
         // Round to threshold for grouping edges together
         // But keep track of exact positions to match against recent divider positions
         function roundToThreshold(val) {
-            return Math.round(val / threshold) * threshold;
+            return Math.round(val / dividerThreshold) * dividerThreshold;
         }
 
         // Helper to find matching recent position for a divider based on affected zones
@@ -55,14 +57,6 @@ Item {
             return recent[dividerKey] || null;
         }
 
-        // Recent position exists and is close enough - use it to preserve exact position
-        // Use exact position from edge (matching recent position)
-        // Use rounded position
-        // Recent position exists and is close enough - use it to preserve exact position
-        // Use exact position from edge (matching recent position)
-        // Use rounded position
-
-        var threshold = 0.01;
         // This function assumes editorController is already checked - use tryUpdateDividers() instead
         if (!editorController) {
             dividerManager.dividerCount = 0;
@@ -101,7 +95,7 @@ Item {
             var rightEdge = roundToThreshold(exactRightEdge);
             var bottomEdge = roundToThreshold(exactBottomEdge);
             // Right edge (potential vertical divider) - skip if at canvas edge
-            if (rightEdge > threshold && rightEdge < 1 - threshold) {
+            if (rightEdge > dividerThreshold && rightEdge < 1 - dividerThreshold) {
                 if (!verticalEdges[rightEdge])
                     verticalEdges[rightEdge] = {
                     "leftZones": [],
@@ -122,7 +116,7 @@ Item {
             // Left edge (zone is on right side of a divider)
             var exactLeftEdge = zone.x;
             var leftEdge = roundToThreshold(exactLeftEdge);
-            if (leftEdge > threshold && leftEdge < 1 - threshold) {
+            if (leftEdge > dividerThreshold && leftEdge < 1 - dividerThreshold) {
                 if (!verticalEdges[leftEdge])
                     verticalEdges[leftEdge] = {
                     "leftZones": [],
@@ -141,7 +135,7 @@ Item {
 
             }
             // Bottom edge (potential horizontal divider) - skip if at canvas edge
-            if (bottomEdge > threshold && bottomEdge < 1 - threshold) {
+            if (bottomEdge > dividerThreshold && bottomEdge < 1 - dividerThreshold) {
                 if (!horizontalEdges[bottomEdge])
                     horizontalEdges[bottomEdge] = {
                     "topZones": [],
@@ -162,7 +156,7 @@ Item {
             // Top edge (zone is below a divider)
             var exactTopEdge = zone.y;
             var topEdge = roundToThreshold(exactTopEdge);
-            if (topEdge > threshold && topEdge < 1 - threshold) {
+            if (topEdge > dividerThreshold && topEdge < 1 - dividerThreshold) {
                 if (!horizontalEdges[topEdge])
                     horizontalEdges[topEdge] = {
                     "topZones": [],

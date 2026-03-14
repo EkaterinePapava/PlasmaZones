@@ -67,6 +67,48 @@ KCMUtils.SimpleKCM {
             }
         }
 
+        // Screen selector + open folder row
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
+
+            // Screen selector for editor targeting (only shown with multiple monitors)
+            ScreenComboBox {
+                id: screenCombo
+
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 16
+                visible: root.kcmModule.screens.length > 1
+                kcm: root.kcmModule
+                noneText: i18n("Primary Monitor")
+                onActivated: root.kcmModule.selectedScreenName = currentScreenName
+            }
+
+            // Sync on hot-unplug: ScreenComboBox resets internally when
+            // a screen disappears — propagate back to KCM
+            Connections {
+                function onCurrentValueChanged() {
+                    if (screenCombo.currentScreenName !== root.kcmModule.selectedScreenName)
+                        root.kcmModule.selectedScreenName = screenCombo.currentScreenName;
+
+                }
+
+                target: screenCombo
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            Button {
+                text: i18n("Open Layouts Folder")
+                icon.name: "folder-open"
+                flat: true
+                visible: root.viewMode === 0
+                onClicked: root.kcmModule.openLayoutsFolder()
+            }
+
+        }
+
         // Layout grid
         GridView {
             id: layoutGrid
@@ -221,16 +263,6 @@ KCMUtils.SimpleKCM {
                 }
             }
 
-        }
-
-        // Open Layouts Folder link
-        Button {
-            Layout.alignment: Qt.AlignLeft
-            text: i18n("Open Layouts Folder")
-            icon.name: "folder-open"
-            flat: true
-            visible: root.viewMode === 0
-            onClicked: Qt.openUrlExternally("file://" + StandardPaths.writableLocation(StandardPaths.GenericDataLocation) + "/plasmazones/layouts")
         }
 
     }

@@ -4,6 +4,9 @@
 #include "kcmlayouts.h"
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QDesktopServices>
+#include <QDir>
+#include <QStandardPaths>
 #include <QTimer>
 #include "../common/dbusutils.h"
 #include "../common/screenhelper.h"
@@ -257,6 +260,17 @@ void KCMLayouts::setLayoutAutoAssign(const QString& layoutId, bool enabled)
     m_layoutManager->setLayoutAutoAssign(layoutId, enabled);
 }
 
+void KCMLayouts::openLayoutsFolder()
+{
+    const QString path =
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral("/plasmazones/layouts");
+    QDir dir(path);
+    if (!dir.exists()) {
+        dir.mkpath(QStringLiteral("."));
+    }
+    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+}
+
 // ── Screens ──────────────────────────────────────────────────────────────
 
 QVariantList KCMLayouts::screens() const
@@ -264,10 +278,32 @@ QVariantList KCMLayouts::screens() const
     return m_screenHelper->screens();
 }
 
+QString KCMLayouts::selectedScreenName() const
+{
+    return m_selectedScreenName;
+}
+
+void KCMLayouts::setSelectedScreenName(const QString& name)
+{
+    if (m_selectedScreenName != name) {
+        m_selectedScreenName = name;
+        Q_EMIT selectedScreenNameChanged();
+    }
+}
+
 QString KCMLayouts::currentScreenName() const
 {
-    // Return first screen name for editor targeting
+    // Use the user-selected screen if set
+    if (!m_selectedScreenName.isEmpty()) {
+        return m_selectedScreenName;
+    }
+    // Fall back to the primary screen, then first screen
     const auto s = m_screenHelper->screens();
+    for (const QVariant& screen : s) {
+        if (screen.toMap().value(QStringLiteral("isPrimary")).toBool()) {
+            return screen.toMap().value(QStringLiteral("name")).toString();
+        }
+    }
     if (!s.isEmpty()) {
         return s.first().toMap().value(QStringLiteral("name")).toString();
     }
