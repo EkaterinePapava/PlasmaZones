@@ -194,6 +194,9 @@ echo ""
 %{_datadir}/applications/org.plasmazones.daemon.desktop
 %{_datadir}/applications/kcm_plasmazones_*.desktop
 
+# System Settings category
+%{_datadir}/systemsettings/categories/settings-windowmanagement-plasmazones.desktop
+
 # Data files
 %{_datadir}/plasmazones/
 
