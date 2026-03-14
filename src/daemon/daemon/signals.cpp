@@ -397,6 +397,10 @@ void Daemon::connectLayoutSignals()
 
     // Connect unified layout controller signals for OSD display
     connect(m_unifiedLayoutController.get(), &UnifiedLayoutController::layoutApplied, this, [this](Layout* layout) {
+        // Dismiss snap assist — it's stale once the layout changes
+        if (m_overlayService->isSnapAssistVisible()) {
+            m_overlayService->hideSnapAssist();
+        }
         // Defer OSD display (same rationale as autotileApplied — first-time QML
         // compilation of LayoutOsd.qml blocks the event loop ~100-300ms).
         // Capture layout ID (not raw pointer) to avoid use-after-free if the
@@ -411,6 +415,10 @@ void Daemon::connectLayoutSignals()
     connect(m_unifiedLayoutController.get(), &UnifiedLayoutController::autotileApplied, this,
             [this](const QString& algorithmName, int windowCount) {
                 Q_UNUSED(windowCount)
+                // Dismiss snap assist — autotile mode replaces snapping entirely
+                if (m_overlayService->isSnapAssistVisible()) {
+                    m_overlayService->hideSnapAssist();
+                }
                 // Defer OSD display so QML window creation (first-time ~100-300ms for
                 // LayoutOsd.qml compilation + scene graph) doesn't block the daemon event
                 // loop while the effect is sending windowOpened D-Bus calls.  Without this,
