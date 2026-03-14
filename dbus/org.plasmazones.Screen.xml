@@ -28,6 +28,18 @@
                 <annotation name="org.gtk.GDBus.DocString" value="Stable EDID-based screen identifier."/>
             </arg>
         </method>
+        <method name="getPrimaryScreen">
+            <annotation name="org.gtk.GDBus.DocString" value="Return the name of the primary screen. Prefers KWin output order over QGuiApplication::primaryScreen()."/>
+            <arg name="screenName" type="s" direction="out">
+                <annotation name="org.gtk.GDBus.DocString" value="Primary screen name."/>
+            </arg>
+        </method>
+        <method name="setPrimaryScreenFromKWin">
+            <annotation name="org.gtk.GDBus.DocString" value="Override the primary screen with the KWin compositor's output order primary. Called by the KWin effect on daemon ready."/>
+            <arg name="screenName" type="s" direction="in">
+                <annotation name="org.gtk.GDBus.DocString" value="Screen name from Workspace::outputOrder().first()."/>
+            </arg>
+        </method>
         <signal name="screenAdded">
             <annotation name="org.gtk.GDBus.DocString" value="Emitted when a new screen is connected."/>
             <arg name="screenName" type="s">

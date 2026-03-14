@@ -339,6 +339,21 @@ PlasmaZonesEffect::PlasmaZonesEffect()
 
     connect(KWin::effects, &KWin::EffectsHandler::windowActivated, this, &PlasmaZonesEffect::slotWindowActivated);
 
+    // Update the daemon's primary screen override when KDE Display Settings change
+    if (auto* ws = KWin::Workspace::self()) {
+        connect(ws, &KWin::Workspace::outputOrderChanged, this, [this]() {
+            auto* workspace = KWin::Workspace::self();
+            if (workspace && m_daemonServiceRegistered) {
+                const auto outputs = workspace->outputOrder();
+                if (!outputs.isEmpty()) {
+                    fireAndForgetDBusCall(QStringLiteral("org.plasmazones.Screen"),
+                                          QStringLiteral("setPrimaryScreenFromKWin"), {outputs.first()->name()},
+                                          QStringLiteral("setPrimaryScreenFromKWin"));
+                }
+            }
+        });
+    }
+
     // mouseChanged is the only reliable way to get modifier state in a KWin effect on Wayland;
     // QGuiApplication::queryKeyboardModifiers() doesn't work since effects run in the compositor.
     connect(KWin::effects, &KWin::EffectsHandler::mouseChanged, this, &PlasmaZonesEffect::slotMouseChanged);
@@ -816,6 +831,17 @@ void PlasmaZonesEffect::slotDaemonReady()
     // immediate state pushes. QDBusInterface will be created lazily on the
     // first user-initiated action (window drag, activation, etc.), by which
     // time the daemon's event loop is guaranteed to be running.
+
+    // Push KWin's output-order primary screen to the daemon so getPrimaryScreen()
+    // reflects KDE Display Settings rather than QGuiApplication::primaryScreen().
+    auto* ws = KWin::Workspace::self();
+    if (ws) {
+        const auto outputs = ws->outputOrder();
+        if (!outputs.isEmpty()) {
+            fireAndForgetDBusCall(QStringLiteral("org.plasmazones.Screen"), QStringLiteral("setPrimaryScreenFromKWin"),
+                                  {outputs.first()->name()}, QStringLiteral("setPrimaryScreenFromKWin"));
+        }
+    }
 
     // Re-push cursor screen
     if (!m_lastCursorScreenName.isEmpty()) {

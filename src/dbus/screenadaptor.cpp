@@ -80,8 +80,23 @@ QString ScreenAdaptor::getScreenInfo(const QString& screenName)
 
 QString ScreenAdaptor::getPrimaryScreen()
 {
+    // Prefer KWin-sourced override (from Workspace::outputOrder) over Qt's
+    // QGuiApplication::primaryScreen(), which may diverge from KDE Display
+    // Settings on some Wayland configurations.
+    if (!m_primaryScreenOverride.isEmpty()) {
+        QScreen* overrideScreen = Utils::findScreenByName(m_primaryScreenOverride);
+        if (overrideScreen) {
+            return overrideScreen->name();
+        }
+    }
     auto* primary = Utils::primaryScreen();
     return primary ? primary->name() : QString();
+}
+
+void ScreenAdaptor::setPrimaryScreenFromKWin(const QString& screenName)
+{
+    m_primaryScreenOverride = screenName;
+    qCInfo(lcDbus) << "Primary screen override set from KWin:" << screenName;
 }
 
 QString ScreenAdaptor::getScreenId(const QString& screenName)

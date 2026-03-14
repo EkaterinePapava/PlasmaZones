@@ -34,11 +34,15 @@ public Q_SLOTS:
     QString getScreenInfo(const QString& screenName);
     QString getPrimaryScreen();
     QString getScreenId(const QString& screenName);
+    void setPrimaryScreenFromKWin(const QString& screenName);
 
 Q_SIGNALS:
     void screenAdded(const QString& screenName);
     void screenRemoved(const QString& screenName);
     void screenGeometryChanged(const QString& screenName);
+
+private:
+    QString m_primaryScreenOverride;
 };
 
 } // namespace PlasmaZones
