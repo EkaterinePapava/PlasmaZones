@@ -7,6 +7,29 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-03-14
+
+### Added
+- **Independent border and title bar toggles** (fixes [#210](https://github.com/fuddlesworth/PlasmaZones/discussions/210)): New "Show focus border" setting draws a colored border around the focused tiled window without requiring title bars to be hidden. Border width, corner radius, and color are configurable independently.
+- **Border corner radius setting**: New corner radius option (0–20px) for the autotile focus border. For borderless windows, the window content is clipped to match the rounded border.
+- **Right-click context menu for layouts**: Edit, Set as Default, Show/Hide from Zone Selector, Enable/Disable Auto-assign, Duplicate, Export, and Delete actions are now accessible via right-click on layout cards. The toolbar has been simplified to New Layout, Import, Open Folder, and view switching.
+- **Monitor selector for layout editor**: Layouts KCM now shows a screen selector (multi-monitor setups) so the editor opens on the correct monitor instead of always using the first screen.
+
+### Fixed
+- **Double toggle-float on multi-monitor setups**: Navigation signal connections were registered twice (constructor + daemon ready), causing float toggle and other shortcuts to fire their handlers twice and immediately cancel themselves.
+- **Snap-mode zone changes leaking into autotile engine**: The autotile engine's `windowZoneChanged` listener incorrectly called `onWindowAdded()` for snap-mode windows, triggering "not in m_windowToStateKey" warnings and potentially inserting windows into the wrong screen's tiling state.
+- **Window tiling state preserved when moved to another desktop**: Moving a tiled window to a different virtual desktop now properly removes it from the source desktop's tiling and retiles to fill the gap. Title bars are restored for borderless windows.
+- **Editor opens on wrong monitor** (fixes [#216](https://github.com/fuddlesworth/PlasmaZones/discussions/216)): The Layouts KCM always sent the editor to the first screen in the list. Now uses user selection, falling back to the primary monitor.
+- **"Open Layouts Folder" error on fresh install** (fixes [#216](https://github.com/fuddlesworth/PlasmaZones/discussions/216)): The layouts directory is now created if it doesn't exist before opening.
+- **Layout grid not refreshing after duplicate/delete/import**: The daemon never emitted layout change D-Bus signals, so the KCM grid relied on manual reloads. Added `scheduleLoad()` after all mutating operations.
+- **QML compiler warning in layout editor**: Fixed `threshold` variable used before declaration in `DividerManager.qml`.
+- **Update check button spacing**: Increased padding between the "Check for Updates" button and the result message.
+
+### Changed
+- **KCM layout reorganization**: Autotiling settings split into Appearance (Colors, Decorations, Focus Border) and Behavior cards. Snapping "Snapping Behavior" card renamed to "Behavior" for consistency.
+- **Enable toggles restyled**: Snapping and Tiling enable toggles now use the same bold-label + switch pattern as the main "Enable PlasmaZones" toggle.
+- **Layout toolbar simplified**: Per-layout actions moved to right-click context menu. Toolbar retains only global actions (New Layout, Import, Open Folder, view switcher).
+
 ## [2.1.0] - 2026-03-13
 
 ### Breaking Changes
@@ -739,7 +762,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.0.2...v2.1.0
 [2.0.2]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.0.0...v2.0.1
