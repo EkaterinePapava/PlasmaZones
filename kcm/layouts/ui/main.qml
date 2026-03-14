@@ -18,8 +18,6 @@ KCMUtils.SimpleKCM {
     readonly property int layoutListMinHeight: Kirigami.Units.gridUnit * 20
     // View mode: 0 = Snapping Layouts, 1 = Auto Tile Algorithms
     property int viewMode: 0
-    // Current layout helper for toolbar
-    readonly property var currentLayout: layoutGrid.currentItem ? layoutGrid.currentItem.modelData : null
 
     topPadding: Kirigami.Units.largeSpacing
     bottomPadding: Kirigami.Units.largeSpacing
@@ -48,7 +46,6 @@ KCMUtils.SimpleKCM {
         LayoutToolbar {
             Layout.fillWidth: true
             kcm: root.kcmModule
-            currentLayout: root.currentLayout
             viewMode: root.viewMode
             onViewModeRequested: (mode) => {
                 root.viewMode = mode;
@@ -56,57 +53,31 @@ KCMUtils.SimpleKCM {
                 layoutGrid.rebuildModel();
                 layoutGrid.selectDefaultLayout(mode);
             }
-            onRequestDeleteLayout: (layout) => {
-                deleteConfirmDialog.layoutToDelete = layout;
-                deleteConfirmDialog.open();
-            }
             onRequestImportLayout: importDialog.open()
-            onRequestExportLayout: (layoutId) => {
-                exportDialog.layoutId = layoutId;
-                exportDialog.open();
-            }
+            onRequestOpenLayoutsFolder: root.kcmModule.openLayoutsFolder()
         }
 
-        // Screen selector + open folder row
-        RowLayout {
+        // Screen selector for editor targeting (only shown with multiple monitors)
+        ScreenComboBox {
+            id: screenCombo
+
             Layout.fillWidth: true
-            spacing: Kirigami.Units.smallSpacing
+            visible: root.kcmModule.screens.length > 1
+            kcm: root.kcmModule
+            noneText: i18n("Primary Monitor")
+            onActivated: root.kcmModule.selectedScreenName = currentScreenName
+        }
 
-            // Screen selector for editor targeting (only shown with multiple monitors)
-            ScreenComboBox {
-                id: screenCombo
+        // Sync on hot-unplug: ScreenComboBox resets internally when
+        // a screen disappears — propagate back to KCM
+        Connections {
+            function onCurrentValueChanged() {
+                if (screenCombo.currentScreenName !== root.kcmModule.selectedScreenName)
+                    root.kcmModule.selectedScreenName = screenCombo.currentScreenName;
 
-                Layout.preferredWidth: Kirigami.Units.gridUnit * 16
-                visible: root.kcmModule.screens.length > 1
-                kcm: root.kcmModule
-                noneText: i18n("Primary Monitor")
-                onActivated: root.kcmModule.selectedScreenName = currentScreenName
             }
 
-            // Sync on hot-unplug: ScreenComboBox resets internally when
-            // a screen disappears — propagate back to KCM
-            Connections {
-                function onCurrentValueChanged() {
-                    if (screenCombo.currentScreenName !== root.kcmModule.selectedScreenName)
-                        root.kcmModule.selectedScreenName = screenCombo.currentScreenName;
-
-                }
-
-                target: screenCombo
-            }
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            Button {
-                text: i18n("Open Layouts Folder")
-                icon.name: "folder-open"
-                flat: true
-                visible: root.viewMode === 0
-                onClicked: root.kcmModule.openLayoutsFolder()
-            }
-
+            target: screenCombo
         }
 
         // Layout grid
@@ -260,6 +231,16 @@ KCMUtils.SimpleKCM {
                 onDeleteRequested: (layout) => {
                     deleteConfirmDialog.layoutToDelete = layout;
                     deleteConfirmDialog.open();
+                }
+                onExportRequested: (layoutId) => {
+                    exportDialog.layoutId = layoutId;
+                    exportDialog.open();
+                }
+                onSetAsDefaultRequested: (layout) => {
+                    if (root.viewMode === 1)
+                        root.kcmModule.autotileAlgorithm = layout.id.replace("autotile:", "");
+                    else
+                        root.kcmModule.defaultLayoutId = layout.id;
                 }
             }
 

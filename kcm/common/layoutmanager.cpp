@@ -77,6 +77,7 @@ void LayoutManager::createNewLayout()
             editLayout(newLayoutId);
         }
     }
+    scheduleLoad();
 }
 
 void LayoutManager::deleteLayout(const QString& layoutId)
@@ -86,6 +87,7 @@ void LayoutManager::deleteLayout(const QString& layoutId)
     if (reply.type() == QDBusMessage::ErrorMessage) {
         qCWarning(lcKcm) << "deleteLayout failed:" << reply.errorMessage();
     }
+    scheduleLoad();
 }
 
 void LayoutManager::duplicateLayout(const QString& layoutId)
@@ -99,6 +101,7 @@ void LayoutManager::duplicateLayout(const QString& layoutId)
             m_layoutToSelect = newLayoutId;
         }
     }
+    scheduleLoad();
 }
 
 void LayoutManager::importLayout(const QString& filePath)
@@ -112,6 +115,7 @@ void LayoutManager::importLayout(const QString& filePath)
             m_layoutToSelect = newLayoutId;
         }
     }
+    scheduleLoad();
 }
 
 void LayoutManager::exportLayout(const QString& layoutId, const QString& filePath)

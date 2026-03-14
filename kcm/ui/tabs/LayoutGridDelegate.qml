@@ -31,6 +31,8 @@ Item {
     signal selected(int index)
     signal activated(string layoutId)
     signal deleteRequested(var layout)
+    signal exportRequested(string layoutId)
+    signal setAsDefaultRequested(var layout)
 
     width: cellWidth
     height: cellHeight
@@ -44,15 +46,87 @@ Item {
 
     }
 
-    HoverHandler {
-        id: hoverHandler
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        hoverEnabled: true
+        onContainsMouseChanged: root.isHovered = containsMouse
+        onClicked: (mouse) => {
+            if (mouse.button === Qt.RightButton) {
+                root.selected(root.index);
+                contextMenu.popup();
+            } else {
+                root.selected(root.index);
+            }
+        }
+        onDoubleClicked: (mouse) => {
+            if (mouse.button === Qt.LeftButton)
+                root.activated(root.modelData.id);
 
-        onHoveredChanged: root.isHovered = hovered
+        }
     }
 
-    TapHandler {
-        onTapped: root.selected(root.index)
-        onDoubleTapped: root.activated(root.modelData.id)
+    Menu {
+        id: contextMenu
+
+        MenuItem {
+            text: i18n("Edit")
+            icon.name: "document-edit"
+            onTriggered: root.activated(root.modelData.id)
+        }
+
+        MenuItem {
+            text: i18n("Set as Default")
+            icon.name: "favorite"
+            enabled: root.viewMode === 1 ? root.modelData.id !== root.autotileDefaultId : root.modelData.id !== root.kcm.defaultLayoutId
+            onTriggered: root.setAsDefaultRequested(root.modelData)
+        }
+
+        MenuSeparator {
+        }
+
+        MenuItem {
+            text: root.modelData.hiddenFromSelector ? i18n("Show in Zone Selector") : i18n("Hide from Zone Selector")
+            icon.name: root.modelData.hiddenFromSelector ? "view-visible" : "view-hidden"
+            onTriggered: root.kcm.setLayoutHidden(root.modelData.id, !root.modelData.hiddenFromSelector)
+        }
+
+        MenuItem {
+            text: root.modelData.autoAssign === true ? i18n("Disable Auto-assign") : i18n("Enable Auto-assign")
+            icon.name: root.modelData.autoAssign === true ? "window-duplicate" : "window-new"
+            visible: root.modelData.isAutotile !== true
+            onTriggered: root.kcm.setLayoutAutoAssign(root.modelData.id, !(root.modelData.autoAssign === true))
+        }
+
+        MenuSeparator {
+            visible: root.viewMode === 0 && root.modelData.isAutotile !== true
+        }
+
+        MenuItem {
+            text: i18n("Duplicate")
+            icon.name: "edit-copy"
+            visible: root.viewMode === 0 && root.modelData.isAutotile !== true
+            onTriggered: root.kcm.duplicateLayout(root.modelData.id)
+        }
+
+        MenuItem {
+            text: i18n("Export")
+            icon.name: "document-export"
+            visible: root.viewMode === 0
+            onTriggered: root.exportRequested(root.modelData.id)
+        }
+
+        MenuSeparator {
+            visible: root.viewMode === 0 && !root.modelData.isSystem && root.modelData.isAutotile !== true
+        }
+
+        MenuItem {
+            text: i18n("Delete")
+            icon.name: "edit-delete"
+            visible: root.viewMode === 0 && !root.modelData.isSystem && root.modelData.isAutotile !== true
+            onTriggered: root.deleteRequested(root.modelData)
+        }
+
     }
 
     Rectangle {
