@@ -7,6 +7,22 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-03-13
+
+### Breaking Changes
+- **Assignment storage migrated from JSON to KConfig**: Per-screen layout assignments (snapping layout and tiling algorithm) are now stored in `plasmazonesrc` KConfig groups (`[Assignment:*]`) instead of `assignments.json`. Existing `assignments.json` files are automatically migrated on first startup and renamed to `assignments.json.migrated`.
+
+### Added
+- **Per-desktop/activity tiling state isolation** (fixes [#212](https://github.com/fuddlesworth/PlasmaZones/discussions/212)): Each virtual desktop and activity now maintains independent tiling state (window membership, master count, split ratios, floating state). Switching desktops no longer interferes with tiling on other desktops.
+- **Zone shaders**: Added Fedora Drift, NixOS Drift, openSUSE Drift, and KDE Neon gear zone shaders
+
+### Fixed
+- **Editor: new zones could not reach canvas edges during drag** (fixes [#215](https://github.com/fuddlesworth/PlasmaZones/discussions/215)): Grid-aligned snap clamping prevented zones from reaching canvas boundaries, and gap calculation used stale data during drag operations
+- **Login freeze from startup OSD**: Prevented OSD from blocking the D-Bus event loop during daemon startup
+
+### Changed
+- **KCM refactored into sub-KCMs**: Split into Layouts, Snapping, Tiling, Shortcuts, Apps & Windows, and About sub-modules with a shared common library
+
 ## [2.0.2] - 2026-03-11
 
 ### Fixed
@@ -723,7 +739,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.0.2...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.0.2...v2.1.0
 [2.0.2]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/fuddlesworth/PlasmaZones/compare/v1.15.15...v2.0.0
