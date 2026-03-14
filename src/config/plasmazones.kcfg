@@ -808,14 +808,24 @@
       <label>Hide title bars on autotiled windows</label>
       <default>true</default>
     </entry>
+    <entry name="AutotileShowBorder" type="Bool">
+      <label>Show colored border on focused tiled window (independent of title bar hiding)</label>
+      <default>true</default>
+    </entry>
     <entry name="AutotileBorderWidth" type="Int">
-      <label>Border width for borderless autotiled windows</label>
+      <label>Border width for autotiled windows</label>
       <default>2</default>
       <min>0</min>
       <max>10</max>
     </entry>
+    <entry name="AutotileBorderRadius" type="Int">
+      <label>Corner radius for autotile border</label>
+      <default>0</default>
+      <min>0</min>
+      <max>20</max>
+    </entry>
     <entry name="AutotileBorderColor" type="Color">
-      <label>Border color for borderless autotiled windows</label>
+      <label>Border color for autotiled windows</label>
       <default>#C8FFFFFF</default>
     </entry>
     <entry name="AutotileUseSystemBorderColors" type="Bool">

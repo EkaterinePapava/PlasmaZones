@@ -96,18 +96,18 @@ void AutotileHandler::restoreAllMonocleMaximized()
 
 void AutotileHandler::restoreAllBorderless()
 {
-    if (m_border.borderlessWindows.isEmpty()) {
-        return;
-    }
-    const QSet<QString> toRestore = m_border.borderlessWindows;
-    for (const QString& windowId : toRestore) {
-        KWin::EffectWindow* w = m_effect->findWindowById(windowId);
-        if (w) {
-            setWindowBorderless(w, windowId, false);
+    if (!m_border.borderlessWindows.isEmpty()) {
+        const QSet<QString> toRestore = m_border.borderlessWindows;
+        for (const QString& windowId : toRestore) {
+            KWin::EffectWindow* w = m_effect->findWindowById(windowId);
+            if (w) {
+                setWindowBorderless(w, windowId, false);
+            }
         }
     }
-    // Clear any orphan entries where findWindowById returned null
+    // Clear all border tracking (orphans included)
     m_border.borderlessWindows.clear();
+    m_border.tiledWindows.clear();
     m_border.zoneGeometries.clear();
 }
 
@@ -149,6 +149,11 @@ void AutotileHandler::updateHideTitleBarsSetting(bool enabled)
             }
         }
     }
+}
+
+void AutotileHandler::updateShowBorderSetting(bool enabled)
+{
+    m_border.showBorder = enabled;
 }
 
 void AutotileHandler::setFocusFollowsMouse(bool enabled)
@@ -376,6 +381,7 @@ void AutotileHandler::onWindowClosed(const QString& windowId, const QString& scr
     // Clean up borderless, monocle-maximize, deferred-centering, border zone, focus-follows-mouse,
     // and pre-autotile tracking
     m_border.borderlessWindows.remove(windowId);
+    m_border.tiledWindows.remove(windowId);
     m_border.zoneGeometries.remove(windowId);
     m_monocleMaximizedWindows.remove(windowId);
     m_autotileTargetZones.remove(windowId);

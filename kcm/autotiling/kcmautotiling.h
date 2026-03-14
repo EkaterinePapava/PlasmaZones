@@ -66,7 +66,11 @@ class KCMAutotiling : public KQuickConfigModule
     Q_PROPERTY(bool autotileHideTitleBars READ autotileHideTitleBars WRITE setAutotileHideTitleBars NOTIFY
                    autotileHideTitleBarsChanged)
     Q_PROPERTY(
+        bool autotileShowBorder READ autotileShowBorder WRITE setAutotileShowBorder NOTIFY autotileShowBorderChanged)
+    Q_PROPERTY(
         int autotileBorderWidth READ autotileBorderWidth WRITE setAutotileBorderWidth NOTIFY autotileBorderWidthChanged)
+    Q_PROPERTY(int autotileBorderRadius READ autotileBorderRadius WRITE setAutotileBorderRadius NOTIFY
+                   autotileBorderRadiusChanged)
     Q_PROPERTY(QColor autotileBorderColor READ autotileBorderColor WRITE setAutotileBorderColor NOTIFY
                    autotileBorderColorChanged)
     Q_PROPERTY(bool autotileUseSystemBorderColors READ autotileUseSystemBorderColors WRITE
@@ -128,8 +132,12 @@ public:
     // Decorations / Borders
     bool autotileHideTitleBars() const;
     void setAutotileHideTitleBars(bool hide);
+    bool autotileShowBorder() const;
+    void setAutotileShowBorder(bool show);
     int autotileBorderWidth() const;
     void setAutotileBorderWidth(int width);
+    int autotileBorderRadius() const;
+    void setAutotileBorderRadius(int radius);
     QColor autotileBorderColor() const;
     void setAutotileBorderColor(const QColor& color);
     bool autotileUseSystemBorderColors() const;
@@ -190,7 +198,9 @@ Q_SIGNALS:
 
     // Decorations / Borders
     void autotileHideTitleBarsChanged();
+    void autotileShowBorderChanged();
     void autotileBorderWidthChanged();
+    void autotileBorderRadiusChanged();
     void autotileBorderColorChanged();
     void autotileUseSystemBorderColorsChanged();
 

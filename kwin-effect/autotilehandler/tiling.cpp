@@ -164,15 +164,19 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
         if (m_autotileStaggerGeneration != gen) {
             return;
         }
-        if (m_border.hideTitleBars && !m_border.borderlessWindows.isEmpty()) {
-            const QSet<QString> toRestore = m_border.borderlessWindows - tiledWindowIds;
-            for (const QString& wid : toRestore) {
-                KWin::EffectWindow* win = m_effect->findWindowById(wid);
-                if (win && tileScreenNames.contains(m_effect->getWindowScreenName(win)) && !win->isMinimized()) {
+        // Clean up windows that are no longer tiled: restore title bars and
+        // remove from tiledWindows tracking. This subsumes the old borderless-
+        // only cleanup since tiledWindows is a superset of borderlessWindows.
+        const QSet<QString> untiled = m_border.tiledWindows - tiledWindowIds;
+        for (const QString& wid : untiled) {
+            KWin::EffectWindow* win = m_effect->findWindowById(wid);
+            if (win && tileScreenNames.contains(m_effect->getWindowScreenName(win)) && !win->isMinimized()) {
+                if (m_border.borderlessWindows.contains(wid)) {
                     setWindowBorderless(win, wid, false);
                 }
             }
         }
+        m_border.tiledWindows -= untiled;
         auto* ws = KWin::Workspace::self();
         if (ws) {
             // Restore the full global stacking order (all screens, all windows).
@@ -230,6 +234,9 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
 
         // Wayland centering is handled reactively by slotWindowFrameGeometryChanged
         // as soon as the client commits its constrained size — no deferred timer needed.
+
+        // Refresh the active border for the focused window (tiledWindows may have changed)
+        m_effect->updateActiveBorder();
     };
 
     m_effect->applyStaggeredOrImmediate(
@@ -244,6 +251,7 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
             }
             saveAndRecordPreAutotileGeometry(snap.windowId, snap.screenName, snap.window->frameGeometry());
             qCInfo(lcEffect) << "Autotile tile request:" << snap.windowId << "QRect=" << snap.geometry;
+            m_border.tiledWindows.insert(snap.windowId);
             if (m_border.hideTitleBars) {
                 setWindowBorderless(snap.window, snap.windowId, true);
             }

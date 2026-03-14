@@ -269,7 +269,9 @@ void SettingsAdaptor::initializeRegistry()
 
     // Autotile decoration settings
     REGISTER_BOOL_SETTING("autotileHideTitleBars", autotileHideTitleBars, setAutotileHideTitleBars)
+    REGISTER_BOOL_SETTING("autotileShowBorder", autotileShowBorder, setAutotileShowBorder)
     REGISTER_INT_SETTING("autotileBorderWidth", autotileBorderWidth, setAutotileBorderWidth)
+    REGISTER_INT_SETTING("autotileBorderRadius", autotileBorderRadius, setAutotileBorderRadius)
     REGISTER_COLOR_SETTING("autotileBorderColor", autotileBorderColor, setAutotileBorderColor)
     REGISTER_BOOL_SETTING("autotileUseSystemBorderColors", autotileUseSystemBorderColors,
                           setAutotileUseSystemBorderColors)

@@ -40,6 +40,7 @@ void AutotileHandler::slotEnabledChanged(bool enabled)
         m_savedSnapStackingOrder.clear();
         m_savedAutotileStackingOrder.clear();
         m_savedNotifiedForDesktopReturn.clear();
+        m_effect->updateActiveBorder();
     }
 }
 
@@ -102,8 +103,9 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
             }
             m_notifiedWindows -= windowsOnRemovedScreens;
 
-            // Restore title bars for windows on removed screens (current desktop only)
+            // Restore title bars and clear tiled tracking for windows on removed screens
             for (const QString& windowId : std::as_const(windowsOnRemovedScreens)) {
+                m_border.tiledWindows.remove(windowId);
                 if (m_border.borderlessWindows.contains(windowId)) {
                     KWin::EffectWindow* w = m_effect->findWindowById(windowId);
                     if (w) {
@@ -111,6 +113,7 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
                     }
                 }
             }
+            m_effect->updateActiveBorder();
 
             // Save autotile stacking order before restoring snap-mode order.
             // This allows restoring the user's autotile z-order (e.g. floated
@@ -521,12 +524,14 @@ void AutotileHandler::slotWindowFloatingChanged(const QString& windowId, bool is
     }
 
     if (isFloating) {
+        m_border.tiledWindows.remove(windowId);
         if (m_border.borderlessWindows.contains(windowId)) {
             KWin::EffectWindow* w = m_effect->findWindowById(windowId);
             if (w) {
                 setWindowBorderless(w, windowId, false);
             }
         }
+        m_effect->updateActiveBorder();
         unmaximizeMonocleWindow(windowId);
 
         KWin::EffectWindow* floatWin = m_effect->findWindowById(windowId);
@@ -620,6 +625,7 @@ void AutotileHandler::slotWindowFullScreenChanged(KWin::EffectWindow* w)
     const QString windowId = m_effect->getWindowId(w);
     // Clear border and borderless tracking so borders are not drawn over fullscreen content
     m_border.zoneGeometries.remove(windowId);
+    m_border.tiledWindows.remove(windowId);
     if (m_border.borderlessWindows.remove(windowId)) {
         KWin::Window* kw = w->window();
         if (kw) {
@@ -629,6 +635,7 @@ void AutotileHandler::slotWindowFullScreenChanged(KWin::EffectWindow* w)
     if (m_monocleMaximizedWindows.remove(windowId)) {
         qCInfo(lcEffect) << "Monocle window went fullscreen:" << windowId << "- removed from tracking";
     }
+    m_effect->updateActiveBorder();
 }
 
 } // namespace PlasmaZones

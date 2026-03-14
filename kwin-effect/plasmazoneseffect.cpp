@@ -29,6 +29,7 @@
 #include <workspace.h>
 #include <core/output.h> // For Output::name() for multi-monitor support
 #include <scene/windowitem.h>
+#include <scene/surfaceitem.h>
 #include <scene/outlinedborderitem.h>
 #include <scene/borderoutline.h>
 
@@ -1284,9 +1285,12 @@ void PlasmaZonesEffect::loadCachedSettings()
     // autotileHideTitleBars needs extra logic when toggled off — delegate to handler
     loadSettingAsync(QStringLiteral("autotileHideTitleBars"), [this](const QVariant& v) {
         m_autotileHandler->updateHideTitleBarsSetting(v.toBool());
-        if (!v.toBool()) {
-            clearActiveBorder();
-        }
+        updateActiveBorder(); // calls clearActiveBorder() internally
+    });
+
+    loadSettingAsync(QStringLiteral("autotileShowBorder"), [this](const QVariant& v) {
+        m_autotileHandler->updateShowBorderSetting(v.toBool());
+        updateActiveBorder();
     });
 
     loadSettingAsync(QStringLiteral("autotileBorderWidth"), [this](const QVariant& v) {
@@ -1297,6 +1301,14 @@ void PlasmaZonesEffect::loadCachedSettings()
             m_autotileHandler->invalidateStaggerGeneration();
             fireAndForgetDBusCall(DBus::Interface::Autotile, QStringLiteral("retileAllScreens"), {},
                                   QStringLiteral("border width change retile"));
+            updateActiveBorder();
+        }
+    });
+
+    loadSettingAsync(QStringLiteral("autotileBorderRadius"), [this](const QVariant& v) {
+        int br = qBound(0, v.toInt(), 20);
+        if (m_autotileHandler->borderRadius() != br) {
+            m_autotileHandler->setBorderRadius(br);
             updateActiveBorder();
         }
     });
@@ -2560,6 +2572,12 @@ QVector<KWin::EffectWindow*> PlasmaZonesEffect::findAllWindowsById(const QString
 
 void PlasmaZonesEffect::clearActiveBorder()
 {
+    // Restore the original corner radius on the surface we clipped
+    if (m_cornerClippedSurface) {
+        m_cornerClippedSurface->setBorderRadius(m_savedSurfaceBorderRadius);
+        m_cornerClippedSurface = nullptr;
+        m_savedSurfaceBorderRadius = KWin::BorderRadius();
+    }
     delete m_activeBorderItem;
     m_activeBorderItem = nullptr;
     QObject::disconnect(m_borderGeometryConnection);
@@ -2582,13 +2600,14 @@ void PlasmaZonesEffect::updateActiveBorder()
     }
 
     const QString wid = getWindowId(active);
-    if (!m_autotileHandler->isBorderlessWindow(wid)) {
+    if (!m_autotileHandler->shouldShowBorderForWindow(wid)) {
         return;
     }
 
     const QRectF frame = active->frameGeometry();
     const KWin::RectF innerRect(0, 0, frame.width(), frame.height());
-    const KWin::BorderOutline outline(bw, bc);
+    const int br = m_autotileHandler->borderRadius();
+    const KWin::BorderOutline outline(bw, bc, KWin::BorderRadius(br));
 
     KWin::WindowItem* windowItem = active->windowItem();
     if (!windowItem) {
@@ -2597,10 +2616,26 @@ void PlasmaZonesEffect::updateActiveBorder()
 
     m_activeBorderItem = new KWin::OutlinedBorderItem(innerRect, outline, windowItem);
 
+    // For borderless windows, clip the SurfaceItem corners to match the border
+    // radius. SurfaceItem and OutlinedBorderItem are siblings under WindowItem,
+    // so clipping the surface doesn't affect the border rendering.
+    // Decorated windows (showBorder without hideTitleBars) skip this — the
+    // decoration frame is a separate item and minor corner overshoot is acceptable.
+    if (br > 0 && m_autotileHandler->isBorderlessWindow(wid)) {
+        KWin::SurfaceItem* surface = windowItem->surfaceItem();
+        if (surface) {
+            m_savedSurfaceBorderRadius = surface->borderRadius();
+            surface->setBorderRadius(KWin::BorderRadius(br));
+            m_cornerClippedSurface = surface;
+        }
+    }
+
     // Null the raw pointer when Qt's parent-child ownership destroys the item
     // (e.g. window deletion, compositor teardown) to prevent double-free.
     connect(m_activeBorderItem, &QObject::destroyed, this, [this]() {
         m_activeBorderItem = nullptr;
+        m_cornerClippedSurface = nullptr;
+        m_savedSurfaceBorderRadius = KWin::BorderRadius();
     });
 
     // Keep the border in sync when the window resizes or moves.

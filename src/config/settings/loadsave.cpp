@@ -371,8 +371,12 @@ void Settings::loadAutotilingConfig(const KConfigGroup& autotiling, const KConfi
         autotiling.readEntry(QLatin1String("AutotileRespectMinimumSize"), ConfigDefaults::autotileRespectMinimumSize());
     m_autotileHideTitleBars =
         autotiling.readEntry(QLatin1String("AutotileHideTitleBars"), ConfigDefaults::autotileHideTitleBars());
+    m_autotileShowBorder =
+        autotiling.readEntry(QLatin1String("AutotileShowBorder"), ConfigDefaults::autotileShowBorder());
     m_autotileBorderWidth = readValidatedInt(autotiling, "AutotileBorderWidth", ConfigDefaults::autotileBorderWidth(),
                                              0, 10, "autotile border width");
+    m_autotileBorderRadius = readValidatedInt(autotiling, "AutotileBorderRadius",
+                                              ConfigDefaults::autotileBorderRadius(), 0, 20, "autotile border radius");
     m_autotileBorderColor =
         readValidatedColor(autotiling, "AutotileBorderColor", ConfigDefaults::autotileBorderColor(), "autotile border");
     m_autotileUseSystemBorderColors = autotiling.readEntry(QLatin1String("AutotileUseSystemBorderColors"),
@@ -555,7 +559,9 @@ void Settings::saveAutotilingConfig(KConfigGroup& autotiling, KConfigGroup& anim
     autotiling.writeEntry(QLatin1String("AutotileFocusFollowsMouse"), m_autotileFocusFollowsMouse);
     autotiling.writeEntry(QLatin1String("AutotileRespectMinimumSize"), m_autotileRespectMinimumSize);
     autotiling.writeEntry(QLatin1String("AutotileHideTitleBars"), m_autotileHideTitleBars);
+    autotiling.writeEntry(QLatin1String("AutotileShowBorder"), m_autotileShowBorder);
     autotiling.writeEntry(QLatin1String("AutotileBorderWidth"), m_autotileBorderWidth);
+    autotiling.writeEntry(QLatin1String("AutotileBorderRadius"), m_autotileBorderRadius);
     autotiling.writeEntry(QLatin1String("AutotileBorderColor"), m_autotileBorderColor);
     autotiling.writeEntry(QLatin1String("AutotileUseSystemBorderColors"), m_autotileUseSystemBorderColors);
 

@@ -7,6 +7,7 @@
 #include <effect/effecthandler.h>
 #include <effect/effectwindow.h>
 #include <effect/globals.h> // For ElectricBorder enum
+#include <scene/borderradius.h>
 #include <QJsonArray>
 #include <QObject>
 #include <QVector>
@@ -21,6 +22,7 @@
 
 namespace KWin {
 class OutlinedBorderItem;
+class SurfaceItem;
 }
 
 namespace PlasmaZones {
@@ -335,6 +337,8 @@ private:
     void clearActiveBorder();
     KWin::OutlinedBorderItem* m_activeBorderItem = nullptr;
     QMetaObject::Connection m_borderGeometryConnection;
+    QPointer<KWin::SurfaceItem> m_cornerClippedSurface;
+    KWin::BorderRadius m_savedSurfaceBorderRadius;
     std::unique_ptr<NavigationHandler> m_navigationHandler;
     std::unique_ptr<ScreenChangeHandler> m_screenChangeHandler;
     std::unique_ptr<SnapAssistHandler> m_snapAssistHandler;

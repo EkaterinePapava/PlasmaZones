@@ -102,7 +102,9 @@ void KCMAutotiling::defaults()
     setAutotileFocusFollowsMouse(ConfigDefaults::autotileFocusFollowsMouse());
     setAutotileRespectMinimumSize(ConfigDefaults::autotileRespectMinimumSize());
     setAutotileHideTitleBars(ConfigDefaults::autotileHideTitleBars());
+    setAutotileShowBorder(ConfigDefaults::autotileShowBorder());
     setAutotileBorderWidth(ConfigDefaults::autotileBorderWidth());
+    setAutotileBorderRadius(ConfigDefaults::autotileBorderRadius());
     setAutotileBorderColor(ConfigDefaults::autotileBorderColor());
     setAutotileUseSystemBorderColors(ConfigDefaults::autotileUseSystemBorderColors());
 }
@@ -129,7 +131,9 @@ void KCMAutotiling::emitAllChanged()
     Q_EMIT autotileFocusFollowsMouseChanged();
     Q_EMIT autotileRespectMinimumSizeChanged();
     Q_EMIT autotileHideTitleBarsChanged();
+    Q_EMIT autotileShowBorderChanged();
     Q_EMIT autotileBorderWidthChanged();
+    Q_EMIT autotileBorderRadiusChanged();
     Q_EMIT autotileBorderColorChanged();
     Q_EMIT autotileUseSystemBorderColorsChanged();
     Q_EMIT screensChanged();
@@ -434,9 +438,19 @@ bool KCMAutotiling::autotileHideTitleBars() const
     return m_settings->autotileHideTitleBars();
 }
 
+bool KCMAutotiling::autotileShowBorder() const
+{
+    return m_settings->autotileShowBorder();
+}
+
 int KCMAutotiling::autotileBorderWidth() const
 {
     return m_settings->autotileBorderWidth();
+}
+
+int KCMAutotiling::autotileBorderRadius() const
+{
+    return m_settings->autotileBorderRadius();
 }
 
 QColor KCMAutotiling::autotileBorderColor() const
@@ -460,12 +474,31 @@ void KCMAutotiling::setAutotileHideTitleBars(bool hide)
     }
 }
 
+void KCMAutotiling::setAutotileShowBorder(bool show)
+{
+    if (m_settings->autotileShowBorder() != show) {
+        m_settings->setAutotileShowBorder(show);
+        Q_EMIT autotileShowBorderChanged();
+        setNeedsSave(true);
+    }
+}
+
 void KCMAutotiling::setAutotileBorderWidth(int width)
 {
     width = qBound(0, width, 10);
     if (m_settings->autotileBorderWidth() != width) {
         m_settings->setAutotileBorderWidth(width);
         Q_EMIT autotileBorderWidthChanged();
+        setNeedsSave(true);
+    }
+}
+
+void KCMAutotiling::setAutotileBorderRadius(int radius)
+{
+    radius = qBound(0, radius, 20);
+    if (m_settings->autotileBorderRadius() != radius) {
+        m_settings->setAutotileBorderRadius(radius);
+        Q_EMIT autotileBorderRadiusChanged();
         setNeedsSave(true);
     }
 }

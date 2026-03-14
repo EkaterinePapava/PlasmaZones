@@ -80,8 +80,12 @@ public:
     virtual void setAutotileFocusFollowsMouse(bool enabled) = 0;
     virtual bool autotileHideTitleBars() const = 0;
     virtual void setAutotileHideTitleBars(bool hide) = 0;
+    virtual bool autotileShowBorder() const = 0;
+    virtual void setAutotileShowBorder(bool show) = 0;
     virtual int autotileBorderWidth() const = 0;
     virtual void setAutotileBorderWidth(int width) = 0;
+    virtual int autotileBorderRadius() const = 0;
+    virtual void setAutotileBorderRadius(int radius) = 0;
     virtual QColor autotileBorderColor() const = 0;
     virtual void setAutotileBorderColor(const QColor& color) = 0;
     virtual bool autotileUseSystemBorderColors() const = 0;
@@ -250,7 +254,9 @@ Q_SIGNALS:
     void autotileRespectMinimumSizeChanged();
     void autotileFocusFollowsMouseChanged();
     void autotileHideTitleBarsChanged();
+    void autotileShowBorderChanged();
     void autotileBorderWidthChanged();
+    void autotileBorderRadiusChanged();
     void autotileBorderColorChanged();
     void autotileUseSystemBorderColorsChanged();
     // Animation settings (general)

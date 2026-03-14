@@ -1005,11 +1005,23 @@ public:
     }
     void setAutotileHideTitleBars(bool hide) override;
 
+    bool autotileShowBorder() const override
+    {
+        return m_autotileShowBorder;
+    }
+    void setAutotileShowBorder(bool show) override;
+
     int autotileBorderWidth() const override
     {
         return m_autotileBorderWidth;
     }
     void setAutotileBorderWidth(int width) override;
+
+    int autotileBorderRadius() const override
+    {
+        return m_autotileBorderRadius;
+    }
+    void setAutotileBorderRadius(int radius) override;
 
     QColor autotileBorderColor() const override
     {
@@ -1515,7 +1527,9 @@ private:
     bool m_autotileFocusFollowsMouse = false;
     bool m_autotileRespectMinimumSize = true;
     bool m_autotileHideTitleBars = true;
+    bool m_autotileShowBorder = true;
     int m_autotileBorderWidth = 2;
+    int m_autotileBorderRadius = 0;
     QColor m_autotileBorderColor = QColor(255, 255, 255, 200); // #C8FFFFFF
     bool m_autotileUseSystemBorderColors = true;
     // Autotile Shortcuts (must match plasmazones.kcfg GlobalShortcuts defaults)

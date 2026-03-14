@@ -353,8 +353,10 @@ SETTINGS_SETTER_CLAMPED(AnimationStaggerInterval, m_animationStaggerInterval, an
 SETTINGS_SETTER(bool, AutotileFocusFollowsMouse, m_autotileFocusFollowsMouse, autotileFocusFollowsMouseChanged)
 SETTINGS_SETTER(bool, AutotileRespectMinimumSize, m_autotileRespectMinimumSize, autotileRespectMinimumSizeChanged)
 SETTINGS_SETTER(bool, AutotileHideTitleBars, m_autotileHideTitleBars, autotileHideTitleBarsChanged)
+SETTINGS_SETTER(bool, AutotileShowBorder, m_autotileShowBorder, autotileShowBorderChanged)
 
 SETTINGS_SETTER_CLAMPED(AutotileBorderWidth, m_autotileBorderWidth, autotileBorderWidthChanged, 0, 10)
+SETTINGS_SETTER_CLAMPED(AutotileBorderRadius, m_autotileBorderRadius, autotileBorderRadiusChanged, 0, 20)
 
 SETTINGS_SETTER(const QColor&, AutotileBorderColor, m_autotileBorderColor, autotileBorderColorChanged)
 

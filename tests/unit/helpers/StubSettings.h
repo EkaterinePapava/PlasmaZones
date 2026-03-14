@@ -600,11 +600,25 @@ public:
     void setAutotileHideTitleBars(bool) override
     {
     }
+    bool autotileShowBorder() const override
+    {
+        return false;
+    }
+    void setAutotileShowBorder(bool) override
+    {
+    }
     int autotileBorderWidth() const override
     {
         return 2;
     }
     void setAutotileBorderWidth(int) override
+    {
+    }
+    int autotileBorderRadius() const override
+    {
+        return 0;
+    }
+    void setAutotileBorderRadius(int) override
     {
     }
     QColor autotileBorderColor() const override

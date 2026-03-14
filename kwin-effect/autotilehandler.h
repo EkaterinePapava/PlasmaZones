@@ -58,6 +58,7 @@ public:
 
     // Settings update: toggle hide-title-bars with border restore on disable
     void updateHideTitleBarsSetting(bool enabled);
+    void updateShowBorderSetting(bool enabled);
 
     // Focus follows mouse: focus autotile window under cursor
     void setFocusFollowsMouse(bool enabled);
@@ -75,6 +76,14 @@ public:
     {
         return m_border.borderlessWindows.contains(windowId);
     }
+    bool isTiledWindow(const QString& windowId) const
+    {
+        return m_border.tiledWindows.contains(windowId);
+    }
+    bool shouldShowBorderForWindow(const QString& windowId) const
+    {
+        return isBorderlessWindow(windowId) || (m_border.showBorder && isTiledWindow(windowId));
+    }
     int borderWidth() const
     {
         return m_border.width;
@@ -90,6 +99,14 @@ public:
     void setBorderColor(const QColor& c)
     {
         m_border.color = c;
+    }
+    int borderRadius() const
+    {
+        return m_border.radius;
+    }
+    void setBorderRadius(int r)
+    {
+        m_border.radius = r;
     }
     QRect applyBorderInset(const QRect& geo) const;
     bool shouldInsetForBorder(const QString& windowId, const QRect& geo) const;
@@ -180,9 +197,12 @@ private:
     struct BorderState
     {
         QSet<QString> borderlessWindows;
+        QSet<QString> tiledWindows; ///< all currently tiled windows (for showBorder without hideTitleBars)
         QHash<QString, QRect> zoneGeometries;
         bool hideTitleBars = false;
+        bool showBorder = false;
         int width = 2;
+        int radius = 0;
         QColor color;
     } m_border;
 };

@@ -28,6 +28,7 @@ KCMUtils.SimpleKCM {
     readonly property int algorithmPreviewWidth: 280
     readonly property int algorithmPreviewHeight: 160
     readonly property int sliderValueLabelWidth: 40
+    readonly property bool bordersActive: hideTitleBarsCheck.checked || showBorderCheck.checked
     // Per-screen override helper (applies to Algorithm + Gaps cards)
     property alias selectedScreenName: psHelper.selectedScreenName
     readonly property alias isPerScreen: psHelper.isPerScreen
@@ -144,10 +145,20 @@ KCMUtils.SimpleKCM {
                         ToolTip.text: i18n("Remove window title bars while autotiled. Restored when floating or leaving autotile mode.")
                     }
 
-                    // ── Border settings (visible when title bars hidden) ──
+                    CheckBox {
+                        id: showBorderCheck
+
+                        text: i18n("Show focus border on tiled windows")
+                        checked: kcm.autotileShowBorder
+                        onToggled: kcm.autotileShowBorder = checked
+                        ToolTip.visible: hovered
+                        ToolTip.text: i18n("Draw a colored border around the focused tiled window. Works with or without hidden title bars.")
+                    }
+
+                    // ── Border settings (visible when any border is active) ──
                     RowLayout {
                         Kirigami.FormData.label: i18n("Border width:")
-                        visible: hideTitleBarsCheck.checked
+                        visible: root.bordersActive
                         spacing: Kirigami.Units.smallSpacing
 
                         SpinBox {
@@ -156,7 +167,27 @@ KCMUtils.SimpleKCM {
                             value: kcm.autotileBorderWidth
                             onValueModified: kcm.autotileBorderWidth = value
                             ToolTip.visible: hovered
-                            ToolTip.text: i18n("Colored border drawn around borderless tiled windows (0 to disable)")
+                            ToolTip.text: i18n("Colored border drawn around tiled windows (0 to disable)")
+                        }
+
+                        Label {
+                            text: i18n("px")
+                        }
+
+                    }
+
+                    RowLayout {
+                        Kirigami.FormData.label: i18n("Corner radius:")
+                        visible: root.bordersActive
+                        spacing: Kirigami.Units.smallSpacing
+
+                        SpinBox {
+                            from: 0
+                            to: 20
+                            value: kcm.autotileBorderRadius
+                            onValueModified: kcm.autotileBorderRadius = value
+                            ToolTip.visible: hovered
+                            ToolTip.text: i18n("Corner radius for the border (0 for square corners)")
                         }
 
                         Label {
@@ -169,7 +200,7 @@ KCMUtils.SimpleKCM {
                         id: useSystemBorderColorsCheck
 
                         Kirigami.FormData.label: i18n("Color scheme:")
-                        visible: hideTitleBarsCheck.checked
+                        visible: root.bordersActive
                         text: i18n("Use system accent color")
                         checked: kcm.autotileUseSystemBorderColors
                         onToggled: kcm.autotileUseSystemBorderColors = checked
@@ -177,7 +208,7 @@ KCMUtils.SimpleKCM {
 
                     RowLayout {
                         Kirigami.FormData.label: i18n("Border:")
-                        visible: hideTitleBarsCheck.checked && !useSystemBorderColorsCheck.checked
+                        visible: root.bordersActive && !useSystemBorderColorsCheck.checked
                         spacing: Kirigami.Units.smallSpacing
 
                         ColorButton {

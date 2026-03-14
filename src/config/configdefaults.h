@@ -472,9 +472,17 @@ public:
     {
         return instance().defaultAutotileHideTitleBarsValue();
     }
+    static bool autotileShowBorder()
+    {
+        return instance().defaultAutotileShowBorderValue();
+    }
     static int autotileBorderWidth()
     {
         return instance().defaultAutotileBorderWidthValue();
+    }
+    static int autotileBorderRadius()
+    {
+        return instance().defaultAutotileBorderRadiusValue();
     }
     static QColor autotileBorderColor()
     {
