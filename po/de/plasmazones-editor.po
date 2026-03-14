@@ -263,7 +263,7 @@ msgstr "Neues Layout erstellen"
 #: src/editor/main.cpp:65
 #, kde-format
 msgid "Open in read-only preview mode"
-msgstr ""
+msgstr "Im schreibgeschützten Vorschaumodus öffnen"
 
 #: src/editor/undo/commands/AddZoneCommand.cpp:16
 #, kde-format
@@ -315,10 +315,10 @@ msgid "Delete Zone"
 msgstr "Zone löschen"
 
 #: src/editor/undo/commands/DividerResizeCommand.cpp:15
-#, fuzzy, kde-format
+#, kde-format
 msgctxt "@action"
 msgid "Resize Zones"
-msgstr "Größe von %1 Zonen ändern"
+msgstr "Zonengröße ändern"
 
 #: src/editor/undo/commands/DuplicateZoneCommand.cpp:15
 #, kde-format
@@ -342,19 +342,19 @@ msgstr "Zone teilen"
 #, kde-format
 msgctxt "@action"
 msgid "Toggle Relative/Fixed Size"
-msgstr ""
+msgstr "Relative/feste Größe umschalten"
 
 #: src/editor/undo/commands/UpdateFixedGeometryCommand.cpp:15
-#, fuzzy, kde-format
+#, kde-format
 msgctxt "@action"
 msgid "Change Zone Dimensions"
-msgstr "Zonenabmessungen"
+msgstr "Zonenabmessungen ändern"
 
 #: src/editor/undo/commands/UpdateFullScreenGeometryCommand.cpp:15
-#, fuzzy, kde-format
+#, kde-format
 msgctxt "@action"
 msgid "Toggle Use Full Screen Area"
-msgstr "Vollbild-Geometrie umschalten"
+msgstr "Nutzung des gesamten Bildschirmbereichs umschalten"
 
 #: src/editor/undo/commands/UpdateGapOverrideCommand.cpp:17
 #, kde-format
@@ -372,7 +372,7 @@ msgstr "Seitenweisen Randabstand umschalten"
 #, kde-format
 msgctxt "@action"
 msgid "Change Overlay Style"
-msgstr ""
+msgstr "Overlay-Stil ändern"
 
 #: src/editor/undo/commands/UpdateGapOverrideCommand.cpp:21
 #, kde-format
@@ -405,10 +405,10 @@ msgid "Change Shader Parameters"
 msgstr "Shader-Parameter ändern"
 
 #: src/editor/undo/commands/UpdateVisibilityCommand.cpp:17
-#, fuzzy, kde-format
+#, kde-format
 msgctxt "@action"
 msgid "Change Zone Visibility"
-msgstr "Sichtbarkeit ändern"
+msgstr "Zonensichtbarkeit ändern"
 
 #: src/editor/undo/commands/UpdateZoneAppearanceCommand.cpp:15
 #, kde-format
@@ -429,10 +429,10 @@ msgid "Rename Zone"
 msgstr "Zone umbenennen"
 
 #: src/editor/undo/commands/UpdateZoneNumberCommand.cpp:16
-#, fuzzy, kde-format
+#, kde-format
 msgctxt "@action"
 msgid "Change Zone Number"
-msgstr "Zonennummer aktualisieren"
+msgstr "Zonennummer ändern"
 
 #: src/editor/qml/ActionButtons.qml:66
 msgctxt "@action:button"
@@ -876,15 +876,15 @@ msgid "Import Layout"
 msgstr "Layout importieren"
 
 #: src/editor/qml/EditorWindow.qml:622 src/editor/qml/EditorWindow.qml:636
-#: src/editor/qml/ShaderSettingsDialog.qml:1049
-#: src/editor/qml/ShaderSettingsDialog.qml:1080
+#: src/editor/qml/ShaderSettingsDialog.qml:1263
+#: src/editor/qml/ShaderSettingsDialog.qml:1294
 msgctxt "@item:inlistbox"
 msgid "JSON files (*.json)"
 msgstr "JSON-Dateien (*.json)"
 
 #: src/editor/qml/EditorWindow.qml:622 src/editor/qml/ParameterDelegate.qml:265
-#: src/editor/qml/ShaderSettingsDialog.qml:1049
-#: src/editor/qml/ShaderSettingsDialog.qml:1080
+#: src/editor/qml/ShaderSettingsDialog.qml:1263
+#: src/editor/qml/ShaderSettingsDialog.qml:1294
 msgctxt "@item:inlistbox"
 msgid "All files (*)"
 msgstr "Alle Dateien (*)"
@@ -914,17 +914,17 @@ msgctxt "@info"
 msgid "Failed to save layout: %1"
 msgstr "Layout konnte nicht gespeichert werden: %1"
 
-#: src/editor/qml/EditorZone.qml:446
+#: src/editor/qml/EditorZone.qml:452
 msgctxt "@info:accessibility"
 msgid "Zone %1: %2"
 msgstr "Zone %1: %2"
 
-#: src/editor/qml/EditorZone.qml:446
+#: src/editor/qml/EditorZone.qml:452
 msgctxt "@info:accessibility"
 msgid "Zone %1"
 msgstr "Zone %1"
 
-#: src/editor/qml/EditorZone.qml:447
+#: src/editor/qml/EditorZone.qml:453
 #, javascript-format
 msgctxt "@info:accessibility"
 msgid ""
@@ -934,7 +934,7 @@ msgstr ""
 "Ausgewählte Zone. Position: %1% × %2%, Größe: %3% × %4%. Klicken zum "
 "Abwählen, ziehen zum Verschieben, Anfasser zum Ändern der Größe verwenden."
 
-#: src/editor/qml/EditorZone.qml:447
+#: src/editor/qml/EditorZone.qml:453
 #, javascript-format
 msgctxt "@info:accessibility"
 msgid "Zone. Position: %1% × %2%, Size: %3% × %4%. Click to select."
@@ -1124,9 +1124,8 @@ msgid "Enable grid snapping for precise alignment"
 msgstr "Rastereinrastung für präzise Ausrichtung aktivieren"
 
 #: src/editor/qml/HelpDialogContent.qml:250
-#, fuzzy
 msgid "Per-layout gaps in layout settings (top bar)"
-msgstr "Layoutspezifische Abstände über das Zahnrad-Symbol (obere Leiste)"
+msgstr "Layoutspezifische Abstände in den Layout-Einstellungen (obere Leiste)"
 
 #: src/editor/qml/HelpDialogContent.qml:254
 msgid "Zones can overlap for multi-zone snapping"
@@ -1148,7 +1147,7 @@ msgstr ""
 #: src/editor/qml/HelpDialogContent.qml:335
 msgctxt "@item:inlistbox Bullet list item, %1 is the tip"
 msgid "• %1"
-msgstr ""
+msgstr "• %1"
 
 #: src/editor/qml/LayoutSettingsDialog.qml:20
 msgctxt "@title:window"
@@ -1254,35 +1253,34 @@ msgstr "Überschreibung des rechten Randabstands"
 #: src/editor/qml/LayoutSettingsDialog.qml:366
 msgctxt "@title:group"
 msgid "Overlay"
-msgstr ""
+msgstr "Overlay"
 
 #: src/editor/qml/LayoutSettingsDialog.qml:371
 msgctxt "@info"
 msgid "Override the global overlay style for this layout."
-msgstr ""
+msgstr "Den globalen Overlay-Stil für dieses Layout überschreiben."
 
 #: src/editor/qml/LayoutSettingsDialog.qml:389
 msgctxt "@option:check"
 msgid "Overlay Style"
-msgstr ""
+msgstr "Overlay-Stil"
 
 #: src/editor/qml/LayoutSettingsDialog.qml:405
 #: src/editor/qml/PropertyPanel.qml:701
-#, fuzzy
 msgctxt "@item:inlistbox"
 msgid "Full zone highlight"
-msgstr "Zonen-Hervorhebungsfarbe"
+msgstr "Vollständige Zonenhervorhebung"
 
 #: src/editor/qml/LayoutSettingsDialog.qml:405
 #: src/editor/qml/PropertyPanel.qml:701
 msgctxt "@item:inlistbox"
 msgid "Compact preview"
-msgstr ""
+msgstr "Kompakte Vorschau"
 
 #: src/editor/qml/LayoutSettingsDialog.qml:415
 msgctxt "@label"
 msgid "Overlay display mode"
-msgstr ""
+msgstr "Overlay-Anzeigemodus"
 
 #: src/editor/qml/LayoutSettingsDialog.qml:437
 msgctxt "@title:group"
@@ -1300,7 +1298,7 @@ msgid "Include area behind panels and taskbars"
 msgstr "Bereich hinter Kontrollleisten und Programmleisten einbeziehen"
 
 #: src/editor/qml/LayoutSettingsDialog.qml:482
-#: src/editor/qml/ShaderSettingsDialog.qml:884
+#: src/editor/qml/ShaderSettingsDialog.qml:1098
 #: src/editor/qml/VisibilitySettingsDialog.qml:230
 msgctxt "@action:button"
 msgid "Apply"
@@ -1677,27 +1675,27 @@ msgstr "Eckenradius der Zone in Pixeln festlegen (0-50)"
 #: src/editor/qml/PropertyPanel.qml:691
 msgctxt "@title"
 msgid "Overlay"
-msgstr ""
+msgstr "Overlay"
 
 #: src/editor/qml/PropertyPanel.qml:699
 msgctxt "@label"
 msgid "Style:"
-msgstr ""
+msgstr "Stil:"
 
 #: src/editor/qml/PropertyPanel.qml:701
 msgctxt "@item:inlistbox overlay mode"
 msgid "Use layout default"
-msgstr ""
+msgstr "Layout-Standard verwenden"
 
 #: src/editor/qml/PropertyPanel.qml:710
 msgctxt "@label"
 msgid "Zone overlay display mode"
-msgstr ""
+msgstr "Overlay-Anzeigemodus der Zone"
 
 #: src/editor/qml/PropertyPanel.qml:711
 msgctxt "@info:accessibility"
 msgid "Override the overlay style for this zone only"
-msgstr ""
+msgstr "Den Overlay-Stil nur für diese Zone überschreiben"
 
 #: src/editor/qml/PropertyPanel.qml:779
 msgctxt "@action:button"
@@ -1844,125 +1842,165 @@ msgctxt "@info:tooltip"
 msgid "%1 parameters. Click to %2."
 msgstr "%1 Parameter. Klicken zum %2."
 
-#: src/editor/qml/ShaderSettingsDialog.qml:399
+#: src/editor/qml/ShaderSettingsDialog.qml:171
+msgctxt "@item:inmenu shader category"
+msgid "3D"
+msgstr "3D"
+
+#: src/editor/qml/ShaderSettingsDialog.qml:173
+msgctxt "@item:inmenu shader category"
+msgid "Audio Visualizer"
+msgstr "Audio-Visualisierer"
+
+#: src/editor/qml/ShaderSettingsDialog.qml:175
+msgctxt "@item:inmenu shader category"
+msgid "Branded"
+msgstr "Marken"
+
+#: src/editor/qml/ShaderSettingsDialog.qml:177
+msgctxt "@item:inmenu shader category"
+msgid "Cyberpunk"
+msgstr "Cyberpunk"
+
+#: src/editor/qml/ShaderSettingsDialog.qml:179
+msgctxt "@item:inmenu shader category"
+msgid "Energy"
+msgstr "Energie"
+
+#: src/editor/qml/ShaderSettingsDialog.qml:181
+msgctxt "@item:inmenu shader category"
+msgid "Organic"
+msgstr "Organisch"
+
+#: src/editor/qml/ShaderSettingsDialog.qml:487
 msgctxt "@title:group"
 msgid "General"
 msgstr "Allgemein"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:417
+#: src/editor/qml/ShaderSettingsDialog.qml:505
 msgctxt "@title:window"
 msgid "Shader Settings"
 msgstr "Shader-Einstellungen"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:527
+#: src/editor/qml/ShaderSettingsDialog.qml:615
 msgctxt "@label"
 msgid "Enable effect:"
 msgstr "Effekt aktivieren:"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:528
+#: src/editor/qml/ShaderSettingsDialog.qml:616
 msgctxt "@option:check"
 msgid "Enable shader effect"
 msgstr "Shader-Effekt aktivieren"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:556
+#: src/editor/qml/ShaderSettingsDialog.qml:634
+msgctxt "@action:button"
+msgid "Select shader..."
+msgstr "Shader auswählen ..."
+
+#: src/editor/qml/ShaderSettingsDialog.qml:637
 msgctxt "@label"
 msgid "Shader:"
 msgstr "Shader:"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:609
-#: src/editor/qml/ShaderSettingsDialog.qml:612
+#: src/editor/qml/ShaderSettingsDialog.qml:642
+msgctxt "@info:tooltip"
+msgid "Choose a shader effect from categorized list"
+msgstr "Einen Shader-Effekt aus der kategorisierten Liste wählen"
+
+#: src/editor/qml/ShaderSettingsDialog.qml:823
+#: src/editor/qml/ShaderSettingsDialog.qml:826
 msgctxt "@info:placeholder"
 msgid "No description available"
 msgstr "Keine Beschreibung verfügbar"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:636
+#: src/editor/qml/ShaderSettingsDialog.qml:850
 msgctxt "@info shader author"
 msgid "by %1"
 msgstr "von %1"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:639
+#: src/editor/qml/ShaderSettingsDialog.qml:853
 msgctxt "@info shader version"
 msgid "v%1"
 msgstr "v%1"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:642
+#: src/editor/qml/ShaderSettingsDialog.qml:856
 msgctxt "@info user-installed shader"
 msgid "(User shader)"
 msgstr "(Benutzer-Shader)"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:669
+#: src/editor/qml/ShaderSettingsDialog.qml:883
 msgctxt "@title:group"
 msgid "Parameters"
 msgstr "Parameter"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:676
+#: src/editor/qml/ShaderSettingsDialog.qml:890
 msgctxt "@info:tooltip"
 msgid "Randomize all parameters"
 msgstr "Alle Parameter zufällig setzen"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:677
+#: src/editor/qml/ShaderSettingsDialog.qml:891
 msgctxt "@action:button"
 msgid "Random"
 msgstr "Zufall"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:688
+#: src/editor/qml/ShaderSettingsDialog.qml:902
 msgctxt "@info"
 msgid "This effect has no configurable parameters."
 msgstr "Dieser Effekt hat keine konfigurierbaren Parameter."
 
-#: src/editor/qml/ShaderSettingsDialog.qml:811
+#: src/editor/qml/ShaderSettingsDialog.qml:1025
 msgctxt "@info"
 msgid "Enable the shader effect to configure visual effects for zone overlays."
 msgstr ""
 "Aktivieren Sie den Shader-Effekt, um visuelle Effekte für "
 "Zonenüberlagerungen einzurichten."
 
-#: src/editor/qml/ShaderSettingsDialog.qml:834
+#: src/editor/qml/ShaderSettingsDialog.qml:1048
 msgctxt "@action:button"
 msgid "Dismiss"
 msgstr "Schließen"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:848
+#: src/editor/qml/ShaderSettingsDialog.qml:1062
 msgctxt "@action:button"
 msgid "Load Preset"
 msgstr "Voreinstellung laden"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:850
+#: src/editor/qml/ShaderSettingsDialog.qml:1064
 msgctxt "@info:tooltip"
 msgid "Load shader settings from a preset file"
 msgstr "Shader-Einstellungen aus einer Voreinstellungsdatei laden"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:860
+#: src/editor/qml/ShaderSettingsDialog.qml:1074
 msgctxt "@action:button"
 msgid "Save Preset"
 msgstr "Voreinstellung speichern"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:863
+#: src/editor/qml/ShaderSettingsDialog.qml:1077
 msgctxt "@info:tooltip"
 msgid "Save current shader settings as a preset file"
 msgstr "Aktuelle Shader-Einstellungen als Voreinstellungsdatei speichern"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:877
+#: src/editor/qml/ShaderSettingsDialog.qml:1091
 msgctxt "@action:button"
 msgid "Defaults"
 msgstr "Voreinstellungen"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:1015
+#: src/editor/qml/ShaderSettingsDialog.qml:1229
 msgctxt "@info:placeholder"
 msgid "Loading preview…"
-msgstr ""
+msgstr "Vorschau wird geladen …"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:1034
+#: src/editor/qml/ShaderSettingsDialog.qml:1248
 msgctxt "@title:window"
 msgid "Choose %1"
 msgstr "%1 wählen"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:1048
+#: src/editor/qml/ShaderSettingsDialog.qml:1262
 msgctxt "@title:window"
 msgid "Save Shader Preset"
 msgstr "Shader-Voreinstellung speichern"
 
-#: src/editor/qml/ShaderSettingsDialog.qml:1079
+#: src/editor/qml/ShaderSettingsDialog.qml:1293
 msgctxt "@title:window"
 msgid "Load Shader Preset"
 msgstr "Shader-Voreinstellung laden"
@@ -1978,10 +2016,9 @@ msgid "Layout:"
 msgstr "Layout:"
 
 #: src/editor/qml/TopBar.qml:110
-#, fuzzy
 msgctxt "@info"
 msgid "Preview"
-msgstr "Vorherige Zone"
+msgstr "Vorschau"
 
 #: src/editor/qml/TopBar.qml:128
 msgctxt "@label"

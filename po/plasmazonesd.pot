@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: plasmazonesd\n"
 "Report-Msgid-Bugs-To: https://github.com/fuddlesworth/PlasmaZones/issues\n"
-"POT-Creation-Date: 2026-03-10 17:46-0500\n"
+"POT-Creation-Date: 2026-03-13 18:01-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -42,12 +42,12 @@ msgstr ""
 msgid "Replace existing daemon instance"
 msgstr ""
 
-#: src/daemon/daemon/osd.cpp:92
+#: src/daemon/daemon/osd.cpp:94
 #, kde-format
 msgid "Layout: %1"
 msgstr ""
 
-#: src/daemon/daemon/osd.cpp:133
+#: src/daemon/daemon/osd.cpp:135
 #, kde-format
 msgid "Tiling: %1"
 msgstr ""
@@ -62,7 +62,7 @@ msgstr ""
 msgid "Snap to Zone %1"
 msgstr ""
 
-#: src/dbus/windowdragadaptor.cpp:59
+#: src/dbus/windowdragadaptor.cpp:61
 #, kde-format
 msgid "Cancel Zone Overlay"
 msgstr ""

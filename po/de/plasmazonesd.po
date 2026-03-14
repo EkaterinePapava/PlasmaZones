@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: plasmazonesd\n"
 "Report-Msgid-Bugs-To: https://github.com/fuddlesworth/PlasmaZones/issues\n"
-"POT-Creation-Date: 2026-03-10 17:46-0500\n"
-"PO-Revision-Date: 2026-02-22 12:00-0600\n"
+"POT-Creation-Date: 2026-03-13 18:01-0500\n"
+"PO-Revision-Date: 2026-03-14 12:00-0600\n"
 "Last-Translator: \n"
 "Language-Team: German <kde-i18n-de@kde.org>\n"
 "Language: de\n"
@@ -42,15 +42,15 @@ msgstr "fuddlesworth"
 msgid "Replace existing daemon instance"
 msgstr "Vorhandene Instanz des Hintergrunddienstes ersetzen"
 
-#: src/daemon/daemon/osd.cpp:92
-#, fuzzy, kde-format
+#: src/daemon/daemon/osd.cpp:94
+#, kde-format
 msgid "Layout: %1"
 msgstr "Layout: %1"
 
-#: src/daemon/daemon/osd.cpp:133
+#: src/daemon/daemon/osd.cpp:135
 #, kde-format
 msgid "Tiling: %1"
-msgstr ""
+msgstr "Tiling: %1"
 
 #: src/daemon/shortcutmanager.cpp:524
 #, kde-format
@@ -62,14 +62,14 @@ msgstr "Layout %1 anwenden"
 msgid "Snap to Zone %1"
 msgstr "In Zone %1 einrasten"
 
-#: src/dbus/windowdragadaptor.cpp:59
-#, fuzzy, kde-format
+#: src/dbus/windowdragadaptor.cpp:61
+#, kde-format
 msgid "Cancel Zone Overlay"
 msgstr "Zonen-Overlay abbrechen"
 
 #: src/ui/LayoutPickerOverlay.qml:240
 msgid "Dismiss layout picker"
-msgstr ""
+msgstr "Layout-Auswahl schließen"
 
 #: src/ui/LayoutPickerOverlay.qml:273
 msgid "Choose Layout"
@@ -113,11 +113,11 @@ msgstr "Nichts zum Tauschen"
 
 #: src/ui/NavigationOsd.qml:62
 msgid "No windows to focus"
-msgstr ""
+msgstr "Keine Fenster zum Fokussieren"
 
 #: src/ui/NavigationOsd.qml:64
 msgid "Already in main position"
-msgstr ""
+msgstr "Bereits in Hauptposition"
 
 #: src/ui/NavigationOsd.qml:66
 msgid "Failed"
@@ -134,9 +134,8 @@ msgid "Rotated"
 msgstr "Rotiert"
 
 #: src/ui/NavigationOsd.qml:78
-#, fuzzy
 msgid "Zone %1"
-msgstr "→ Zone %1"
+msgstr "Zone %1"
 
 #: src/ui/NavigationOsd.qml:80
 msgid "Moved"
@@ -164,16 +163,15 @@ msgstr "→ Zone %1"
 
 #: src/ui/NavigationOsd.qml:97
 msgid "Window pushed"
-msgstr ""
+msgstr "Fenster verschoben"
 
 #: src/ui/NavigationOsd.qml:99
 msgid "Restored"
 msgstr "Wiederhergestellt"
 
 #: src/ui/NavigationOsd.qml:103
-#, fuzzy
 msgid "Tiled"
-msgstr "Fehlgeschlagen"
+msgstr "Gekachelt"
 
 #: src/ui/NavigationOsd.qml:106 src/ui/NavigationOsd.qml:113
 msgid "Snapped"
@@ -193,51 +191,49 @@ msgstr "Nächstes Fenster"
 
 #: src/ui/NavigationOsd.qml:117
 msgid "Focus main window"
-msgstr ""
+msgstr "Hauptfenster fokussieren"
 
 #: src/ui/NavigationOsd.qml:119
-#, fuzzy
 msgid "Swapped with main window"
-msgstr "%1 Fenster neu eingerastet"
+msgstr "Mit Hauptfenster getauscht"
 
 #: src/ui/NavigationOsd.qml:121
 msgid "Main area enlarged"
-msgstr ""
+msgstr "Hauptbereich vergrößert"
 
 #: src/ui/NavigationOsd.qml:121
 msgid "Main area reduced"
-msgstr ""
+msgstr "Hauptbereich verkleinert"
 
 #: src/ui/NavigationOsd.qml:123
 msgid "Main window count increased"
-msgstr ""
+msgstr "Anzahl der Hauptfenster erhöht"
 
 #: src/ui/NavigationOsd.qml:123
 msgid "Main window count decreased"
-msgstr ""
+msgstr "Anzahl der Hauptfenster verringert"
 
 #: src/ui/NavigationOsd.qml:125
 msgid "Layout refreshed"
-msgstr ""
+msgstr "Layout aktualisiert"
 
 #: src/ui/NavigationOsd.qml:128
-#, fuzzy
 msgid "Rearranged %1 window"
 msgid_plural "Rearranged %1 windows"
-msgstr[0] "%1 Fenster neu eingerastet"
-msgstr[1] "%1 Fenster neu eingerastet"
+msgstr[0] "%1 Fenster neu angeordnet"
+msgstr[1] "%1 Fenster neu angeordnet"
 
 #: src/ui/NavigationOsd.qml:130
 msgid "Windows rearranged"
-msgstr ""
+msgstr "Fenster neu angeordnet"
 
 #: src/ui/NavigationOsd.qml:132
 msgid "Autotile: %1"
-msgstr ""
+msgstr "Autotile: %1"
 
 #: src/ui/NavigationOsd.qml:134
 msgid "Action completed"
-msgstr ""
+msgstr "Aktion abgeschlossen"
 
 #: src/ui/NavigationOsd.qml:312
 msgid "Navigation feedback"
@@ -257,7 +253,7 @@ msgstr "Shader-Fehler"
 
 #: src/ui/SnapAssistOverlay.qml:60
 msgid "Dismiss snap assist overlay"
-msgstr ""
+msgstr "Einrasthilfe-Overlay schließen"
 
 #: src/ui/SnapAssistOverlay.qml:231
 msgid "Snap %1 to this zone"
@@ -284,9 +280,8 @@ msgid "Layout %1"
 msgstr "Layout %1"
 
 #: src/ui/ZoneSelector.qml:304
-#, fuzzy
 msgid "Zone layout selector"
-msgstr "Zonen-Layout: %1"
+msgstr "Zonen-Layout-Auswahl"
 
 #: src/ui/ZoneSelector.qml:340 src/ui/ZoneSelectorWindow.qml:593
 msgid "No layouts available"
