@@ -111,6 +111,22 @@ void Daemon::showLayoutOsd(Layout* layout, const QString& screenName)
     }
 }
 
+void Daemon::showLockedOsd(const QString& screenName)
+{
+    OsdStyle style = m_settings ? m_settings->osdStyle() : OsdStyle::Preview;
+    if (style == OsdStyle::None) {
+        return;
+    }
+
+    QDBusMessage msg =
+        QDBusMessage::createMethodCall(QStringLiteral("org.kde.plasmashell"), QStringLiteral("/org/kde/osdService"),
+                                       QStringLiteral("org.kde.osdService"), QStringLiteral("showText"));
+
+    msg << QStringLiteral("object-locked") << i18n("Layout Locked");
+    QDBusConnection::sessionBus().asyncCall(msg);
+    qCInfo(lcDaemon) << "Showing locked OSD for screen=" << screenName;
+}
+
 void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString& displayName,
                                        const QString& screenName)
 {

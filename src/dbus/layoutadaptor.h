@@ -18,6 +18,7 @@ class LayoutManager; // Concrete type needed for signal connections
 class VirtualDesktopManager;
 class ActivityManager;
 class Layout;
+class ISettings;
 
 /**
  * @brief D-Bus adaptor for layout management operations
@@ -37,6 +38,7 @@ public:
 
     void setVirtualDesktopManager(VirtualDesktopManager* vdm);
     void setActivityManager(ActivityManager* am);
+    void setSettings(ISettings* settings);
 
 public Q_SLOTS:
     // Layout queries
@@ -149,6 +151,10 @@ public Q_SLOTS:
                                              const QString& layoutId);
     void clearAssignmentForScreenDesktopActivity(const QString& screenName, int virtualDesktop,
                                                  const QString& activityId);
+
+    // Screen layout lock
+    void toggleScreenLock(const QString& screenName);
+    bool isScreenLocked(const QString& screenName);
 
 Q_SIGNALS:
     /**
@@ -267,6 +273,7 @@ private:
     LayoutManager* m_layoutManager; // Concrete type for signal connections
     VirtualDesktopManager* m_virtualDesktopManager = nullptr;
     ActivityManager* m_activityManager = nullptr;
+    ISettings* m_settings = nullptr;
 
     // JSON caching for performance
     QString m_cachedActiveLayoutJson;

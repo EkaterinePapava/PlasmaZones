@@ -638,6 +638,20 @@ public:
     void setAutotileUseSystemBorderColors(bool) override
     {
     }
+    QStringList lockedScreens() const override
+    {
+        return {};
+    }
+    void setLockedScreens(const QStringList&) override
+    {
+    }
+    bool isScreenLocked(const QString&) const override
+    {
+        return false;
+    }
+    void setScreenLocked(const QString&, bool) override
+    {
+    }
     void load() override
     {
     }

@@ -1035,6 +1035,14 @@ public:
     }
     void setAutotileUseSystemBorderColors(bool use) override;
 
+    QStringList lockedScreens() const override
+    {
+        return m_lockedScreens;
+    }
+    void setLockedScreens(const QStringList& screens) override;
+    bool isScreenLocked(const QString& screenName) const override;
+    void setScreenLocked(const QString& screenName, bool locked) override;
+
     // Shader Effects
     bool enableShaderEffects() const override
     {
@@ -1532,6 +1540,7 @@ private:
     int m_autotileBorderRadius = 0;
     QColor m_autotileBorderColor = QColor(255, 255, 255, 200); // #C8FFFFFF
     bool m_autotileUseSystemBorderColors = true;
+    QStringList m_lockedScreens;
     // Autotile Shortcuts (must match plasmazones.kcfg GlobalShortcuts defaults)
     QString m_autotileToggleShortcut = QStringLiteral("Meta+Shift+T");
     QString m_autotileFocusMasterShortcut = QStringLiteral("Meta+Shift+M");

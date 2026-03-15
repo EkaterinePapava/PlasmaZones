@@ -441,6 +441,11 @@ void Daemon::connectLayoutSignals()
                 if (!m_layoutManager) {
                     return;
                 }
+                // Check if screen is locked
+                if (m_settings && !screenName.isEmpty() && m_settings->isScreenLocked(screenName)) {
+                    showLockedOsd(screenName);
+                    return;
+                }
                 Layout* layout = m_layoutManager->layoutById(QUuid::fromString(layoutId));
                 if (!layout) {
                     return;
@@ -481,6 +486,11 @@ void Daemon::connectOverlaySignals()
     // to avoid duplicate activation logic (the controller handles enable + algorithm + OSD)
     connect(m_overlayService.get(), &IOverlayService::autotileLayoutSelected, this,
             [this](const QString& algorithmId, const QString& screenName) {
+                // Check if screen is locked
+                if (m_settings && !screenName.isEmpty() && m_settings->isScreenLocked(screenName)) {
+                    showLockedOsd(screenName);
+                    return;
+                }
                 Q_UNUSED(screenName)
                 if (m_unifiedLayoutController) {
                     m_unifiedLayoutController->applyLayoutById(LayoutId::makeAutotileId(algorithmId));

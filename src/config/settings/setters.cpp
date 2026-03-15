@@ -111,6 +111,27 @@ bool Settings::isMonitorDisabled(const QString& screenName) const
     return false;
 }
 
+bool Settings::isScreenLocked(const QString& screenName) const
+{
+    return m_lockedScreens.contains(screenName);
+}
+
+void Settings::setScreenLocked(const QString& screenName, bool locked)
+{
+    if (locked) {
+        if (!m_lockedScreens.contains(screenName)) {
+            m_lockedScreens.append(screenName);
+            Q_EMIT lockedScreensChanged();
+            Q_EMIT settingsChanged();
+        }
+    } else {
+        if (m_lockedScreens.removeAll(screenName) > 0) {
+            Q_EMIT lockedScreensChanged();
+            Q_EMIT settingsChanged();
+        }
+    }
+}
+
 SETTINGS_SETTER(bool, ShowZoneNumbers, m_showZoneNumbers, showZoneNumbersChanged)
 SETTINGS_SETTER(bool, FlashZonesOnSwitch, m_flashZonesOnSwitch, flashZonesOnSwitchChanged)
 SETTINGS_SETTER(bool, ShowOsdOnLayoutSwitch, m_showOsdOnLayoutSwitch, showOsdOnLayoutSwitchChanged)
@@ -368,6 +389,15 @@ void Settings::setAutotileUseSystemBorderColors(bool use)
             applyAutotileBorderSystemColor();
         }
         Q_EMIT autotileUseSystemBorderColorsChanged();
+        Q_EMIT settingsChanged();
+    }
+}
+
+void Settings::setLockedScreens(const QStringList& screens)
+{
+    if (m_lockedScreens != screens) {
+        m_lockedScreens = screens;
+        Q_EMIT lockedScreensChanged();
         Q_EMIT settingsChanged();
     }
 }

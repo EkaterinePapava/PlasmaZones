@@ -492,6 +492,10 @@ public:
     {
         return instance().defaultAutotileUseSystemBorderColorsValue();
     }
+    static QStringList lockedScreens()
+    {
+        return {};
+    }
     // ═══════════════════════════════════════════════════════════════════════════
     // Update Notification Settings
     // ═══════════════════════════════════════════════════════════════════════════

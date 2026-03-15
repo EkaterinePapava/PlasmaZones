@@ -103,6 +103,7 @@ public:
 
     // OSD notifications
     void showLayoutOsd(Layout* layout, const QString& screenName = QString());
+    void showLockedOsd(const QString& screenName);
 
 private:
     /**

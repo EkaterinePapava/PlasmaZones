@@ -381,6 +381,7 @@ void Settings::loadAutotilingConfig(const KConfigGroup& autotiling, const KConfi
         readValidatedColor(autotiling, "AutotileBorderColor", ConfigDefaults::autotileBorderColor(), "autotile border");
     m_autotileUseSystemBorderColors = autotiling.readEntry(QLatin1String("AutotileUseSystemBorderColors"),
                                                            ConfigDefaults::autotileUseSystemBorderColors());
+    m_lockedScreens = autotiling.readEntry(QLatin1String("LockedScreens"), QStringList());
 
     // Autotile Shortcuts
     m_autotileToggleShortcut =
@@ -564,6 +565,7 @@ void Settings::saveAutotilingConfig(KConfigGroup& autotiling, KConfigGroup& anim
     autotiling.writeEntry(QLatin1String("AutotileBorderRadius"), m_autotileBorderRadius);
     autotiling.writeEntry(QLatin1String("AutotileBorderColor"), m_autotileBorderColor);
     autotiling.writeEntry(QLatin1String("AutotileUseSystemBorderColors"), m_autotileUseSystemBorderColors);
+    autotiling.writeEntry(QLatin1String("LockedScreens"), m_lockedScreens);
 
     animations.writeEntry(QLatin1String("AnimationsEnabled"), m_animationsEnabled);
     animations.writeEntry(QLatin1String("AnimationDuration"), m_animationDuration);

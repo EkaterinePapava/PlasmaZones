@@ -97,6 +97,10 @@ public:
     virtual QStringList disabledMonitors() const = 0;
     virtual void setDisabledMonitors(const QStringList& screenNames) = 0;
     virtual bool isMonitorDisabled(const QString& screenName) const = 0;
+    virtual QStringList lockedScreens() const = 0;
+    virtual void setLockedScreens(const QStringList& screens) = 0;
+    virtual void setScreenLocked(const QString& screenName, bool locked) = 0;
+    virtual bool isScreenLocked(const QString& screenName) const = 0;
     virtual bool showZoneNumbers() const = 0;
     virtual void setShowZoneNumbers(bool show) = 0;
     virtual bool flashZonesOnSwitch() const = 0;

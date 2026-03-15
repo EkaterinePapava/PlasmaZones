@@ -250,6 +250,11 @@ void Daemon::connectShortcutSignals()
             qCDebug(lcDaemon) << "QuickLayout shortcut: no screen info";
             return;
         }
+        // Check if screen is locked
+        if (m_settings && m_settings->isScreenLocked(screen->name())) {
+            showLockedOsd(screen->name());
+            return;
+        }
         if (!m_unifiedLayoutController->applyLayoutByNumber(number)) {
             return;
         }
@@ -268,6 +273,11 @@ void Daemon::connectShortcutSignals()
             qCDebug(lcDaemon) << "PreviousLayout shortcut: no screen info";
             return;
         }
+        // Check if screen is locked
+        if (m_settings && m_settings->isScreenLocked(screen->name())) {
+            showLockedOsd(screen->name());
+            return;
+        }
         m_unifiedLayoutController->cyclePrevious();
         resnapIfManualMode();
     });
@@ -280,6 +290,11 @@ void Daemon::connectShortcutSignals()
             m_unifiedLayoutController->setCurrentScreenName(Utils::screenIdentifier(screen));
         } else {
             qCDebug(lcDaemon) << "NextLayout shortcut: no screen info";
+            return;
+        }
+        // Check if screen is locked
+        if (m_settings && m_settings->isScreenLocked(screen->name())) {
+            showLockedOsd(screen->name());
             return;
         }
         m_unifiedLayoutController->cycleNext();

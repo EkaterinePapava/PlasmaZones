@@ -480,4 +480,35 @@ QStringList LayoutAdaptor::getVirtualDesktopNames()
     return m_virtualDesktopManager ? m_virtualDesktopManager->desktopNames() : QStringList{QStringLiteral("Desktop 1")};
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Settings Access
+// ═══════════════════════════════════════════════════════════════════════════════
+
+void LayoutAdaptor::setSettings(ISettings* settings)
+{
+    m_settings = settings;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Screen Layout Lock
+// ═══════════════════════════════════════════════════════════════════════════════
+
+void LayoutAdaptor::toggleScreenLock(const QString& screenName)
+{
+    if (!m_settings) {
+        return;
+    }
+    bool locked = m_settings->isScreenLocked(screenName);
+    m_settings->setScreenLocked(screenName, !locked);
+    m_settings->save();
+}
+
+bool LayoutAdaptor::isScreenLocked(const QString& screenName)
+{
+    if (!m_settings) {
+        return false;
+    }
+    return m_settings->isScreenLocked(screenName);
+}
+
 } // namespace PlasmaZones
