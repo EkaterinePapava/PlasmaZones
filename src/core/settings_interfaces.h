@@ -228,7 +228,6 @@ public:
     virtual void setMinimumWindowWidth(int width) = 0;
     virtual int minimumWindowHeight() const = 0;
     virtual void setMinimumWindowHeight(int height) = 0;
-    virtual bool isWindowExcluded(const QString& appName, const QString& windowClass) const = 0;
 };
 
 /**

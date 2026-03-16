@@ -137,21 +137,6 @@ void Settings::saveTriggerList(KConfigGroup& group, const QString& key, const QV
     group.writeEntry(key, QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Compact)));
 }
 
-bool Settings::isWindowExcluded(const QString& appName, const QString& windowClass) const
-{
-    for (const auto& excluded : m_excludedApplications) {
-        if (appName.contains(excluded, Qt::CaseInsensitive)) {
-            return true;
-        }
-    }
-    for (const auto& excluded : m_excludedWindowClasses) {
-        if (windowClass.contains(excluded, Qt::CaseInsensitive)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 // ── load() dispatcher ────────────────────────────────────────────────────────
 
 void Settings::load()

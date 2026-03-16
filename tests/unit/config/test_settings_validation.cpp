@@ -143,34 +143,6 @@ private Q_SLOTS:
         QVERIFY2(settings.dragActivationTriggers().size() <= Settings::MaxTriggersPerAction,
                  "Trigger list must be capped at MaxTriggersPerAction");
     }
-
-    // =========================================================================
-    // Window exclusion matching
-    // =========================================================================
-
-    /**
-     * isWindowExcluded must do case-insensitive substring matching for both
-     * app name and window class.
-     */
-    void testIsWindowExcluded_caseInsensitiveSubstring()
-    {
-        IsolatedConfigGuard guard;
-
-        Settings settings;
-        settings.setExcludedApplications(QStringList{QStringLiteral("Firefox")});
-        settings.setExcludedWindowClasses(QStringList{QStringLiteral("konsole")});
-
-        // Case-insensitive substring match on app name
-        QVERIFY(settings.isWindowExcluded(QStringLiteral("org.mozilla.firefox"), QString()));
-        QVERIFY(settings.isWindowExcluded(QStringLiteral("FIREFOX-ESR"), QString()));
-
-        // Case-insensitive substring match on window class
-        QVERIFY(settings.isWindowExcluded(QString(), QStringLiteral("org.kde.Konsole")));
-        QVERIFY(settings.isWindowExcluded(QString(), QStringLiteral("KONSOLE")));
-
-        // Non-matching
-        QVERIFY(!settings.isWindowExcluded(QStringLiteral("chrome"), QStringLiteral("chromium")));
-    }
 };
 
 QTEST_MAIN(TestSettingsValidation)

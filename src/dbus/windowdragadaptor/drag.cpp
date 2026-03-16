@@ -33,13 +33,9 @@ void WindowDragAdaptor::dragStarted(const QString& windowId, double x, double y,
         return;
     }
 
-    // Check exclusion list - if window is excluded, don't allow snapping
-    if (m_settings->isWindowExcluded(appName, windowClass)) {
-        qCInfo(lcDbusWindow) << "Snapping: window excluded, appName=" << appName << "windowClass=" << windowClass;
-        m_snapCancelled = true;
-        m_draggedWindowId.clear();
-        return;
-    }
+    // NOTE: Exclusion list (excludedApplications, excludedWindowClasses) is checked
+    // in the KWin effect's shouldHandleWindow() before any D-Bus call reaches here.
+    // No duplicate check needed.
 
     // Dismiss any visible snap assist overlay from a previous snap.
     // The user is starting a new drag, so the previous snap assist is stale.

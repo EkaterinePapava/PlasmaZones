@@ -1328,7 +1328,6 @@ public:
     void reset() override;
 
     // Additional methods
-    Q_INVOKABLE bool isWindowExcluded(const QString& appName, const QString& windowClass) const override;
     Q_INVOKABLE QString loadColorsFromFile(const QString& filePath);
     Q_INVOKABLE void applySystemColorScheme();
     void applyAutotileBorderSystemColor();

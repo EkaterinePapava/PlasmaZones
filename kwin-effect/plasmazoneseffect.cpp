@@ -1125,6 +1125,22 @@ bool PlasmaZonesEffect::shouldHandleWindow(KWin::EffectWindow* w) const
         return false;
     }
 
+    // Check user-configured exclusion lists (applies to both snapping and autotiling)
+    if (!m_excludedApplications.isEmpty() || !m_excludedWindowClasses.isEmpty()) {
+        KWin::Window* kw = w->window();
+        const QString appName = kw ? kw->desktopFileName() : QString();
+        for (const QString& excluded : m_excludedApplications) {
+            if (!excluded.isEmpty() && appName.contains(excluded, Qt::CaseInsensitive)) {
+                return false;
+            }
+        }
+        for (const QString& excluded : m_excludedWindowClasses) {
+            if (!excluded.isEmpty() && windowClass.contains(excluded, Qt::CaseInsensitive)) {
+                return false;
+            }
+        }
+    }
+
     // Skip special windows
     if (w->isSpecialWindow()) {
         return false;
@@ -1328,6 +1344,12 @@ void PlasmaZonesEffect::loadCachedSettings()
     });
     loadSettingAsync(QStringLiteral("minimumWindowHeight"), [this](const QVariant& v) {
         m_minimumWindowHeight = v.toInt();
+    });
+    loadSettingAsync(QStringLiteral("excludedApplications"), [this](const QVariant& v) {
+        m_excludedApplications = v.toStringList();
+    });
+    loadSettingAsync(QStringLiteral("excludedWindowClasses"), [this](const QVariant& v) {
+        m_excludedWindowClasses = v.toStringList();
     });
     loadSettingAsync(QStringLiteral("snapAssistEnabled"), [this](const QVariant& v) {
         m_snapAssistHandler->setEnabled(v.toBool());

@@ -410,10 +410,6 @@ public:
     void setMinimumWindowHeight(int) override
     {
     }
-    bool isWindowExcluded(const QString&, const QString&) const override
-    {
-        return false;
-    }
     bool zoneSelectorEnabled() const override
     {
         return true;
