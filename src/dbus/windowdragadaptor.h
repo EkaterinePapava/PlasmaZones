@@ -73,8 +73,7 @@ public Q_SLOTS:
      * @param mouseButtons Qt::MouseButtons flags for the button(s) that started the drag (for activation-by-mouse)
      * @note Parameters are double because KWin QML DBusCall sends JS numbers as D-Bus doubles
      */
-    void dragStarted(const QString& windowId, double x, double y, double width, double height, const QString& appName,
-                     const QString& windowClass, int mouseButtons);
+    void dragStarted(const QString& windowId, double x, double y, double width, double height, int mouseButtons);
 
     /**
      * Called while window is being dragged (cursor moved)

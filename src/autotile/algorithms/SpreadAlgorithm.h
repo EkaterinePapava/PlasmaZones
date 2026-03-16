@@ -63,6 +63,13 @@ public:
     {
         return 4;
     }
+    // Spread zones are centered within slots with padding — the post-layout
+    // enforceWindowMinSizes boundary solver would destroy this spacing.
+    // Min sizes are handled directly in calculateZones.
+    bool producesOverlappingZones() const noexcept override
+    {
+        return true;
+    }
 };
 
 } // namespace PlasmaZones

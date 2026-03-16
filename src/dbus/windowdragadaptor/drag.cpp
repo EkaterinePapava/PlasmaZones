@@ -22,7 +22,7 @@
 namespace PlasmaZones {
 
 void WindowDragAdaptor::dragStarted(const QString& windowId, double x, double y, double width, double height,
-                                    const QString& appName, const QString& windowClass, int mouseButtons)
+                                    int mouseButtons)
 {
     Q_UNUSED(mouseButtons); // Only used in dragMoved for dynamic activation
     // Check if snapping is enabled
@@ -32,10 +32,6 @@ void WindowDragAdaptor::dragStarted(const QString& windowId, double x, double y,
         m_draggedWindowId.clear();
         return;
     }
-
-    // NOTE: Exclusion list (excludedApplications, excludedWindowClasses) is checked
-    // in the KWin effect's shouldHandleWindow() before any D-Bus call reaches here.
-    // No duplicate check needed.
 
     // Dismiss any visible snap assist overlay from a previous snap.
     // The user is starting a new drag, so the previous snap assist is stale.

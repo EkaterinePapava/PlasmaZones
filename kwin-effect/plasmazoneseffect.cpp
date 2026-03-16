@@ -2153,17 +2153,6 @@ void PlasmaZonesEffect::callDragStarted(const QString& windowId, const QRectF& g
 {
     updateWindowStickyState(m_dragTracker->draggedWindow());
 
-    // Get window class info for exclusion filtering
-    QString appName;
-    QString windowClass;
-    if (m_dragTracker->draggedWindow()) {
-        windowClass = m_dragTracker->draggedWindow()->windowClass();
-        appName = deriveShortNameFromWindowClass(windowClass);
-        if (appName.isEmpty()) {
-            appName = windowClass;
-        }
-    }
-
     // Use QDBusMessage::createMethodCall instead of QDBusInterface to avoid
     // synchronous D-Bus introspection. QDBusInterface's constructor blocks the
     // compositor thread (~25s timeout) if the daemon is registered but not yet
@@ -2171,7 +2160,7 @@ void PlasmaZonesEffect::callDragStarted(const QString& windowId, const QRectF& g
     // until asyncCall, which returns immediately.
     QDBusMessage msg = QDBusMessage::createMethodCall(DBus::ServiceName, DBus::ObjectPath, DBus::Interface::WindowDrag,
                                                       QStringLiteral("dragStarted"));
-    msg << windowId << geometry.x() << geometry.y() << geometry.width() << geometry.height() << appName << windowClass
+    msg << windowId << geometry.x() << geometry.y() << geometry.width() << geometry.height()
         << static_cast<int>(m_currentMouseButtons);
     QDBusConnection::sessionBus().asyncCall(msg);
 }
