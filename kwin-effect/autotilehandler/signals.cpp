@@ -75,6 +75,7 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
                     if (!w->isOnCurrentDesktop()) {
                         const QString wid = m_effect->getWindowId(w);
                         if (m_notifiedWindows.remove(wid)) {
+                            m_notifiedWindowScreens.remove(wid);
                             m_savedNotifiedForDesktopReturn.insert(wid);
                         }
                     }
@@ -102,6 +103,9 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
                 }
             }
             m_notifiedWindows -= windowsOnRemovedScreens;
+            for (const QString& wid : std::as_const(windowsOnRemovedScreens)) {
+                m_notifiedWindowScreens.remove(wid);
+            }
 
             // Restore title bars and clear tiled tracking for windows on removed screens
             for (const QString& windowId : std::as_const(windowsOnRemovedScreens)) {

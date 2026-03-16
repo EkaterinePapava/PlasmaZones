@@ -324,6 +324,7 @@ void AutotileHandler::notifyWindowAdded(KWin::EffectWindow* w)
     m_notifiedWindows.insert(windowId);
 
     QString screenName = m_effect->getWindowScreenName(w);
+    m_notifiedWindowScreens[windowId] = screenName;
 
     // Only notify autotile daemon for windows on autotile screens
     if (m_autotileScreens.contains(screenName)) {
@@ -358,11 +359,80 @@ void AutotileHandler::notifyWindowAdded(KWin::EffectWindow* w)
             if (w->isError()) {
                 qCWarning(lcEffect) << "windowOpened D-Bus call failed for" << windowId << ":" << w->error().message();
                 m_notifiedWindows.remove(windowId);
+                m_notifiedWindowScreens.remove(windowId);
             }
         });
         qCDebug(lcEffect) << "Notified autotile: windowOpened" << windowId << "on screen" << screenName
                           << "minSize:" << minWidth << "x" << minHeight;
     }
+}
+
+void AutotileHandler::handleWindowOutputChanged(KWin::EffectWindow* w)
+{
+    if (!w || w->isDeleted() || m_inOutputChanged) {
+        return;
+    }
+    // Re-entrancy guard: geometry changes from onWindowClosed/notifyWindowAdded
+    // could trigger outputChanged again if tiling moves the window across screens.
+    m_inOutputChanged = true;
+    const auto guard = qScopeGuard([this] {
+        m_inOutputChanged = false;
+    });
+
+    const QString windowId = m_effect->getWindowId(w);
+    const QString newScreenName = m_effect->getWindowScreenName(w);
+
+    if (!m_notifiedWindows.contains(windowId)) {
+        // Window not tracked — but if it moved TO an autotile screen, add it
+        if (m_autotileScreens.contains(newScreenName) && m_effect->shouldHandleWindow(w) && !w->isMinimized()
+            && w->isOnCurrentDesktop() && w->isOnCurrentActivity()) {
+            notifyWindowAdded(w);
+            m_effect->updateActiveBorder();
+        }
+        return;
+    }
+
+    const QString oldScreenName = m_notifiedWindowScreens.value(windowId);
+
+    if (oldScreenName.isEmpty() || oldScreenName == newScreenName) {
+        return; // Same screen or unknown — no transfer needed
+    }
+
+    const bool oldIsAutotile = m_autotileScreens.contains(oldScreenName);
+    const bool newIsAutotile = m_autotileScreens.contains(newScreenName);
+
+    if (!oldIsAutotile && !newIsAutotile) {
+        return; // Neither screen is autotiled
+    }
+
+    qCInfo(lcEffect) << "Window moved between monitors:" << windowId << oldScreenName << "->" << newScreenName;
+
+    // Preserve pre-autotile geometry from the old screen before removal
+    savePreAutotileForDesktopMove(windowId, oldScreenName);
+
+    // Restore title bar before removing
+    if (isBorderlessWindow(windowId)) {
+        KWin::Window* kw = w->window();
+        if (kw) {
+            kw->setNoBorder(false);
+        }
+    }
+
+    // Remove from old screen's autotile state
+    onWindowClosed(windowId, oldScreenName);
+
+    // Re-add on new screen if it's an autotile screen
+    if (newIsAutotile && !w->isMinimized() && w->isOnCurrentDesktop() && w->isOnCurrentActivity()) {
+        // Restore preserved pre-autotile geometry on the new screen
+        auto savedIt = m_savedPreAutotileForDesktopMove.find(windowId);
+        if (savedIt != m_savedPreAutotileForDesktopMove.end()) {
+            m_preAutotileGeometries[newScreenName][windowId] = savedIt.value();
+            m_savedPreAutotileForDesktopMove.erase(savedIt);
+        }
+        notifyWindowAdded(w);
+    }
+
+    m_effect->updateActiveBorder();
 }
 
 void AutotileHandler::savePreAutotileForDesktopMove(const QString& windowId, const QString& screenName)
@@ -391,6 +461,7 @@ void AutotileHandler::onWindowClosed(const QString& windowId, const QString& scr
 
     // Remove from autotile tracking sets so re-opened windows get re-notified.
     m_notifiedWindows.remove(windowId);
+    m_notifiedWindowScreens.remove(windowId);
     m_savedNotifiedForDesktopReturn.remove(windowId);
     m_minimizeFloatedWindows.remove(windowId);
 
@@ -430,6 +501,7 @@ void AutotileHandler::onDaemonReady()
     loadSettings();
     connectSignals();
     m_notifiedWindows.clear();
+    m_notifiedWindowScreens.clear();
     m_savedNotifiedForDesktopReturn.clear();
     m_savedPreAutotileForDesktopMove.clear();
     m_pendingCloses.clear();

@@ -656,6 +656,20 @@ void PlasmaZonesEffect::setupWindowConnections(KWin::EffectWindow* w)
         }
     });
 
+    // Detect when a window moves between monitors (e.g., "Move to Screen Right").
+    // KWin::Window::outputChanged fires once when the window's output property changes.
+    // Transfer the window from the old screen's autotile state to the new screen's state.
+    KWin::Window* kw = w->window();
+    if (kw) {
+        QPointer<KWin::EffectWindow> safeW = w;
+        connect(kw, &KWin::Window::outputChanged, this, [this, safeW]() {
+            if (!safeW || safeW->isDeleted()) {
+                return;
+            }
+            m_autotileHandler->handleWindowOutputChanged(safeW);
+        });
+    }
+
     // Detect drag start/end via KWin's per-window signals instead of polling.
     // windowStartUserMovedResized fires once when an interactive move (or resize) begins;
     // windowFinishUserMovedResized fires once when it ends (button release, Escape, etc.).

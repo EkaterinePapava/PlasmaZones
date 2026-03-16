@@ -46,6 +46,7 @@ public:
     void onWindowClosed(const QString& windowId, const QString& screenName);
     void onDaemonReady();
     void savePreAutotileForDesktopMove(const QString& windowId, const QString& screenName);
+    void handleWindowOutputChanged(KWin::EffectWindow* w);
 
     // D-Bus signal connections and settings
     void connectSignals();
@@ -179,10 +180,12 @@ private:
     QHash<QString, QStringList> m_savedSnapStackingOrder; ///< snap-mode stacking order, restored on autotile→snap
     QHash<QString, QStringList> m_savedAutotileStackingOrder; ///< autotile stacking order, restored on snap→autotile
     QSet<QString> m_notifiedWindows;
+    QHash<QString, QString> m_notifiedWindowScreens; ///< windowId → screen name at time of notification
     QSet<QString> m_savedNotifiedForDesktopReturn; ///< windows removed from m_notifiedWindows on desktop switch
     QHash<QString, QRectF>
         m_savedPreAutotileForDesktopMove; ///< pre-autotile geometries for windows moved to another desktop
     QSet<QString> m_pendingCloses;
+    bool m_inOutputChanged = false; ///< re-entrancy guard for handleWindowOutputChanged
     QSet<QString> m_minimizeFloatedWindows;
     uint64_t m_autotileStaggerGeneration = 0;
     uint64_t m_restoreStaggerGeneration = 0;
