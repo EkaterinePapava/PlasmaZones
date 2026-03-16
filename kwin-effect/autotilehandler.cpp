@@ -397,7 +397,7 @@ void AutotileHandler::handleWindowOutputChanged(KWin::EffectWindow* w)
     const bool newIsAutotile = m_autotileScreens.contains(newScreenName);
 
     if (!oldIsAutotile && !newIsAutotile) {
-        return; // Neither screen is autotiled
+        return; // Neither screen is autotiled — snapping unsnap handled by effect's outputChanged
     }
 
     qCInfo(lcEffect) << "Window moved between monitors:" << windowId << oldScreenName << "->" << newScreenName;
@@ -516,6 +516,11 @@ void AutotileHandler::handleWindowOutputChanged(KWin::EffectWindow* w)
                                     m_effect->applySnapGeometry(safeW, geo);
                                 });
                 });
+
+        // Unsnap the window so it becomes floating on the new screen
+        // instead of retaining a stale zone assignment from autotile.
+        m_effect->fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowUnsnapped"), {windowId},
+                                        QStringLiteral("autotile-to-snap unsnap"));
 
         // Raise above existing windows so it doesn't end up buried behind
         // snapped windows on the target screen.

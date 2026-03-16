@@ -666,15 +666,38 @@ void PlasmaZonesEffect::setupWindowConnections(KWin::EffectWindow* w)
 
     // Detect when a window moves between monitors (e.g., "Move to Screen Right").
     // KWin::Window::outputChanged fires once when the window's output property changes.
-    // Transfer the window from the old screen's autotile state to the new screen's state.
+    // Transfer the window from the old screen's autotile state to the new screen's state,
+    // and unsnap any snapped window that crosses screens.
     KWin::Window* kw = w->window();
     if (kw) {
         QPointer<KWin::EffectWindow> safeW = w;
-        connect(kw, &KWin::Window::outputChanged, this, [this, safeW]() {
+        // Track the window's screen so we can detect cross-screen moves for snapping windows
+        // (not tracked by the autotile handler's m_notifiedWindowScreens).
+        QString* trackedScreen = new QString(getWindowScreenName(w));
+        connect(kw, &KWin::Window::outputChanged, this, [this, safeW, trackedScreen]() {
             if (!safeW || safeW->isDeleted()) {
                 return;
             }
+            const QString newScreen = getWindowScreenName(safeW);
+            const QString oldScreen = *trackedScreen;
+            *trackedScreen = newScreen;
+
+            // Delegate autotile handling (autotile→autotile, autotile→snapping, etc.)
             m_autotileHandler->handleWindowOutputChanged(safeW);
+
+            // For snapping→snapping cross-screen moves: unsnap the window so it
+            // becomes floating on the new screen. The autotile handler only tracks
+            // autotile-related windows; pure snapping windows are handled here.
+            if (!oldScreen.isEmpty() && oldScreen != newScreen && !m_autotileHandler->isAutotileScreen(oldScreen)
+                && !m_autotileHandler->isAutotileScreen(newScreen)) {
+                const QString windowId = getWindowId(safeW);
+                fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowUnsnapped"), {windowId},
+                                      QStringLiteral("cross-screen unsnap"));
+            }
+        });
+        // Clean up the tracked screen string when the window is destroyed
+        connect(safeW, &QObject::destroyed, this, [trackedScreen]() {
+            delete trackedScreen;
         });
     }
 
