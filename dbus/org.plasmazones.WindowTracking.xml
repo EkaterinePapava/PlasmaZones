@@ -99,6 +99,9 @@
             <arg name="height" type="i" direction="in">
                 <annotation name="org.gtk.GDBus.DocString" value="Window height."/>
             </arg>
+            <arg name="screenName" type="s" direction="in">
+                <annotation name="org.gtk.GDBus.DocString" value="Screen connector name where window is located (for cross-screen restore)."/>
+            </arg>
             <arg name="overwrite" type="b" direction="in">
                 <annotation name="org.gtk.GDBus.DocString" value="If false, skip if entry exists (snap). If true, always overwrite (autotile)."/>
             </arg>

@@ -10,6 +10,7 @@
 #include <QHash>
 #include <QString>
 #include "../../core/utils.h"
+#include "../../core/windowtrackingservice.h"
 
 namespace PlasmaZones {
 namespace WindowTrackingInternal {
@@ -33,22 +34,26 @@ inline QJsonObject rectToJsonObject(const QRect& rect)
     return obj;
 }
 
-inline QString serializeGeometryMap(const QHash<QString, QRect>& map)
+inline QString serializeGeometryMap(const QHash<QString, WindowTrackingService::PreTileGeometry>& map)
 {
     QJsonObject result;
     for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
-        result[Utils::extractAppId(it.key())] = rectToJsonObject(it.value());
+        QJsonObject obj = rectToJsonObject(it.value().geometry);
+        if (!it.value().screenName.isEmpty()) {
+            obj[QLatin1String("screen")] = Utils::screenIdForName(it.value().screenName);
+        }
+        result[Utils::extractAppId(it.key())] = obj;
     }
     return QString::fromUtf8(QJsonDocument(result).toJson(QJsonDocument::Compact));
 }
 
 /**
  * Serialize geometry map preserving full windowId keys.
- * Returns a JSON array of {windowId, x, y, width, height} objects.
+ * Returns a JSON array of {windowId, x, y, width, height, screen} objects.
  * Used for daemon-only restarts where KWin UUIDs are stable, so
  * multi-instance apps keep per-window pre-tile geometry.
  */
-inline QString serializeGeometryMapFull(const QHash<QString, QRect>& map)
+inline QString serializeGeometryMapFull(const QHash<QString, WindowTrackingService::PreTileGeometry>& map)
 {
     QJsonArray result;
     for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
@@ -58,10 +63,13 @@ inline QString serializeGeometryMapFull(const QHash<QString, QRect>& map)
         }
         QJsonObject obj;
         obj[QLatin1String("windowId")] = it.key();
-        obj[QLatin1String("x")] = it.value().x();
-        obj[QLatin1String("y")] = it.value().y();
-        obj[QLatin1String("width")] = it.value().width();
-        obj[QLatin1String("height")] = it.value().height();
+        obj[QLatin1String("x")] = it.value().geometry.x();
+        obj[QLatin1String("y")] = it.value().geometry.y();
+        obj[QLatin1String("width")] = it.value().geometry.width();
+        obj[QLatin1String("height")] = it.value().geometry.height();
+        if (!it.value().screenName.isEmpty()) {
+            obj[QLatin1String("screen")] = Utils::screenIdForName(it.value().screenName);
+        }
         result.append(obj);
     }
     return QString::fromUtf8(QJsonDocument(result).toJson(QJsonDocument::Compact));

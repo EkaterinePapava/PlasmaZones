@@ -361,8 +361,9 @@ void WindowTrackingAdaptor::loadState()
     m_service->setPendingRestoreQueues(pendingQueues);
 
     // Load pre-tile geometries (with migration from old split keys)
-    QHash<QString, QRect> preTileGeometries;
-    auto loadGeometries = [](const QString& json, QHash<QString, QRect>& out) {
+    using PreTileGeometry = WindowTrackingService::PreTileGeometry;
+    QHash<QString, PreTileGeometry> preTileGeometries;
+    auto loadGeometries = [&resolveScreen](const QString& json, QHash<QString, PreTileGeometry>& out) {
         if (json.isEmpty()) {
             return;
         }
@@ -377,7 +378,8 @@ void WindowTrackingAdaptor::loadState()
                 QRect geom(geomObj[QLatin1String("x")].toInt(), geomObj[QLatin1String("y")].toInt(),
                            geomObj[QLatin1String("width")].toInt(), geomObj[QLatin1String("height")].toInt());
                 if (geom.width() > 0 && geom.height() > 0) {
-                    out[it.key()] = geom;
+                    QString screen = resolveScreen(geomObj[QLatin1String("screen")].toString());
+                    out[it.key()] = PreTileGeometry{geom, screen};
                 }
             }
         }
@@ -402,11 +404,13 @@ void WindowTrackingAdaptor::loadState()
                 QRect geom(entry[QLatin1String("x")].toInt(), entry[QLatin1String("y")].toInt(),
                            entry[QLatin1String("width")].toInt(), entry[QLatin1String("height")].toInt());
                 if (geom.width() > 0 && geom.height() > 0) {
-                    preTileGeometries[windowId] = geom;
+                    QString screen = resolveScreen(entry[QLatin1String("screen")].toString());
+                    PreTileGeometry ptg{geom, screen};
+                    preTileGeometries[windowId] = ptg;
                     // Also store under appId for fallback (mirrors storePreTileGeometry)
                     QString appId = Utils::extractAppId(windowId);
                     if (appId != windowId) {
-                        preTileGeometries[appId] = geom;
+                        preTileGeometries[appId] = ptg;
                     }
                 }
             }
@@ -417,7 +421,7 @@ void WindowTrackingAdaptor::loadState()
     QString tileJson = tracking.readEntry(QStringLiteral("PreTileGeometries"), QString());
     if (!tileJson.isEmpty()) {
         // Only fill in keys not already loaded from full format
-        QHash<QString, QRect> appIdGeometries;
+        QHash<QString, PreTileGeometry> appIdGeometries;
         loadGeometries(tileJson, appIdGeometries);
         for (auto it = appIdGeometries.constBegin(); it != appIdGeometries.constEnd(); ++it) {
             if (!preTileGeometries.contains(it.key())) {

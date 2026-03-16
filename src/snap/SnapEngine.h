@@ -105,12 +105,37 @@ public:
     void resnapFromAutotileOrder(const QStringList& autotileWindowOrder, const QString& screenName);
 
     /**
+     * @brief Calculate resnap entries from autotile order WITHOUT emitting signal
+     *
+     * Returns the computed RotationEntry vector so the caller can batch entries
+     * from multiple screens into a single resnapToNewLayoutRequested emission.
+     * Falls back to current-assignment entries if autotile order yields nothing.
+     *
+     * @param autotileWindowOrder Ordered list of window IDs from autotile engine
+     * @param screenName Screen to resnap on
+     * @return Vector of RotationEntry (may be empty)
+     */
+    QVector<RotationEntry> calculateResnapEntriesFromAutotileOrder(const QStringList& autotileWindowOrder,
+                                                                   const QString& screenName);
+
+    /**
      * @brief Calculate snap-all-windows assignments without applying them
      * @param windowIds List of window IDs to snap
      * @param screenName Screen to snap on
      * @return JSON array of rotation entries for KWin effect to apply
      */
     QString calculateSnapAllWindows(const QStringList& windowIds, const QString& screenName);
+
+    /**
+     * @brief Emit a single batched resnapToNewLayoutRequested signal
+     *
+     * Serializes the given entries and emits the D-Bus signal once.
+     * Used by the daemon to combine entries from multiple screens into
+     * one signal, eliminating the per-screen race condition.
+     *
+     * @param entries Combined RotationEntry vector from all screens
+     */
+    void emitBatchedResnap(const QVector<RotationEntry>& entries);
 
     /**
      * @brief Request the KWin effect to collect and snap all unsnapped windows

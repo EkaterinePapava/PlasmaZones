@@ -138,14 +138,16 @@ QStringList WindowTrackingService::snappedWindows() const
 
 bool WindowTrackingService::isWindowSnapped(const QString& windowId) const
 {
-    return m_windowZoneAssignments.contains(windowId);
+    auto it = m_windowZoneAssignments.constFind(windowId);
+    return it != m_windowZoneAssignments.constEnd() && !it->isEmpty();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Pre-Tile Geometry Storage (unified snap + autotile)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-void WindowTrackingService::storePreTileGeometry(const QString& windowId, const QRect& geometry, bool overwrite)
+void WindowTrackingService::storePreTileGeometry(const QString& windowId, const QRect& geometry,
+                                                 const QString& screenName, bool overwrite)
 {
     if (windowId.isEmpty()) {
         qCWarning(lcCore) << "Cannot store pre-tile geometry: empty windowId";
@@ -161,20 +163,22 @@ void WindowTrackingService::storePreTileGeometry(const QString& windowId, const 
         // First-only mode (snap): don't overwrite when moving A→B
         if (m_preTileGeometries.contains(windowId)) {
             qCDebug(lcCore) << "storePreTileGeometry: skipping (windowId exists)" << windowId
-                            << "existing:" << m_preTileGeometries.value(windowId) << "proposed:" << geometry;
+                            << "existing:" << m_preTileGeometries.value(windowId).geometry << "proposed:" << geometry;
             return;
         }
         if (appId != windowId && m_preTileGeometries.contains(appId)) {
             qCDebug(lcCore) << "storePreTileGeometry: skipping (appId exists)" << appId
-                            << "existing:" << m_preTileGeometries.value(appId) << "proposed:" << geometry;
+                            << "existing:" << m_preTileGeometries.value(appId).geometry << "proposed:" << geometry;
             return;
         }
     }
 
-    qCDebug(lcCore) << "storePreTileGeometry:" << windowId << "=" << geometry << "overwrite:" << overwrite;
-    m_preTileGeometries[windowId] = geometry;
+    PreTileGeometry entry{geometry, screenName};
+    qCDebug(lcCore) << "storePreTileGeometry:" << windowId << "=" << geometry << "screen:" << screenName
+                    << "overwrite:" << overwrite;
+    m_preTileGeometries[windowId] = entry;
     if (appId != windowId) {
-        m_preTileGeometries[appId] = geometry;
+        m_preTileGeometries[appId] = entry;
     }
 
     // Memory cleanup: limit cache to prevent unbounded growth.
@@ -204,14 +208,17 @@ std::optional<QRect> WindowTrackingService::preTileGeometry(const QString& windo
         return std::nullopt;
     }
     if (m_preTileGeometries.contains(windowId)) {
-        qCDebug(lcCore) << "preTileGeometry: found by windowId" << windowId << "="
-                        << m_preTileGeometries.value(windowId);
-        return m_preTileGeometries.value(windowId);
+        const auto& entry = m_preTileGeometries.value(windowId);
+        qCDebug(lcCore) << "preTileGeometry: found by windowId" << windowId << "=" << entry.geometry
+                        << "screen:" << entry.screenName;
+        return entry.geometry;
     }
     QString appId = Utils::extractAppId(windowId);
     if (appId != windowId && m_preTileGeometries.contains(appId)) {
-        qCDebug(lcCore) << "preTileGeometry: found by appId" << appId << "=" << m_preTileGeometries.value(appId);
-        return m_preTileGeometries.value(appId);
+        const auto& entry = m_preTileGeometries.value(appId);
+        qCDebug(lcCore) << "preTileGeometry: found by appId" << appId << "=" << entry.geometry
+                        << "screen:" << entry.screenName;
+        return entry.geometry;
     }
     qCDebug(lcCore) << "preTileGeometry: not found for" << windowId;
     return std::nullopt;
@@ -245,17 +252,51 @@ void WindowTrackingService::clearPreTileGeometry(const QString& windowId)
     }
 }
 
-std::optional<QRect> WindowTrackingService::validatedPreTileGeometry(const QString& windowId) const
+std::optional<QRect> WindowTrackingService::validatedPreTileGeometry(const QString& windowId,
+                                                                     const QString& currentScreenName) const
 {
-    auto geo = preTileGeometry(windowId);
-    if (!geo) {
+    if (windowId.isEmpty()) {
         return std::nullopt;
     }
 
-    QRect rect = *geo;
+    // Look up the full entry (with screen context)
+    QString storedScreen;
+    QRect rect;
+    auto lookupEntry = [&](const QString& key) -> bool {
+        auto it = m_preTileGeometries.constFind(key);
+        if (it == m_preTileGeometries.constEnd()) {
+            return false;
+        }
+        rect = it->geometry;
+        storedScreen = it->screenName;
+        return true;
+    };
+    if (!lookupEntry(windowId)) {
+        QString appId = Utils::extractAppId(windowId);
+        if (appId == windowId || !lookupEntry(appId)) {
+            return std::nullopt;
+        }
+    }
+
     if (!rect.isValid() || rect.width() <= 0 || rect.height() <= 0) {
         return std::nullopt;
     }
+
+    // Cross-screen check: if the geometry was captured on a different screen than
+    // where the window currently is, the absolute coordinates are wrong. Preserve
+    // the size but center on the current screen.
+    if (!storedScreen.isEmpty() && !currentScreenName.isEmpty() && storedScreen != currentScreenName) {
+        QScreen* target = Utils::findScreenByIdOrName(currentScreenName);
+        if (target) {
+            QRect available = target->availableGeometry();
+            QRect adjusted(available.x() + (available.width() - rect.width()) / 2,
+                           available.y() + (available.height() - rect.height()) / 2, rect.width(), rect.height());
+            qCDebug(lcCore) << "validatedPreTileGeometry: cross-screen adjustment for" << windowId << "from"
+                            << storedScreen << "to" << currentScreenName << ":" << rect << "->" << adjusted;
+            return adjusted;
+        }
+    }
+
     if (isGeometryOnScreen(rect)) {
         return rect;
     }

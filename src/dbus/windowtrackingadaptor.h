@@ -164,7 +164,8 @@ public Q_SLOTS:
      * @param height Window height
      * @param overwrite If false (snap mode), skip if entry exists. If true (autotile), always overwrite.
      */
-    void storePreTileGeometry(const QString& windowId, int x, int y, int width, int height, bool overwrite);
+    void storePreTileGeometry(const QString& windowId, int x, int y, int width, int height, const QString& screenName,
+                              bool overwrite);
 
     /**
      * Get stored pre-tile geometry for a window

@@ -91,7 +91,7 @@ bool SnapEngine::unfloatToZone(const QString& windowId, const QString& screenNam
 
 bool SnapEngine::applyGeometryForFloat(const QString& windowId, const QString& screenName)
 {
-    auto geo = m_windowTracker->validatedPreTileGeometry(windowId);
+    auto geo = m_windowTracker->validatedPreTileGeometry(windowId, screenName);
     if (geo) {
         qCInfo(lcCore) << "applyGeometryForFloat:" << windowId << "restoring to" << *geo;
         Q_EMIT applyGeometryRequested(windowId, GeometryUtils::rectToJson(*geo), QString(), screenName);

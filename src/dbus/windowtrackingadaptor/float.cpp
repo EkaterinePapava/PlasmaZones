@@ -145,7 +145,7 @@ void WindowTrackingAdaptor::toggleFloatForWindow(const QString& windowId, const 
 
 bool WindowTrackingAdaptor::applyGeometryForFloat(const QString& windowId, const QString& screenName)
 {
-    auto geo = m_service->validatedPreTileGeometry(windowId);
+    auto geo = m_service->validatedPreTileGeometry(windowId, screenName);
     if (geo) {
         qCInfo(lcDbusWindow) << "applyGeometryForFloat: windowId=" << windowId << "geo=" << *geo
                              << "screen=" << screenName;

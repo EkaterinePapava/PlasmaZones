@@ -895,8 +895,8 @@ private Q_SLOTS:
         QString appId = QStringLiteral("dolphin");
         QString windowId = QStringLiteral("dolphin|a1b2c3d4-0000-0000-0000-000088888888");
 
-        QHash<QString, QRect> geos;
-        geos[appId] = QRect(50, 100, 640, 480);
+        QHash<QString, WindowTrackingService::PreTileGeometry> geos;
+        geos[appId] = {QRect(50, 100, 640, 480), QString()};
         m_service->setPreTileGeometries(geos);
 
         QVERIFY(m_service->hasPreTileGeometry(windowId));

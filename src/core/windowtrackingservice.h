@@ -121,13 +121,27 @@ public:
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
+     * @brief Stored pre-tile geometry with screen context
+     *
+     * Tracks both the geometry and the screen where it was captured, so that
+     * cross-screen restores can detect coordinate mismatch and adjust.
+     */
+    struct PreTileGeometry
+    {
+        QRect geometry;
+        QString screenName; ///< connector name at time of save (may be empty for legacy entries)
+    };
+
+    /**
      * @brief Store geometry before tiling (snap or autotile)
      * @param windowId Full window ID
      * @param geometry Window geometry before tiling
+     * @param screenName Screen connector name where the window currently is
      * @param overwrite If false (snap mode), skip if entry already exists (first-only).
      *                  If true (autotile mode), always overwrite.
      */
-    void storePreTileGeometry(const QString& windowId, const QRect& geometry, bool overwrite = false);
+    void storePreTileGeometry(const QString& windowId, const QRect& geometry, const QString& screenName = QString(),
+                              bool overwrite = false);
 
     /**
      * @brief Get stored pre-tile geometry
@@ -149,9 +163,12 @@ public:
     /**
      * @brief Get validated pre-tile geometry within screen bounds
      * @param windowId Full window ID
+     * @param currentScreenName Screen where the window currently is (for cross-screen adjustment).
+     *        If empty, uses existing isGeometryOnScreen/adjustGeometryToScreen logic.
      * @return Adjusted geometry within visible screens, nullopt if not found
      */
-    std::optional<QRect> validatedPreTileGeometry(const QString& windowId) const;
+    std::optional<QRect> validatedPreTileGeometry(const QString& windowId,
+                                                  const QString& currentScreenName = QString()) const;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Floating Window State
@@ -566,7 +583,7 @@ public:
     /**
      * @brief Get all pre-tile geometries for persistence
      */
-    const QHash<QString, QRect>& preTileGeometries() const
+    const QHash<QString, PreTileGeometry>& preTileGeometries() const
     {
         return m_preTileGeometries;
     }
@@ -628,7 +645,7 @@ public:
     /**
      * @brief Set pre-tile geometries (loaded from KConfig by adaptor)
      */
-    void setPreTileGeometries(const QHash<QString, QRect>& geometries)
+    void setPreTileGeometries(const QHash<QString, PreTileGeometry>& geometries)
     {
         m_preTileGeometries = geometries;
     }
@@ -717,7 +734,9 @@ private:
 
     // Pre-tile geometries (unified snap + autotile): full windowId + appId at runtime,
     // appId only for session-restored entries. Converted on window close for persistence.
-    QHash<QString, QRect> m_preTileGeometries;
+    // Each entry includes the screen name where the geometry was captured, enabling
+    // cross-screen restore to detect coordinate mismatch and center on the target screen.
+    QHash<QString, PreTileGeometry> m_preTileGeometries;
 
     // Last used zone tracking
     QString m_lastUsedZoneId;

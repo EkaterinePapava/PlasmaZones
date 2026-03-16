@@ -259,14 +259,17 @@ void Daemon::initializeAutotile()
                 // may have a different layout assigned with a different zone count.
                 // Only process entries for the CURRENT desktop (m_lastAutotileOrders
                 // accumulates entries across desktops after the merge fix).
+                //
+                // Batch all resnap entries into ONE signal to eliminate the race condition
+                // where multiple per-screen signals cause the effect to restore geometries
+                // and resnap in parallel.
                 WindowTrackingService* wts = m_windowTrackingAdaptor ? m_windowTrackingAdaptor->service() : nullptr;
-                int resnapScreenCount = 0;
                 QSet<QString> resnappedWindows;
+                QVector<RotationEntry> allResnapEntries;
                 for (auto it = m_lastAutotileOrders.constBegin(); it != m_lastAutotileOrders.constEnd(); ++it) {
                     if (it.key().desktop != desktop || it.key().activity != activity) {
                         continue;
                     }
-                    ++resnapScreenCount;
                     const QStringList& fullOrder = it.value();
                     const QString& screenName = it.key().screenId;
 
@@ -291,9 +294,13 @@ void Daemon::initializeAutotile()
                     for (int i = 0; i < std::min(static_cast<int>(windowOrder.size()), zoneCount); ++i) {
                         resnappedWindows.insert(windowOrder.at(i));
                     }
-                    m_snapEngine->resnapFromAutotileOrder(windowOrder, screenName);
+                    QVector<RotationEntry> entries =
+                        m_snapEngine->calculateResnapEntriesFromAutotileOrder(windowOrder, screenName);
+                    allResnapEntries.append(entries);
                 }
-                m_suppressResnapOsd = resnapScreenCount;
+                // Emit ONE batched signal (suppresses one OSD regardless of screen count)
+                m_snapEngine->emitBatchedResnap(allResnapEntries);
+                m_suppressResnapOsd = allResnapEntries.isEmpty() ? 0 : 1;
 
                 restoreAutotileOnlyGeometries(resnappedWindows, desktop, activity);
             }

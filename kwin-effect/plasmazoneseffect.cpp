@@ -181,10 +181,11 @@ void PlasmaZonesEffect::ensurePreSnapGeometryStored(KWin::EffectWindow* w, const
                     QRectF geom =
                         capturedGeom.isValid() ? capturedGeom : (safeWindow ? safeWindow->frameGeometry() : QRectF());
                     if (geom.width() > 0 && geom.height() > 0) {
+                        QString screenName = safeWindow ? getWindowScreenName(safeWindow) : QString();
                         m_windowTrackingInterface->asyncCall(QStringLiteral("storePreTileGeometry"), capturedWindowId,
                                                              static_cast<int>(geom.x()), static_cast<int>(geom.y()),
                                                              static_cast<int>(geom.width()),
-                                                             static_cast<int>(geom.height()), false);
+                                                             static_cast<int>(geom.height()), screenName, false);
                         qCInfo(lcEffect) << "Stored pre-tile geometry for window" << capturedWindowId;
                     }
                 }
@@ -1780,7 +1781,7 @@ void PlasmaZonesEffect::slotToggleWindowFloatRequested(bool shouldFloat)
     m_windowTrackingInterface->asyncCall(QStringLiteral("storePreTileGeometry"), windowId,
                                          static_cast<int>(frameGeo.x()), static_cast<int>(frameGeo.y()),
                                          static_cast<int>(frameGeo.width()), static_cast<int>(frameGeo.height()),
-                                         floating);
+                                         screenName, floating);
     m_windowTrackingInterface->asyncCall(QStringLiteral("toggleFloatForWindow"), windowId, screenName);
 }
 

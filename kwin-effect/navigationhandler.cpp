@@ -8,6 +8,8 @@
 
 #include <effect/effecthandler.h>
 #include <effect/effectwindow.h>
+#include <window.h>
+#include <workspace.h>
 #include <QDBusInterface>
 #include <QDBusPendingCall>
 #include <QDBusPendingCallWatcher>
@@ -249,17 +251,17 @@ void NavigationHandler::handleDirectZoneSnap(KWin::EffectWindow* activeWindow, c
                             innerIface->asyncCall(QStringLiteral("hasPreTileGeometry"), windowId);
                         auto* hasGeomWatcher = new QDBusPendingCallWatcher(hasGeomCall, this);
                         connect(hasGeomWatcher, &QDBusPendingCallWatcher::finished, this,
-                                [this, windowId, preSnapGeom](QDBusPendingCallWatcher* hgw) {
+                                [this, windowId, preSnapGeom, screenName](QDBusPendingCallWatcher* hgw) {
                                     hgw->deleteLater();
                                     QDBusPendingReply<bool> hasGeomReply = *hgw;
                                     if (!hasGeomReply.isValid() || !hasGeomReply.value()) {
                                         auto* storeIface = m_effect->windowTrackingInterface();
                                         if (storeIface && storeIface->isValid()) {
-                                            storeIface->asyncCall(QStringLiteral("storePreTileGeometry"), windowId,
-                                                                  static_cast<int>(preSnapGeom.x()),
-                                                                  static_cast<int>(preSnapGeom.y()),
-                                                                  static_cast<int>(preSnapGeom.width()),
-                                                                  static_cast<int>(preSnapGeom.height()), false);
+                                            storeIface->asyncCall(
+                                                QStringLiteral("storePreTileGeometry"), windowId,
+                                                static_cast<int>(preSnapGeom.x()), static_cast<int>(preSnapGeom.y()),
+                                                static_cast<int>(preSnapGeom.width()),
+                                                static_cast<int>(preSnapGeom.height()), screenName, false);
                                         }
                                     }
                                 });
@@ -632,11 +634,12 @@ void NavigationHandler::executeFloatOff(KWin::EffectWindow* activeWindow, const 
                 auto* iface = m_effect->windowTrackingInterface();
                 if (iface && iface->isValid()) {
                     QRectF floatingGeom = safeWindow->frameGeometry();
+                    QString floatScreen = m_effect->getWindowScreenName(safeWindow);
                     qCDebug(lcEffect) << "Storing floating geometry as pre-tile:" << floatingGeom;
                     iface->asyncCall(QStringLiteral("storePreTileGeometry"), windowId,
                                      static_cast<int>(floatingGeom.x()), static_cast<int>(floatingGeom.y()),
                                      static_cast<int>(floatingGeom.width()), static_cast<int>(floatingGeom.height()),
-                                     true);
+                                     floatScreen, true);
                 }
 
                 qCInfo(lcEffect) << "Applying unfloat geometry:" << geometry << "to zones:" << zoneIds
@@ -964,29 +967,42 @@ void NavigationHandler::handleResnapToNewLayout(const QString& resnapData)
 {
     qCInfo(lcEffect) << "Resnap to new layout requested";
 
-    KWin::EffectWindow* activeWindow = m_effect->getActiveWindow();
-    QString screenName = activeWindow ? m_effect->getWindowScreenName(activeWindow) : QString();
-
-    // When "Always show after snapping" is on, show snap assist after all
-    // resnap windowSnapped D-Bus calls have been dispatched. We defer via
-    // onComplete so that staggered snaps finish first — otherwise
-    // getEmptyZonesJson() would return stale data.
-    const bool showSnapAssistAfterResnap = m_effect->m_snapAssistHandler->isEnabled();
+    // Take the saved global stacking order snapshot from slotScreensChanged.
+    // This is used to restore z-order after all resnap geometries are applied.
+    auto savedStack = m_effect->m_autotileHandler->takeSavedGlobalStack();
     std::function<void()> onResnapComplete;
-    if (showSnapAssistAfterResnap && !screenName.isEmpty()) {
-        onResnapComplete = [this, screenName]() {
-            m_effect->m_snapAssistHandler->showContinuationIfNeeded(screenName);
+    if (!savedStack.isEmpty()) {
+        onResnapComplete = [savedStack]() {
+            auto* ws = KWin::Workspace::self();
+            if (!ws) {
+                return;
+            }
+            for (const auto& wPtr : savedStack) {
+                if (wPtr && !wPtr->isDeleted()) {
+                    KWin::Window* kw = wPtr->window();
+                    if (kw) {
+                        ws->raiseWindow(kw);
+                    }
+                }
+            }
         };
     }
 
+    // Apply resnap geometries first, then use the result's screen for snap assist.
+    // Previously this used getActiveWindow()'s screen, which could be on a
+    // different monitor — causing snap assist to show zones for the wrong screen.
+    // The daemon now emits ONE batched signal for all screens, so this single call
+    // handles all windows atomically (no per-screen race condition).
     BatchSnapResult result = applyBatchSnapFromJson(resnapData, /*filterCurrentDesktop=*/true,
                                                     /*resolveFullWindowId=*/true, onResnapComplete);
 
-    // Tell AutotileHandler which windows the resnap covered so pending
-    // stagger-restore callbacks skip them (they're already in their zones).
-    // Windows NOT in this set still get their pre-autotile geometry restored.
-    if (!result.snappedWindowIds.isEmpty()) {
-        m_effect->m_autotileHandler->markResnapOverrides(result.snappedWindowIds);
+    // Use the screen from the first resnapped window (captured from the resnap
+    // target geometries) — this is the screen that just transitioned from autotile.
+    const QString screenName = result.firstScreenName;
+
+    // Show snap assist continuation on the resnapped screen (not active window's screen).
+    if (m_effect->m_snapAssistHandler->isEnabled() && !screenName.isEmpty()) {
+        m_effect->m_snapAssistHandler->showContinuationIfNeeded(screenName);
     }
 
     if (result.status != BatchSnapResult::Success) {

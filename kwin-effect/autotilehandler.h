@@ -129,11 +129,13 @@ public:
         ++m_autotileStaggerGeneration;
     }
 
-    // Mark specific windows as overridden by resnap — stagger callbacks skip these
-    void markResnapOverrides(const QSet<QString>& windowIds)
-    {
-        m_resnapOverriddenWindows = windowIds;
-    }
+    /**
+     * @brief Take the saved global stacking order snapshot (move semantics).
+     *
+     * Called by handleResnapToNewLayout to restore z-order after resnap.
+     * Returns and clears the snapshot captured by slotScreensChanged.
+     */
+    QVector<QPointer<KWin::EffectWindow>> takeSavedGlobalStack();
 
     // Set a window to re-activate after the next autotile raise loop completes.
     // Used by slotDaemonReady() to preserve focus of non-tiled windows (e.g. KCM).
@@ -199,7 +201,7 @@ private:
     QSet<QString> m_minimizeFloatedWindows;
     uint64_t m_autotileStaggerGeneration = 0;
     uint64_t m_restoreStaggerGeneration = 0;
-    QSet<QString> m_resnapOverriddenWindows; ///< windows resnapped by handleResnapToNewLayout (skip stagger restore)
+    QVector<QPointer<KWin::EffectWindow>> m_savedGlobalStackForResnap; ///< z-order snapshot for resnap restore
     QHash<QString, QRect> m_autotileTargetZones;
     QHash<QString, QRect> m_centeredWaylandZones; ///< zones where Wayland windows were last centered
     QString m_pendingAutotileFocusWindowId;

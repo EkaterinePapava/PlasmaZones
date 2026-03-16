@@ -205,8 +205,15 @@ QString WindowTrackingAdaptor::getRestoreForWindow(const QString& windowId, cons
         return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
     }
 
-    int x, y, w, h;
-    bool found = getValidatedPreTileGeometry(windowId, x, y, w, h);
+    int x = 0, y = 0, w = 0, h = 0;
+    auto geo = m_service->validatedPreTileGeometry(windowId, screenName);
+    bool found = geo.has_value();
+    if (found) {
+        x = geo->x();
+        y = geo->y();
+        w = geo->width();
+        h = geo->height();
+    }
     QJsonObject obj;
     obj[QLatin1String("success")] = found && w > 0 && h > 0;
     obj[QLatin1String("found")] = found && w > 0 && h > 0;

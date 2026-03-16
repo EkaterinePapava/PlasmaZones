@@ -149,16 +149,38 @@ void SnapEngine::resnapCurrentAssignments(const QString& screenFilter)
 
 void SnapEngine::resnapFromAutotileOrder(const QStringList& autotileWindowOrder, const QString& screenName)
 {
-    QVector<RotationEntry> entries = m_windowTracker->calculateResnapFromAutotileOrder(autotileWindowOrder, screenName);
+    QVector<RotationEntry> entries = calculateResnapEntriesFromAutotileOrder(autotileWindowOrder, screenName);
 
     if (entries.isEmpty()) {
-        qCDebug(lcCore) << "Resnap: no entries from autotile order, using current assignments";
-        resnapCurrentAssignments(screenName);
-        return;
+        return; // calculateResnapEntriesFromAutotileOrder already tried fallback
     }
 
     QString resnapData = GeometryUtils::serializeRotationEntries(entries);
     qCInfo(lcCore) << "Resnapping" << entries.size() << "windows from autotile order";
+    Q_EMIT resnapToNewLayoutRequested(resnapData);
+}
+
+QVector<RotationEntry> SnapEngine::calculateResnapEntriesFromAutotileOrder(const QStringList& autotileWindowOrder,
+                                                                           const QString& screenName)
+{
+    QVector<RotationEntry> entries = m_windowTracker->calculateResnapFromAutotileOrder(autotileWindowOrder, screenName);
+
+    if (entries.isEmpty()) {
+        qCDebug(lcCore) << "calculateResnapEntriesFromAutotileOrder: no entries from autotile order,"
+                        << "falling back to current assignments for screen" << screenName;
+        entries = m_windowTracker->calculateResnapFromCurrentAssignments(screenName);
+    }
+
+    return entries;
+}
+
+void SnapEngine::emitBatchedResnap(const QVector<RotationEntry>& entries)
+{
+    if (entries.isEmpty()) {
+        return;
+    }
+    QString resnapData = GeometryUtils::serializeRotationEntries(entries);
+    qCInfo(lcCore) << "Emitting batched resnap for" << entries.size() << "windows";
     Q_EMIT resnapToNewLayoutRequested(resnapData);
 }
 

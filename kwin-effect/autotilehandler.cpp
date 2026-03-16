@@ -233,7 +233,8 @@ bool AutotileHandler::saveAndRecordPreAutotileGeometry(const QString& windowId, 
         // within an autotile session; overwrite=false prevents cross-mode clobbering.
         m_effect->fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("storePreTileGeometry"),
                                         {windowId, static_cast<int>(frame.x()), static_cast<int>(frame.y()),
-                                         static_cast<int>(frame.width()), static_cast<int>(frame.height()), false},
+                                         static_cast<int>(frame.width()), static_cast<int>(frame.height()), screenName,
+                                         false},
                                         QStringLiteral("storePreTileGeometry"));
     }
     return true;
