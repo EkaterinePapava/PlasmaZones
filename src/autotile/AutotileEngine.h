@@ -884,6 +884,7 @@ private:
     // Consumed by insertWindow() as windows arrive; also cleaned up by
     // removeWindow() if a pre-seeded window closes before arriving.
     QHash<QString, QStringList> m_pendingInitialOrders;
+    QHash<QString, uint64_t> m_pendingOrderGeneration;
 
     // Per-screen overflow tracking with O(1) reverse-index lookups.
     OverflowManager m_overflow;

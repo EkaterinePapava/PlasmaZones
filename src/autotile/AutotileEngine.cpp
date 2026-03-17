@@ -578,10 +578,15 @@ void AutotileEngine::setInitialWindowOrder(const QString& screenId, const QStrin
         qCWarning(lcAutotile) << "setInitialWindowOrder: overwriting existing pending order for" << screenId;
     }
     m_pendingInitialOrders[screenId] = windowIds;
+    uint64_t gen = ++m_pendingOrderGeneration[screenId];
     qCInfo(lcAutotile) << "Pre-seeded window order for screen=" << screenId << "windows=" << windowIds;
 
-    // Safety timeout: clean up if windows never arrive (e.g., app crash during startup)
-    QTimer::singleShot(PendingOrderTimeoutMs, this, [this, screenId]() {
+    // Safety timeout: clean up if windows never arrive (e.g., app crash during startup).
+    // Use a generation counter so that stale timers from overwritten calls become no-ops.
+    QTimer::singleShot(PendingOrderTimeoutMs, this, [this, screenId, gen]() {
+        if (m_pendingOrderGeneration.value(screenId) != gen) {
+            return; // superseded by a newer setInitialWindowOrder call
+        }
         if (m_pendingInitialOrders.remove(screenId)) {
             qCWarning(lcAutotile) << "Pending initial order for screen" << screenId << "timed out after"
                                   << PendingOrderTimeoutMs << "ms - cleaning up stale entry";
