@@ -204,8 +204,8 @@ void OverlayService::updateZoneSelectorWindow(QScreen* screen)
     writeQmlProperty(window, QStringLiteral("previewHeight"), config.previewHeight);
     writeQmlProperty(window, QStringLiteral("previewLockAspect"), config.previewLockAspect);
 
-    // Build and pass layout data (filtered for this screen's context)
-    QVariantList layouts = buildLayoutsList(screen->name());
+    // Build and pass layout data (filtered per-screen mode)
+    QVariantList layouts = buildLayoutsList(Utils::screenIdentifier(screen));
     writeQmlProperty(window, QStringLiteral("layouts"), layouts);
 
     // Set active layout ID for this screen

@@ -43,6 +43,10 @@ void OverlayService::showZoneSelector(QScreen* targetScreen)
         if (m_settings && m_settings->isMonitorDisabled(Utils::screenIdentifier(screen))) {
             continue;
         }
+        // Skip autotile-managed screens (zone selector is for manual zone selection)
+        if (m_excludedScreens.contains(Utils::screenIdentifier(screen))) {
+            continue;
+        }
         if (!m_zoneSelectorWindows.contains(screen)) {
             createZoneSelectorWindow(screen);
         }

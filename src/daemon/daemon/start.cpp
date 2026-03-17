@@ -286,6 +286,7 @@ void Daemon::connectShortcutSignals()
                 return;
             }
         }
+        updateLayoutFilterForScreen(Utils::screenIdentifier(screen));
         m_unifiedLayoutController->cyclePrevious();
         resnapIfManualMode();
     });
@@ -309,6 +310,7 @@ void Daemon::connectShortcutSignals()
                 return;
             }
         }
+        updateLayoutFilterForScreen(Utils::screenIdentifier(screen));
         m_unifiedLayoutController->cycleNext();
         resnapIfManualMode();
     });
@@ -365,6 +367,7 @@ void Daemon::connectShortcutSignals()
         }
         const QString screenName = Utils::screenIdentifier(screen);
         m_unifiedLayoutController->setCurrentScreenName(screenName);
+        updateLayoutFilterForScreen(screenName);
         m_overlayService->showLayoutPicker(screenName);
     });
     connect(m_overlayService.get(), &OverlayService::layoutPickerSelected, this, [this](const QString& layoutId) {

@@ -120,7 +120,8 @@ Layout* WindowDragAdaptor::prepareHandlerContext(int x, int y, QScreen*& outScre
     }
 
     // Skip overlay and zone detection on autotile-managed screens
-    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(outScreen->name())) {
+    QString screenId = Utils::screenIdentifier(outScreen);
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screenId)) {
         return nullptr;
     }
 
@@ -134,7 +135,7 @@ Layout* WindowDragAdaptor::prepareHandlerContext(int x, int y, QScreen*& outScre
         m_overlayScreen = outScreen;
     }
 
-    auto* layout = m_layoutManager->resolveLayoutForScreen(Utils::screenIdentifier(outScreen));
+    auto* layout = m_layoutManager->resolveLayoutForScreen(screenId);
     if (!layout) {
         return nullptr;
     }

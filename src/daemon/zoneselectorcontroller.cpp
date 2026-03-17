@@ -84,12 +84,12 @@ QVariantList ZoneSelectorController::layouts() const
 {
     // Use shared utility to build filtered layout list for current context
     // and mode-based filtering (manual-only vs autotile-only)
-    QString screenName;
+    QString screenId;
     if (m_screen) {
-        screenName = m_screen->name();
+        screenId = Utils::screenIdentifier(m_screen);
     }
     const auto entries =
-        LayoutUtils::buildUnifiedLayoutList(m_layoutManager, screenName, m_currentVirtualDesktop, m_currentActivity,
+        LayoutUtils::buildUnifiedLayoutList(m_layoutManager, screenId, m_currentVirtualDesktop, m_currentActivity,
                                             m_includeManualLayouts, m_includeAutotileLayouts);
     return LayoutUtils::toVariantList(entries);
 }

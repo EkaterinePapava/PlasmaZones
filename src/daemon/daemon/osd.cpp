@@ -234,27 +234,40 @@ void Daemon::connectToKWinScript()
 
 void Daemon::updateLayoutFilter()
 {
+    updateLayoutFilterForScreen(QString());
+}
+
+void Daemon::updateLayoutFilterForScreen(const QString& focusedScreenId)
+{
     if (!m_settings) {
         return;
     }
 
-    // Derive autotile state from the CURRENT desktop's actual assignments,
-    // not from the global ModeTracker. This ensures the layout filter reflects
-    // the per-desktop tiling mode, not the last-toggled global mode.
-    // In mixed-mode multi-monitor (some screens autotile, some manual), include
-    // both layout types so cycling works correctly on both screens.
     bool autotileActive = false;
     bool manualActive = false;
+
     if (m_settings->autotileEnabled() && m_layoutManager && m_screenManager) {
         const int desktop = currentDesktop();
         const QString activity = currentActivity();
-        for (QScreen* screen : m_screenManager->screens()) {
-            const QString screenId = Utils::screenIdentifier(screen);
-            const QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
+
+        if (!focusedScreenId.isEmpty()) {
+            // Per-screen filter: only check the focused screen's mode
+            const QString assignmentId = m_layoutManager->assignmentIdForScreen(focusedScreenId, desktop, activity);
             if (LayoutId::isAutotile(assignmentId)) {
                 autotileActive = true;
             } else {
                 manualActive = true;
+            }
+        } else {
+            // Global filter: union of all screens
+            for (QScreen* screen : m_screenManager->screens()) {
+                const QString screenId = Utils::screenIdentifier(screen);
+                const QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
+                if (LayoutId::isAutotile(assignmentId)) {
+                    autotileActive = true;
+                } else {
+                    manualActive = true;
+                }
             }
         }
     } else {
@@ -270,7 +283,8 @@ void Daemon::updateLayoutFilter()
         m_unifiedLayoutController->setLayoutFilter(includeManual, includeAutotile);
     }
 
-    qCDebug(lcDaemon) << "Layout filter updated: manual=" << includeManual << "autotile=" << includeAutotile;
+    qCDebug(lcDaemon) << "Layout filter updated: manual=" << includeManual << "autotile=" << includeAutotile
+                      << "screen=" << (focusedScreenId.isEmpty() ? QStringLiteral("all") : focusedScreenId);
 }
 
 void Daemon::syncModeFromAssignments()

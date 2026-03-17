@@ -13,6 +13,7 @@
 #include "../core/geometryutils.h"
 #include "../core/screenmanager.h"
 #include "../core/utils.h"
+#include "../core/constants.h"
 
 #include <QCoreApplication>
 #include <QCursor>
@@ -410,9 +411,27 @@ void OverlayService::handleScreenRemoved(QScreen* screen)
 
 QVariantList OverlayService::buildLayoutsList(const QString& screenName) const
 {
-    const auto entries =
-        LayoutUtils::buildUnifiedLayoutList(m_layoutManager, screenName, m_currentVirtualDesktop, m_currentActivity,
-                                            m_includeManualLayouts, m_includeAutotileLayouts);
+    // Determine filter per-screen: check this screen's assignment to decide
+    // whether to show manual layouts, autotile algorithms, or both.
+    bool includeManual = m_includeManualLayouts;
+    bool includeAutotile = m_includeAutotileLayouts;
+    auto* layoutManager = dynamic_cast<LayoutManager*>(m_layoutManager);
+    if (layoutManager) {
+        const QString screenId = Utils::isConnectorName(screenName) ? Utils::screenIdForName(screenName) : screenName;
+        if (!screenId.isEmpty()) {
+            const QString assignmentId =
+                layoutManager->assignmentIdForScreen(screenId, m_currentVirtualDesktop, m_currentActivity);
+            if (LayoutId::isAutotile(assignmentId)) {
+                includeManual = false;
+                includeAutotile = true;
+            } else {
+                includeManual = true;
+                includeAutotile = false;
+            }
+        }
+    }
+    const auto entries = LayoutUtils::buildUnifiedLayoutList(m_layoutManager, screenName, m_currentVirtualDesktop,
+                                                             m_currentActivity, includeManual, includeAutotile);
     return LayoutUtils::toVariantList(entries);
 }
 

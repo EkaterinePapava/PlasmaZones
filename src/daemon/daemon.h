@@ -256,6 +256,8 @@ private:
      * Shows both manual and autotile layouts when the feature gate is enabled.
      */
     void updateLayoutFilter();
+    /** @brief Update layout filter for a specific screen's mode (for cycle/popup) */
+    void updateLayoutFilterForScreen(const QString& focusedScreenId);
 
     /**
      * @brief Sync ModeTracker and UnifiedLayoutController from per-desktop assignments
