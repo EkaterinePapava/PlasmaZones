@@ -16,6 +16,8 @@ import org.kde.kirigami as Kirigami
  * Supports both grouped parameters (with accordion sections) and flat parameters.
  */
 Kirigami.Dialog {
+    // Category names come from shader metadata.json — no translation needed.
+
     id: root
 
     required property var editorController
@@ -172,26 +174,6 @@ Kirigami.Dialog {
 
         }
         return false;
-    }
-
-    // Translate shader category names for display
-    function translateCategory(cat) {
-        switch (cat) {
-        case "3D":
-            return i18nc("@item:inmenu shader category", "3D");
-        case "Audio Visualizer":
-            return i18nc("@item:inmenu shader category", "Audio Visualizer");
-        case "Branded":
-            return i18nc("@item:inmenu shader category", "Branded");
-        case "Cyberpunk":
-            return i18nc("@item:inmenu shader category", "Cyberpunk");
-        case "Energy":
-            return i18nc("@item:inmenu shader category", "Energy");
-        case "Organic":
-            return i18nc("@item:inmenu shader category", "Organic");
-        default:
-            return cat;
-        }
     }
 
     function hideShaderPreview() {
@@ -717,7 +699,7 @@ Kirigami.Dialog {
 
                                 required property var modelData
 
-                                title: root.translateCategory(modelData.name)
+                                title: modelData.name
 
                                 // Direct shaders in this category (no subcategory)
                                 Instantiator {
@@ -756,7 +738,7 @@ Kirigami.Dialog {
 
                                         required property var modelData
 
-                                        title: root.translateCategory(modelData.name)
+                                        title: modelData.name
 
                                         Instantiator {
                                             model: subCategoryMenu.modelData.shaders
