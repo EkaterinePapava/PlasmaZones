@@ -385,13 +385,13 @@ void WindowDragAdaptor::tryStorePreSnapGeometry(const QString& windowId, bool wa
     // Store pre-tile geometry for restore on unsnap/float (first-only: overwrite=false).
     // The service handles the "already stored" case internally.
     if (m_windowTracking && originalGeometry.isValid()) {
-        QString screenName;
+        QString screenId;
         QScreen* screen = Utils::findScreenAtPosition(originalGeometry.center());
         if (screen) {
-            screenName = Utils::screenIdentifier(screen);
+            screenId = Utils::screenIdentifier(screen);
         }
         m_windowTracking->storePreTileGeometry(windowId, originalGeometry.x(), originalGeometry.y(),
-                                               originalGeometry.width(), originalGeometry.height(), screenName, false);
+                                               originalGeometry.width(), originalGeometry.height(), screenId, false);
     }
 }
 

@@ -29,10 +29,10 @@ void SnapEngine::moveInDirection(const QString& direction)
     Q_EMIT moveWindowToZoneRequested(QStringLiteral("navigate:") + direction, QString());
 }
 
-void SnapEngine::pushToEmptyZone(const QString& screenName)
+void SnapEngine::pushToEmptyZone(const QString& screenId)
 {
-    qCInfo(lcCore) << "SnapEngine::pushToEmptyZone on screen=" << screenName;
-    Q_EMIT moveWindowToZoneRequested(QStringLiteral("push"), screenName);
+    qCInfo(lcCore) << "SnapEngine::pushToEmptyZone on screen=" << screenId;
+    Q_EMIT moveWindowToZoneRequested(QStringLiteral("push"), screenId);
 }
 
 void SnapEngine::focusInDirection(const QString& direction, const QString& action)
@@ -63,21 +63,21 @@ void SnapEngine::swapInDirection(const QString& direction, const QString& action
     Q_EMIT swapWindowsRequested(QStringLiteral("swap:") + direction, QString(), QString());
 }
 
-void SnapEngine::rotateWindows(bool clockwise, const QString& screenName)
+void SnapEngine::rotateWindows(bool clockwise, const QString& screenId)
 {
-    QVector<RotationEntry> rotationEntries = m_windowTracker->calculateRotation(clockwise, screenName);
+    QVector<RotationEntry> rotationEntries = m_windowTracker->calculateRotation(clockwise, screenId);
 
     if (rotationEntries.isEmpty()) {
-        Layout* layout = m_layoutManager->resolveLayoutForScreen(Utils::screenIdForName(screenName));
+        Layout* layout = m_layoutManager->resolveLayoutForScreen(Utils::screenIdForName(screenId));
         if (!layout) {
             Q_EMIT navigationFeedback(false, QStringLiteral("rotate"), QStringLiteral("no_active_layout"), QString(),
-                                      QString(), screenName);
+                                      QString(), screenId);
         } else if (layout->zoneCount() < 2) {
             Q_EMIT navigationFeedback(false, QStringLiteral("rotate"), QStringLiteral("single_zone"), QString(),
-                                      QString(), screenName);
+                                      QString(), screenId);
         } else {
             Q_EMIT navigationFeedback(false, QStringLiteral("rotate"), QStringLiteral("no_snapped_windows"), QString(),
-                                      QString(), screenName);
+                                      QString(), screenId);
         }
         return;
     }
@@ -88,18 +88,18 @@ void SnapEngine::rotateWindows(bool clockwise, const QString& screenName)
     Q_EMIT rotateWindowsRequested(clockwise, rotationData);
 }
 
-void SnapEngine::moveToPosition(const QString& windowId, int position, const QString& screenName)
+void SnapEngine::moveToPosition(const QString& windowId, int position, const QString& screenId)
 {
     Q_UNUSED(windowId)
 
     if (position < 1 || position > 9) {
         qCWarning(lcCore) << "SnapEngine::moveToPosition: invalid zone number=" << position;
         Q_EMIT navigationFeedback(false, QStringLiteral("snap"), QStringLiteral("invalid_zone_number"), QString(),
-                                  QString(), screenName);
+                                  QString(), screenId);
         return;
     }
 
-    Q_EMIT moveWindowToZoneRequested(QStringLiteral("snap:") + QString::number(position), screenName);
+    Q_EMIT moveWindowToZoneRequested(QStringLiteral("snap:") + QString::number(position), screenId);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -147,9 +147,9 @@ void SnapEngine::resnapCurrentAssignments(const QString& screenFilter)
     Q_EMIT resnapToNewLayoutRequested(resnapData);
 }
 
-void SnapEngine::resnapFromAutotileOrder(const QStringList& autotileWindowOrder, const QString& screenName)
+void SnapEngine::resnapFromAutotileOrder(const QStringList& autotileWindowOrder, const QString& screenId)
 {
-    QVector<RotationEntry> entries = calculateResnapEntriesFromAutotileOrder(autotileWindowOrder, screenName);
+    QVector<RotationEntry> entries = calculateResnapEntriesFromAutotileOrder(autotileWindowOrder, screenId);
 
     if (entries.isEmpty()) {
         return; // calculateResnapEntriesFromAutotileOrder already tried fallback
@@ -161,14 +161,14 @@ void SnapEngine::resnapFromAutotileOrder(const QStringList& autotileWindowOrder,
 }
 
 QVector<RotationEntry> SnapEngine::calculateResnapEntriesFromAutotileOrder(const QStringList& autotileWindowOrder,
-                                                                           const QString& screenName)
+                                                                           const QString& screenId)
 {
-    QVector<RotationEntry> entries = m_windowTracker->calculateResnapFromAutotileOrder(autotileWindowOrder, screenName);
+    QVector<RotationEntry> entries = m_windowTracker->calculateResnapFromAutotileOrder(autotileWindowOrder, screenId);
 
     if (entries.isEmpty()) {
         qCDebug(lcCore) << "calculateResnapEntriesFromAutotileOrder: no entries from autotile order,"
-                        << "falling back to current assignments for screen" << screenName;
-        entries = m_windowTracker->calculateResnapFromCurrentAssignments(screenName);
+                        << "falling back to current assignments for screen" << screenId;
+        entries = m_windowTracker->calculateResnapFromCurrentAssignments(screenId);
     }
 
     return entries;
@@ -184,18 +184,18 @@ void SnapEngine::emitBatchedResnap(const QVector<RotationEntry>& entries)
     Q_EMIT resnapToNewLayoutRequested(resnapData);
 }
 
-QString SnapEngine::calculateSnapAllWindows(const QStringList& windowIds, const QString& screenName)
+QString SnapEngine::calculateSnapAllWindows(const QStringList& windowIds, const QString& screenId)
 {
-    QVector<RotationEntry> entries = m_windowTracker->calculateSnapAllWindows(windowIds, screenName);
+    QVector<RotationEntry> entries = m_windowTracker->calculateSnapAllWindows(windowIds, screenId);
 
     qCDebug(lcCore) << "Calculated snap-all for" << entries.size() << "windows";
     return GeometryUtils::serializeRotationEntries(entries);
 }
 
-void SnapEngine::snapAllWindows(const QString& screenName)
+void SnapEngine::snapAllWindows(const QString& screenId)
 {
-    qCDebug(lcCore) << "snapAllWindows called for screen=" << screenName;
-    Q_EMIT snapAllWindowsRequested(screenName);
+    qCDebug(lcCore) << "snapAllWindows called for screen=" << screenId;
+    Q_EMIT snapAllWindowsRequested(screenId);
 }
 
 void SnapEngine::cycleWindowsInZone(bool forward)

@@ -38,8 +38,8 @@ void WindowTrackingService::windowClosed(const QString& windowId)
             PendingRestore entry;
             entry.zoneIds = zoneIds;
 
-            QString screenName = m_windowScreenAssignments.value(windowId);
-            entry.screenName = screenName;
+            QString screenId = m_windowScreenAssignments.value(windowId);
+            entry.screenName = screenId;
 
             int desktop = m_windowDesktopAssignments.value(windowId, 0);
             if (desktop <= 0 && m_virtualDesktopManager) {
@@ -50,7 +50,7 @@ void WindowTrackingService::windowClosed(const QString& windowId)
             // Save the layout ID to ensure we only restore if the same layout is active
             // This prevents restoring windows to wrong zones when layouts have been changed
             // Use resolveLayoutForScreen() for proper multi-screen support
-            Layout* contextLayout = m_layoutManager ? m_layoutManager->resolveLayoutForScreen(screenName) : nullptr;
+            Layout* contextLayout = m_layoutManager ? m_layoutManager->resolveLayoutForScreen(screenId) : nullptr;
             if (contextLayout) {
                 entry.layoutId = contextLayout->id().toString();
             }
@@ -66,7 +66,7 @@ void WindowTrackingService::windowClosed(const QString& windowId)
 
             m_pendingRestoreQueues[appId].append(entry);
 
-            qCInfo(lcCore) << "Persisted zone" << zoneId << "for closed window" << appId << "screen:" << screenName
+            qCInfo(lcCore) << "Persisted zone" << zoneId << "for closed window" << appId << "screen:" << screenId
                            << "desktop:" << desktop
                            << "layout:" << (contextLayout ? contextLayout->id().toString() : QStringLiteral("none"))
                            << "zoneNumbers:" << zoneNumbers;
@@ -161,7 +161,7 @@ void WindowTrackingService::onLayoutChanged()
         QSet<QString> addedIds;
 
         auto addToBuffer = [&](const QString& windowIdOrStableId, const QStringList& zoneIdList,
-                               const QString& screenName, int vd) {
+                               const QString& screenId, int vd) {
             // Skip ALL floating windows. Floating persists across mode toggles —
             // floating windows should stay at their current position, not be resnapped.
             if (windowIdOrStableId.isEmpty() || isWindowFloating(windowIdOrStableId)) {
@@ -208,7 +208,7 @@ void WindowTrackingService::onLayoutChanged()
             entry.windowId = windowIdOrStableId;
             entry.zonePosition = pos;
             entry.allZonePositions = allPositions;
-            entry.screenId = screenName;
+            entry.screenId = screenId;
             entry.virtualDesktop = vd;
             newBuffer.append(entry);
         };

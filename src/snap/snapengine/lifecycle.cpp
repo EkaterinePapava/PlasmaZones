@@ -14,12 +14,12 @@ namespace PlasmaZones {
 // windowOpened — delegates to resolveWindowRestore() and applies the result
 // ═══════════════════════════════════════════════════════════════════════════════
 
-void SnapEngine::windowOpened(const QString& windowId, const QString& screenName, int minWidth, int minHeight)
+void SnapEngine::windowOpened(const QString& windowId, const QString& screenId, int minWidth, int minHeight)
 {
     Q_UNUSED(minWidth)
     Q_UNUSED(minHeight)
 
-    if (windowId.isEmpty() || screenName.isEmpty()) {
+    if (windowId.isEmpty() || screenId.isEmpty()) {
         return;
     }
 
@@ -39,7 +39,7 @@ void SnapEngine::windowOpened(const QString& windowId, const QString& screenName
         return;
     }
 
-    SnapResult result = resolveWindowRestore(windowId, screenName, false);
+    SnapResult result = resolveWindowRestore(windowId, screenId, false);
     if (!result.shouldSnap) {
         return;
     }
@@ -66,9 +66,9 @@ void SnapEngine::windowOpened(const QString& windowId, const QString& screenName
 // zone assignment and geometry application.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-SnapResult SnapEngine::resolveWindowRestore(const QString& windowId, const QString& screenName, bool sticky)
+SnapResult SnapEngine::resolveWindowRestore(const QString& windowId, const QString& screenId, bool sticky)
 {
-    if (windowId.isEmpty() || screenName.isEmpty()) {
+    if (windowId.isEmpty() || screenId.isEmpty()) {
         return SnapResult::noSnap();
     }
 
@@ -89,13 +89,13 @@ SnapResult SnapEngine::resolveWindowRestore(const QString& windowId, const QStri
     if (m_windowTracker->isWindowFloating(windowId)) {
         qCInfo(lcCore) << "resolveWindowRestore: window" << windowId << "is floating, skipping snap";
         Q_EMIT navigationFeedback(true, QStringLiteral("float"), QStringLiteral("floated"), QString(), QString(),
-                                  screenName);
+                                  screenId);
         return SnapResult::noSnap();
     }
 
     // 1. App rules (highest priority)
     {
-        SnapResult result = m_windowTracker->calculateSnapToAppRule(windowId, screenName, sticky);
+        SnapResult result = m_windowTracker->calculateSnapToAppRule(windowId, screenId, sticky);
         if (result.shouldSnap) {
             qCInfo(lcCore) << "resolveWindowRestore: appRule matched for" << windowId << "zone=" << result.zoneId;
             return result;
@@ -104,7 +104,7 @@ SnapResult SnapEngine::resolveWindowRestore(const QString& windowId, const QStri
 
     // 2. Persisted zone (session restore)
     if (m_settings && m_settings->restoreWindowsToZonesOnLogin()) {
-        SnapResult result = m_windowTracker->calculateRestoreFromSession(windowId, screenName, sticky);
+        SnapResult result = m_windowTracker->calculateRestoreFromSession(windowId, screenId, sticky);
         if (result.shouldSnap) {
             m_windowTracker->consumePendingAssignment(windowId);
             qCInfo(lcCore) << "resolveWindowRestore: persisted matched for" << windowId << "zone=" << result.zoneId;
@@ -114,7 +114,7 @@ SnapResult SnapEngine::resolveWindowRestore(const QString& windowId, const QStri
 
     // 3. Auto-assign to empty zone
     {
-        SnapResult result = m_windowTracker->calculateSnapToEmptyZone(windowId, screenName, sticky);
+        SnapResult result = m_windowTracker->calculateSnapToEmptyZone(windowId, screenId, sticky);
         if (result.shouldSnap) {
             qCInfo(lcCore) << "resolveWindowRestore: emptyZone matched for" << windowId << "zone=" << result.zoneId;
             return result;
@@ -123,7 +123,7 @@ SnapResult SnapEngine::resolveWindowRestore(const QString& windowId, const QStri
 
     // 4. Snap to last zone (final fallback)
     {
-        SnapResult result = m_windowTracker->calculateSnapToLastZone(windowId, screenName, sticky);
+        SnapResult result = m_windowTracker->calculateSnapToLastZone(windowId, screenId, sticky);
         if (result.shouldSnap) {
             qCInfo(lcCore) << "resolveWindowRestore: lastZone matched for" << windowId << "zone=" << result.zoneId;
             return result;

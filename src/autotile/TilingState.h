@@ -32,7 +32,7 @@ class PLASMAZONES_EXPORT TilingState : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY(QString screenName READ screenName CONSTANT)
+    Q_PROPERTY(QString screenId READ screenId CONSTANT)
     Q_PROPERTY(int windowCount READ windowCount NOTIFY windowCountChanged)
     Q_PROPERTY(int tiledWindowCount READ tiledWindowCount NOTIFY windowCountChanged)
     Q_PROPERTY(int masterCount READ masterCount WRITE setMasterCount NOTIFY masterCountChanged)
@@ -41,10 +41,10 @@ class PLASMAZONES_EXPORT TilingState : public QObject
 public:
     /**
      * @brief Construct a TilingState for a specific screen
-     * @param screenName Unique identifier for the screen
+     * @param screenId Unique identifier for the screen
      * @param parent Parent QObject
      */
-    explicit TilingState(const QString& screenName, QObject* parent = nullptr);
+    explicit TilingState(const QString& screenId, QObject* parent = nullptr);
     ~TilingState() override = default;
 
     // Prevent copying (QObject rule)
@@ -52,9 +52,9 @@ public:
     TilingState& operator=(const TilingState&) = delete;
 
     /**
-     * @brief Get the screen name this state belongs to
+     * @brief Get the screen ID this state belongs to
      */
-    QString screenName() const;
+    QString screenId() const;
 
     // ═══════════════════════════════════════════════════════════════════════
     // Window Order Management
@@ -382,7 +382,7 @@ Q_SIGNALS:
     void stateChanged();
 
 private:
-    QString m_screenName;
+    QString m_screenId;
     QStringList m_windowOrder;
     QSet<QString> m_floatingWindows;
     QString m_focusedWindow;

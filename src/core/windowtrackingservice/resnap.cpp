@@ -68,10 +68,10 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromPreviousLayout(
     }
 
     for (auto screenIt = entriesByScreen.constBegin(); screenIt != entriesByScreen.constEnd(); ++screenIt) {
-        const QString& screenName = screenIt.key();
+        const QString& screenId = screenIt.key();
 
         // Get the layout assigned to this screen (not the global active layout)
-        Layout* newLayout = m_layoutManager->resolveLayoutForScreen(screenName);
+        Layout* newLayout = m_layoutManager->resolveLayoutForScreen(screenId);
         if (!newLayout || newLayout->zoneCount() == 0) {
             continue;
         }
@@ -95,8 +95,8 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromPreviousLayout(
                         targetZoneIds.append(z->id().toString());
                 }
                 if (!targetZoneIds.isEmpty()) {
-                    QRect geo = (targetZoneIds.size() > 1) ? multiZoneGeometry(targetZoneIds, screenName)
-                                                           : zoneGeometry(targetZoneIds.first(), screenName);
+                    QRect geo = (targetZoneIds.size() > 1) ? multiZoneGeometry(targetZoneIds, screenId)
+                                                           : zoneGeometry(targetZoneIds.first(), screenId);
                     if (geo.isValid()) {
                         RotationEntry rotEntry;
                         rotEntry.windowId = entry->windowId;
@@ -159,13 +159,13 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromCurrentAssignme
             continue;
         }
 
-        QString screenName = m_windowScreenAssignments.value(windowId);
-        if (!screenFilter.isEmpty() && !Utils::screensMatch(screenName, screenFilter)) {
+        QString screenId = m_windowScreenAssignments.value(windowId);
+        if (!screenFilter.isEmpty() && !Utils::screensMatch(screenId, screenFilter)) {
             continue;
         }
 
         QRect geo =
-            (zoneIds.size() > 1) ? multiZoneGeometry(zoneIds, screenName) : zoneGeometry(zoneIds.first(), screenName);
+            (zoneIds.size() > 1) ? multiZoneGeometry(zoneIds, screenId) : zoneGeometry(zoneIds.first(), screenId);
         if (!geo.isValid()) {
             continue;
         }
@@ -198,7 +198,7 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromCurrentAssignme
 }
 
 QVector<RotationEntry> WindowTrackingService::calculateResnapFromAutotileOrder(const QStringList& autotileWindowOrder,
-                                                                               const QString& screenName) const
+                                                                               const QString& screenId) const
 {
     QVector<RotationEntry> result;
 
@@ -206,9 +206,9 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromAutotileOrder(c
         return result;
     }
 
-    Layout* layout = m_layoutManager->resolveLayoutForScreen(screenName);
+    Layout* layout = m_layoutManager->resolveLayoutForScreen(screenId);
     if (!layout || layout->zoneCount() == 0) {
-        qCWarning(lcCore) << "calculateResnapFromAutotileOrder: no layout for screen" << screenName;
+        qCWarning(lcCore) << "calculateResnapFromAutotileOrder: no layout for screen" << screenId;
         return result;
     }
 
@@ -216,7 +216,7 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromAutotileOrder(c
     sortZonesByNumber(zones);
 
     // Get screen and gap settings for geometry calculation
-    QScreen* screen = screenName.isEmpty() ? Utils::primaryScreen() : Utils::findScreenByIdOrName(screenName);
+    QScreen* screen = screenId.isEmpty() ? Utils::primaryScreen() : Utils::findScreenByIdOrName(screenId);
     if (!screen) {
         screen = Utils::primaryScreen();
     }
@@ -224,7 +224,6 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromAutotileOrder(c
         return result;
     }
 
-    QString screenId = Utils::screenIdentifier(screen);
     int zonePadding = GeometryUtils::getEffectiveZonePadding(layout, m_settings, screenId);
     EdgeGaps outerGaps = GeometryUtils::getEffectiveOuterGaps(layout, m_settings, screenId);
 
@@ -235,7 +234,7 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromAutotileOrder(c
     // other with cycling. Instead, leave them unassigned (they stay where they are).
     if (windowCount > zoneCount) {
         qCWarning(lcCore) << "calculateResnapFromAutotileOrder:" << windowCount << "windows but only" << zoneCount
-                          << "zones on screen" << screenName << "- excess" << (windowCount - zoneCount)
+                          << "zones on screen" << screenId << "- excess" << (windowCount - zoneCount)
                           << "windows will not be resnapped";
     }
 
@@ -328,18 +327,18 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromAutotileOrder(c
         }
     }
 
-    qCInfo(lcCore) << "Resnap from autotile order:" << result.size() << "windows for screen" << screenName;
+    qCInfo(lcCore) << "Resnap from autotile order:" << result.size() << "windows for screen" << screenId;
     return result;
 }
 
-QStringList WindowTrackingService::buildZoneOrderedWindowList(const QString& screenName) const
+QStringList WindowTrackingService::buildZoneOrderedWindowList(const QString& screenId) const
 {
     if (!m_layoutManager) {
         return {};
     }
 
     // Get the current layout to resolve zone numbers
-    Layout* layout = m_layoutManager->resolveLayoutForScreen(screenName);
+    Layout* layout = m_layoutManager->resolveLayoutForScreen(screenId);
     if (!layout || layout->zoneCount() == 0) {
         return {};
     }
@@ -357,7 +356,7 @@ QStringList WindowTrackingService::buildZoneOrderedWindowList(const QString& scr
     int insertionIdx = 0;
     QVector<std::tuple<int, int, QString>> windowsByZone; // (zoneNum, insertionIdx, windowId)
     for (auto it = m_windowScreenAssignments.constBegin(); it != m_windowScreenAssignments.constEnd(); ++it) {
-        if (!Utils::screensMatch(it.value(), screenName)) {
+        if (!Utils::screensMatch(it.value(), screenId)) {
             continue;
         }
         const QString& windowId = it.key();
@@ -394,16 +393,16 @@ QStringList WindowTrackingService::buildZoneOrderedWindowList(const QString& scr
         result.append(std::get<2>(entry));
     }
 
-    qCDebug(lcCore) << "buildZoneOrderedWindowList for" << screenName << ":" << result;
+    qCDebug(lcCore) << "buildZoneOrderedWindowList for" << screenId << ":" << result;
     return result;
 }
 
 QVector<RotationEntry> WindowTrackingService::calculateSnapAllWindows(const QStringList& windowIds,
-                                                                      const QString& screenName) const
+                                                                      const QString& screenId) const
 {
     QVector<RotationEntry> result;
 
-    Layout* layout = m_layoutManager->resolveLayoutForScreen(screenName);
+    Layout* layout = m_layoutManager->resolveLayoutForScreen(screenId);
     if (!layout || layout->zoneCount() == 0) {
         return result;
     }
@@ -411,10 +410,10 @@ QVector<RotationEntry> WindowTrackingService::calculateSnapAllWindows(const QStr
     QVector<Zone*> zones = layout->zones();
     sortZonesByNumber(zones);
 
-    QSet<QUuid> occupiedZoneIds = buildOccupiedZoneSet(screenName);
+    QSet<QUuid> occupiedZoneIds = buildOccupiedZoneSet(screenId);
 
     // Get screen and gap settings for geometry calculation
-    QScreen* screen = screenName.isEmpty() ? Utils::primaryScreen() : Utils::findScreenByIdOrName(screenName);
+    QScreen* screen = screenId.isEmpty() ? Utils::primaryScreen() : Utils::findScreenByIdOrName(screenId);
     if (!screen) {
         screen = Utils::primaryScreen();
     }
@@ -422,7 +421,6 @@ QVector<RotationEntry> WindowTrackingService::calculateSnapAllWindows(const QStr
         return result;
     }
 
-    QString screenId = Utils::screenIdentifier(screen);
     int zonePadding = GeometryUtils::getEffectiveZonePadding(layout, m_settings, screenId);
     EdgeGaps outerGaps = GeometryUtils::getEffectiveOuterGaps(layout, m_settings, screenId);
 
@@ -482,10 +480,10 @@ QHash<QString, QRect> WindowTrackingService::updatedWindowGeometries() const
         if (zoneIds.isEmpty()) {
             continue;
         }
-        QString screenName = m_windowScreenAssignments.value(windowId);
+        QString screenId = m_windowScreenAssignments.value(windowId);
 
         QRect geo =
-            (zoneIds.size() > 1) ? multiZoneGeometry(zoneIds, screenName) : zoneGeometry(zoneIds.first(), screenName);
+            (zoneIds.size() > 1) ? multiZoneGeometry(zoneIds, screenId) : zoneGeometry(zoneIds.first(), screenId);
         if (geo.isValid()) {
             result[windowId] = geo;
         }

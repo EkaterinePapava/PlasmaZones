@@ -316,29 +316,29 @@ public:
     /**
      * @brief Calculate snap result for new window to last used zone
      * @param windowId Full window ID
-     * @param windowScreenName Screen where window currently is
+     * @param windowScreenId Screen where window currently is
      * @param isSticky Whether window is on all desktops
      * @return SnapResult with geometry and zone info
      */
-    SnapResult calculateSnapToLastZone(const QString& windowId, const QString& windowScreenName, bool isSticky) const;
+    SnapResult calculateSnapToLastZone(const QString& windowId, const QString& windowScreenId, bool isSticky) const;
 
     /**
      * @brief Calculate snap result for new window to first empty zone (auto-assign)
      * @param windowId Full window ID
-     * @param windowScreenName Screen where window currently is
+     * @param windowScreenId Screen where window currently is
      * @param isSticky Whether window is on all desktops
      * @return SnapResult with geometry and zone info
      */
-    SnapResult calculateSnapToEmptyZone(const QString& windowId, const QString& windowScreenName, bool isSticky) const;
+    SnapResult calculateSnapToEmptyZone(const QString& windowId, const QString& windowScreenId, bool isSticky) const;
 
     /**
      * @brief Calculate snap result to restore from persisted session
      * @param windowId Full window ID
-     * @param screenName Screen for geometry calculation
+     * @param screenId Screen for geometry calculation
      * @param isSticky Whether window is on all desktops
      * @return SnapResult with geometry and zone info
      */
-    SnapResult calculateRestoreFromSession(const QString& windowId, const QString& screenName, bool isSticky) const;
+    SnapResult calculateRestoreFromSession(const QString& windowId, const QString& screenId, bool isSticky) const;
 
     /**
      * @brief Record that a window class was user-snapped
@@ -425,33 +425,33 @@ public:
 
     /**
      * @brief Find the first empty zone in the layout for a screen
-     * @param screenName Screen to find layout for (empty = active layout)
+     * @param screenId Screen to find layout for (empty = active layout)
      * @return Zone ID or empty string if all occupied
      */
-    QString findEmptyZone(const QString& screenName = QString()) const;
+    QString findEmptyZone(const QString& screenId = QString()) const;
 
     /**
      * @brief Get JSON array of all empty zones for Snap Assist continuation
-     * @param screenName Screen to find layout for (e.g. DP-1)
+     * @param screenId Screen to find layout for (e.g. DP-1)
      * @return JSON array of {zoneId, x, y, width, height, borderWidth, borderRadius} in overlay coordinates
      */
-    QString getEmptyZonesJson(const QString& screenName) const;
+    QString getEmptyZonesJson(const QString& screenId) const;
 
     /**
      * @brief Get geometry for a zone on a specific screen
      * @param zoneId Zone UUID string
-     * @param screenName Screen name (empty = primary)
+     * @param screenId Screen identifier (empty = primary)
      * @return Zone geometry in pixels, or invalid QRect if not found
      */
-    QRect zoneGeometry(const QString& zoneId, const QString& screenName = QString()) const;
+    QRect zoneGeometry(const QString& zoneId, const QString& screenId = QString()) const;
 
     /**
      * @brief Get combined geometry for multiple zones on a specific screen
      * @param zoneIds List of zone UUID strings
-     * @param screenName Screen name (empty = primary)
+     * @param screenId Screen identifier (empty = primary)
      * @return Union of all zone geometries, or invalid QRect if none found
      */
-    QRect multiZoneGeometry(const QStringList& zoneIds, const QString& screenName = QString()) const;
+    QRect multiZoneGeometry(const QStringList& zoneIds, const QString& screenId = QString()) const;
 
     /**
      * @brief Calculate rotation data for windows on a specific screen
@@ -464,13 +464,13 @@ public:
     /**
      * @brief Calculate snap assignments for all unsnapped windows
      * @param windowIds List of unsnapped window IDs (from KWin effect)
-     * @param screenName Screen for layout/geometry resolution
+     * @param screenId Screen for layout/geometry resolution
      * @return List of RotationEntry with target zone assignments
      *
      * Assigns windows to zones in zone-number order, skipping already-occupied
      * zones. If more windows than zones, extra windows are left unassigned.
      */
-    QVector<RotationEntry> calculateSnapAllWindows(const QStringList& windowIds, const QString& screenName) const;
+    QVector<RotationEntry> calculateSnapAllWindows(const QStringList& windowIds, const QString& screenId) const;
 
     /**
      * @brief Calculate resnap data for windows from previous layout to current layout
@@ -506,11 +506,11 @@ public:
      * Uses the current (manual) layout's zones for geometry calculation.
      *
      * @param autotileWindowOrder Ordered list of window IDs from autotile (master first)
-     * @param screenName Screen for layout/geometry resolution
+     * @param screenId Screen for layout/geometry resolution
      * @return List of rotation entries for KWin to apply
      */
     QVector<RotationEntry> calculateResnapFromAutotileOrder(const QStringList& autotileWindowOrder,
-                                                            const QString& screenName) const;
+                                                            const QString& screenId) const;
 
     /**
      * @brief Build a zone-ordered window list for a screen from current zone assignments
@@ -519,10 +519,10 @@ public:
      * primary zone number from the active layout, and returns the window IDs sorted by
      * zone number ascending. Used to pre-seed autotile window order during transitions.
      *
-     * @param screenName Screen connector name to filter windows by
+     * @param screenId Screen identifier to filter windows by
      * @return Window IDs sorted by zone number ascending
      */
-    QStringList buildZoneOrderedWindowList(const QString& screenName) const;
+    QStringList buildZoneOrderedWindowList(const QString& screenId) const;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Resolution Change Handling
@@ -716,7 +716,7 @@ private:
     bool isGeometryOnScreen(const QRect& geometry) const;
     QRect adjustGeometryToScreen(const QRect& geometry) const;
     Zone* findZoneById(const QString& zoneId) const;
-    QString findEmptyZoneInLayout(Layout* layout, const QString& screenName) const;
+    QString findEmptyZoneInLayout(Layout* layout, const QString& screenId) const;
 
 public:
     /// Build set of occupied zone UUIDs, optionally filtered by screen.

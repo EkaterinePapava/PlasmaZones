@@ -161,7 +161,7 @@ private Q_SLOTS:
         QScopedPointer<TilingState> restored(TilingState::fromJson(json));
         QVERIFY(!restored.isNull());
 
-        QCOMPARE(restored->screenName(), QStringLiteral("monitor1"));
+        QCOMPARE(restored->screenId(), QStringLiteral("monitor1"));
         QCOMPARE(restored->windowCount(), 3);
         QCOMPARE(restored->windowOrder(), QStringList({QStringLiteral("A"), QStringLiteral("B"), QStringLiteral("C")}));
         QVERIFY(restored->isFloating(QStringLiteral("B")));
@@ -178,7 +178,7 @@ private Q_SLOTS:
 
         QScopedPointer<TilingState> restored(TilingState::fromJson(json));
         QVERIFY(!restored.isNull());
-        QCOMPARE(restored->screenName(), QStringLiteral("empty"));
+        QCOMPARE(restored->screenId(), QStringLiteral("empty"));
         QCOMPARE(restored->windowCount(), 0);
         QCOMPARE(restored->masterCount(), AutotileDefaults::DefaultMasterCount);
         QVERIFY(qFuzzyCompare(restored->splitRatio(), AutotileDefaults::DefaultSplitRatio));
@@ -297,7 +297,7 @@ private Q_SLOTS:
         state.clear();
 
         // Screen name is immutable
-        QCOMPARE(state.screenName(), QStringLiteral("myScreen"));
+        QCOMPARE(state.screenId(), QStringLiteral("myScreen"));
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

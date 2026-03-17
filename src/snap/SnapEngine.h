@@ -50,17 +50,17 @@ public:
     // IWindowEngine implementation
     // ═══════════════════════════════════════════════════════════════════════════
 
-    bool isActiveOnScreen(const QString& screenName) const override;
+    bool isActiveOnScreen(const QString& screenId) const override;
     using IWindowEngine::windowOpened; // Expose 2-arg convenience overload
-    void windowOpened(const QString& windowId, const QString& screenName, int minWidth, int minHeight) override;
+    void windowOpened(const QString& windowId, const QString& screenId, int minWidth, int minHeight) override;
     void windowClosed(const QString& windowId) override;
-    void windowFocused(const QString& windowId, const QString& screenName) override;
-    void toggleWindowFloat(const QString& windowId, const QString& screenName) override;
+    void windowFocused(const QString& windowId, const QString& screenId) override;
+    void toggleWindowFloat(const QString& windowId, const QString& screenId) override;
     void setWindowFloat(const QString& windowId, bool shouldFloat) override;
     void focusInDirection(const QString& direction, const QString& action) override;
     void swapInDirection(const QString& direction, const QString& action) override;
-    void rotateWindows(bool clockwise, const QString& screenName) override;
-    void moveToPosition(const QString& windowId, int position, const QString& screenName) override;
+    void rotateWindows(bool clockwise, const QString& screenId) override;
+    void moveToPosition(const QString& windowId, int position, const QString& screenId) override;
     void saveState() override;
     void loadState() override;
 
@@ -77,10 +77,10 @@ public:
 
     /**
      * @brief Push the focused window to the first empty zone
-     * @param screenName Screen to find empty zone on
+     * @param screenId Screen to find empty zone on
      * @note Effect-first: emits moveWindowToZoneRequested for KWin effect to resolve and apply
      */
-    void pushToEmptyZone(const QString& screenName);
+    void pushToEmptyZone(const QString& screenId);
 
     /**
      * @brief Resnap windows from previous layout to current layout after layout switch
@@ -99,10 +99,10 @@ public:
     /**
      * @brief Resnap windows using autotile window order as assignment source
      * @param autotileWindowOrder Ordered list of window IDs from autotile engine
-     * @param screenName Screen to resnap on
+     * @param screenId Screen to resnap on
      * @note Falls back to resnapCurrentAssignments if no entries are calculated
      */
-    void resnapFromAutotileOrder(const QStringList& autotileWindowOrder, const QString& screenName);
+    void resnapFromAutotileOrder(const QStringList& autotileWindowOrder, const QString& screenId);
 
     /**
      * @brief Calculate resnap entries from autotile order WITHOUT emitting signal
@@ -112,19 +112,19 @@ public:
      * Falls back to current-assignment entries if autotile order yields nothing.
      *
      * @param autotileWindowOrder Ordered list of window IDs from autotile engine
-     * @param screenName Screen to resnap on
+     * @param screenId Screen to resnap on
      * @return Vector of RotationEntry (may be empty)
      */
     QVector<RotationEntry> calculateResnapEntriesFromAutotileOrder(const QStringList& autotileWindowOrder,
-                                                                   const QString& screenName);
+                                                                   const QString& screenId);
 
     /**
      * @brief Calculate snap-all-windows assignments without applying them
      * @param windowIds List of window IDs to snap
-     * @param screenName Screen to snap on
+     * @param screenId Screen to snap on
      * @return JSON array of rotation entries for KWin effect to apply
      */
-    QString calculateSnapAllWindows(const QStringList& windowIds, const QString& screenName);
+    QString calculateSnapAllWindows(const QStringList& windowIds, const QString& screenId);
 
     /**
      * @brief Emit a single batched resnapToNewLayoutRequested signal
@@ -139,9 +139,9 @@ public:
 
     /**
      * @brief Request the KWin effect to collect and snap all unsnapped windows
-     * @param screenName Screen to operate on
+     * @param screenId Screen to operate on
      */
-    void snapAllWindows(const QString& screenName);
+    void snapAllWindows(const QString& screenId);
 
     /**
      * @brief Cycle focus between windows stacked in the same zone
@@ -166,11 +166,11 @@ public:
      * KWin effect. Also handles floating windows (skips snap, emits feedback).
      *
      * @param windowId Window identifier
-     * @param screenName Screen where the window appeared
+     * @param screenId Screen where the window appeared
      * @param sticky Whether the window is on all desktops
      * @return SnapResult with geometry and zone info, or SnapResult::noSnap()
      */
-    SnapResult resolveWindowRestore(const QString& windowId, const QString& screenName, bool sticky);
+    SnapResult resolveWindowRestore(const QString& windowId, const QString& screenId, bool sticky);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Autotile engine reference (for isActiveOnScreen routing)
@@ -226,12 +226,12 @@ Q_SIGNALS:
      * @brief Navigation feedback for OSD display
      */
     void navigationFeedback(bool success, const QString& action, const QString& reason, const QString& sourceZoneId,
-                            const QString& targetZoneId, const QString& screenName);
+                            const QString& targetZoneId, const QString& screenId);
 
     /**
      * @brief Window floating state changed (for KWin effect sync)
      */
-    void windowFloatingChanged(const QString& windowId, bool floating, const QString& screenName);
+    void windowFloatingChanged(const QString& windowId, bool floating, const QString& screenId);
 
     /**
      * @brief Request to move a window to a zone (for KWin effect)
@@ -257,7 +257,7 @@ Q_SIGNALS:
      * @brief Request to apply geometry to a window (daemon-driven flow)
      */
     void applyGeometryRequested(const QString& windowId, const QString& geometryJson, const QString& zoneId,
-                                const QString& screenName);
+                                const QString& screenId);
 
     /**
      * @brief Request to resnap windows from previous layout to current layout
@@ -274,9 +274,9 @@ Q_SIGNALS:
 
     /**
      * @brief Request KWin effect to collect unsnapped windows and snap them all
-     * @param screenName Screen to operate on
+     * @param screenId Screen to operate on
      */
-    void snapAllWindowsRequested(const QString& screenName);
+    void snapAllWindowsRequested(const QString& screenId);
 
 private:
     LayoutManager* m_layoutManager = nullptr;
@@ -291,10 +291,10 @@ private:
     // Float helpers (snapengine/float.cpp)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    bool unfloatToZone(const QString& windowId, const QString& screenName);
-    bool applyGeometryForFloat(const QString& windowId, const QString& screenName);
-    void clearFloatingStateForSnap(const QString& windowId, const QString& screenName);
-    void assignToZones(const QString& windowId, const QStringList& zoneIds, const QString& screenName);
+    bool unfloatToZone(const QString& windowId, const QString& screenId);
+    bool applyGeometryForFloat(const QString& windowId, const QString& screenId);
+    void clearFloatingStateForSnap(const QString& windowId, const QString& screenId);
+    void assignToZones(const QString& windowId, const QStringList& zoneIds, const QString& screenId);
 
     // Persistence delegates (KConfig stays in adaptor layer)
     std::function<void()> m_saveFn;

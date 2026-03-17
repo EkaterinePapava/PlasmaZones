@@ -100,15 +100,15 @@ private Q_SLOTS:
     void slotRestoreWindowRequested();
     void slotToggleWindowFloatRequested(bool shouldFloat);
     void slotApplyGeometryRequested(const QString& windowId, const QString& geometryJson, const QString& zoneId,
-                                    const QString& screenName);
+                                    const QString& screenId);
     void slotSwapWindowsRequested(const QString& targetZoneId, const QString& targetWindowId,
                                   const QString& zoneGeometry);
     void slotRotateWindowsRequested(bool clockwise, const QString& rotationData);
     void slotResnapToNewLayoutRequested(const QString& resnapData);
-    void slotSnapAllWindowsRequested(const QString& screenName);
+    void slotSnapAllWindowsRequested(const QString& screenId);
     void slotCycleWindowsInZoneRequested(const QString& directive, const QString& unused);
     void slotPendingRestoresAvailable();
-    void slotWindowFloatingChanged(const QString& windowId, bool isFloating, const QString& screenName);
+    void slotWindowFloatingChanged(const QString& windowId, bool isFloating, const QString& screenId);
     void slotRunningWindowsRequested();
     void slotRestoreSizeDuringDrag(const QString& windowId, int width, int height);
     void slotMoveSpecificWindowToZoneRequested(const QString& windowId, const QString& zoneId,
@@ -244,11 +244,11 @@ private:
      * @param reason Failure reason if !success (e.g., "no_window", "no_adjacent_zone")
      * @param sourceZoneId Optional source zone ID for OSD highlighting
      * @param targetZoneId Optional target zone ID for OSD highlighting
-     * @param screenName Screen name where navigation occurred (for OSD placement)
+     * @param screenId Screen identifier where navigation occurred (for OSD placement)
      */
     void emitNavigationFeedback(bool success, const QString& action, const QString& reason = QString(),
                                 const QString& sourceZoneId = QString(), const QString& targetZoneId = QString(),
-                                const QString& screenName = QString());
+                                const QString& screenId = QString());
 
     // Apply snap geometry to window.
     // When allowDuringDrag is true, applies immediately even if window is in user move state (snap-on-hover).
@@ -500,7 +500,7 @@ private:
     // Cursor screen tracking (for daemon shortcut screen detection on Wayland)
     // Updated in slotMouseChanged() whenever the cursor crosses to a different monitor.
     // Reported to daemon via cursorScreenChanged D-Bus call.
-    QString m_lastCursorScreenName;
+    QString m_lastCursorConnector;
 };
 
 } // namespace PlasmaZones

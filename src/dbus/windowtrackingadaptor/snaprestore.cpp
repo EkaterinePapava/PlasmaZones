@@ -10,13 +10,13 @@
 
 namespace PlasmaZones {
 
-void WindowTrackingAdaptor::snapToLastZone(const QString& windowId, const QString& windowScreenName, bool sticky,
+void WindowTrackingAdaptor::snapToLastZone(const QString& windowId, const QString& windowScreenId, bool sticky,
                                            int& snapX, int& snapY, int& snapWidth, int& snapHeight, bool& shouldSnap)
 {
     snapX = snapY = snapWidth = snapHeight = 0;
     shouldSnap = false;
 
-    SnapResult result = m_service->calculateSnapToLastZone(windowId, windowScreenName, sticky);
+    SnapResult result = m_service->calculateSnapToLastZone(windowId, windowScreenId, sticky);
     if (!result.shouldSnap) {
         return;
     }
@@ -44,7 +44,7 @@ void WindowTrackingAdaptor::snapToAppRule(const QString& windowId, const QString
     qCInfo(lcDbusWindow) << "App rule snapping window" << windowId << "to zone" << result.zoneId;
 }
 
-void WindowTrackingAdaptor::snapToEmptyZone(const QString& windowId, const QString& windowScreenName, bool sticky,
+void WindowTrackingAdaptor::snapToEmptyZone(const QString& windowId, const QString& windowScreenId, bool sticky,
                                             int& snapX, int& snapY, int& snapWidth, int& snapHeight, bool& shouldSnap)
 {
     snapX = snapY = snapWidth = snapHeight = 0;
@@ -54,8 +54,8 @@ void WindowTrackingAdaptor::snapToEmptyZone(const QString& windowId, const QStri
         return;
     }
 
-    qCDebug(lcDbusWindow) << "snapToEmptyZone: windowId=" << windowId << "screen=" << windowScreenName;
-    SnapResult result = m_service->calculateSnapToEmptyZone(windowId, windowScreenName, sticky);
+    qCDebug(lcDbusWindow) << "snapToEmptyZone: windowId=" << windowId << "screen=" << windowScreenId;
+    SnapResult result = m_service->calculateSnapToEmptyZone(windowId, windowScreenId, sticky);
     if (!result.shouldSnap) {
         qCDebug(lcDbusWindow) << "snapToEmptyZone: no snap";
         return;
@@ -65,7 +65,7 @@ void WindowTrackingAdaptor::snapToEmptyZone(const QString& windowId, const QStri
     qCInfo(lcDbusWindow) << "Auto-assign snapping window" << windowId << "to empty zone" << result.zoneId;
 }
 
-void WindowTrackingAdaptor::restoreToPersistedZone(const QString& windowId, const QString& screenName, bool sticky,
+void WindowTrackingAdaptor::restoreToPersistedZone(const QString& windowId, const QString& screenId, bool sticky,
                                                    int& snapX, int& snapY, int& snapWidth, int& snapHeight,
                                                    bool& shouldRestore)
 {
@@ -81,7 +81,7 @@ void WindowTrackingAdaptor::restoreToPersistedZone(const QString& windowId, cons
         return;
     }
 
-    SnapResult result = m_service->calculateRestoreFromSession(windowId, screenName, sticky);
+    SnapResult result = m_service->calculateRestoreFromSession(windowId, screenId, sticky);
     if (!result.shouldSnap) {
         return;
     }
@@ -92,14 +92,14 @@ void WindowTrackingAdaptor::restoreToPersistedZone(const QString& windowId, cons
     qCInfo(lcDbusWindow) << "Restoring window" << windowId << "to zone(s)" << result.zoneIds;
 }
 
-void WindowTrackingAdaptor::resolveWindowRestore(const QString& windowId, const QString& screenName, bool sticky,
+void WindowTrackingAdaptor::resolveWindowRestore(const QString& windowId, const QString& screenId, bool sticky,
                                                  int& snapX, int& snapY, int& snapWidth, int& snapHeight,
                                                  bool& shouldSnap)
 {
     snapX = snapY = snapWidth = snapHeight = 0;
     shouldSnap = false;
 
-    if (windowId.isEmpty() || screenName.isEmpty()) {
+    if (windowId.isEmpty() || screenId.isEmpty()) {
         return;
     }
 
@@ -111,7 +111,7 @@ void WindowTrackingAdaptor::resolveWindowRestore(const QString& windowId, const 
         return;
     }
 
-    SnapResult result = m_snapEngine->resolveWindowRestore(windowId, screenName, sticky);
+    SnapResult result = m_snapEngine->resolveWindowRestore(windowId, screenId, sticky);
     if (!result.shouldSnap) {
         return;
     }
@@ -147,10 +147,10 @@ QString WindowTrackingAdaptor::resolveScreenForSnap(const QString& callerScreen,
         return detected;
     }
     // Tertiary: use cursor or active window screen
-    if (!m_lastCursorScreenName.isEmpty()) {
-        return m_lastCursorScreenName;
+    if (!m_lastCursorScreenId.isEmpty()) {
+        return m_lastCursorScreenId;
     }
-    return m_lastActiveScreenName;
+    return m_lastActiveScreenId;
 }
 
 void WindowTrackingAdaptor::applySnapResult(const SnapResult& result, const QString& windowId, int& snapX, int& snapY,

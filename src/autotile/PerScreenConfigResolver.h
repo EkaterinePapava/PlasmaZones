@@ -44,10 +44,10 @@ public:
      * Merges per-screen autotile settings into the TilingState for a screen.
      * Overrides take precedence over global config for that screen.
      *
-     * @param screenName Screen to configure
+     * @param screenId Screen to configure
      * @param overrides Key-value map of autotile settings
      */
-    void applyPerScreenConfig(const QString& screenName, const QVariantMap& overrides);
+    void applyPerScreenConfig(const QString& screenId, const QVariantMap& overrides);
 
     /**
      * @brief Clear per-screen configuration overrides
@@ -55,40 +55,40 @@ public:
      * Removes all overrides for the screen and restores global defaults
      * on its TilingState.
      *
-     * @param screenName Screen to clear overrides for
+     * @param screenId Screen to clear overrides for
      */
-    void clearPerScreenConfig(const QString& screenName);
+    void clearPerScreenConfig(const QString& screenId);
 
     /**
      * @brief Get currently applied per-screen overrides for comparison
      */
-    QVariantMap perScreenOverrides(const QString& screenName) const;
+    QVariantMap perScreenOverrides(const QString& screenId) const;
 
     /**
      * @brief Check if a screen has a per-screen override for a specific key
      */
-    bool hasPerScreenOverride(const QString& screenName, const QString& key) const;
+    bool hasPerScreenOverride(const QString& screenId, const QString& key) const;
 
     /**
      * @brief Remove all overrides for a screen (used during screen removal)
      */
-    void removeOverridesForScreen(const QString& screenName);
+    void removeOverridesForScreen(const QString& screenId);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Effective per-screen values (per-screen override → global fallback)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    int effectiveInnerGap(const QString& screenName) const;
-    int effectiveOuterGap(const QString& screenName) const;
-    EdgeGaps effectiveOuterGaps(const QString& screenName) const;
-    bool effectiveSmartGaps(const QString& screenName) const;
-    bool effectiveRespectMinimumSize(const QString& screenName) const;
-    int effectiveMaxWindows(const QString& screenName) const;
-    QString effectiveAlgorithmId(const QString& screenName) const;
-    TilingAlgorithm* effectiveAlgorithm(const QString& screenName) const;
+    int effectiveInnerGap(const QString& screenId) const;
+    int effectiveOuterGap(const QString& screenId) const;
+    EdgeGaps effectiveOuterGaps(const QString& screenId) const;
+    bool effectiveSmartGaps(const QString& screenId) const;
+    bool effectiveRespectMinimumSize(const QString& screenId) const;
+    int effectiveMaxWindows(const QString& screenId) const;
+    QString effectiveAlgorithmId(const QString& screenId) const;
+    TilingAlgorithm* effectiveAlgorithm(const QString& screenId) const;
 
 private:
-    std::optional<QVariant> perScreenOverride(const QString& screenName, const QString& key) const;
+    std::optional<QVariant> perScreenOverride(const QString& screenId, const QString& key) const;
 
     AutotileEngine* m_engine = nullptr;
     QHash<QString, QVariantMap> m_perScreenOverrides;

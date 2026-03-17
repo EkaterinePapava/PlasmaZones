@@ -13,7 +13,7 @@ namespace PlasmaZones {
 // Float toggle / set
 // ═══════════════════════════════════════════════════════════════════════════════
 
-void SnapEngine::toggleWindowFloat(const QString& windowId, const QString& screenName)
+void SnapEngine::toggleWindowFloat(const QString& windowId, const QString& screenId)
 {
     const bool currentlyFloating = m_windowTracker->isWindowFloating(windowId);
     const bool currentlySnapped = m_windowTracker->isWindowSnapped(windowId);
@@ -23,44 +23,44 @@ void SnapEngine::toggleWindowFloat(const QString& windowId, const QString& scree
     }
 
     if (currentlyFloating) {
-        if (!unfloatToZone(windowId, screenName)) {
+        if (!unfloatToZone(windowId, screenId)) {
             Q_EMIT navigationFeedback(false, QStringLiteral("float"), QStringLiteral("no_pre_float_zone"), QString(),
-                                      QString(), screenName);
+                                      QString(), screenId);
             return;
         }
         Q_EMIT navigationFeedback(true, QStringLiteral("float"), QStringLiteral("unfloated"), QString(), QString(),
-                                  screenName);
+                                  screenId);
     } else {
         m_windowTracker->unsnapForFloat(windowId);
         m_windowTracker->setWindowFloating(windowId, true);
-        Q_EMIT windowFloatingChanged(windowId, true, screenName);
-        applyGeometryForFloat(windowId, screenName);
+        Q_EMIT windowFloatingChanged(windowId, true, screenId);
+        applyGeometryForFloat(windowId, screenId);
         Q_EMIT navigationFeedback(true, QStringLiteral("float"), QStringLiteral("floated"), QString(), QString(),
-                                  screenName);
+                                  screenId);
     }
 }
 
 void SnapEngine::setWindowFloat(const QString& windowId, bool shouldFloat)
 {
-    // IWindowEngine::setWindowFloat has no screenName param, so resolve it:
+    // IWindowEngine::setWindowFloat has no screenId param, so resolve it:
     // 1. Try the window's tracked screen from WTS (most accurate)
     // 2. Fall back to m_lastActiveScreenName (from last windowFocused)
     // 3. Fall back to empty (unfloatToZone/applyGeometryForFloat handle gracefully)
-    QString screenName = m_windowTracker->screenAssignments().value(windowId);
-    if (screenName.isEmpty()) {
-        screenName = m_lastActiveScreenName;
+    QString screenId = m_windowTracker->screenAssignments().value(windowId);
+    if (screenId.isEmpty()) {
+        screenId = m_lastActiveScreenName;
     }
-    if (screenName.isEmpty()) {
-        qCDebug(lcCore) << "setWindowFloat: no screen context for" << windowId << "- using empty screenName";
+    if (screenId.isEmpty()) {
+        qCDebug(lcCore) << "setWindowFloat: no screen context for" << windowId << "- using empty screenId";
     }
 
     if (shouldFloat) {
         m_windowTracker->unsnapForFloat(windowId);
         m_windowTracker->setWindowFloating(windowId, true);
-        Q_EMIT windowFloatingChanged(windowId, true, screenName);
-        applyGeometryForFloat(windowId, screenName);
+        Q_EMIT windowFloatingChanged(windowId, true, screenId);
+        applyGeometryForFloat(windowId, screenId);
     } else {
-        if (!unfloatToZone(windowId, screenName)) {
+        if (!unfloatToZone(windowId, screenId)) {
             // No pre-float zone to restore to — keep the window floating rather than
             // leaving it in a limbo state (not floating, not snapped to any zone).
             qCDebug(lcCore) << "setWindowFloat: cannot unfloat" << windowId << "- no pre-float zone, keeping floating";
@@ -73,9 +73,9 @@ void SnapEngine::setWindowFloat(const QString& windowId, bool shouldFloat)
 // Private helpers
 // ═══════════════════════════════════════════════════════════════════════════════
 
-bool SnapEngine::unfloatToZone(const QString& windowId, const QString& screenName)
+bool SnapEngine::unfloatToZone(const QString& windowId, const QString& screenId)
 {
-    UnfloatResult unfloat = m_windowTracker->resolveUnfloatGeometry(windowId, screenName);
+    UnfloatResult unfloat = m_windowTracker->resolveUnfloatGeometry(windowId, screenId);
     if (!unfloat.found) {
         return false;
     }
@@ -89,22 +89,22 @@ bool SnapEngine::unfloatToZone(const QString& windowId, const QString& screenNam
     return true;
 }
 
-bool SnapEngine::applyGeometryForFloat(const QString& windowId, const QString& screenName)
+bool SnapEngine::applyGeometryForFloat(const QString& windowId, const QString& screenId)
 {
-    auto geo = m_windowTracker->validatedPreTileGeometry(windowId, screenName);
+    auto geo = m_windowTracker->validatedPreTileGeometry(windowId, screenId);
     if (geo) {
         qCInfo(lcCore) << "applyGeometryForFloat:" << windowId << "restoring to" << *geo;
-        Q_EMIT applyGeometryRequested(windowId, GeometryUtils::rectToJson(*geo), QString(), screenName);
+        Q_EMIT applyGeometryRequested(windowId, GeometryUtils::rectToJson(*geo), QString(), screenId);
         return true;
     }
     qCWarning(lcCore) << "applyGeometryForFloat:" << windowId << "no pre-tile geometry found";
     return false;
 }
 
-void SnapEngine::clearFloatingStateForSnap(const QString& windowId, const QString& screenName)
+void SnapEngine::clearFloatingStateForSnap(const QString& windowId, const QString& screenId)
 {
     if (m_windowTracker->clearFloatingForSnap(windowId)) {
-        Q_EMIT windowFloatingChanged(windowId, false, screenName);
+        Q_EMIT windowFloatingChanged(windowId, false, screenId);
     }
 }
 

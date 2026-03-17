@@ -30,10 +30,10 @@ public:
     explicit SnapAssistHandler(PlasmaZonesEffect* effect, QObject* parent = nullptr);
 
     /// Show snap assist continuation for a screen (checks enabled, queries empty zones)
-    void showContinuationIfNeeded(const QString& screenName);
+    void showContinuationIfNeeded(const QString& screenId);
 
     /// Full async snap assist: get snapped windows, build candidates, show overlay
-    void asyncShow(const QString& excludeWindowId, const QString& screenName, const QString& emptyZonesJson);
+    void asyncShow(const QString& excludeWindowId, const QString& screenId, const QString& emptyZonesJson);
 
     /// Update the enabled flag (from loadCachedSettings)
     void setEnabled(bool enabled)
@@ -46,7 +46,7 @@ public:
     }
 
 private:
-    QJsonArray buildCandidates(const QString& excludeWindowId, const QString& screenName,
+    QJsonArray buildCandidates(const QString& excludeWindowId, const QString& screenId,
                                const QSet<QString>& snappedWindowIds) const;
 
     PlasmaZonesEffect* m_effect;

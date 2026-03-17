@@ -157,7 +157,7 @@ private Q_SLOTS:
         TilingState* state = engine.stateForScreen(QStringLiteral("TestScreen"));
 
         QVERIFY(state != nullptr);
-        QCOMPARE(state->screenName(), QStringLiteral("TestScreen"));
+        QCOMPARE(state->screenId(), QStringLiteral("TestScreen"));
     }
 
     void testStateForScreen_returnsSameInstance()
@@ -178,8 +178,8 @@ private Q_SLOTS:
         TilingState* state2 = engine.stateForScreen(QStringLiteral("Screen2"));
 
         QVERIFY(state1 != state2);
-        QCOMPARE(state1->screenName(), QStringLiteral("Screen1"));
-        QCOMPARE(state2->screenName(), QStringLiteral("Screen2"));
+        QCOMPARE(state1->screenId(), QStringLiteral("Screen1"));
+        QCOMPARE(state2->screenId(), QStringLiteral("Screen2"));
     }
 
     void testStateForScreen_inheritsConfigDefaults()

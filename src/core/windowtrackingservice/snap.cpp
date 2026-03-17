@@ -135,7 +135,7 @@ SnapResult WindowTrackingService::calculateSnapToAppRule(const QString& windowId
     return SnapResult::noSnap();
 }
 
-SnapResult WindowTrackingService::calculateSnapToLastZone(const QString& windowId, const QString& windowScreenName,
+SnapResult WindowTrackingService::calculateSnapToLastZone(const QString& windowId, const QString& windowScreenId,
                                                           bool isSticky) const
 {
     // Check if feature is enabled
@@ -170,8 +170,8 @@ SnapResult WindowTrackingService::calculateSnapToLastZone(const QString& windowI
     }
 
     // Don't cross-screen snap
-    if (!windowScreenName.isEmpty() && !m_lastUsedScreenName.isEmpty()
-        && !Utils::screensMatch(windowScreenName, m_lastUsedScreenName)) {
+    if (!windowScreenId.isEmpty() && !m_lastUsedScreenName.isEmpty()
+        && !Utils::screensMatch(windowScreenId, m_lastUsedScreenName)) {
         return SnapResult::noSnap();
     }
 
@@ -198,7 +198,7 @@ SnapResult WindowTrackingService::calculateSnapToLastZone(const QString& windowI
     return result;
 }
 
-SnapResult WindowTrackingService::calculateSnapToEmptyZone(const QString& windowId, const QString& windowScreenName,
+SnapResult WindowTrackingService::calculateSnapToEmptyZone(const QString& windowId, const QString& windowScreenId,
                                                            bool isSticky) const
 {
     // Do NOT skip floating windows here: this is called when the user explicitly dropped
@@ -217,9 +217,9 @@ SnapResult WindowTrackingService::calculateSnapToEmptyZone(const QString& window
     }
 
     // Check layout has autoAssign enabled
-    Layout* layout = m_layoutManager->resolveLayoutForScreen(windowScreenName);
+    Layout* layout = m_layoutManager->resolveLayoutForScreen(windowScreenId);
     if (!layout) {
-        qCDebug(lcCore) << "snapToEmptyZone: no layout for screen" << windowScreenName;
+        qCDebug(lcCore) << "snapToEmptyZone: no layout for screen" << windowScreenId;
         return SnapResult::noSnap();
     }
     if (!layout->autoAssign()) {
@@ -228,22 +228,22 @@ SnapResult WindowTrackingService::calculateSnapToEmptyZone(const QString& window
     }
 
     // Reuse findEmptyZoneInLayout() with already-resolved layout to avoid double resolution
-    QString emptyZoneId = findEmptyZoneInLayout(layout, windowScreenName);
+    QString emptyZoneId = findEmptyZoneInLayout(layout, windowScreenId);
     if (emptyZoneId.isEmpty()) {
-        qCDebug(lcCore) << "snapToEmptyZone: no empty zone on" << windowScreenName;
+        qCDebug(lcCore) << "snapToEmptyZone: no empty zone on" << windowScreenId;
         return SnapResult::noSnap();
     }
 
-    QRect geo = zoneGeometry(emptyZoneId, windowScreenName);
+    QRect geo = zoneGeometry(emptyZoneId, windowScreenId);
     if (!geo.isValid()) {
         qCDebug(lcCore) << "snapToEmptyZone: invalid geometry for zone" << emptyZoneId;
         return SnapResult::noSnap();
     }
 
-    return {true, geo, emptyZoneId, {emptyZoneId}, windowScreenName};
+    return {true, geo, emptyZoneId, {emptyZoneId}, windowScreenId};
 }
 
-SnapResult WindowTrackingService::calculateRestoreFromSession(const QString& windowId, const QString& screenName,
+SnapResult WindowTrackingService::calculateRestoreFromSession(const QString& windowId, const QString& screenId,
                                                               bool isSticky) const
 {
     QString appId = Utils::extractAppId(windowId);
@@ -295,7 +295,7 @@ SnapResult WindowTrackingService::calculateRestoreFromSession(const QString& win
         return SnapResult::noSnap();
     }
     QString zoneId = zoneIds.first(); // Primary zone for validation
-    QString savedScreen = entry.screenName.isEmpty() ? screenName : entry.screenName;
+    QString savedScreen = entry.screenName.isEmpty() ? screenId : entry.screenName;
 
     // BUG FIX: Verify layout context matches before restoring
     // Without this check, windows would restore even if the current layout is different

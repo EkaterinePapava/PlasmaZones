@@ -50,7 +50,7 @@ public:
      */
     QString lastActiveScreenName() const
     {
-        return m_lastActiveScreenName;
+        return m_lastActiveScreenId;
     }
 
     /**
@@ -62,7 +62,7 @@ public:
      */
     QString lastCursorScreenName() const
     {
-        return m_lastCursorScreenName;
+        return m_lastCursorScreenId;
     }
 
     /**
@@ -101,8 +101,8 @@ public:
 
 public Q_SLOTS:
     // Window snapping notifications (from KWin script)
-    void windowSnapped(const QString& windowId, const QString& zoneId, const QString& screenName);
-    void windowSnappedMultiZone(const QString& windowId, const QStringList& zoneIds, const QString& screenName);
+    void windowSnapped(const QString& windowId, const QString& zoneId, const QString& screenId);
+    void windowSnappedMultiZone(const QString& windowId, const QStringList& zoneIds, const QString& screenId);
     void windowUnsnapped(const QString& windowId);
     /**
      * Handle window screen change: unsnap only if the new screen differs
@@ -208,14 +208,14 @@ public Q_SLOTS:
      * @param windowId Window identifier from KWin
      * @param screenName Screen where the window is located
      */
-    void windowActivated(const QString& windowId, const QString& screenName);
+    void windowActivated(const QString& windowId, const QString& screenId);
 
     /**
      * Update cursor screen when cursor crosses to a different monitor
      * Called by the KWin effect's slotMouseChanged when screen changes.
      * @param screenName Name of the screen the cursor is now on
      */
-    void cursorScreenChanged(const QString& screenName);
+    void cursorScreenChanged(const QString& screenId);
 
     /**
      * Report navigation feedback from KWin effect (D-Bus method)
@@ -286,7 +286,7 @@ public Q_SLOTS:
      * @note Will NOT snap if window is on a different screen than the last used zone
      *       (prevents cross-monitor snapping bug)
      */
-    void snapToLastZone(const QString& windowId, const QString& windowScreenName, bool sticky, int& snapX, int& snapY,
+    void snapToLastZone(const QString& windowId, const QString& windowScreenId, bool sticky, int& snapX, int& snapY,
                         int& snapWidth, int& snapHeight, bool& shouldSnap);
 
     /**
@@ -313,7 +313,7 @@ public Q_SLOTS:
     void snapToAppRule(const QString& windowId, const QString& windowScreenName, bool sticky, int& snapX, int& snapY,
                        int& snapWidth, int& snapHeight, bool& shouldSnap);
 
-    void snapToEmptyZone(const QString& windowId, const QString& windowScreenName, bool sticky, int& snapX, int& snapY,
+    void snapToEmptyZone(const QString& windowId, const QString& windowScreenId, bool sticky, int& snapX, int& snapY,
                          int& snapWidth, int& snapHeight, bool& shouldSnap);
 
     /**
@@ -330,7 +330,7 @@ public Q_SLOTS:
      * @param shouldRestore Output: True if window should be restored to persisted zone
      * @note This method is called BEFORE snapToLastZone to prioritize session restoration
      */
-    void restoreToPersistedZone(const QString& windowId, const QString& screenName, bool sticky, int& snapX, int& snapY,
+    void restoreToPersistedZone(const QString& windowId, const QString& screenId, bool sticky, int& snapX, int& snapY,
                                 int& snapWidth, int& snapHeight, bool& shouldRestore);
 
     /**
@@ -347,7 +347,7 @@ public Q_SLOTS:
      * @param snapHeight Output: Height to snap to
      * @param shouldSnap Output: True if any strategy matched
      */
-    void resolveWindowRestore(const QString& windowId, const QString& screenName, bool sticky, int& snapX, int& snapY,
+    void resolveWindowRestore(const QString& windowId, const QString& screenId, bool sticky, int& snapX, int& snapY,
                               int& snapWidth, int& snapHeight, bool& shouldSnap);
 
     /**
@@ -481,7 +481,7 @@ public Q_SLOTS:
      * @param screenName Screen for geometry
      * @return JSON: {success, reason, zoneId, geometryJson, sourceZoneId, screenName}
      */
-    QString getMoveTargetForWindow(const QString& windowId, const QString& direction, const QString& screenName);
+    QString getMoveTargetForWindow(const QString& windowId, const QString& direction, const QString& screenId);
 
     /**
      * @brief Get focus target (window to activate) in adjacent zone
@@ -517,7 +517,7 @@ public Q_SLOTS:
      * @return JSON: {success, reason, windowId1, x1, y1, w1, h1, zoneId1, windowId2, x2, y2, w2, h2, zoneId2,
      * screenName, sourceZoneId, targetZoneId}
      */
-    QString getSwapTargetForWindow(const QString& windowId, const QString& direction, const QString& screenName);
+    QString getSwapTargetForWindow(const QString& windowId, const QString& direction, const QString& screenId);
 
     /**
      * @brief Get push-to-empty-zone target (zone + geometry)
@@ -525,7 +525,7 @@ public Q_SLOTS:
      * @param screenName Screen for layout/geometry
      * @return JSON: {success, reason, zoneId, geometryJson, sourceZoneId, screenName}
      */
-    QString getPushTargetForWindow(const QString& windowId, const QString& screenName);
+    QString getPushTargetForWindow(const QString& windowId, const QString& screenId);
 
     /**
      * @brief Get snap-to-zone-by-number target (zone + geometry)
@@ -534,7 +534,7 @@ public Q_SLOTS:
      * @param screenName Screen for layout/geometry
      * @return JSON: {success, reason, zoneId, geometryJson, sourceZoneId, screenName}
      */
-    QString getSnapToZoneByNumberTarget(const QString& windowId, int zoneNumber, const QString& screenName);
+    QString getSnapToZoneByNumberTarget(const QString& windowId, int zoneNumber, const QString& screenId);
 
     /**
      * @brief Trigger snap-all-windows from daemon shortcut
@@ -771,21 +771,21 @@ public Q_SLOTS:
      * @brief Daemon-driven float toggle. KWin calls with active window; daemon does logic and emits
      * applyGeometryRequested.
      */
-    void toggleFloatForWindow(const QString& windowId, const QString& screenName);
+    void toggleFloatForWindow(const QString& windowId, const QString& screenId);
 
     /**
      * @brief Set a window's floating state explicitly (directional, not toggle).
      * Routes to autotile engine for autotile screens, handles snap mode locally.
      * Used by minimize/unminimize, drag-to-float, and monocle unmaximize handlers.
      */
-    void setWindowFloatingForScreen(const QString& windowId, const QString& screenName, bool floating);
+    void setWindowFloatingForScreen(const QString& windowId, const QString& screenId, bool floating);
 
     /**
      * @brief Apply pre-snap/pre-autotile geometry for a floated window (call from daemon when autotile engine floats)
      * Gets validated geometry, emits applyGeometryRequested if found, clears stored geometry.
      * @return true if geometry was applied, false if none stored
      */
-    bool applyGeometryForFloat(const QString& windowId, const QString& screenName);
+    bool applyGeometryForFloat(const QString& windowId, const QString& screenId);
 
     /**
      * @brief Emit moveSpecificWindowToZoneRequested - called when user selects from Snap Assist
@@ -877,13 +877,13 @@ private:
      * @param windowId Window ID being snapped
      * @param screenName Screen where the snap is occurring (for windowFloatingChanged signal)
      */
-    void clearFloatingStateForSnap(const QString& windowId, const QString& screenName);
+    void clearFloatingStateForSnap(const QString& windowId, const QString& screenId);
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // Screen tracking (from KWin effect's D-Bus calls)
     // ═══════════════════════════════════════════════════════════════════════════════
-    QString m_lastActiveScreenName; // From windowActivated (focused window's screen)
-    QString m_lastCursorScreenName; // From cursorScreenChanged (cursor's screen)
+    QString m_lastActiveScreenId; // From windowActivated (focused window's screen)
+    QString m_lastCursorScreenId; // From cursorScreenChanged (cursor's screen)
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // Dependencies (kept for signal connections and settings access)

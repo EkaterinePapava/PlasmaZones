@@ -135,7 +135,7 @@ void WindowTrackingAdaptor::setEngines(SnapEngine* snapEngine, AutotileEngine* a
 // Window Snapping - Delegate to Service
 // ═══════════════════════════════════════════════════════════════════════════════
 
-void WindowTrackingAdaptor::windowSnapped(const QString& windowId, const QString& zoneId, const QString& screenName)
+void WindowTrackingAdaptor::windowSnapped(const QString& windowId, const QString& zoneId, const QString& screenId)
 {
     if (!validateWindowId(windowId, QStringLiteral("track window snap"))) {
         return;
@@ -146,7 +146,7 @@ void WindowTrackingAdaptor::windowSnapped(const QString& windowId, const QString
         return;
     }
 
-    clearFloatingStateForSnap(windowId, screenName);
+    clearFloatingStateForSnap(windowId, screenId);
 
     // Check if this was an auto-snap (restore from session or snap to last zone)
     // and clear the flag. Auto-snapped windows don't update last-used zone tracking.
@@ -161,7 +161,7 @@ void WindowTrackingAdaptor::windowSnapped(const QString& windowId, const QString
 
     // Use caller-provided screen name if available, otherwise auto-detect,
     // then fall back to cursor/active screen as tertiary fallback
-    QString resolvedScreen = resolveScreenForSnap(screenName, zoneId);
+    QString resolvedScreen = resolveScreenForSnap(screenId, zoneId);
 
     int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
 
@@ -178,7 +178,7 @@ void WindowTrackingAdaptor::windowSnapped(const QString& windowId, const QString
 }
 
 void WindowTrackingAdaptor::windowSnappedMultiZone(const QString& windowId, const QStringList& zoneIds,
-                                                   const QString& screenName)
+                                                   const QString& screenId)
 {
     if (!validateWindowId(windowId, QStringLiteral("track multi-zone window snap"))) {
         return;
@@ -189,7 +189,7 @@ void WindowTrackingAdaptor::windowSnappedMultiZone(const QString& windowId, cons
         return;
     }
 
-    clearFloatingStateForSnap(windowId, screenName);
+    clearFloatingStateForSnap(windowId, screenId);
 
     bool wasAutoSnapped = m_service->clearAutoSnapped(windowId);
 
@@ -200,7 +200,7 @@ void WindowTrackingAdaptor::windowSnappedMultiZone(const QString& windowId, cons
     // Use caller-provided screen name if available, otherwise auto-detect,
     // then fall back to cursor/active screen as tertiary fallback
     QString primaryZoneId = zoneIds.first();
-    QString resolvedScreen = resolveScreenForSnap(screenName, primaryZoneId);
+    QString resolvedScreen = resolveScreenForSnap(screenId, primaryZoneId);
 
     int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
 
@@ -289,16 +289,16 @@ void WindowTrackingAdaptor::windowClosed(const QString& windowId)
     qCDebug(lcDbusWindow) << "Cleaned up tracking data for closed window" << windowId;
 }
 
-void WindowTrackingAdaptor::cursorScreenChanged(const QString& screenName)
+void WindowTrackingAdaptor::cursorScreenChanged(const QString& screenId)
 {
-    if (screenName.isEmpty()) {
+    if (screenId.isEmpty()) {
         return;
     }
-    m_lastCursorScreenName = screenName;
-    qCDebug(lcDbusWindow) << "Cursor screen changed to" << screenName;
+    m_lastCursorScreenId = screenId;
+    qCDebug(lcDbusWindow) << "Cursor screen changed to" << screenId;
 }
 
-void WindowTrackingAdaptor::windowActivated(const QString& windowId, const QString& screenName)
+void WindowTrackingAdaptor::windowActivated(const QString& windowId, const QString& screenId)
 {
     if (!validateWindowId(windowId, QStringLiteral("process windowActivated"))) {
         return;
@@ -306,11 +306,11 @@ void WindowTrackingAdaptor::windowActivated(const QString& windowId, const QStri
 
     // Track the active window's screen as fallback for shortcut screen detection.
     // The primary source is now cursorScreenChanged (from KWin effect's mouseChanged).
-    if (!screenName.isEmpty()) {
-        m_lastActiveScreenName = screenName;
+    if (!screenId.isEmpty()) {
+        m_lastActiveScreenId = screenId;
     }
 
-    qCDebug(lcDbusWindow) << "Window activated:" << windowId << "on screen" << screenName;
+    qCDebug(lcDbusWindow) << "Window activated:" << windowId << "on screen" << screenId;
 
     // Update last-used zone when focusing a snapped window
     // Skip auto-snapped windows - only user-focused windows should update the tracking
@@ -319,7 +319,7 @@ void WindowTrackingAdaptor::windowActivated(const QString& windowId, const QStri
         && !m_service->isAutoSnapped(windowId)) {
         QString windowClass = Utils::extractWindowClass(windowId);
         int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-        m_service->updateLastUsedZone(zoneId, screenName, windowClass, currentDesktop);
+        m_service->updateLastUsedZone(zoneId, screenId, windowClass, currentDesktop);
     }
 }
 
@@ -380,7 +380,7 @@ QString WindowTrackingAdaptor::getLastUsedZoneId()
 QString WindowTrackingAdaptor::findEmptyZone()
 {
     // Use cursor screen for per-screen layout resolution
-    return m_service->findEmptyZone(m_lastCursorScreenName);
+    return m_service->findEmptyZone(m_lastCursorScreenId);
 }
 
 QString WindowTrackingAdaptor::getZoneGeometry(const QString& zoneId)

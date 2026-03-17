@@ -28,7 +28,7 @@ private Q_SLOTS:
     void testAddWindow_basic()
     {
         TilingState state(QStringLiteral("screen0"));
-        QCOMPARE(state.screenName(), QStringLiteral("screen0"));
+        QCOMPARE(state.screenId(), QStringLiteral("screen0"));
         QCOMPARE(state.windowCount(), 0);
 
         QVERIFY(state.addWindow(QStringLiteral("win1")));

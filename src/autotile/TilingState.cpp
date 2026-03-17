@@ -13,15 +13,15 @@ namespace PlasmaZones {
 using namespace AutotileJsonKeys;
 using namespace AutotileDefaults;
 
-TilingState::TilingState(const QString& screenName, QObject* parent)
+TilingState::TilingState(const QString& screenId, QObject* parent)
     : QObject(parent)
-    , m_screenName(screenName)
+    , m_screenId(screenId)
 {
 }
 
-QString TilingState::screenName() const
+QString TilingState::screenId() const
 {
-    return m_screenName;
+    return m_screenId;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -506,7 +506,7 @@ int TilingState::focusedTiledIndex() const
 QJsonObject TilingState::toJson() const
 {
     QJsonObject json;
-    json[ScreenName] = m_screenName;
+    json[ScreenName] = m_screenId;
     json[WindowOrder] = QJsonArray::fromStringList(m_windowOrder);
     json[FloatingWindows] = QJsonArray::fromStringList(floatingWindows());
     json[FocusedWindow] = m_focusedWindow;
@@ -517,12 +517,12 @@ QJsonObject TilingState::toJson() const
 
 TilingState* TilingState::fromJson(const QJsonObject& json, QObject* parent)
 {
-    const QString screenName = json[ScreenName].toString();
-    if (screenName.isEmpty()) {
+    const QString screenId = json[ScreenName].toString();
+    if (screenId.isEmpty()) {
         return nullptr;
     }
 
-    auto* state = new TilingState(screenName, parent);
+    auto* state = new TilingState(screenId, parent);
 
     // Window order
     const QJsonArray orderArray = json[WindowOrder].toArray();

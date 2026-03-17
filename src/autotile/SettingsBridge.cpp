@@ -343,7 +343,7 @@ void SettingsBridge::saveState()
 
         const TilingStateKey& key = it.key();
         QJsonObject screenObj;
-        screenObj[QStringLiteral("screen")] = key.screenName;
+        screenObj[QStringLiteral("screen")] = key.screenId;
         screenObj[QStringLiteral("desktop")] = key.desktop;
         screenObj[QStringLiteral("activity")] = key.activity;
         screenObj[QStringLiteral("masterCount")] = state->masterCount();
@@ -400,8 +400,8 @@ void SettingsBridge::loadState()
     const QJsonArray screensArray = doc.array();
     for (const QJsonValue& val : screensArray) {
         const QJsonObject screenObj = val.toObject();
-        const QString screenName = screenObj[QStringLiteral("screen")].toString();
-        if (screenName.isEmpty()) {
+        const QString screenId = screenObj[QStringLiteral("screen")].toString();
+        if (screenId.isEmpty()) {
             continue;
         }
 
@@ -413,7 +413,7 @@ void SettingsBridge::loadState()
         // Use stateForKey() to create the state under the exact saved key
         // without mutating the engine's current desktop/activity context.
         TilingStateKey loadKey;
-        loadKey.screenName = screenName;
+        loadKey.screenId = screenId;
         loadKey.desktop = (desktop > 0) ? desktop : m_engine->m_currentDesktop;
         loadKey.activity = !activity.isEmpty() ? activity : m_engine->m_currentActivity;
 

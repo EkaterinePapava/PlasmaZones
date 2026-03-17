@@ -116,7 +116,7 @@ void WindowTrackingAdaptor::setWindowFloating(const QString& windowId, bool floa
     qCInfo(lcDbusWindow) << "Window" << windowId << "is now" << (floating ? "floating" : "not floating");
     // Notify effect so it can update its local cache (use full windowId for per-instance tracking).
     // Use the window's tracked screen if available, otherwise fall back to last active screen.
-    QString screen = m_service->screenAssignments().value(windowId, m_lastActiveScreenName);
+    QString screen = m_service->screenAssignments().value(windowId, m_lastActiveScreenId);
     Q_EMIT windowFloatingChanged(windowId, floating, screen);
 }
 
@@ -126,31 +126,31 @@ QStringList WindowTrackingAdaptor::getFloatingWindows()
     return m_service->floatingWindows();
 }
 
-void WindowTrackingAdaptor::toggleFloatForWindow(const QString& windowId, const QString& screenName)
+void WindowTrackingAdaptor::toggleFloatForWindow(const QString& windowId, const QString& screenId)
 {
-    qCInfo(lcDbusWindow) << "toggleFloatForWindow: windowId=" << windowId << "screen=" << screenName;
+    qCInfo(lcDbusWindow) << "toggleFloatForWindow: windowId=" << windowId << "screen=" << screenId;
 
     if (!validateWindowId(windowId, QStringLiteral("toggle float"))) {
         Q_EMIT navigationFeedback(false, QStringLiteral("float"), QStringLiteral("invalid_window"), QString(),
-                                  QString(), screenName);
+                                  QString(), screenId);
         return;
     }
 
     // Route to the correct engine based on screen mode
-    if (m_autotileEngine && m_autotileEngine->isActiveOnScreen(screenName)) {
-        m_autotileEngine->toggleWindowFloat(windowId, screenName);
+    if (m_autotileEngine && m_autotileEngine->isActiveOnScreen(screenId)) {
+        m_autotileEngine->toggleWindowFloat(windowId, screenId);
     } else if (m_snapEngine) {
-        m_snapEngine->toggleWindowFloat(windowId, screenName);
+        m_snapEngine->toggleWindowFloat(windowId, screenId);
     }
 }
 
-bool WindowTrackingAdaptor::applyGeometryForFloat(const QString& windowId, const QString& screenName)
+bool WindowTrackingAdaptor::applyGeometryForFloat(const QString& windowId, const QString& screenId)
 {
-    auto geo = m_service->validatedPreTileGeometry(windowId, screenName);
+    auto geo = m_service->validatedPreTileGeometry(windowId, screenId);
     if (geo) {
         qCInfo(lcDbusWindow) << "applyGeometryForFloat: windowId=" << windowId << "geo=" << *geo
-                             << "screen=" << screenName;
-        Q_EMIT applyGeometryRequested(windowId, GeometryUtils::rectToJson(*geo), QString(), screenName);
+                             << "screen=" << screenId;
+        Q_EMIT applyGeometryRequested(windowId, GeometryUtils::rectToJson(*geo), QString(), screenId);
         return true;
     }
 
@@ -158,26 +158,25 @@ bool WindowTrackingAdaptor::applyGeometryForFloat(const QString& windowId, const
     return false;
 }
 
-void WindowTrackingAdaptor::clearFloatingStateForSnap(const QString& windowId, const QString& screenName)
+void WindowTrackingAdaptor::clearFloatingStateForSnap(const QString& windowId, const QString& screenId)
 {
     if (m_service->clearFloatingForSnap(windowId)) {
         qCDebug(lcDbusWindow) << "Window" << windowId << "was floating, clearing floating state for snap";
-        Q_EMIT windowFloatingChanged(windowId, false, screenName);
+        Q_EMIT windowFloatingChanged(windowId, false, screenId);
     }
 }
 
-void WindowTrackingAdaptor::setWindowFloatingForScreen(const QString& windowId, const QString& screenName,
-                                                       bool floating)
+void WindowTrackingAdaptor::setWindowFloatingForScreen(const QString& windowId, const QString& screenId, bool floating)
 {
     if (!validateWindowId(windowId, QStringLiteral("set float for screen"))) {
         return;
     }
 
     qCInfo(lcDbusWindow) << "setWindowFloatingForScreen: windowId=" << windowId << "floating=" << floating
-                         << "screen=" << screenName;
+                         << "screen=" << screenId;
 
     // Route to the correct engine based on screen mode
-    if (m_autotileEngine && m_autotileEngine->isActiveOnScreen(screenName)) {
+    if (m_autotileEngine && m_autotileEngine->isActiveOnScreen(screenId)) {
         m_autotileEngine->setWindowFloat(windowId, floating);
     } else if (m_snapEngine) {
         m_snapEngine->setWindowFloat(windowId, floating);

@@ -21,22 +21,22 @@ PerScreenConfigResolver::PerScreenConfigResolver(AutotileEngine* engine)
 // Per-screen override storage
 // ═══════════════════════════════════════════════════════════════════════════════
 
-void PerScreenConfigResolver::applyPerScreenConfig(const QString& screenName, const QVariantMap& overrides)
+void PerScreenConfigResolver::applyPerScreenConfig(const QString& screenId, const QVariantMap& overrides)
 {
-    if (screenName.isEmpty()) {
+    if (screenId.isEmpty()) {
         return;
     }
 
     if (overrides.isEmpty()) {
-        clearPerScreenConfig(screenName);
+        clearPerScreenConfig(screenId);
         return;
     }
 
     // Store overrides so effective*() helpers and connectToSettings handlers
     // can resolve per-screen values and skip screens with overrides.
-    m_perScreenOverrides[screenName] = overrides;
+    m_perScreenOverrides[screenId] = overrides;
 
-    TilingState* state = m_engine->stateForScreen(screenName);
+    TilingState* state = m_engine->stateForScreen(screenId);
     if (!state) {
         return;
     }
@@ -75,56 +75,56 @@ void PerScreenConfigResolver::applyPerScreenConfig(const QString& screenName, co
     // setAlgorithm() → scheduleRetileForScreen(), a single retile fires with
     // all state consistent, avoiding the double-D-Bus-signal problem that caused
     // stagger generation conflicts and window overlap during algorithm switches.
-    if (m_engine->isAutotileScreen(screenName)) {
-        m_engine->scheduleRetileForScreen(screenName);
+    if (m_engine->isAutotileScreen(screenId)) {
+        m_engine->scheduleRetileForScreen(screenId);
     }
 
-    qCDebug(lcAutotile) << "Applied per-screen config for" << screenName << "keys:" << overrides.keys();
+    qCDebug(lcAutotile) << "Applied per-screen config for" << screenId << "keys:" << overrides.keys();
 }
 
-void PerScreenConfigResolver::clearPerScreenConfig(const QString& screenName)
+void PerScreenConfigResolver::clearPerScreenConfig(const QString& screenId)
 {
-    if (!m_perScreenOverrides.remove(screenName)) {
+    if (!m_perScreenOverrides.remove(screenId)) {
         return;
     }
     // Restore global defaults on TilingState
-    TilingState* state = m_engine->stateForScreen(screenName);
+    TilingState* state = m_engine->stateForScreen(screenId);
     if (state) {
         state->setSplitRatio(m_engine->config()->splitRatio);
         state->setMasterCount(m_engine->config()->masterCount);
     }
 
     // Schedule deferred retile (same rationale as applyPerScreenConfig)
-    if (m_engine->isAutotileScreen(screenName)) {
-        m_engine->scheduleRetileForScreen(screenName);
+    if (m_engine->isAutotileScreen(screenId)) {
+        m_engine->scheduleRetileForScreen(screenId);
     }
 
-    qCDebug(lcAutotile) << "Cleared per-screen config for" << screenName;
+    qCDebug(lcAutotile) << "Cleared per-screen config for" << screenId;
 }
 
-QVariantMap PerScreenConfigResolver::perScreenOverrides(const QString& screenName) const
+QVariantMap PerScreenConfigResolver::perScreenOverrides(const QString& screenId) const
 {
-    return m_perScreenOverrides.value(screenName);
+    return m_perScreenOverrides.value(screenId);
 }
 
-bool PerScreenConfigResolver::hasPerScreenOverride(const QString& screenName, const QString& key) const
+bool PerScreenConfigResolver::hasPerScreenOverride(const QString& screenId, const QString& key) const
 {
-    auto it = m_perScreenOverrides.constFind(screenName);
+    auto it = m_perScreenOverrides.constFind(screenId);
     return it != m_perScreenOverrides.constEnd() && it->contains(key);
 }
 
-void PerScreenConfigResolver::removeOverridesForScreen(const QString& screenName)
+void PerScreenConfigResolver::removeOverridesForScreen(const QString& screenId)
 {
-    m_perScreenOverrides.remove(screenName);
+    m_perScreenOverrides.remove(screenId);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Effective per-screen values
 // ═══════════════════════════════════════════════════════════════════════════════
 
-std::optional<QVariant> PerScreenConfigResolver::perScreenOverride(const QString& screenName, const QString& key) const
+std::optional<QVariant> PerScreenConfigResolver::perScreenOverride(const QString& screenId, const QString& key) const
 {
-    auto it = m_perScreenOverrides.constFind(screenName);
+    auto it = m_perScreenOverrides.constFind(screenId);
     if (it != m_perScreenOverrides.constEnd()) {
         auto git = it->constFind(key);
         if (git != it->constEnd()) {
@@ -134,32 +134,32 @@ std::optional<QVariant> PerScreenConfigResolver::perScreenOverride(const QString
     return std::nullopt;
 }
 
-int PerScreenConfigResolver::effectiveInnerGap(const QString& screenName) const
+int PerScreenConfigResolver::effectiveInnerGap(const QString& screenId) const
 {
-    if (auto v = perScreenOverride(screenName, QStringLiteral("InnerGap")))
+    if (auto v = perScreenOverride(screenId, QStringLiteral("InnerGap")))
         return qBound(AutotileDefaults::MinGap, v->toInt(), AutotileDefaults::MaxGap);
     return m_engine->config()->innerGap;
 }
 
-int PerScreenConfigResolver::effectiveOuterGap(const QString& screenName) const
+int PerScreenConfigResolver::effectiveOuterGap(const QString& screenId) const
 {
-    if (auto v = perScreenOverride(screenName, QStringLiteral("OuterGap")))
+    if (auto v = perScreenOverride(screenId, QStringLiteral("OuterGap")))
         return qBound(AutotileDefaults::MinGap, v->toInt(), AutotileDefaults::MaxGap);
     return m_engine->config()->outerGap;
 }
 
-EdgeGaps PerScreenConfigResolver::effectiveOuterGaps(const QString& screenName) const
+EdgeGaps PerScreenConfigResolver::effectiveOuterGaps(const QString& screenId) const
 {
     // Check per-screen per-side overrides first
-    auto topOv = perScreenOverride(screenName, QStringLiteral("OuterGapTop"));
-    auto bottomOv = perScreenOverride(screenName, QStringLiteral("OuterGapBottom"));
-    auto leftOv = perScreenOverride(screenName, QStringLiteral("OuterGapLeft"));
-    auto rightOv = perScreenOverride(screenName, QStringLiteral("OuterGapRight"));
+    auto topOv = perScreenOverride(screenId, QStringLiteral("OuterGapTop"));
+    auto bottomOv = perScreenOverride(screenId, QStringLiteral("OuterGapBottom"));
+    auto leftOv = perScreenOverride(screenId, QStringLiteral("OuterGapLeft"));
+    auto rightOv = perScreenOverride(screenId, QStringLiteral("OuterGapRight"));
 
     // If any per-screen per-side override exists, build from those
     if (topOv || bottomOv || leftOv || rightOv) {
         // Use per-screen uniform gap as base, then per-side overrides on top
-        const int base = effectiveOuterGap(screenName);
+        const int base = effectiveOuterGap(screenId);
         return EdgeGaps{topOv ? qBound(AutotileDefaults::MinGap, topOv->toInt(), AutotileDefaults::MaxGap) : base,
                         bottomOv ? qBound(AutotileDefaults::MinGap, bottomOv->toInt(), AutotileDefaults::MaxGap) : base,
                         leftOv ? qBound(AutotileDefaults::MinGap, leftOv->toInt(), AutotileDefaults::MaxGap) : base,
@@ -167,7 +167,7 @@ EdgeGaps PerScreenConfigResolver::effectiveOuterGaps(const QString& screenName) 
     }
 
     // Check per-screen uniform outer gap
-    if (auto v = perScreenOverride(screenName, QStringLiteral("OuterGap"))) {
+    if (auto v = perScreenOverride(screenId, QStringLiteral("OuterGap"))) {
         const int gap = qBound(AutotileDefaults::MinGap, v->toInt(), AutotileDefaults::MaxGap);
         return EdgeGaps::uniform(gap);
     }
@@ -180,24 +180,24 @@ EdgeGaps PerScreenConfigResolver::effectiveOuterGaps(const QString& screenName) 
     return EdgeGaps::uniform(cfg->outerGap);
 }
 
-bool PerScreenConfigResolver::effectiveSmartGaps(const QString& screenName) const
+bool PerScreenConfigResolver::effectiveSmartGaps(const QString& screenId) const
 {
-    if (auto v = perScreenOverride(screenName, QStringLiteral("SmartGaps")))
+    if (auto v = perScreenOverride(screenId, QStringLiteral("SmartGaps")))
         return v->toBool();
     return m_engine->config()->smartGaps;
 }
 
-bool PerScreenConfigResolver::effectiveRespectMinimumSize(const QString& screenName) const
+bool PerScreenConfigResolver::effectiveRespectMinimumSize(const QString& screenId) const
 {
-    if (auto v = perScreenOverride(screenName, QStringLiteral("RespectMinimumSize")))
+    if (auto v = perScreenOverride(screenId, QStringLiteral("RespectMinimumSize")))
         return v->toBool();
     return m_engine->config()->respectMinimumSize;
 }
 
-int PerScreenConfigResolver::effectiveMaxWindows(const QString& screenName) const
+int PerScreenConfigResolver::effectiveMaxWindows(const QString& screenId) const
 {
     // 1. Explicit per-screen MaxWindows override — highest priority
-    if (auto v = perScreenOverride(screenName, QLatin1String("MaxWindows")))
+    if (auto v = perScreenOverride(screenId, QLatin1String("MaxWindows")))
         return qBound(AutotileDefaults::MinMaxWindows, v->toInt(), AutotileDefaults::MaxMaxWindows);
 
     // 2. When the per-screen algorithm differs from the global algorithm,
@@ -205,7 +205,7 @@ int PerScreenConfigResolver::effectiveMaxWindows(const QString& screenName) cons
     //    E.g. global=master-stack(maxWindows=4) but per-screen=bsp(default=5).
     //    Use the per-screen algorithm's default — but only if the user hasn't
     //    explicitly customized global maxWindows away from the global algo's default.
-    const QString screenAlgo = effectiveAlgorithmId(screenName);
+    const QString screenAlgo = effectiveAlgorithmId(screenId);
     if (screenAlgo != m_engine->m_algorithmId) {
         auto* registry = AlgorithmRegistry::instance();
         auto* screenAlgoPtr = registry->algorithm(screenAlgo);
@@ -219,23 +219,23 @@ int PerScreenConfigResolver::effectiveMaxWindows(const QString& screenName) cons
             return m_engine->config()->maxWindows;
         }
         qCWarning(lcAutotile) << "effectiveMaxWindows: unknown per-screen algorithm" << screenAlgo << "for screen"
-                              << screenName << "- falling back to global maxWindows";
+                              << screenId << "- falling back to global maxWindows";
     }
 
     // 3. Same algorithm globally and per-screen — use the global setting
     return m_engine->config()->maxWindows;
 }
 
-QString PerScreenConfigResolver::effectiveAlgorithmId(const QString& screenName) const
+QString PerScreenConfigResolver::effectiveAlgorithmId(const QString& screenId) const
 {
-    if (auto v = perScreenOverride(screenName, QLatin1String("Algorithm")))
+    if (auto v = perScreenOverride(screenId, QLatin1String("Algorithm")))
         return v->toString();
     return m_engine->m_algorithmId;
 }
 
-TilingAlgorithm* PerScreenConfigResolver::effectiveAlgorithm(const QString& screenName) const
+TilingAlgorithm* PerScreenConfigResolver::effectiveAlgorithm(const QString& screenId) const
 {
-    return AlgorithmRegistry::instance()->algorithm(effectiveAlgorithmId(screenName));
+    return AlgorithmRegistry::instance()->algorithm(effectiveAlgorithmId(screenId));
 }
 
 } // namespace PlasmaZones

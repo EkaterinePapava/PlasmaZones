@@ -37,11 +37,11 @@ void SnapEngine::setZoneDetectionAdaptor(ZoneDetectionAdaptor* adaptor)
 // IWindowEngine implementation
 // ═══════════════════════════════════════════════════════════════════════════════
 
-bool SnapEngine::isActiveOnScreen(const QString& screenName) const
+bool SnapEngine::isActiveOnScreen(const QString& screenId) const
 {
     // SnapEngine is active on any screen where AutotileEngine is NOT active
     if (m_autotileEngine) {
-        return !m_autotileEngine->isAutotileScreen(screenName);
+        return !m_autotileEngine->isAutotileScreen(screenId);
     }
     return true; // No autotile engine → all screens use snapping
 }
@@ -57,16 +57,16 @@ void SnapEngine::windowClosed(const QString& windowId)
     // When SnapEngine gains its own state (e.g., pending snap queue), clean it here.
 }
 
-void SnapEngine::windowFocused(const QString& windowId, const QString& screenName)
+void SnapEngine::windowFocused(const QString& windowId, const QString& screenId)
 {
     Q_UNUSED(windowId)
-    m_lastActiveScreenName = screenName;
+    m_lastActiveScreenName = screenId;
 }
 
 // toggleWindowFloat and setWindowFloat are implemented in snapengine/float.cpp
 // focusInDirection, swapInDirection, rotateWindows, moveToPosition are in snapengine/navigation.cpp
 
-void SnapEngine::assignToZones(const QString& windowId, const QStringList& zoneIds, const QString& screenName)
+void SnapEngine::assignToZones(const QString& windowId, const QStringList& zoneIds, const QString& screenId)
 {
     if (zoneIds.isEmpty()) {
         qCWarning(lcCore) << "assignToZones: empty zoneIds for" << windowId << "- skipping";
@@ -74,9 +74,9 @@ void SnapEngine::assignToZones(const QString& windowId, const QStringList& zoneI
     }
     int currentDesktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
     if (zoneIds.size() > 1) {
-        m_windowTracker->assignWindowToZones(windowId, zoneIds, screenName, currentDesktop);
+        m_windowTracker->assignWindowToZones(windowId, zoneIds, screenId, currentDesktop);
     } else {
-        m_windowTracker->assignWindowToZone(windowId, zoneIds.first(), screenName, currentDesktop);
+        m_windowTracker->assignWindowToZone(windowId, zoneIds.first(), screenId, currentDesktop);
     }
 }
 

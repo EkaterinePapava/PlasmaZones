@@ -29,19 +29,19 @@ namespace PlasmaZones {
  */
 struct TilingStateKey
 {
-    QString screenName;
+    QString screenId;
     int desktop = 1;
     QString activity;
 
     bool operator==(const TilingStateKey& other) const
     {
-        return screenName == other.screenName && desktop == other.desktop && activity == other.activity;
+        return screenId == other.screenId && desktop == other.desktop && activity == other.activity;
     }
 };
 
 inline size_t qHash(const TilingStateKey& key, size_t seed = 0)
 {
-    return qHashMulti(seed, key.screenName, key.desktop, key.activity);
+    return qHashMulti(seed, key.screenId, key.desktop, key.activity);
 }
 
 class AutotileConfig;
@@ -92,13 +92,13 @@ public:
 
     /**
      * @brief Check if a specific screen uses autotile
-     * @param screenName Screen to check
+     * @param screenId Screen to check
      * @return true if the screen has an autotile assignment
      */
-    bool isAutotileScreen(const QString& screenName) const;
+    bool isAutotileScreen(const QString& screenId) const;
 
     // IWindowEngine
-    bool isActiveOnScreen(const QString& screenName) const override;
+    bool isActiveOnScreen(const QString& screenId) const override;
 
     /**
      * @brief Get the set of screens currently using autotile
@@ -208,10 +208,10 @@ public:
      *
      * Creates the state if it doesn't exist.
      *
-     * @param screenName Screen identifier
+     * @param screenId Screen identifier
      * @return Pointer to TilingState (owned by engine)
      */
-    TilingState* stateForScreen(const QString& screenName);
+    TilingState* stateForScreen(const QString& screenId);
 
     /**
      * @brief Get the autotile configuration
@@ -257,20 +257,20 @@ public:
     void syncFromSettings(Settings* settings);
 
     // Per-screen config — forwarded to PerScreenConfigResolver
-    void applyPerScreenConfig(const QString& screenName, const QVariantMap& overrides);
-    void clearPerScreenConfig(const QString& screenName);
-    QVariantMap perScreenOverrides(const QString& screenName) const;
-    bool hasPerScreenOverride(const QString& screenName, const QString& key) const;
+    void applyPerScreenConfig(const QString& screenId, const QVariantMap& overrides);
+    void clearPerScreenConfig(const QString& screenId);
+    QVariantMap perScreenOverrides(const QString& screenId) const;
+    bool hasPerScreenOverride(const QString& screenId, const QString& key) const;
 
     // Effective per-screen values — forwarded to PerScreenConfigResolver
-    int effectiveInnerGap(const QString& screenName) const;
-    int effectiveOuterGap(const QString& screenName) const;
-    EdgeGaps effectiveOuterGaps(const QString& screenName) const;
-    bool effectiveSmartGaps(const QString& screenName) const;
-    bool effectiveRespectMinimumSize(const QString& screenName) const;
-    int effectiveMaxWindows(const QString& screenName) const;
-    QString effectiveAlgorithmId(const QString& screenName) const;
-    TilingAlgorithm* effectiveAlgorithm(const QString& screenName) const;
+    int effectiveInnerGap(const QString& screenId) const;
+    int effectiveOuterGap(const QString& screenId) const;
+    EdgeGaps effectiveOuterGaps(const QString& screenId) const;
+    bool effectiveSmartGaps(const QString& screenId) const;
+    bool effectiveRespectMinimumSize(const QString& screenId) const;
+    int effectiveMaxWindows(const QString& screenId) const;
+    QString effectiveAlgorithmId(const QString& screenId) const;
+    TilingAlgorithm* effectiveAlgorithm(const QString& screenId) const;
 
     /**
      * @brief Connect to Settings change signals for live updates
@@ -295,11 +295,11 @@ public:
      * @brief Force retiling of windows
      *
      * Recalculates and applies tiling for the specified screen,
-     * or all screens if screenName is empty.
+     * or all screens if screenId is empty.
      *
-     * @param screenName Screen to retile, or empty for all screens
+     * @param screenId Screen to retile, or empty for all screens
      */
-    Q_INVOKABLE void retile(const QString& screenName = QString());
+    Q_INVOKABLE void retile(const QString& screenId = QString());
 
     /**
      * @brief Swap positions of two tiled windows
@@ -457,14 +457,14 @@ public:
      * @brief Toggle a specific window between tiled and floating states
      *
      * Bypasses internal focus tracking by using the caller-supplied windowId
-     * and screenName directly. This avoids silent no-ops caused by
+     * and screenId directly. This avoids silent no-ops caused by
      * m_activeScreen or focusedWindow() desyncing from KWin's actual state
      * after rapid repeated toggles.
      *
      * @param windowId Window identifier from KWin
-     * @param screenName Screen where the window is located
+     * @param screenId Screen where the window is located
      */
-    Q_INVOKABLE void toggleWindowFloat(const QString& windowId, const QString& screenName) override;
+    Q_INVOKABLE void toggleWindowFloat(const QString& windowId, const QString& screenId) override;
 
     /**
      * @brief Swap the focused window with the adjacent window in tiling order
@@ -500,8 +500,8 @@ public:
 
     // IWindowEngine wrappers (delegate to existing methods)
     void swapInDirection(const QString& direction, const QString& action) override;
-    void rotateWindows(bool clockwise, const QString& screenName) override;
-    void moveToPosition(const QString& windowId, int position, const QString& screenName) override;
+    void rotateWindows(bool clockwise, const QString& screenId) override;
+    void moveToPosition(const QString& windowId, int position, const QString& screenId) override;
 
     /**
      * @brief Set the floating state of a specific window
@@ -539,10 +539,10 @@ public:
      * Only takes effect when the screen's TilingState is empty (no prior windows from
      * session restore). The pending order is consumed as windows are inserted.
      *
-     * @param screenName Screen to set initial order for
+     * @param screenId Screen to set initial order for
      * @param windowIds Window IDs in desired order (zone-number ascending)
      */
-    void setInitialWindowOrder(const QString& screenName, const QStringList& windowIds);
+    void setInitialWindowOrder(const QString& screenId, const QStringList& windowIds);
 
     /**
      * @brief Clear saved floating state for windows that are actively zone-snapped.
@@ -568,10 +568,10 @@ public:
      * autotile → snapping transitions. Call BEFORE switching layouts so
      * the TilingState still exists.
      *
-     * @param screenName Screen to query
+     * @param screenId Screen to query
      * @return Ordered list of tiled window IDs (master first), or empty if no state
      */
-    QStringList tiledWindowOrder(const QString& screenName) const;
+    QStringList tiledWindowOrder(const QString& screenId) const;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Window event handlers (public API for external notification)
@@ -584,12 +584,12 @@ public:
      * if autotile is enabled and window is tileable.
      *
      * @param windowId Window identifier from KWin
-     * @param screenName Screen where the window appeared
+     * @param screenId Screen where the window appeared
      * @param minWidth Window minimum width in pixels (0 if unconstrained)
      * @param minHeight Window minimum height in pixels (0 if unconstrained)
      */
     using IWindowEngine::windowOpened; // Expose 2-arg convenience overload
-    void windowOpened(const QString& windowId, const QString& screenName, int minWidth, int minHeight) override;
+    void windowOpened(const QString& windowId, const QString& screenId, int minWidth, int minHeight) override;
 
     /**
      * @brief Update a window's minimum size at runtime
@@ -620,9 +620,9 @@ public:
      * tracking for tiling operations.
      *
      * @param windowId Window identifier from KWin
-     * @param screenName Screen where the window is located
+     * @param screenId Screen where the window is located
      */
-    void windowFocused(const QString& windowId, const QString& screenName) override;
+    void windowFocused(const QString& windowId, const QString& screenId) override;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Retile helpers (public — used by extracted classes)
@@ -635,7 +635,7 @@ public:
      * to processPendingRetiles(). Multiple calls in the same event loop pass
      * are coalesced — only one retile fires per screen.
      */
-    void scheduleRetileForScreen(const QString& screenName);
+    void scheduleRetileForScreen(const QString& screenId);
 
     /**
      * @brief Helper to retile a screen after a window operation
@@ -643,10 +643,10 @@ public:
      * Recalculates layout and applies tiling if enabled, then emits tilingChanged.
      * Only emits signal if operationSucceeded is true.
      *
-     * @param screenName Screen to retile
+     * @param screenId Screen to retile
      * @param operationSucceeded Whether the triggering operation actually changed something
      */
-    void retileAfterOperation(const QString& screenName, bool operationSucceeded);
+    void retileAfterOperation(const QString& screenId, bool operationSucceeded);
 
 Q_SIGNALS:
     /**
@@ -670,17 +670,17 @@ Q_SIGNALS:
 
     /**
      * @brief Emitted when tiling layout changes for a screen
-     * @param screenName Screen that was retiled
+     * @param screenId Screen that was retiled
      */
-    void tilingChanged(const QString& screenName);
+    void tilingChanged(const QString& screenId);
 
     /**
      * @brief Emitted when a window's floating state changes
      * @param windowId Window whose floating state changed
      * @param floating True if the window is now floating, false if tiled
-     * @param screenName Screen where the window is (for OSD placement)
+     * @param screenId Screen where the window is (for OSD placement)
      */
-    void windowFloatingChanged(const QString& windowId, bool floating, const QString& screenName);
+    void windowFloatingChanged(const QString& windowId, bool floating, const QString& screenId);
 
     /**
      * @brief Emitted when windows are tiled to new geometries (batch)
@@ -713,11 +713,10 @@ Q_SIGNALS:
      * @param reason Failure reason or success detail (e.g. "clockwise:3")
      * @param sourceZoneId Source zone (empty for rotate)
      * @param targetZoneId Target zone (empty for rotate)
-     * @param screenName Screen where operation occurred
+     * @param screenId Screen where operation occurred
      */
     void navigationFeedbackRequested(bool success, const QString& action, const QString& reason,
-                                     const QString& sourceZoneId, const QString& targetZoneId,
-                                     const QString& screenName);
+                                     const QString& sourceZoneId, const QString& targetZoneId, const QString& screenId);
 
     /**
      * @brief Emitted when windows are released from autotile management
@@ -732,25 +731,25 @@ private Q_SLOTS:
     void onWindowAdded(const QString& windowId);
     void onWindowRemoved(const QString& windowId);
     void onWindowFocused(const QString& windowId);
-    void onScreenGeometryChanged(const QString& screenName);
+    void onScreenGeometryChanged(const QString& screenId);
     void onLayoutChanged(Layout* layout);
 
 private:
     void connectSignals();
-    bool insertWindow(const QString& windowId, const QString& screenName);
+    bool insertWindow(const QString& windowId, const QString& screenId);
     void removeWindow(const QString& windowId);
-    void recalculateLayout(const QString& screenName);
-    void applyTiling(const QString& screenName);
+    void recalculateLayout(const QString& screenId);
+    void applyTiling(const QString& screenId);
     bool shouldTileWindow(const QString& windowId) const;
     QString screenForWindow(const QString& windowId) const;
-    QRect screenGeometry(const QString& screenName) const;
+    QRect screenGeometry(const QString& screenId) const;
 
     /**
      * @brief Construct a TilingStateKey for the current desktop/activity
      */
-    TilingStateKey currentKeyForScreen(const QString& screenName) const
+    TilingStateKey currentKeyForScreen(const QString& screenId) const
     {
-        return TilingStateKey{screenName, m_currentDesktop, m_currentActivity};
+        return TilingStateKey{screenId, m_currentDesktop, m_currentActivity};
     }
 
     /**
@@ -800,9 +799,9 @@ private:
      * Encapsulates the four-step retile sequence: overflow recovery,
      * recalculate layout, apply tiling, emit tilingChanged.
      *
-     * @param screenName Screen to retile
+     * @param screenId Screen to retile
      */
-    void retileScreen(const QString& screenName);
+    void retileScreen(const QString& screenId);
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // Helper Methods
@@ -815,10 +814,10 @@ private:
      * is already present in the screen's TilingState. If all resolved,
      * removes the pending order entry. Used by insertWindow() and removeWindow().
      *
-     * @param screenName Screen whose pending order to check
+     * @param screenId Screen whose pending order to check
      * @return true if the pending order was fully resolved and removed
      */
-    bool cleanupPendingOrderIfResolved(const QString& screenName);
+    bool cleanupPendingOrderIfResolved(const QString& screenId);
 
     /**
      * @brief Validate that a windowId is not empty, logging a warning if it is
@@ -833,7 +832,7 @@ private:
      *
      * Toggles the floating state, retiles, and emits windowFloatingChanged.
      */
-    void performToggleFloat(TilingState* state, const QString& windowId, const QString& screenName);
+    void performToggleFloat(TilingState* state, const QString& windowId, const QString& screenId);
 
     /**
      * @brief Get TilingState for a window by looking up its screen
@@ -841,10 +840,10 @@ private:
      * Consolidates the common pattern of m_windowToStateKey lookup + state resolution.
      *
      * @param windowId Window ID to look up
-     * @param outScreenName If non-null, receives the screen name
+     * @param outScreenId If non-null, receives the screen ID
      * @return TilingState pointer or nullptr if window not tracked/screen invalid
      */
-    TilingState* stateForWindow(const QString& windowId, QString* outScreenName = nullptr);
+    TilingState* stateForWindow(const QString& windowId, QString* outScreenId = nullptr);
 
     LayoutManager* m_layoutManager = nullptr;
     WindowTrackingService* m_windowTracker = nullptr;

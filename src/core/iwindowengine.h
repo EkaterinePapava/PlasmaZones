@@ -38,10 +38,10 @@ public:
      * AutotileEngine returns true for screens with autotile layouts;
      * SnapEngine returns true for screens with manual layouts.
      *
-     * @param screenName Screen connector name (e.g. "DP-1")
+     * @param screenId Screen connector name (e.g. "DP-1")
      * @return true if this engine manages the given screen
      */
-    virtual bool isActiveOnScreen(const QString& screenName) const = 0;
+    virtual bool isActiveOnScreen(const QString& screenId) const = 0;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Window lifecycle
@@ -54,18 +54,18 @@ public:
      * SnapEngine runs the auto-snap fallback chain (app rule → persisted → empty → last zone).
      *
      * @param windowId Window identifier from KWin
-     * @param screenName Screen where the window appeared
+     * @param screenId Screen where the window appeared
      * @param minWidth Window minimum width (0 if unconstrained)
      * @param minHeight Window minimum height (0 if unconstrained)
      */
-    virtual void windowOpened(const QString& windowId, const QString& screenName, int minWidth, int minHeight) = 0;
+    virtual void windowOpened(const QString& windowId, const QString& screenId, int minWidth, int minHeight) = 0;
 
     /**
      * @brief Convenience overload — equivalent to windowOpened(id, screen, 0, 0)
      */
-    void windowOpened(const QString& windowId, const QString& screenName)
+    void windowOpened(const QString& windowId, const QString& screenId)
     {
-        windowOpened(windowId, screenName, 0, 0);
+        windowOpened(windowId, screenId, 0, 0);
     }
 
     /**
@@ -84,9 +84,9 @@ public:
      * Both engines update their focus tracking for directional navigation.
      *
      * @param windowId Window identifier from KWin
-     * @param screenName Screen where the window is located
+     * @param screenId Screen where the window is located
      */
-    virtual void windowFocused(const QString& windowId, const QString& screenName) = 0;
+    virtual void windowFocused(const QString& windowId, const QString& screenId) = 0;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Float management
@@ -99,9 +99,9 @@ public:
      * SnapEngine saves/restores zone assignments via WindowTrackingService.
      *
      * @param windowId Window identifier from KWin
-     * @param screenName Screen where the window is located
+     * @param screenId Screen where the window is located
      */
-    virtual void toggleWindowFloat(const QString& windowId, const QString& screenName) = 0;
+    virtual void toggleWindowFloat(const QString& windowId, const QString& screenId) = 0;
 
     /**
      * @brief Set a window's floating state explicitly (directional, not toggle)
@@ -138,9 +138,9 @@ public:
      * @brief Rotate all managed windows by one position
      *
      * @param clockwise Direction of rotation
-     * @param screenName Screen to operate on (empty = active/all)
+     * @param screenId Screen to operate on (empty = active/all)
      */
-    virtual void rotateWindows(bool clockwise, const QString& screenName) = 0;
+    virtual void rotateWindows(bool clockwise, const QString& screenId) = 0;
 
     /**
      * @brief Move a window to a specific position/zone number
@@ -150,9 +150,9 @@ public:
      *
      * @param windowId Window to move (may be ignored if engine uses focused window)
      * @param position Target position (1-based)
-     * @param screenName Screen for layout/geometry resolution
+     * @param screenId Screen for layout/geometry resolution
      */
-    virtual void moveToPosition(const QString& windowId, int position, const QString& screenName) = 0;
+    virtual void moveToPosition(const QString& windowId, int position, const QString& screenId) = 0;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Persistence

@@ -9,16 +9,16 @@
 
 namespace PlasmaZones {
 
-void OverflowManager::markOverflow(const QString& windowId, const QString& screenName)
+void OverflowManager::markOverflow(const QString& windowId, const QString& screenId)
 {
-    if (windowId.isEmpty() || screenName.isEmpty()) {
+    if (windowId.isEmpty() || screenId.isEmpty()) {
         return;
     }
 
     // If the window was previously tracked on a different screen, remove the
     // stale entry to avoid ghost references in the old screen's set.
     auto it = m_windowToScreen.find(windowId);
-    if (it != m_windowToScreen.end() && it.value() != screenName) {
+    if (it != m_windowToScreen.end() && it.value() != screenId) {
         auto sit = m_overflow.find(it.value());
         if (sit != m_overflow.end()) {
             sit->remove(windowId);
@@ -27,8 +27,8 @@ void OverflowManager::markOverflow(const QString& windowId, const QString& scree
             }
         }
     }
-    m_overflow[screenName].insert(windowId);
-    m_windowToScreen[windowId] = screenName;
+    m_overflow[screenId].insert(windowId);
+    m_windowToScreen[windowId] = screenId;
 }
 
 void OverflowManager::clearOverflow(const QString& windowId)
@@ -37,10 +37,10 @@ void OverflowManager::clearOverflow(const QString& windowId)
     if (it == m_windowToScreen.end()) {
         return;
     }
-    const QString screenName = it.value();
+    const QString screenId = it.value();
     m_windowToScreen.erase(it);
 
-    auto sit = m_overflow.find(screenName);
+    auto sit = m_overflow.find(screenId);
     if (sit != m_overflow.end()) {
         sit->remove(windowId);
         if (sit->isEmpty()) {
@@ -54,9 +54,9 @@ bool OverflowManager::isOverflow(const QString& windowId) const
     return m_windowToScreen.contains(windowId);
 }
 
-QStringList OverflowManager::applyOverflow(const QString& screenName, const QStringList& windows, int tileCount)
+QStringList OverflowManager::applyOverflow(const QString& screenId, const QStringList& windows, int tileCount)
 {
-    if (screenName.isEmpty()) {
+    if (screenId.isEmpty()) {
         return {};
     }
 
@@ -64,15 +64,15 @@ QStringList OverflowManager::applyOverflow(const QString& screenName, const QStr
     for (int i = tileCount; i < windows.size(); ++i) {
         const QString& wid = windows[i];
         if (!isOverflow(wid)) {
-            markOverflow(wid, screenName);
+            markOverflow(wid, screenId);
             newlyOverflowed.append(wid);
-            qCInfo(lcAutotile) << "Overflow: tracking window" << wid << "on screen" << screenName;
+            qCInfo(lcAutotile) << "Overflow: tracking window" << wid << "on screen" << screenId;
         }
     }
     return newlyOverflowed;
 }
 
-QStringList OverflowManager::recoverIfRoom(const QString& screenName, int tiledCount, int maxWindows,
+QStringList OverflowManager::recoverIfRoom(const QString& screenId, int tiledCount, int maxWindows,
                                            const std::function<bool(const QString&)>& isFloating,
                                            const std::function<bool(const QString&)>& containsWindow)
 {
@@ -85,7 +85,7 @@ QStringList OverflowManager::recoverIfRoom(const QString& screenName, int tiledC
         return {};
     }
 
-    auto sit = m_overflow.find(screenName);
+    auto sit = m_overflow.find(screenId);
     if (sit == m_overflow.end() || sit->isEmpty()) {
         return {};
     }
@@ -112,7 +112,7 @@ QStringList OverflowManager::recoverIfRoom(const QString& screenName, int tiledC
     for (const QString& wid : stale) {
         sit->remove(wid);
         m_windowToScreen.remove(wid);
-        qCDebug(lcAutotile) << "Overflow: purged stale entry" << wid << "on screen" << screenName;
+        qCDebug(lcAutotile) << "Overflow: purged stale entry" << wid << "on screen" << screenId;
     }
 
     // Return candidates up to available room — caller performs state mutations
@@ -124,7 +124,7 @@ QStringList OverflowManager::recoverIfRoom(const QString& screenName, int tiledC
         sit->remove(wid);
         m_windowToScreen.remove(wid);
         toRecover.append(wid);
-        qCInfo(lcAutotile) << "Overflow: recovering window" << wid << "on screen" << screenName;
+        qCInfo(lcAutotile) << "Overflow: recovering window" << wid << "on screen" << screenId;
         --room;
     }
 
@@ -135,9 +135,9 @@ QStringList OverflowManager::recoverIfRoom(const QString& screenName, int tiledC
     return toRecover;
 }
 
-QSet<QString> OverflowManager::takeForScreen(const QString& screenName)
+QSet<QString> OverflowManager::takeForScreen(const QString& screenId)
 {
-    QSet<QString> result = m_overflow.take(screenName);
+    QSet<QString> result = m_overflow.take(screenId);
     for (const QString& wid : result) {
         m_windowToScreen.remove(wid);
     }

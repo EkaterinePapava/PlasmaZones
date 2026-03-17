@@ -82,7 +82,7 @@ private:
     /**
      * @brief Helper to get tiled windows and state for focus operations
      */
-    QStringList tiledWindowsForFocusedScreen(QString& outScreenName, TilingState*& outState);
+    QStringList tiledWindowsForFocusedScreen(QString& outScreenId, TilingState*& outState);
 
     /**
      * @brief Helper to apply an operation to all screen states

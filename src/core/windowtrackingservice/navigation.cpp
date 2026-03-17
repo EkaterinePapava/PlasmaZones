@@ -53,13 +53,13 @@ QSet<QUuid> WindowTrackingService::buildOccupiedZoneSet(const QString& screenFil
     return occupiedZoneIds;
 }
 
-QString WindowTrackingService::findEmptyZoneInLayout(Layout* layout, const QString& screenName) const
+QString WindowTrackingService::findEmptyZoneInLayout(Layout* layout, const QString& screenId) const
 {
     if (!layout) {
         return QString();
     }
 
-    QSet<QUuid> occupiedZoneIds = buildOccupiedZoneSet(screenName);
+    QSet<QUuid> occupiedZoneIds = buildOccupiedZoneSet(screenId);
 
     // Sort by zone number so "first empty" is the lowest-numbered empty zone
     QVector<Zone*> sortedZones = layout->zones();
@@ -75,20 +75,20 @@ QString WindowTrackingService::findEmptyZoneInLayout(Layout* layout, const QStri
     return QString();
 }
 
-QString WindowTrackingService::findEmptyZone(const QString& screenName) const
+QString WindowTrackingService::findEmptyZone(const QString& screenId) const
 {
-    Layout* layout = m_layoutManager->resolveLayoutForScreen(screenName);
-    return findEmptyZoneInLayout(layout, screenName);
+    Layout* layout = m_layoutManager->resolveLayoutForScreen(screenId);
+    return findEmptyZoneInLayout(layout, screenId);
 }
 
-QString WindowTrackingService::getEmptyZonesJson(const QString& screenName) const
+QString WindowTrackingService::getEmptyZonesJson(const QString& screenId) const
 {
-    Layout* layout = m_layoutManager->resolveLayoutForScreen(screenName);
+    Layout* layout = m_layoutManager->resolveLayoutForScreen(screenId);
     if (!layout) {
         return QStringLiteral("[]");
     }
 
-    QScreen* screen = screenName.isEmpty() ? Utils::primaryScreen() : Utils::findScreenByIdOrName(screenName);
+    QScreen* screen = screenId.isEmpty() ? Utils::primaryScreen() : Utils::findScreenByIdOrName(screenId);
     if (!screen) {
         screen = Utils::primaryScreen();
     }
@@ -98,13 +98,13 @@ QString WindowTrackingService::getEmptyZonesJson(const QString& screenName) cons
 
     // Use screen-filtered occupancy check — without this, zones occupied on
     // screen A appear occupied on screen B when both use the same layout (same zone IDs).
-    QSet<QUuid> occupied = buildOccupiedZoneSet(screenName);
+    QSet<QUuid> occupied = buildOccupiedZoneSet(screenId);
     return GeometryUtils::buildEmptyZonesJson(layout, screen, m_settings, [&occupied](const Zone* z) {
         return !occupied.contains(z->id());
     });
 }
 
-QRect WindowTrackingService::zoneGeometry(const QString& zoneId, const QString& screenName) const
+QRect WindowTrackingService::zoneGeometry(const QString& zoneId, const QString& screenId) const
 {
     auto uuidOpt = Utils::parseUuid(zoneId);
     if (!uuidOpt) {
@@ -125,7 +125,7 @@ QRect WindowTrackingService::zoneGeometry(const QString& zoneId, const QString& 
         return QRect();
     }
 
-    QScreen* screen = screenName.isEmpty() ? Utils::primaryScreen() : Utils::findScreenByIdOrName(screenName);
+    QScreen* screen = screenId.isEmpty() ? Utils::primaryScreen() : Utils::findScreenByIdOrName(screenId);
 
     if (!screen) {
         screen = Utils::primaryScreen();
@@ -136,7 +136,6 @@ QRect WindowTrackingService::zoneGeometry(const QString& zoneId, const QString& 
     }
 
     // Use the zone's own layout for per-layout gap overrides
-    QString screenId = Utils::screenIdentifier(screen);
     int zonePadding = GeometryUtils::getEffectiveZonePadding(layout, m_settings, screenId);
     EdgeGaps outerGaps = GeometryUtils::getEffectiveOuterGaps(layout, m_settings, screenId);
     bool useAvail = !(layout && layout->useFullScreenGeometry());
@@ -145,11 +144,11 @@ QRect WindowTrackingService::zoneGeometry(const QString& zoneId, const QString& 
     return GeometryUtils::snapToRect(geoF);
 }
 
-QRect WindowTrackingService::multiZoneGeometry(const QStringList& zoneIds, const QString& screenName) const
+QRect WindowTrackingService::multiZoneGeometry(const QStringList& zoneIds, const QString& screenId) const
 {
     QRect combined;
     for (const QString& zoneId : zoneIds) {
-        QRect geo = zoneGeometry(zoneId, screenName);
+        QRect geo = zoneGeometry(zoneId, screenId);
         if (geo.isValid()) {
             if (combined.isValid()) {
                 combined = combined.united(geo);
@@ -167,7 +166,7 @@ QVector<RotationEntry> WindowTrackingService::calculateRotation(bool clockwise, 
 
     // Group snapped windows by screen so each screen rotates independently
     // using its own per-screen layout (not the global active layout)
-    QHash<QString, QVector<QPair<QString, QString>>> windowsByScreen; // screenName -> [(windowId, primaryZoneId)]
+    QHash<QString, QVector<QPair<QString, QString>>> windowsByScreen; // screenId -> [(windowId, primaryZoneId)]
     for (auto it = m_windowZoneAssignments.constBegin(); it != m_windowZoneAssignments.constEnd(); ++it) {
         // User-initiated snap commands override floating state.
         // Floating windows are unsnapped (not in m_windowZoneAssignments), so this
@@ -178,22 +177,22 @@ QVector<RotationEntry> WindowTrackingService::calculateRotation(bool clockwise, 
             continue;
         }
 
-        QString screenName = m_windowScreenAssignments.value(it.key());
+        QString screenId = m_windowScreenAssignments.value(it.key());
 
         // When a screen filter is set, only include windows on that screen
-        if (!screenFilter.isEmpty() && !Utils::screensMatch(screenName, screenFilter)) {
+        if (!screenFilter.isEmpty() && !Utils::screensMatch(screenId, screenFilter)) {
             continue;
         }
 
-        windowsByScreen[screenName].append({it.key(), zoneIdList.first()});
+        windowsByScreen[screenId].append({it.key(), zoneIdList.first()});
     }
 
     // Process each screen independently
     for (auto screenIt = windowsByScreen.constBegin(); screenIt != windowsByScreen.constEnd(); ++screenIt) {
-        const QString& screenName = screenIt.key();
+        const QString& screenId = screenIt.key();
 
         // Get the layout assigned to THIS screen (not the global active layout)
-        Layout* layout = m_layoutManager->resolveLayoutForScreen(screenName);
+        Layout* layout = m_layoutManager->resolveLayoutForScreen(screenId);
         if (!layout || layout->zoneCount() < 2) {
             continue;
         }
@@ -237,12 +236,12 @@ QVector<RotationEntry> WindowTrackingService::calculateRotation(bool clockwise, 
                 windowZoneIndices.append({windowId, zoneIndex});
             } else {
                 qCDebug(lcCore) << "Window" << windowId << "has zone ID" << storedZoneId
-                                << "not found in layout for screen" << screenName << "- skipping rotation";
+                                << "not found in layout for screen" << screenId << "- skipping rotation";
             }
         }
 
         // Get screen and gap settings for geometry calculation
-        QScreen* screen = screenName.isEmpty() ? Utils::primaryScreen() : Utils::findScreenByIdOrName(screenName);
+        QScreen* screen = screenId.isEmpty() ? Utils::primaryScreen() : Utils::findScreenByIdOrName(screenId);
         if (!screen) {
             screen = Utils::primaryScreen();
         }
@@ -250,7 +249,6 @@ QVector<RotationEntry> WindowTrackingService::calculateRotation(bool clockwise, 
             continue;
         }
 
-        QString screenId = Utils::screenIdentifier(screen);
         int zonePadding = GeometryUtils::getEffectiveZonePadding(layout, m_settings, screenId);
         EdgeGaps outerGaps = GeometryUtils::getEffectiveOuterGaps(layout, m_settings, screenId);
 
