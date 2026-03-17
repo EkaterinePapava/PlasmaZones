@@ -11,6 +11,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - **Window state lost on daemon reload**: Zone assignments were purged during `loadState()` when the saved active layout differed from the default layout. Restoring the active layout emitted `activeLayoutChanged` before `currentVirtualDesktop` was set, causing `onLayoutChanged()` to resolve effective layouts against the wrong desktop and fall back to `defaultLayout()` — whose zones didn't match the saved assignments. Fixed by suppressing the signal during state restoration.
+- **Screen not found on Wayland (hex serial mismatch)**: The daemon's `screenIdentifier()` used `QScreen::serialNumber()` as-is, but on KDE Plasma Wayland this returns the EDID header serial in hex (e.g., `"0x0001C1A3"`). The KWin effect already normalized to decimal (`"115107"`), causing screen ID mismatches across the D-Bus boundary. Both sides now produce identical decimal serials.
+- **Screen not found from KCM queries ([#223])**: `getScreenInfo()` only matched screens by connector name (`"eDP-1"`), but `getScreens()` returns EDID-based screen IDs (`"Sharp Corporation:LQ134N1JW53"`). Every KCM screen info query failed, causing autotile assignments to revert and persistent "screen not found" errors on multi-monitor setups. Now accepts both connector names and screen IDs.
+- **Autotile window order lost on rapid mode toggle**: When `setInitialWindowOrder()` was called twice for the same screen, the first call's 10-second safety timer would fire and remove the second call's pending order. Added a generation counter so stale timers from superseded calls become no-ops.
+- **KCM fallback screen IDs inconsistent**: When the daemon was unavailable, the KCM screen provider fell back to connector names instead of EDID-based screen IDs, causing per-screen config mismatches. Now uses `Utils::screenIdentifier()` in the fallback path.
 
 ## [2.3.0] - 2026-03-17
 
