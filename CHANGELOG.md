@@ -7,6 +7,26 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-03-17
+
+### Added
+- **Stable EDID-based screen identifiers**: All screen identification now uses stable EDID-based IDs (e.g., `LG Electronics:LG Ultra HD:115107`) instead of connector names (`DP-2`). Monitors survive replug/reboot without losing layout assignments.
+- **Per-screen layout filtering**: Layout cycle shortcuts, layout picker popup, and zone selector now filter layouts based on the focused screen's mode. Snapping screens only show zone layouts; autotile screens only show tiling algorithms.
+- **Quick Layout slot labels**: KCM now shows "Quick Layout 1" / "Quick Tiling 1" instead of raw shortcut keys (`Meta+Alt+1`). Shortcut key shown as secondary text.
+- **Hot reload for shaders**: System and user shaders reload automatically on file changes.
+
+### Fixed
+- **Snap assist sending windows to wrong monitor**: On dual-monitor setups sharing the same layout, zones occupied on one screen appeared occupied on the other. Empty zone detection is now per-screen.
+- **Cross-screen drag not clearing snap/float state**: Dragging a snapped window to a different monitor now clears the zone assignment and pre-tile geometry. Float toggle no longer restores to the original monitor.
+- **Window restore unsnapping on cross-screen restore**: Windows persisted on a secondary monitor would immediately unsnap after restore. The daemon now decides whether to unsnap based on its own assignment state.
+- **Snap assist flashing during rapid layout cycling**: Snap assist continuation now runs after stagger animations complete, with a generation counter to invalidate stale callbacks from previous layouts.
+- **Zone selector showing on autotile-managed screens**: The zone selector popup now correctly skips screens in autotile mode.
+
+### Changed
+- **Screen ID migration**: 34+ files refactored to use EDID-based screen IDs consistently across the entire effect↔daemon D-Bus boundary, autotile engine, snap engine, and window tracking service.
+- **Shader categories from metadata**: Removed hardcoded category translations — category names come directly from shader `metadata.json`.
+- **German translations**: All three domains 100% complete (KCM: 529, Editor: 449, Daemon: 61).
+
 ## [2.2.1] - 2026-03-14
 
 ### Fixed
@@ -771,7 +791,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.2.1...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.2.1...v2.3.0
 [2.2.1]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.0.2...v2.1.0
