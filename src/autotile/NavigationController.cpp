@@ -8,6 +8,7 @@
 #include "core/constants.h"
 #include "core/logging.h"
 #include "core/screenmanager.h"
+#include "core/utils.h"
 
 #include <QScreen>
 #include <algorithm>
@@ -345,7 +346,7 @@ QStringList NavigationController::tiledWindowsForFocusedScreen(QString& outScree
 
     // No focused window found - fallback to primary screen if available
     if (m_engine->m_screenManager && m_engine->m_screenManager->primaryScreen()) {
-        outScreenName = m_engine->m_screenManager->primaryScreen()->name();
+        outScreenName = Utils::screenIdentifier(m_engine->m_screenManager->primaryScreen());
         const auto key = m_engine->currentKeyForScreen(outScreenName);
         auto sit = m_engine->m_screenStates.constFind(key);
         if (sit != m_engine->m_screenStates.constEnd() && sit.value()) {

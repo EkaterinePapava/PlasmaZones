@@ -205,17 +205,10 @@ void WindowTrackingAdaptor::loadState()
     using PendingRestore = WindowTrackingService::PendingRestore;
     QHash<QString, QList<PendingRestore>> pendingQueues;
 
-    // Helper: resolve stored screen value (may be screen ID or connector name) to current connector
+    // Helper: resolve stored screen value. Returns as-is — mixed formats
+    // (connector names and screen IDs) are handled at comparison points via
+    // Utils::screensMatch() which resolves both to QScreen* pointers.
     auto resolveScreen = [](const QString& storedScreen) -> QString {
-        if (storedScreen.isEmpty()) {
-            return storedScreen;
-        }
-        if (!Utils::isConnectorName(storedScreen)) {
-            QString connectorName = Utils::screenNameForId(storedScreen);
-            if (!connectorName.isEmpty()) {
-                return connectorName;
-            }
-        }
         return storedScreen;
     };
 

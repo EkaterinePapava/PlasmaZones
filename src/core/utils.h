@@ -237,6 +237,16 @@ PLASMAZONES_EXPORT QString screenNameForId(const QString& screenId);
 PLASMAZONES_EXPORT bool isConnectorName(const QString& identifier);
 
 /**
+ * @brief Format-agnostic screen comparison.
+ *
+ * Returns true if both identifiers refer to the same physical screen,
+ * regardless of whether they are connector names ("DP-2") or EDID-based
+ * screen IDs ("LG Electronics:LG Ultra HD:115107"). Resolves both to
+ * QScreen* via findScreenByIdOrName and compares pointers.
+ */
+PLASMAZONES_EXPORT bool screensMatch(const QString& a, const QString& b);
+
+/**
  * @brief Check for duplicate screen identifiers among connected monitors
  */
 PLASMAZONES_EXPORT void warnDuplicateScreenIds();

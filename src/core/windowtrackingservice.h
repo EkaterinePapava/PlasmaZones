@@ -717,8 +717,13 @@ private:
     QRect adjustGeometryToScreen(const QRect& geometry) const;
     Zone* findZoneById(const QString& zoneId) const;
     QString findEmptyZoneInLayout(Layout* layout, const QString& screenName) const;
+
+public:
+    /// Build set of occupied zone UUIDs, optionally filtered by screen.
+    /// Uses Utils::screensMatch() for format-agnostic screen comparison.
     QSet<QUuid> buildOccupiedZoneSet(const QString& screenFilter = QString()) const;
 
+private:
     // Dependencies
     LayoutManager* m_layoutManager;
     IZoneDetector* m_zoneDetector;

@@ -188,6 +188,20 @@ QScreen* findScreenByIdOrName(const QString& identifier)
     return nullptr;
 }
 
+bool screensMatch(const QString& a, const QString& b)
+{
+    if (a == b) {
+        return true; // fast path: identical strings
+    }
+    if (a.isEmpty() || b.isEmpty()) {
+        return false;
+    }
+    // Resolve both to QScreen* — handles connector names and screen IDs transparently
+    QScreen* sa = findScreenByIdOrName(a);
+    QScreen* sb = findScreenByIdOrName(b);
+    return sa && sb && sa == sb;
+}
+
 void warnDuplicateScreenIds()
 {
     QHash<QString, QStringList> idToConnectors;

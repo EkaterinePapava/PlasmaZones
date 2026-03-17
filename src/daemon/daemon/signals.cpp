@@ -219,7 +219,7 @@ void Daemon::initializeAutotile()
                 // or zone-ordered windows. Seed ALL screens for deterministic ordering
                 // on multi-monitor setups.
                 for (QScreen* s : m_screenManager->screens()) {
-                    seedAutotileOrderForScreen(s->name());
+                    seedAutotileOrderForScreen(Utils::screenIdentifier(s));
                 }
 
                 // Resolve algorithm from the AssignmentEntry's tilingAlgorithm
@@ -509,19 +509,19 @@ void Daemon::connectOverlaySignals()
     // keyboard navigation) to avoid overlay coordinate drift/overlap bugs, then forward to effect
     connect(
         m_overlayService.get(), &IOverlayService::snapAssistWindowSelected, this,
-        [this](const QString& windowId, const QString& zoneId, const QString& geometryJson, const QString& screenName) {
-            // Resolve screen name first (needed for per-screen autotile check)
+        [this](const QString& windowId, const QString& zoneId, const QString& geometryJson, const QString& screenId) {
+            // Resolve screen ID; fall back to primary screen
             QString geometryToUse = geometryJson;
-            QString effectiveScreen = screenName;
-            if (effectiveScreen.isEmpty() && QGuiApplication::primaryScreen()) {
-                effectiveScreen = QGuiApplication::primaryScreen()->name();
+            QString effectiveScreenId = screenId;
+            if (effectiveScreenId.isEmpty() && QGuiApplication::primaryScreen()) {
+                effectiveScreenId = Utils::screenIdentifier(QGuiApplication::primaryScreen());
             }
-            // Snap assist is a manual-mode concept; ignore if this screen uses autotile
-            if (m_autotileEngine && m_autotileEngine->isAutotileScreen(effectiveScreen)) {
+            // Snap assist is a manual-mode concept; ignore if this screen uses autotile.
+            if (m_autotileEngine && m_autotileEngine->isAutotileScreen(effectiveScreenId)) {
                 return;
             }
-            if (!effectiveScreen.isEmpty()) {
-                QString authGeometry = m_windowTrackingAdaptor->getZoneGeometryForScreen(zoneId, effectiveScreen);
+            if (!effectiveScreenId.isEmpty()) {
+                QString authGeometry = m_windowTrackingAdaptor->getZoneGeometryForScreen(zoneId, effectiveScreenId);
                 if (!authGeometry.isEmpty()) {
                     geometryToUse = authGeometry;
                 }

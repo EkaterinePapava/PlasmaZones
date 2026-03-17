@@ -46,10 +46,10 @@ void Daemon::updateAutotileScreens()
         QString screenId = Utils::screenIdentifier(screen);
         QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
         if (LayoutId::isAutotile(assignmentId)) {
-            autotileScreens.insert(screen->name());
+            autotileScreens.insert(screenId);
             QString algoId = LayoutId::extractAlgorithmId(assignmentId);
             if (!algoId.isEmpty()) {
-                screenAlgorithms[screen->name()] = algoId;
+                screenAlgorithms[screenId] = algoId;
             }
         }
     }
@@ -60,13 +60,13 @@ void Daemon::updateAutotileScreens()
     // stateForScreen(), which setAutotileScreens reuses for added screens.
     if (m_settings) {
         for (QScreen* screen : m_screenManager->screens()) {
-            if (!autotileScreens.contains(screen->name()))
-                continue;
             QString screenId = Utils::screenIdentifier(screen);
+            if (!autotileScreens.contains(screenId))
+                continue;
             QVariantMap overrides = m_settings->getPerScreenAutotileSettings(screenId);
             // Inject algorithm from layout assignment (authoritative source)
-            if (screenAlgorithms.contains(screen->name())) {
-                const QString screenAlgo = screenAlgorithms.value(screen->name());
+            if (screenAlgorithms.contains(screenId)) {
+                const QString screenAlgo = screenAlgorithms.value(screenId);
                 overrides[QStringLiteral("Algorithm")] = screenAlgo;
 
                 // When the per-screen algorithm differs from the engine's
@@ -112,12 +112,12 @@ void Daemon::updateAutotileScreens()
                 }
             }
             // Compare against currently applied overrides to avoid redundant retiles
-            QVariantMap current = m_autotileEngine->perScreenOverrides(screen->name());
+            QVariantMap current = m_autotileEngine->perScreenOverrides(screenId);
             if (overrides != current) {
                 if (!overrides.isEmpty()) {
-                    m_autotileEngine->applyPerScreenConfig(screen->name(), overrides);
+                    m_autotileEngine->applyPerScreenConfig(screenId, overrides);
                 } else {
-                    m_autotileEngine->clearPerScreenConfig(screen->name());
+                    m_autotileEngine->clearPerScreenConfig(screenId);
                 }
             }
         }
@@ -247,7 +247,7 @@ void Daemon::handleSnappingToAutotile()
     // Pre-seed autotile engine with zone-ordered windows BEFORE layout switch.
     // This ensures deterministic window ordering: zone 1 → master, zone 2 → second, etc.
     for (QScreen* screen : m_screenManager->screens()) {
-        seedAutotileOrderForScreen(screen->name());
+        seedAutotileOrderForScreen(Utils::screenIdentifier(screen));
     }
 
     // Assign autotile layout to ALL screens (global toggle).

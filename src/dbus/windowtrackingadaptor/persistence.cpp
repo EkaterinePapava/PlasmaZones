@@ -219,7 +219,7 @@ QString WindowTrackingAdaptor::detectScreenForZone(const QString& zoneId) const
         Layout* layout = m_layoutManager->layoutForScreen(Utils::screenIdentifier(screen), currentDesktop,
                                                           m_layoutManager->currentActivity());
         if (layout && layout->zoneById(*zoneUuid)) {
-            return screen->name();
+            return Utils::screenIdentifier(screen);
         }
     }
 
@@ -239,7 +239,7 @@ QString WindowTrackingAdaptor::detectScreenForZone(const QString& zoneId) const
         QPoint zoneCenter(refGeom.x() + static_cast<int>(normGeom.center().x() * refGeom.width()),
                           refGeom.y() + static_cast<int>(normGeom.center().y() * refGeom.height()));
         if (screen->geometry().contains(zoneCenter)) {
-            return screen->name();
+            return Utils::screenIdentifier(screen);
         }
     }
     return QString();

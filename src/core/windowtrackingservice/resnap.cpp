@@ -160,7 +160,7 @@ QVector<RotationEntry> WindowTrackingService::calculateResnapFromCurrentAssignme
         }
 
         QString screenName = m_windowScreenAssignments.value(windowId);
-        if (!screenFilter.isEmpty() && screenName != screenFilter) {
+        if (!screenFilter.isEmpty() && !Utils::screensMatch(screenName, screenFilter)) {
             continue;
         }
 
@@ -352,13 +352,12 @@ QStringList WindowTrackingService::buildZoneOrderedWindowList(const QString& scr
     }
 
     // Collect (zoneNumber, insertionIndex, windowId) for windows on this screen.
-    // m_windowScreenAssignments stores connector names (screen->name()).
-    // Use insertion index as tie-breaker instead of alphabetical windowId
-    // to preserve iteration order for same-app windows (avoids scrambling).
+    // m_windowScreenAssignments may store connector names or EDID-based screen IDs
+    // depending on the code path. Use screensMatch() for format-agnostic comparison.
     int insertionIdx = 0;
     QVector<std::tuple<int, int, QString>> windowsByZone; // (zoneNum, insertionIdx, windowId)
     for (auto it = m_windowScreenAssignments.constBegin(); it != m_windowScreenAssignments.constEnd(); ++it) {
-        if (it.value() != screenName) {
+        if (!Utils::screensMatch(it.value(), screenName)) {
             continue;
         }
         const QString& windowId = it.key();

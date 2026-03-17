@@ -105,6 +105,13 @@ public Q_SLOTS:
     void windowSnappedMultiZone(const QString& windowId, const QStringList& zoneIds, const QString& screenName);
     void windowUnsnapped(const QString& windowId);
     /**
+     * Handle window screen change: unsnap only if the new screen differs
+     * from the stored assignment (user-initiated move). Programmatic moves
+     * (restore/resnap/snap assist) assign the zone first, so the stored
+     * screen matches and no unsnap occurs.
+     */
+    void windowScreenChanged(const QString& windowId, const QString& newScreenId);
+    /**
      * Record whether a window is sticky (on all virtual desktops).
      * @param windowId Window ID from the effect
      * @param sticky True if window is on all desktops

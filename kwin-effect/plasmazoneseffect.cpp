@@ -181,11 +181,11 @@ void PlasmaZonesEffect::ensurePreSnapGeometryStored(KWin::EffectWindow* w, const
                     QRectF geom =
                         capturedGeom.isValid() ? capturedGeom : (safeWindow ? safeWindow->frameGeometry() : QRectF());
                     if (geom.width() > 0 && geom.height() > 0) {
-                        QString screenName = safeWindow ? getWindowScreenName(safeWindow) : QString();
+                        QString screenId = safeWindow ? getWindowScreenId(safeWindow) : QString();
                         m_windowTrackingInterface->asyncCall(QStringLiteral("storePreTileGeometry"), capturedWindowId,
                                                              static_cast<int>(geom.x()), static_cast<int>(geom.y()),
                                                              static_cast<int>(geom.width()),
-                                                             static_cast<int>(geom.height()), screenName, false);
+                                                             static_cast<int>(geom.height()), screenId, false);
                         qCInfo(lcEffect) << "Stored pre-tile geometry for window" << capturedWindowId;
                     }
                 }
@@ -243,9 +243,9 @@ PlasmaZonesEffect::PlasmaZonesEffect()
                 // Capture this decision so dragStopped uses the same state — prevents
                 // a race where m_autotileScreens changes mid-drag (async D-Bus signal)
                 // and leaves the popup visible with no snap.
-                if (m_autotileHandler->isAutotileScreen(getWindowScreenName(w))) {
+                if (m_autotileHandler->isAutotileScreen(getWindowScreenId(w))) {
                     m_dragBypassedForAutotile = true;
-                    m_dragBypassScreenName = getWindowScreenName(w);
+                    m_dragBypassScreenId = getWindowScreenId(w);
                     return;
                 }
                 m_dragBypassedForAutotile = false;
@@ -300,7 +300,7 @@ PlasmaZonesEffect::PlasmaZonesEffect()
                         // to a different screen during the drag.
                         fireAndForgetDBusCall(
                             DBus::Interface::WindowTracking, QStringLiteral("setWindowFloatingForScreen"),
-                            {windowId, m_dragBypassScreenName, true}, QStringLiteral("setWindowFloatingForScreen"));
+                            {windowId, m_dragBypassScreenId, true}, QStringLiteral("setWindowFloatingForScreen"));
                         qCInfo(lcEffect) << "Autotile drag-to-float:" << windowId;
                     }
                     return;
@@ -568,7 +568,7 @@ void PlasmaZonesEffect::slotWindowAdded(KWin::EffectWindow* w)
     // Check if we should auto-snap new windows
     // Skip on autotile screens - the autotile engine handles window placement
     // Use stricter filter - only normal application windows, NOT dialogs/utilities
-    if (!m_autotileHandler->isAutotileScreen(getWindowScreenName(w)) && shouldAutoSnapWindow(w) && !w->isMinimized()) {
+    if (!m_autotileHandler->isAutotileScreen(getWindowScreenId(w)) && shouldAutoSnapWindow(w) && !w->isMinimized()) {
         // Don't auto-snap if there's already another window of the same class
         // with a different PID. This prevents unwanted snapping when another app
         // spawns a window (e.g., Cachy Update spawning a Ghostty terminal).
@@ -600,13 +600,13 @@ void PlasmaZonesEffect::slotWindowClosed(KWin::EffectWindow* w)
     m_windowAnimator->removeAnimation(w);
 
     const QString closedWindowId = getWindowId(w);
-    const QString closedScreenName = getWindowScreenName(w);
+    const QString closedScreenId = getWindowScreenId(w);
 
     // Clean up snap-mode minimize tracking
     m_minimizeFloatedWindows.remove(closedWindowId);
 
     // Notify autotile handler for cleanup (tracking sets + autotile D-Bus)
-    m_autotileHandler->onWindowClosed(closedWindowId, closedScreenName);
+    m_autotileHandler->onWindowClosed(closedWindowId, closedScreenId);
 
     // Remove the window's border item (parent WindowItem is being destroyed anyway,
     // but clean up our tracking hash to avoid stale entries).
@@ -641,12 +641,12 @@ void PlasmaZonesEffect::setupWindowConnections(KWin::EffectWindow* w)
         // switch flow will pick it up when the user switches to the target desktop.
         if (window && !window->isOnCurrentDesktop() && !window->isOnAllDesktops()) {
             const QString windowId = getWindowId(window);
-            const QString screenName = getWindowScreenName(window);
-            if (m_autotileHandler->isAutotileScreen(screenName)) {
+            const QString screenId = getWindowScreenId(window);
+            if (m_autotileHandler->isAutotileScreen(screenId)) {
                 // Save pre-autotile geometry before onWindowClosed clears it.
                 // When the window is re-added on the target desktop, this preserved
                 // geometry is used instead of the current (tiled) frame position.
-                m_autotileHandler->savePreAutotileForDesktopMove(windowId, screenName);
+                m_autotileHandler->savePreAutotileForDesktopMove(windowId, screenId);
 
                 // Restore title bar before removing from tiling — onWindowClosed
                 // only clears tracking, it doesn't call setNoBorder(false) since
@@ -657,7 +657,7 @@ void PlasmaZonesEffect::setupWindowConnections(KWin::EffectWindow* w)
                         kw->setNoBorder(false);
                     }
                 }
-                m_autotileHandler->onWindowClosed(windowId, screenName);
+                m_autotileHandler->onWindowClosed(windowId, screenId);
                 removeWindowBorder(windowId);
                 qCInfo(lcEffect) << "Window moved off current desktop, removed from autotile:" << windowId;
             }
@@ -671,28 +671,32 @@ void PlasmaZonesEffect::setupWindowConnections(KWin::EffectWindow* w)
     KWin::Window* kw = w->window();
     if (kw) {
         QPointer<KWin::EffectWindow> safeW = w;
-        // Track the window's screen so we can detect cross-screen moves for snapping windows
+        // Track the window's screen ID so we can detect cross-screen moves for snapping windows
         // (not tracked by the autotile handler's m_notifiedWindowScreens).
-        QString* trackedScreen = new QString(getWindowScreenName(w));
+        QString* trackedScreen = new QString(getWindowScreenId(w));
         connect(kw, &KWin::Window::outputChanged, this, [this, safeW, trackedScreen]() {
             if (!safeW || safeW->isDeleted()) {
                 return;
             }
-            const QString newScreen = getWindowScreenName(safeW);
-            const QString oldScreen = *trackedScreen;
-            *trackedScreen = newScreen;
+            const QString newScreenId = getWindowScreenId(safeW);
+            const QString oldScreenId = *trackedScreen;
+            *trackedScreen = newScreenId;
 
             // Delegate autotile handling (autotile→autotile, autotile→snapping, etc.)
             m_autotileHandler->handleWindowOutputChanged(safeW);
 
-            // For snapping→snapping cross-screen moves: unsnap the window so it
-            // becomes floating on the new screen. The autotile handler only tracks
-            // autotile-related windows; pure snapping windows are handled here.
-            if (!oldScreen.isEmpty() && oldScreen != newScreen && !m_autotileHandler->isAutotileScreen(oldScreen)
-                && !m_autotileHandler->isAutotileScreen(newScreen)) {
+            // For snapping→snapping cross-screen moves: notify the daemon which
+            // decides whether to unsnap based on its own state. If the daemon just
+            // assigned this window to the new screen (restore/resnap/snap assist),
+            // the stored screen matches and no unsnap occurs. If the user moved
+            // the window via "Move to Screen" shortcut, the stored screen differs
+            // and the daemon unsnaps.
+            if (!oldScreenId.isEmpty() && oldScreenId != newScreenId
+                && !m_autotileHandler->isAutotileScreen(oldScreenId)
+                && !m_autotileHandler->isAutotileScreen(newScreenId)) {
                 const QString windowId = getWindowId(safeW);
-                fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowUnsnapped"), {windowId},
-                                      QStringLiteral("cross-screen unsnap"));
+                fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowScreenChanged"),
+                                      {windowId, newScreenId}, QStringLiteral("cross-screen move"));
             }
         });
         // Clean up the tracked screen string when the window is destroyed
@@ -812,15 +816,14 @@ void PlasmaZonesEffect::slotMouseChanged(const QPointF& pos, const QPointF& oldp
         if (screenName != m_lastCursorScreenName) {
             m_lastCursorScreenName = screenName;
             if (ensureWindowTrackingReady("report cursor screen")) {
-                m_windowTrackingInterface->asyncCall(QStringLiteral("cursorScreenChanged"), screenName);
+                m_windowTrackingInterface->asyncCall(QStringLiteral("cursorScreenChanged"), outputScreenId(output));
             }
         }
     }
 
     // Focus follows mouse: activate autotile window under cursor when not dragging.
-    // Reuses the screenName resolved above to avoid a duplicate screenAt() lookup.
-    if (!m_dragTracker->isDragging()) {
-        m_autotileHandler->handleCursorMoved(pos, screenName);
+    if (!m_dragTracker->isDragging() && output) {
+        m_autotileHandler->handleCursorMoved(pos, outputScreenId(output));
     }
 }
 
@@ -893,26 +896,36 @@ void PlasmaZonesEffect::slotDaemonReady()
         }
     }
 
-    // Re-push cursor screen
+    // Re-push cursor screen (resolve connector name to EDID-based screen ID)
     if (!m_lastCursorScreenName.isEmpty()) {
-        fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("cursorScreenChanged"),
-                              {m_lastCursorScreenName}, QStringLiteral("cursorScreenChanged"));
-        qCDebug(lcEffect) << "Re-sent cursor screen:" << m_lastCursorScreenName;
+        QString cursorScreenId;
+        for (const auto* output : KWin::effects->screens()) {
+            if (output->name() == m_lastCursorScreenName) {
+                cursorScreenId = outputScreenId(output);
+                break;
+            }
+        }
+        if (cursorScreenId.isEmpty()) {
+            cursorScreenId = m_lastCursorScreenName; // fallback
+        }
+        fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("cursorScreenChanged"), {cursorScreenId},
+                              QStringLiteral("cursorScreenChanged"));
+        qCDebug(lcEffect) << "Re-sent cursor screen:" << cursorScreenId;
     }
 
     // Re-notify active window (gives daemon lastActiveScreenName)
     KWin::EffectWindow* activeWindow = getActiveWindow();
     if (activeWindow && shouldHandleWindow(activeWindow)) {
         QString windowId = getWindowId(activeWindow);
-        QString screenName = getWindowScreenName(activeWindow);
-        fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowActivated"),
-                              {windowId, screenName}, QStringLiteral("windowActivated"));
-        qCDebug(lcEffect) << "Re-notified active window:" << windowId << "on" << screenName;
+        QString screenId = getWindowScreenId(activeWindow);
+        fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowActivated"), {windowId, screenId},
+                              QStringLiteral("windowActivated"));
+        qCDebug(lcEffect) << "Re-notified active window:" << windowId << "on" << screenId;
 
         // Also notify autotile engine of focus
-        if (m_autotileHandler->isAutotileScreen(screenName)) {
+        if (m_autotileHandler->isAutotileScreen(screenId)) {
             fireAndForgetDBusCall(DBus::Interface::Autotile, QStringLiteral("notifyWindowFocused"),
-                                  {windowId, screenName}, QStringLiteral("notifyWindowFocused"));
+                                  {windowId, screenId}, QStringLiteral("notifyWindowFocused"));
         }
     }
 
@@ -953,7 +966,7 @@ void PlasmaZonesEffect::slotDaemonReady()
     // autotile screen — autotile screens handle their own focus via
     // m_pendingAutotileFocusWindowId in the onComplete callback.
     KWin::EffectWindow* activeWin = KWin::effects->activeWindow();
-    if (activeWin && !m_autotileHandler->isAutotileScreen(getWindowScreenName(activeWin))) {
+    if (activeWin && !m_autotileHandler->isAutotileScreen(getWindowScreenId(activeWin))) {
         m_autotileHandler->setPendingReactivateWindow(activeWin);
     }
     m_autotileHandler->onDaemonReady();
@@ -1018,7 +1031,7 @@ void PlasmaZonesEffect::slotDaemonReady()
                 if (window->isMinimized()) {
                     continue;
                 }
-                if (m_autotileHandler->isAutotileScreen(getWindowScreenName(window))) {
+                if (m_autotileHandler->isAutotileScreen(getWindowScreenId(window))) {
                     continue;
                 }
                 QString appId = extractAppId(getWindowId(window));
@@ -1698,6 +1711,43 @@ QString PlasmaZonesEffect::getWindowScreenName(KWin::EffectWindow* w) const
     return QString();
 }
 
+QString PlasmaZonesEffect::outputScreenId(const KWin::LogicalOutput* output)
+{
+    if (!output) {
+        return QString();
+    }
+    const QString manufacturer = output->manufacturer();
+    const QString model = output->model();
+    QString serial = output->serialNumber();
+    // KWin returns the EDID header serial (bytes 12-15) as hex (e.g. "0x0001C1A3"),
+    // but the daemon's readEdidHeaderSerial() returns decimal (e.g. "115107").
+    // Normalize to decimal so both sides produce identical screen IDs.
+    if (!serial.isEmpty() && serial.startsWith(QLatin1String("0x"), Qt::CaseInsensitive)) {
+        bool ok = false;
+        uint32_t numericSerial = serial.toUInt(&ok, 16);
+        if (ok && numericSerial != 0) {
+            serial = QString::number(numericSerial);
+        }
+    }
+    if (!serial.isEmpty()) {
+        return manufacturer + QLatin1Char(':') + model + QLatin1Char(':') + serial;
+    }
+    if (!manufacturer.isEmpty() || !model.isEmpty()) {
+        return manufacturer + QLatin1Char(':') + model;
+    }
+    // Fallback: connector name (virtual displays, some embedded panels)
+    return output->name();
+}
+
+QString PlasmaZonesEffect::getWindowScreenId(KWin::EffectWindow* w) const
+{
+    if (!w) {
+        return QString();
+    }
+    auto* output = w->screen();
+    return outputScreenId(output);
+}
+
 void PlasmaZonesEffect::emitNavigationFeedback(bool success, const QString& action, const QString& reason,
                                                const QString& sourceZoneId, const QString& targetZoneId,
                                                const QString& screenName)
@@ -1756,14 +1806,39 @@ void PlasmaZonesEffect::slotMoveSpecificWindowToZoneRequested(const QString& win
     ensurePreSnapGeometryStored(targetWindow, getWindowId(targetWindow));
     applySnapGeometry(targetWindow, geometry);
 
-    QString screenName = getWindowScreenName(targetWindow);
+    // Derive screen from the applied geometry (authoritative absolute coordinates)
+    // rather than querying the window's current screen. After a cross-screen snap
+    // assist selection, KWin may not have updated the window's output assignment
+    // yet, causing getWindowScreenId() to return the OLD screen.
+    QString screenId;
+    QString screenName;
+    const auto outputs = KWin::effects->screens();
+    QPoint geoCenter = geometry.center();
+    for (const auto* output : outputs) {
+        if (output->geometry().contains(geoCenter)) {
+            screenId = outputScreenId(output);
+            screenName = output->name();
+            break;
+        }
+    }
+    // Fallback to window's reported screen if geometry doesn't resolve
+    if (screenId.isEmpty()) {
+        screenId = getWindowScreenId(targetWindow);
+        screenName = getWindowScreenName(targetWindow);
+    }
+
     if (ensureWindowTrackingReady("snap assist windowSnapped")) {
         m_windowTrackingInterface->asyncCall(QStringLiteral("windowSnapped"), getWindowId(targetWindow), zoneId,
-                                             screenName);
+                                             screenId);
         m_windowTrackingInterface->asyncCall(QStringLiteral("recordSnapIntent"), getWindowId(targetWindow), true);
 
-        // Snap Assist continuation: if more empty zones and unsnapped windows remain, re-show
-        m_snapAssistHandler->showContinuationIfNeeded(screenName);
+        // Snap Assist continuation: only for manual-mode screens.
+        // Autotile screens manage their own window placement; showing snap assist
+        // after an autotile resnap is incorrect (the daemon silently ignores the
+        // selection anyway via the isAutotileScreen guard in signals.cpp).
+        if (!m_autotileHandler->isAutotileScreen(screenId)) {
+            m_snapAssistHandler->showContinuationIfNeeded(screenId);
+        }
     }
 }
 
@@ -1786,7 +1861,7 @@ void PlasmaZonesEffect::slotToggleWindowFloatRequested(bool shouldFloat)
         return;
     }
     QString windowId = getWindowId(activeWindow);
-    QString screenName = getWindowScreenName(activeWindow);
+    QString screenId = getWindowScreenId(activeWindow);
 
     if (!ensureWindowTrackingReady("toggle float")) {
         return;
@@ -1804,8 +1879,8 @@ void PlasmaZonesEffect::slotToggleWindowFloatRequested(bool shouldFloat)
     m_windowTrackingInterface->asyncCall(QStringLiteral("storePreTileGeometry"), windowId,
                                          static_cast<int>(frameGeo.x()), static_cast<int>(frameGeo.y()),
                                          static_cast<int>(frameGeo.width()), static_cast<int>(frameGeo.height()),
-                                         screenName, floating);
-    m_windowTrackingInterface->asyncCall(QStringLiteral("toggleFloatForWindow"), windowId, screenName);
+                                         screenId, floating);
+    m_windowTrackingInterface->asyncCall(QStringLiteral("toggleFloatForWindow"), windowId, screenId);
 }
 
 void PlasmaZonesEffect::slotApplyGeometryRequested(const QString& windowId, const QString& geometryJson,
@@ -1835,6 +1910,8 @@ void PlasmaZonesEffect::slotApplyGeometryRequested(const QString& windowId, cons
                      << "currentFrame:" << w->frameGeometry();
     applySnapGeometry(w, geometry);
     if (!zoneId.isEmpty() && ensureWindowTrackingReady("apply geometry windowSnapped")) {
+        // screenName comes from the daemon signal — use it directly (already a screen ID
+        // once the daemon emission side is converted; falls back safely via findScreenByIdOrName).
         m_windowTrackingInterface->asyncCall(QStringLiteral("windowSnapped"), getWindowId(w), zoneId, screenName);
         m_windowTrackingInterface->asyncCall(QStringLiteral("recordSnapIntent"), getWindowId(w), true);
     }
@@ -1896,7 +1973,9 @@ void PlasmaZonesEffect::slotSnapAllWindowsRequested(const QString& screenName)
             // User-initiated snap commands override floating state.
             // windowSnapped() on the daemon will clear floating via clearFloatingStateForSnap().
 
-            if (getWindowScreenName(w) != screenName) {
+            // screenName may be a screen ID from the daemon; compare with matching format
+            QString winScreen = screenName.contains(QLatin1Char(':')) ? getWindowScreenId(w) : getWindowScreenName(w);
+            if (winScreen != screenName) {
                 qCDebug(lcEffect) << "snap-all: skipping window on different screen" << appId;
                 continue;
             }
@@ -2046,10 +2125,10 @@ void PlasmaZonesEffect::slotWindowMinimizedChanged(KWin::EffectWindow* w)
         return;
     }
     const QString windowId = getWindowId(w);
-    const QString screenName = getWindowScreenName(w);
+    const QString screenId = getWindowScreenId(w);
 
     // Autotile handler handles its own screens — only handle snap-mode here
-    if (m_autotileHandler->isAutotileScreen(screenName)) {
+    if (m_autotileHandler->isAutotileScreen(screenId)) {
         return;
     }
 
@@ -2069,11 +2148,11 @@ void PlasmaZonesEffect::slotWindowMinimizedChanged(KWin::EffectWindow* w)
     }
 
     qCInfo(lcEffect) << "Snap: window" << (minimized ? "minimized, floating:" : "unminimized, unfloating:") << windowId
-                     << "on" << screenName;
+                     << "on" << screenId;
 
     if (m_daemonServiceRegistered) {
         fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("setWindowFloatingForScreen"),
-                              {windowId, screenName, minimized}, QStringLiteral("setWindowFloatingForScreen"));
+                              {windowId, screenId, minimized}, QStringLiteral("setWindowFloatingForScreen"));
     }
 }
 
@@ -2157,7 +2236,7 @@ void PlasmaZonesEffect::callResolveWindowRestore(KWin::EffectWindow* window, std
     }
 
     QString windowId = getWindowId(window);
-    QString screenName = getWindowScreenName(window);
+    QString screenId = getWindowScreenId(window);
     bool sticky = isWindowSticky(window);
 
     QPointer<KWin::EffectWindow> safeWindow = window;
@@ -2169,7 +2248,7 @@ void PlasmaZonesEffect::callResolveWindowRestore(KWin::EffectWindow* window, std
     // daemon restart or from KWin session restore), so its current frameGeometry is the
     // zone geometry — NOT the free-floating geometry. Storing it as pre-tile would cause
     // float toggle to restore to the zone geometry instead of the original free-floating position.
-    tryAsyncSnapCall(*m_windowTrackingInterface, QStringLiteral("resolveWindowRestore"), {windowId, screenName, sticky},
+    tryAsyncSnapCall(*m_windowTrackingInterface, QStringLiteral("resolveWindowRestore"), {windowId, screenId, sticky},
                      safeWindow, windowId, false, nullptr, nullptr, /*skipAnimation=*/true, onComplete);
 }
 
@@ -2270,13 +2349,13 @@ void PlasmaZonesEffect::callDragStopped(KWin::EffectWindow* window, const QStrin
                 int snapWidth = reply.argumentAt<2>();
                 int snapHeight = reply.argumentAt<3>();
                 bool shouldSnap = reply.argumentAt<4>();
-                QString releaseScreenName = reply.argumentAt<5>();
+                QString releaseScreenId = reply.argumentAt<5>();
                 bool restoreSizeOnly = reply.argumentAt<6>();
                 bool snapAssistRequested = reply.argumentAt<7>();
                 QString emptyZonesJson = reply.argumentAt<8>();
 
                 qCInfo(lcEffect) << "dragStopped returned shouldSnap=" << shouldSnap
-                                 << "releaseScreen=" << releaseScreenName << "restoreSizeOnly=" << restoreSizeOnly
+                                 << "releaseScreenId=" << releaseScreenId << "restoreSizeOnly=" << restoreSizeOnly
                                  << "geometry=" << QRect(snapX, snapY, snapWidth, snapHeight);
 
                 if (shouldSnap && safeWindow) {
@@ -2324,24 +2403,24 @@ void PlasmaZonesEffect::callDragStopped(KWin::EffectWindow* window, const QStrin
 
                 // Auto-fill: if window was dropped without snapping to a zone, try snapping to
                 // the first empty zone on the release screen (where the user released the drag).
-                // Use daemon-provided releaseScreenName (cursor position), not window's current
+                // Use daemon-provided releaseScreenId (cursor position), not window's current
                 // screen - after cross-screen drag the window may still report the old screen.
-                if (!shouldSnap && safeWindow && !releaseScreenName.isEmpty()
+                if (!shouldSnap && safeWindow && !releaseScreenId.isEmpty()
                     && ensureWindowTrackingReady("auto-fill on drop")) {
                     bool sticky = isWindowSticky(safeWindow);
-                    auto onSnapSuccess = [this](const QString&, const QString& snappedScreenName) {
-                        m_snapAssistHandler->showContinuationIfNeeded(snappedScreenName);
+                    auto onSnapSuccess = [this](const QString&, const QString& snappedScreenId) {
+                        m_snapAssistHandler->showContinuationIfNeeded(snappedScreenId);
                     };
                     tryAsyncSnapCall(*m_windowTrackingInterface, QStringLiteral("snapToEmptyZone"),
-                                     {windowId, releaseScreenName, sticky}, safeWindow, windowId, true, nullptr,
+                                     {windowId, releaseScreenId, sticky}, safeWindow, windowId, true, nullptr,
                                      onSnapSuccess);
                 }
 
                 // Snap Assist: if daemon requested, build candidates (unsnapped only) and call showSnapAssist.
                 // All D-Bus calls are async to prevent compositor freeze if daemon is busy with
                 // overlay teardown / layout change (see discussion #158).
-                if (snapAssistRequested && !emptyZonesJson.isEmpty() && !releaseScreenName.isEmpty()) {
-                    m_snapAssistHandler->asyncShow(windowId, releaseScreenName, emptyZonesJson);
+                if (snapAssistRequested && !emptyZonesJson.isEmpty() && !releaseScreenId.isEmpty()) {
+                    m_snapAssistHandler->asyncShow(windowId, releaseScreenId, emptyZonesJson);
                 }
             });
 }
@@ -2610,15 +2689,14 @@ void PlasmaZonesEffect::notifyWindowActivated(KWin::EffectWindow* w)
     }
 
     QString windowId = getWindowId(w);
-    QString screenName = getWindowScreenName(w);
+    QString screenId = getWindowScreenId(w);
 
-    qCDebug(lcEffect) << "Notifying daemon: windowActivated" << windowId << "on screen" << screenName;
-    m_windowTrackingInterface->asyncCall(QStringLiteral("windowActivated"), windowId, screenName);
+    qCDebug(lcEffect) << "Notifying daemon: windowActivated" << windowId << "on screen" << screenId;
+    m_windowTrackingInterface->asyncCall(QStringLiteral("windowActivated"), windowId, screenId);
 
-    // R2 fix: Notify autotile engine of focus change with screen name so
-    // m_windowToScreen is updated (also addresses R5: cross-screen detection)
-    if (m_autotileHandler->isAutotileScreen(screenName)) {
-        fireAndForgetDBusCall(DBus::Interface::Autotile, QStringLiteral("notifyWindowFocused"), {windowId, screenName},
+    // Notify autotile engine of focus change so m_windowToScreen is updated
+    if (m_autotileHandler->isAutotileScreen(screenId)) {
+        fireAndForgetDBusCall(DBus::Interface::Autotile, QStringLiteral("notifyWindowFocused"), {windowId, screenId},
                               QStringLiteral("notifyWindowFocused"));
     }
 }

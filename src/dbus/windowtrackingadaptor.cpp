@@ -238,6 +238,34 @@ void WindowTrackingAdaptor::windowUnsnapped(const QString& windowId)
     qCInfo(lcDbusWindow) << "Window" << windowId << "unsnapped from zone" << previousZoneId;
 }
 
+void WindowTrackingAdaptor::windowScreenChanged(const QString& windowId, const QString& newScreenId)
+{
+    if (!validateWindowId(windowId, QStringLiteral("screen changed"))) {
+        return;
+    }
+
+    // Check if the window is snapped — if not, nothing to do
+    QString currentZoneId = m_service->zoneForWindow(windowId);
+    if (currentZoneId.isEmpty()) {
+        return;
+    }
+
+    // Compare the stored screen assignment with the new screen.
+    // If they match (format-agnostic), the window was moved programmatically
+    // to its assigned zone's screen (restore, resnap, snap assist) — keep snapped.
+    // If they differ, the user moved the window away — unsnap it.
+    QString storedScreen = m_service->screenAssignments().value(windowId);
+    if (Utils::screensMatch(storedScreen, newScreenId)) {
+        qCDebug(lcDbusWindow) << "windowScreenChanged:" << windowId << "moved to assigned screen, keeping snap";
+        return;
+    }
+
+    qCInfo(lcDbusWindow) << "windowScreenChanged:" << windowId << "moved from" << storedScreen << "to" << newScreenId
+                         << "- unsnapping";
+    m_service->clearStalePendingAssignment(windowId);
+    m_service->unassignWindow(windowId);
+}
+
 void WindowTrackingAdaptor::setWindowSticky(const QString& windowId, bool sticky)
 {
     if (windowId.isEmpty()) {

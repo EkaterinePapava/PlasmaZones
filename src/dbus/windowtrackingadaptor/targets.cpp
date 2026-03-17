@@ -398,7 +398,9 @@ QString WindowTrackingAdaptor::getSnapToZoneByNumberTarget(const QString& window
                                      .toJson(QJsonDocument::Compact));
     }
 
-    auto* layout = m_layoutManager->resolveLayoutForScreen(Utils::screenIdForName(screenName));
+    // resolveLayoutForScreen accepts both connector names and screen IDs;
+    // screenIdForName is idempotent (returns input if already a screen ID).
+    auto* layout = m_layoutManager->resolveLayoutForScreen(screenName);
     if (!layout) {
         Q_EMIT navigationFeedback(false, QStringLiteral("snap"), QStringLiteral("no_active_layout"), QString(),
                                   QString(), screenName);

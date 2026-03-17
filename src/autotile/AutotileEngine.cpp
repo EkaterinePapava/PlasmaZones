@@ -13,6 +13,7 @@
 #include "AutotileEngine.h"
 #include "AlgorithmRegistry.h"
 #include "core/geometryutils.h"
+#include "core/utils.h"
 #include "AutotileConfig.h"
 #include "NavigationController.h"
 #include "PerScreenConfigResolver.h"
@@ -100,7 +101,7 @@ void AutotileEngine::connectSignals()
     if (m_screenManager) {
         connect(m_screenManager, &ScreenManager::availableGeometryChanged, this, [this](QScreen* screen, const QRect&) {
             if (screen) {
-                onScreenGeometryChanged(screen->name());
+                onScreenGeometryChanged(Utils::screenIdentifier(screen));
             }
         });
     }
@@ -433,13 +434,7 @@ TilingState* AutotileEngine::stateForScreen(const QString& screenName)
     // Reject unknown screens to prevent unbounded state creation from bogus
     // D-Bus callers. Session bus only (same user), but still good hygiene.
     if (m_screenManager) {
-        bool found = false;
-        for (QScreen* s : m_screenManager->screens()) {
-            if (s && s->name() == screenName) {
-                found = true;
-                break;
-            }
-        }
+        bool found = Utils::findScreenByIdOrName(screenName) != nullptr;
         if (!found) {
             qCWarning(lcAutotile) << "AutotileEngine::stateForScreen: unknown screen" << screenName;
             return nullptr;
@@ -470,13 +465,7 @@ TilingState* AutotileEngine::stateForKey(const TilingStateKey& key)
 
     // Reject unknown screens (same validation as stateForScreen)
     if (m_screenManager) {
-        bool found = false;
-        for (QScreen* s : m_screenManager->screens()) {
-            if (s && s->name() == key.screenName) {
-                found = true;
-                break;
-            }
-        }
+        bool found = Utils::findScreenByIdOrName(key.screenName) != nullptr;
         if (!found) {
             qCWarning(lcAutotile) << "AutotileEngine::stateForKey: unknown screen" << key.screenName;
             return nullptr;
@@ -1638,7 +1627,7 @@ QString AutotileEngine::screenForWindow(const QString& windowId) const
     if (m_screenManager && m_screenManager->primaryScreen()) {
         qCWarning(lcAutotile) << "screenForWindow: window" << windowId
                               << "not in m_windowToStateKey, falling back to primary screen";
-        return m_screenManager->primaryScreen()->name();
+        return Utils::screenIdentifier(m_screenManager->primaryScreen());
     }
 
     qCWarning(lcAutotile) << "screenForWindow: no screen found for window" << windowId;
@@ -1651,7 +1640,7 @@ QRect AutotileEngine::screenGeometry(const QString& screenName) const
         return QRect();
     }
 
-    QScreen* screen = m_screenManager->screenByName(screenName);
+    QScreen* screen = Utils::findScreenByIdOrName(screenName);
     if (!screen) {
         return QRect();
     }

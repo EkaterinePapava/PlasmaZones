@@ -388,7 +388,7 @@ void WindowDragAdaptor::tryStorePreSnapGeometry(const QString& windowId, bool wa
         QString screenName;
         QScreen* screen = Utils::findScreenAtPosition(originalGeometry.center());
         if (screen) {
-            screenName = screen->name();
+            screenName = Utils::screenIdentifier(screen);
         }
         m_windowTracking->storePreTileGeometry(windowId, originalGeometry.x(), originalGeometry.y(),
                                                originalGeometry.width(), originalGeometry.height(), screenName, false);

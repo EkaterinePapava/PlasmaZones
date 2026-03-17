@@ -203,10 +203,9 @@ void ScreenChangeHandler::applyWindowGeometriesFromJson(const QString& geometrie
             window = windowByAppId.value(PlasmaZonesEffect::extractAppId(windowId));
         }
         if (window && m_effect->shouldHandleWindow(window)) {
-            const QString winScreenName = m_effect->getWindowScreenName(window);
-            if (m_effect->m_autotileHandler->isAutotileScreen(winScreenName)) {
-                qCDebug(lcScreenChange) << "Skipping autotile-managed window" << windowId << "on screen"
-                                        << winScreenName;
+            const QString winScreenId = m_effect->getWindowScreenId(window);
+            if (m_effect->m_autotileHandler->isAutotileScreen(winScreenId)) {
+                qCDebug(lcScreenChange) << "Skipping autotile-managed window" << windowId << "on screen" << winScreenId;
                 continue;
             }
             QRect newGeometry(x, y, width, height);

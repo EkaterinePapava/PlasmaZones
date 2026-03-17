@@ -64,7 +64,7 @@ void OverlayService::initializeOverlay(QScreen* cursorScreen)
             continue;
         }
         // Skip autotile-managed screens (overlay is for manual zone selection)
-        if (m_excludedScreens.contains(screen->name())) {
+        if (m_excludedScreens.contains(Utils::screenIdentifier(screen))) {
             continue;
         }
 

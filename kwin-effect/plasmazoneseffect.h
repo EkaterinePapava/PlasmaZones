@@ -227,6 +227,17 @@ private:
     QString getWindowScreenName(KWin::EffectWindow* w) const;
 
     /**
+     * @brief Build a stable EDID-based screen identifier from a KWin::Output.
+     *
+     * Format: "manufacturer:model:serial" — matches Utils::screenIdentifier() on
+     * the daemon side.  Falls back to the connector name when EDID fields are empty.
+     * Prefer this over getWindowScreenName() for any value that crosses the D-Bus
+     * boundary into the daemon's layout/tracking system (which keys on screen IDs).
+     */
+    static QString outputScreenId(const KWin::LogicalOutput* output);
+    QString getWindowScreenId(KWin::EffectWindow* w) const;
+
+    /**
      * @brief Emit navigationFeedback D-Bus signal
      * @param success Whether the action succeeded
      * @param action The action type (e.g., "move", "focus", "push", "restore", "float")
@@ -434,7 +445,7 @@ private:
     // handler uses the same decision, preventing a race where m_autotileScreens
     // changes mid-drag (e.g., async D-Bus signal) and leaves the popup visible.
     bool m_dragBypassedForAutotile = false;
-    QString m_dragBypassScreenName; // Screen at drag start (for float D-Bus call on drag end)
+    QString m_dragBypassScreenId; // Screen at drag start (for float D-Bus call on drag end)
 
     // Cached activation settings (loaded from daemon via D-Bus, updated on settingsChanged)
     // Used for local trigger checking to gate D-Bus calls (see anyLocalTriggerHeld)

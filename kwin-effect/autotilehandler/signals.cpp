@@ -69,7 +69,7 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
             // added path to distinguish "daemon already has this window" from
             // "genuinely new window opened while desktop was not active".
             for (KWin::EffectWindow* w : windows) {
-                if (w && removed.contains(m_effect->getWindowScreenName(w))) {
+                if (w && removed.contains(m_effect->getWindowScreenId(w))) {
                     // Only remove from notified if the window is on the OLD desktop
                     // (not current). Desktop 2's windows were never notified.
                     if (!w->isOnCurrentDesktop()) {
@@ -84,7 +84,7 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
         } else {
             QSet<QString> windowsOnRemovedScreens;
             for (KWin::EffectWindow* w : windows) {
-                if (w && removed.contains(m_effect->getWindowScreenName(w))) {
+                if (w && removed.contains(m_effect->getWindowScreenId(w))) {
                     // Only restore borders for windows on the CURRENT desktop.
                     // Windows on other desktops may still be autotiled and must keep
                     // their borderless state — restoring them here would leak title bars
@@ -124,16 +124,16 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
             // windows raised to front) when re-entering autotile mode.
             // Only save windows on the current desktop — other desktops' windows
             // are not being toggled and their stacking order is irrelevant here.
-            for (const QString& screenName : removed) {
+            for (const QString& screenId : removed) {
                 QStringList autotileOrder;
                 for (KWin::EffectWindow* w : windows) {
                     if (w && m_effect->shouldHandleWindow(w) && w->isOnCurrentDesktop()
-                        && m_effect->getWindowScreenName(w) == screenName) {
+                        && m_effect->getWindowScreenId(w) == screenId) {
                         autotileOrder.append(m_effect->getWindowId(w));
                     }
                 }
                 if (!autotileOrder.isEmpty()) {
-                    m_savedAutotileStackingOrder[screenName] = autotileOrder;
+                    m_savedAutotileStackingOrder[screenId] = autotileOrder;
                 }
             }
 
@@ -143,8 +143,8 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
                 if (!w || !m_effect->shouldHandleWindow(w) || !w->isOnCurrentDesktop()) {
                     continue;
                 }
-                const QString screenName = m_effect->getWindowScreenName(w);
-                if (!removed.contains(screenName)) {
+                const QString screenId = m_effect->getWindowScreenId(w);
+                if (!removed.contains(screenId)) {
                     continue;
                 }
                 unmaximizeMonocleWindow(m_effect->getWindowId(w));
@@ -167,9 +167,9 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
 
             // Clear pre-autotile geometries and saved snap stacking order
             // for removed screens — they're no longer needed.
-            for (const QString& screenName : removed) {
-                m_preAutotileGeometries.remove(screenName);
-                m_savedSnapStackingOrder.remove(screenName);
+            for (const QString& screenId : removed) {
+                m_preAutotileGeometries.remove(screenId);
+                m_savedSnapStackingOrder.remove(screenId);
             }
         }
     }
@@ -183,10 +183,10 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
             // Re-add current-desktop windows to m_notifiedWindows so they're not
             // re-notified by later notifyWindowAdded calls (e.g., window moves).
             qCInfo(lcEffect) << "slotScreensChanged: desktop return for screens:" << added;
-            for (const QString& screenName : added) {
+            for (const QString& screenId : added) {
                 for (KWin::EffectWindow* w : windows) {
                     if (w && m_effect->shouldHandleWindow(w) && w->isOnCurrentDesktop() && w->isOnCurrentActivity()
-                        && m_effect->getWindowScreenName(w) == screenName) {
+                        && m_effect->getWindowScreenId(w) == screenId) {
                         const QString windowId = m_effect->getWindowId(w);
                         if (m_savedNotifiedForDesktopReturn.contains(windowId)
                             || m_notifiedWindows.contains(windowId)) {
@@ -203,10 +203,10 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
             // Only remove entries for windows on screens we just processed.
             // In multi-screen setups, windows on OTHER screens (not in `added`)
             // must remain in the set for when their screen returns.
-            for (const QString& screenName : added) {
+            for (const QString& screenId : added) {
                 for (KWin::EffectWindow* w : windows) {
                     if (w && m_effect->shouldHandleWindow(w) && w->isOnCurrentDesktop() && w->isOnCurrentActivity()
-                        && m_effect->getWindowScreenName(w) == screenName) {
+                        && m_effect->getWindowScreenId(w) == screenId) {
                         m_savedNotifiedForDesktopReturn.remove(m_effect->getWindowId(w));
                     }
                 }
@@ -218,13 +218,13 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
             // on the current desktop that aren't tracked — they were removed from
             // tiling by windowDesktopsChanged on the source desktop and need to be
             // re-added here. notifyWindowAdded is idempotent (checks m_notifiedWindows).
-            for (const QString& screenName : m_autotileScreens) {
+            for (const QString& screenId : m_autotileScreens) {
                 for (KWin::EffectWindow* w : windows) {
                     if (!w || !m_effect->shouldHandleWindow(w) || !w->isOnCurrentDesktop() || !w->isOnCurrentActivity()
                         || w->isMinimized()) {
                         continue;
                     }
-                    if (m_effect->getWindowScreenName(w) != screenName) {
+                    if (m_effect->getWindowScreenId(w) != screenId) {
                         continue;
                     }
                     const QString windowId = m_effect->getWindowId(w);
@@ -234,11 +234,11 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
                         // the source desktop.
                         auto savedIt = m_savedPreAutotileForDesktopMove.find(windowId);
                         if (savedIt != m_savedPreAutotileForDesktopMove.end()) {
-                            m_preAutotileGeometries[screenName][windowId] = savedIt.value();
+                            m_preAutotileGeometries[screenId][windowId] = savedIt.value();
                             m_savedPreAutotileForDesktopMove.erase(savedIt);
                         }
                         qCInfo(lcEffect) << "Desktop switch: re-adding moved window to autotile:" << windowId << "on"
-                                         << screenName;
+                                         << screenId;
                         notifyWindowAdded(w);
                     }
                 }
@@ -250,13 +250,13 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
             // does NOT fire. KWin may also reset setNoBorder() for windows that were
             // on a non-current desktop. Re-apply here to ensure correct state.
             if (m_border.hideTitleBars) {
-                for (const QString& screenName : added) {
+                for (const QString& screenId : added) {
                     for (KWin::EffectWindow* w : windows) {
                         if (!w || !m_effect->shouldHandleWindow(w) || !w->isOnCurrentDesktop()
                             || !w->isOnCurrentActivity() || w->isMinimized()) {
                             continue;
                         }
-                        if (m_effect->getWindowScreenName(w) != screenName) {
+                        if (m_effect->getWindowScreenId(w) != screenId) {
                             continue;
                         }
                         const QString windowId = m_effect->getWindowId(w);
@@ -294,9 +294,9 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
                 if (!w->isOnCurrentDesktop() || !w->isOnCurrentActivity()) {
                     continue;
                 }
-                const QString screenName = m_effect->getWindowScreenName(w);
-                if (added.contains(screenName)) {
-                    m_savedSnapStackingOrder[screenName].append(m_effect->getWindowId(w));
+                const QString screenId = m_effect->getWindowScreenId(w);
+                if (added.contains(screenId)) {
+                    m_savedSnapStackingOrder[screenId].append(m_effect->getWindowId(w));
                 }
             }
 
@@ -313,8 +313,8 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
                 if (!w->isOnCurrentDesktop() || !w->isOnCurrentActivity()) {
                     continue;
                 }
-                const QString screenName = m_effect->getWindowScreenName(w);
-                if (!added.contains(screenName)) {
+                const QString screenId = m_effect->getWindowScreenId(w);
+                if (!added.contains(screenId)) {
                     continue;
                 }
                 const QString windowId = m_effect->getWindowId(w);
@@ -327,10 +327,10 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
                     m_effect->fireAndForgetDBusCall(
                         DBus::Interface::WindowTracking, QStringLiteral("storePreTileGeometry"),
                         {windowId, static_cast<int>(frame.x()), static_cast<int>(frame.y()),
-                         static_cast<int>(frame.width()), static_cast<int>(frame.height()), screenName, true},
+                         static_cast<int>(frame.width()), static_cast<int>(frame.height()), screenId, true},
                         QStringLiteral("storePreTileGeometry"));
                 }
-                saveAndRecordPreAutotileGeometry(windowId, screenName, w->frameGeometry());
+                saveAndRecordPreAutotileGeometry(windowId, screenId, w->frameGeometry());
 
                 if (!w->isMinimized()) {
                     m_notifiedWindows.remove(windowId);
@@ -391,7 +391,7 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
                                     continue;
                                 if (PlasmaZonesEffect::extractAppId(m_effect->getWindowId(ew)) != stableId)
                                     continue;
-                                if (!added.contains(m_effect->getWindowScreenName(ew)))
+                                if (!added.contains(m_effect->getWindowScreenId(ew)))
                                     continue;
                                 if (matchedWindow) {
                                     ambiguous = true;
@@ -407,7 +407,7 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
                                 continue;
                             }
                             {
-                                const QString scr = m_effect->getWindowScreenName(matchedWindow);
+                                const QString scr = m_effect->getWindowScreenId(matchedWindow);
                                 auto& screenGeometries = m_preAutotileGeometries[scr];
                                 const QString wId = m_effect->getWindowId(matchedWindow);
                                 // Only pre-populate if no entry yet (saveAndRecordPreAutotileGeometry
@@ -486,9 +486,9 @@ void AutotileHandler::slotWindowMinimizedChanged(KWin::EffectWindow* w)
         return;
     }
     const QString windowId = m_effect->getWindowId(w);
-    const QString screenName = m_effect->getWindowScreenName(w);
+    const QString screenId = m_effect->getWindowScreenId(w);
 
-    if (!m_autotileScreens.contains(screenName)) {
+    if (!m_autotileScreens.contains(screenId)) {
         return;
     }
 
@@ -507,16 +507,15 @@ void AutotileHandler::slotWindowMinimizedChanged(KWin::EffectWindow* w)
             notifyWindowAdded(w);
             return;
         }
-        saveAndRecordPreAutotileGeometry(windowId, screenName, w->frameGeometry());
+        saveAndRecordPreAutotileGeometry(windowId, screenId, w->frameGeometry());
     }
 
     qCInfo(lcEffect) << "Autotile: window" << (minimized ? "minimized, floating:" : "unminimized, unfloating:")
-                     << windowId << "on" << screenName;
+                     << windowId << "on" << screenId;
 
     if (m_effect->m_daemonServiceRegistered) {
         m_effect->fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("setWindowFloatingForScreen"),
-                                        {windowId, screenName, minimized},
-                                        QStringLiteral("setWindowFloatingForScreen"));
+                                        {windowId, screenId, minimized}, QStringLiteral("setWindowFloatingForScreen"));
     }
 
     if (!minimized) {
@@ -537,12 +536,13 @@ void AutotileHandler::slotWindowMaximizedStateChanged(KWin::EffectWindow* w, boo
         return;
     }
     m_monocleMaximizedWindows.remove(windowId);
-    const QString screenName = m_effect->getWindowScreenName(w);
+    // Use screen ID (EDID-based) for daemon tracking D-Bus calls
+    const QString screenId = m_effect->getWindowScreenId(w);
     qCInfo(lcEffect) << "Monocle window manually unmaximized:" << windowId << "- floating";
 
     if (m_effect->m_daemonServiceRegistered) {
         m_effect->fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("setWindowFloatingForScreen"),
-                                        {windowId, screenName, true}, QStringLiteral("setWindowFloatingForScreen"));
+                                        {windowId, screenId, true}, QStringLiteral("setWindowFloatingForScreen"));
     }
 }
 

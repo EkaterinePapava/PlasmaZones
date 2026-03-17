@@ -18,8 +18,8 @@ namespace PlasmaZones {
 
 void WindowDragAdaptor::dragStopped(const QString& windowId, int cursorX, int cursorY, int modifiers, int mouseButtons,
                                     int& snapX, int& snapY, int& snapWidth, int& snapHeight, bool& shouldApplyGeometry,
-                                    QString& releaseScreenNameOut, bool& restoreSizeOnlyOut,
-                                    bool& snapAssistRequestedOut, QString& emptyZonesJsonOut)
+                                    QString& releaseScreenIdOut, bool& restoreSizeOnlyOut, bool& snapAssistRequestedOut,
+                                    QString& emptyZonesJsonOut)
 {
     // Initialize output parameters
     // shouldApplyGeometry: true = KWin should set window to (snapX, snapY, snapWidth, snapHeight)
@@ -30,7 +30,7 @@ void WindowDragAdaptor::dragStopped(const QString& windowId, int cursorX, int cu
     snapWidth = 0;
     snapHeight = 0;
     shouldApplyGeometry = false;
-    releaseScreenNameOut.clear();
+    releaseScreenIdOut.clear();
     restoreSizeOnlyOut = false;
     snapAssistRequestedOut = false;
     emptyZonesJsonOut.clear();
@@ -39,13 +39,15 @@ void WindowDragAdaptor::dragStopped(const QString& windowId, int cursorX, int cu
         return;
     }
 
-    // Release screen: use cursor position passed from effect (at release time), not last dragMoved
+    // Release screen: use cursor position passed from effect (at release time), not last dragMoved.
+    // Return the stable EDID-based screen ID so the effect passes a consistent identifier
+    // to daemon D-Bus methods (layout resolution, windowSnapped tracking, snap assist).
     QScreen* releaseScreen = screenAtPoint(cursorX, cursorY);
     QString releaseScreenName = releaseScreen ? releaseScreen->name() : QString();
     QString releaseScreenId = releaseScreen ? Utils::screenIdentifier(releaseScreen) : QString();
-    releaseScreenNameOut = releaseScreenName;
+    releaseScreenIdOut = releaseScreenId;
     qCDebug(lcDbusWindow) << "dragStopped: cursor=" << cursorX << "," << cursorY
-                          << "releaseScreen=" << releaseScreenName;
+                          << "releaseScreen=" << releaseScreenName << "releaseScreenId=" << releaseScreenId;
 
     // Capture zone state into locals right away. If another window starts dragging before
     // the async D-Bus reply for this dragStopped() is processed, dragMoved() would overwrite
@@ -130,7 +132,7 @@ void WindowDragAdaptor::dragStopped(const QString& windowId, int cursorX, int cu
                         // Fallback to synthetic format (navigation won't work, but tracking still happens)
                         zoneUuid = QStringLiteral("zoneselector-%1-%2").arg(selectedLayoutId).arg(selectedZoneIndex);
                     }
-                    m_windowTracking->windowSnapped(windowId, zoneUuid, releaseScreenName);
+                    m_windowTracking->windowSnapped(windowId, zoneUuid, releaseScreenId);
                     // Record user-initiated snap (not auto-snap)
                     // This prevents auto-snapping windows that were never manually snapped by user
                     m_windowTracking->recordSnapIntent(windowId, true);
@@ -194,7 +196,7 @@ void WindowDragAdaptor::dragStopped(const QString& windowId, int cursorX, int cu
                 if (allZoneIds.isEmpty()) {
                     allZoneIds.append(capturedZoneId);
                 }
-                m_windowTracking->windowSnappedMultiZone(windowId, allZoneIds, releaseScreenName);
+                m_windowTracking->windowSnappedMultiZone(windowId, allZoneIds, releaseScreenId);
                 // Record user-initiated snap (not auto-snap)
                 m_windowTracking->recordSnapIntent(windowId, true);
             }
@@ -206,7 +208,7 @@ void WindowDragAdaptor::dragStopped(const QString& windowId, int cursorX, int cu
             shouldApplyGeometry = true;
             tryStorePreSnapGeometry(windowId, capturedWasSnapped, capturedOriginalGeometry);
             if (m_windowTracking) {
-                m_windowTracking->windowSnapped(windowId, capturedZoneId, releaseScreenName);
+                m_windowTracking->windowSnapped(windowId, capturedZoneId, releaseScreenId);
                 // Record user-initiated snap (not auto-snap)
                 m_windowTracking->recordSnapIntent(windowId, true);
             }
@@ -256,9 +258,12 @@ void WindowDragAdaptor::dragStopped(const QString& windowId, int cursorX, int cu
     if (requestSnapAssist) {
         Layout* layout = m_layoutManager->resolveLayoutForScreen(releaseScreenId);
         if (layout) {
+            // Use screen-filtered occupancy — without this, zones occupied on
+            // other screens appear occupied here when layouts share zone IDs.
+            QSet<QUuid> occupied = m_windowTracking->service()->buildOccupiedZoneSet(releaseScreenId);
             QString emptyJson =
-                GeometryUtils::buildEmptyZonesJson(layout, releaseScreen, m_settings, [this](const Zone* z) {
-                    return m_windowTracking->getWindowsInZone(z->id().toString()).isEmpty();
+                GeometryUtils::buildEmptyZonesJson(layout, releaseScreen, m_settings, [&occupied](const Zone* z) {
+                    return !occupied.contains(z->id());
                 });
             if (!emptyJson.isEmpty() && emptyJson != QLatin1String("[]")) {
                 snapAssistRequestedOut = true;

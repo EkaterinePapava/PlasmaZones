@@ -36,7 +36,7 @@ void Daemon::showOverlay()
         if (!autotileScreens.isEmpty()) {
             bool allAutotile = true;
             for (QScreen* screen : m_screenManager->screens()) {
-                if (!autotileScreens.contains(screen->name())) {
+                if (!autotileScreens.contains(Utils::screenIdentifier(screen))) {
                     allAutotile = false;
                     break;
                 }

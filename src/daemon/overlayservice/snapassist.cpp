@@ -269,9 +269,11 @@ void OverlayService::destroySnapAssistWindow()
 void OverlayService::onSnapAssistWindowSelected(const QString& windowId, const QString& zoneId,
                                                 const QString& geometryJson)
 {
-    QString screenName = m_snapAssistScreen ? m_snapAssistScreen->name() : QString();
+    // Use stable EDID-based screen ID so the daemon's layout/tracking system
+    // resolves the correct screen without relying on connector-name fallbacks.
+    QString screenId = m_snapAssistScreen ? Utils::screenIdentifier(m_snapAssistScreen) : QString();
     // geometryJson is overlay-local; daemon will fetch authoritative zone geometry from service
-    Q_EMIT snapAssistWindowSelected(windowId, zoneId, geometryJson, screenName);
+    Q_EMIT snapAssistWindowSelected(windowId, zoneId, geometryJson, screenId);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

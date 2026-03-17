@@ -881,7 +881,7 @@ private:
     QHash<TilingStateKey, QSet<QString>> m_savedFloatingWindows;
 
     // Pre-seeded window order for snapping → autotile transitions.
-    // Keyed by screen connector name (screen->name()), NOT stable screen ID.
+    // Keyed by stable EDID-based screen ID (Utils::screenIdentifier).
     // Consumed by insertWindow() as windows arrive; also cleaned up by
     // removeWindow() if a pre-seeded window closes before arriving.
     QHash<QString, QStringList> m_pendingInitialOrders;

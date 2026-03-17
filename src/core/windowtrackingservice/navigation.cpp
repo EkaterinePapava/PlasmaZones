@@ -36,7 +36,7 @@ QSet<QUuid> WindowTrackingService::buildOccupiedZoneSet(const QString& screenFil
         // from making zones appear occupied on the target screen.
         if (!screenFilter.isEmpty()) {
             QString windowScreen = m_windowScreenAssignments.value(it.key());
-            if (windowScreen != screenFilter) {
+            if (!Utils::screensMatch(windowScreen, screenFilter)) {
                 continue;
             }
         }
@@ -96,8 +96,11 @@ QString WindowTrackingService::getEmptyZonesJson(const QString& screenName) cons
         return QStringLiteral("[]");
     }
 
-    return GeometryUtils::buildEmptyZonesJson(layout, screen, m_settings, [this](const Zone* z) {
-        return windowsInZone(z->id().toString()).isEmpty();
+    // Use screen-filtered occupancy check — without this, zones occupied on
+    // screen A appear occupied on screen B when both use the same layout (same zone IDs).
+    QSet<QUuid> occupied = buildOccupiedZoneSet(screenName);
+    return GeometryUtils::buildEmptyZonesJson(layout, screen, m_settings, [&occupied](const Zone* z) {
+        return !occupied.contains(z->id());
     });
 }
 
@@ -178,7 +181,7 @@ QVector<RotationEntry> WindowTrackingService::calculateRotation(bool clockwise, 
         QString screenName = m_windowScreenAssignments.value(it.key());
 
         // When a screen filter is set, only include windows on that screen
-        if (!screenFilter.isEmpty() && screenName != screenFilter) {
+        if (!screenFilter.isEmpty() && !Utils::screensMatch(screenName, screenFilter)) {
             continue;
         }
 

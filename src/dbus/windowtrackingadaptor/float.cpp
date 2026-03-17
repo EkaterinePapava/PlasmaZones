@@ -6,6 +6,7 @@
 #include "../../snap/SnapEngine.h"
 #include "../../core/geometryutils.h"
 #include "../../core/logging.h"
+#include "../../core/utils.h"
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>

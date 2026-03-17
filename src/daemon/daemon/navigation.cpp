@@ -23,9 +23,9 @@ namespace PlasmaZones {
 // Engine routing
 // ═══════════════════════════════════════════════════════════════════════════════
 
-IWindowEngine* Daemon::engineForScreen(const QString& screenName) const
+IWindowEngine* Daemon::engineForScreen(const QString& screenId) const
 {
-    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screenName)) {
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screenId)) {
         return m_autotileEngine.get();
     }
     if (m_snapEngine) {
@@ -46,8 +46,9 @@ void Daemon::handleRotate(bool clockwise)
         qCDebug(lcDaemon) << "Rotate shortcut: no screen info";
         return;
     }
-    if (auto* engine = engineForScreen(screen->name())) {
-        engine->rotateWindows(clockwise, screen->name());
+    QString screenId = Utils::screenIdentifier(screen);
+    if (auto* engine = engineForScreen(screenId)) {
+        engine->rotateWindows(clockwise, screenId);
     }
 }
 
@@ -74,7 +75,8 @@ void Daemon::handleMove(NavigationDirection direction)
         qCWarning(lcDaemon) << "Unknown move navigation direction:" << static_cast<int>(direction);
         return;
     }
-    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+    QString screenId = Utils::screenIdentifier(screen);
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screenId)) {
         m_autotileEngine->swapFocusedInDirection(dirStr);
     } else if (m_snapEngine) {
         m_snapEngine->moveInDirection(dirStr);
@@ -92,7 +94,8 @@ void Daemon::handleFocus(NavigationDirection direction)
         qCWarning(lcDaemon) << "Unknown focus navigation direction:" << static_cast<int>(direction);
         return;
     }
-    if (auto* engine = engineForScreen(screen->name())) {
+    QString screenId = Utils::screenIdentifier(screen);
+    if (auto* engine = engineForScreen(screenId)) {
         engine->focusInDirection(dirStr, QStringLiteral("focus"));
     }
 }
@@ -104,11 +107,12 @@ void Daemon::handlePush()
         qCDebug(lcDaemon) << "PushToEmptyZone shortcut: no screen info";
         return;
     }
-    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+    QString screenId = Utils::screenIdentifier(screen);
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screenId)) {
         return;
     }
     if (m_snapEngine) {
-        m_snapEngine->pushToEmptyZone(screen->name());
+        m_snapEngine->pushToEmptyZone(screenId);
     }
 }
 
@@ -118,7 +122,8 @@ void Daemon::handleRestore()
     if (!screen) {
         return;
     }
-    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+    QString screenId = Utils::screenIdentifier(screen);
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screenId)) {
         // In autotile mode, "restore" floats the window (equivalent to unsnapping)
         m_autotileEngine->toggleFocusedWindowFloat();
         return;
@@ -137,7 +142,8 @@ void Daemon::handleSwap(NavigationDirection direction)
         qCWarning(lcDaemon) << "Unknown swap navigation direction:" << static_cast<int>(direction);
         return;
     }
-    if (auto* engine = engineForScreen(screen->name())) {
+    QString screenId = Utils::screenIdentifier(screen);
+    if (auto* engine = engineForScreen(screenId)) {
         engine->swapInDirection(dirStr, QStringLiteral("swap"));
     }
 }
@@ -149,8 +155,9 @@ void Daemon::handleSnap(int zoneNumber)
         qCDebug(lcDaemon) << "SnapToZone shortcut: no screen info";
         return;
     }
-    if (auto* engine = engineForScreen(screen->name())) {
-        engine->moveToPosition(QString(), zoneNumber, screen->name());
+    QString screenId = Utils::screenIdentifier(screen);
+    if (auto* engine = engineForScreen(screenId)) {
+        engine->moveToPosition(QString(), zoneNumber, screenId);
     }
 }
 
@@ -160,7 +167,8 @@ void Daemon::handleCycle(bool forward)
     if (!screen) {
         return;
     }
-    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
+    QString screenId = Utils::screenIdentifier(screen);
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screenId)) {
         QString dirStr = forward ? QStringLiteral("right") : QStringLiteral("left");
         m_autotileEngine->focusInDirection(dirStr, QStringLiteral("cycle"));
     } else if (m_snapEngine) {
@@ -174,8 +182,9 @@ void Daemon::handleResnap()
     if (!screen) {
         return;
     }
-    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
-        m_autotileEngine->retile(screen->name());
+    QString screenId = Utils::screenIdentifier(screen);
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screenId)) {
+        m_autotileEngine->retile(screenId);
     } else if (m_snapEngine) {
         m_snapEngine->resnapToNewLayout();
     }
@@ -188,10 +197,11 @@ void Daemon::handleSnapAll()
         qCDebug(lcDaemon) << "SnapAllWindows shortcut: no screen info";
         return;
     }
-    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screen->name())) {
-        m_autotileEngine->retile(screen->name());
+    QString screenId = Utils::screenIdentifier(screen);
+    if (m_autotileEngine && m_autotileEngine->isAutotileScreen(screenId)) {
+        m_autotileEngine->retile(screenId);
     } else if (m_snapEngine) {
-        m_snapEngine->snapAllWindows(screen->name());
+        m_snapEngine->snapAllWindows(screenId);
     }
 }
 
@@ -211,12 +221,12 @@ void Daemon::handleRetile()
     m_autotileEngine->retile();
     if (m_settings && m_settings->showNavigationOsd() && m_overlayService) {
         QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
-        QString screenName = screen ? screen->name() : QString();
-        if (screenName.isEmpty() && !m_autotileEngine->autotileScreens().isEmpty()) {
-            screenName = *m_autotileEngine->autotileScreens().begin();
+        QString screenId = screen ? Utils::screenIdentifier(screen) : QString();
+        if (screenId.isEmpty() && !m_autotileEngine->autotileScreens().isEmpty()) {
+            screenId = *m_autotileEngine->autotileScreens().begin();
         }
         m_overlayService->showNavigationOsd(true, QStringLiteral("retile"), QStringLiteral("retiled"), QString(),
-                                            QString(), screenName);
+                                            QString(), screenId);
     }
 }
 
@@ -233,12 +243,7 @@ void Daemon::resnapIfManualMode()
         if (screenId.isEmpty()) {
             return; // No screen context — can't determine mode, skip resnap
         }
-        // Convert screen ID to connector name for autotile engine lookup
-        QString connectorName = Utils::screenNameForId(screenId);
-        if (connectorName.isEmpty()) {
-            connectorName = screenId; // already a connector name
-        }
-        if (m_autotileEngine->isAutotileScreen(connectorName)) {
+        if (m_autotileEngine->isAutotileScreen(screenId)) {
             return; // This screen is autotile — engine handles retile
         }
     }

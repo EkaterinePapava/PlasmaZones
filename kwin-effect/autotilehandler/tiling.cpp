@@ -142,25 +142,25 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
         QPointer<KWin::EffectWindow> window;
         QRect geometry;
         QString windowId;
-        QString screenName;
+        QString screenId;
         bool isMonocle = false;
     };
     QVector<TileSnap> toApply;
     QSet<QString> tiledWindowIds;
-    QSet<QString> tileScreenNames;
+    QSet<QString> tileScreenIds;
     for (Entry& e : entries) {
         if (!e.window) {
             continue;
         }
         tiledWindowIds.insert(e.windowId);
-        QString screenName = m_effect->getWindowScreenName(e.window);
-        tileScreenNames.insert(screenName);
-        toApply.append({QPointer<KWin::EffectWindow>(e.window), e.geometry, e.windowId, screenName, e.isMonocle});
+        QString screenId = m_effect->getWindowScreenId(e.window);
+        tileScreenIds.insert(screenId);
+        toApply.append({QPointer<KWin::EffectWindow>(e.window), e.geometry, e.windowId, screenId, e.isMonocle});
     }
 
     const uint64_t gen = m_autotileStaggerGeneration;
 
-    auto onComplete = [this, toApply, tiledWindowIds, tileScreenNames, savedGlobalStack, gen]() {
+    auto onComplete = [this, toApply, tiledWindowIds, tileScreenIds, savedGlobalStack, gen]() {
         if (m_autotileStaggerGeneration != gen) {
             return;
         }
@@ -170,7 +170,7 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
         const QSet<QString> untiled = m_border.tiledWindows - tiledWindowIds;
         for (const QString& wid : untiled) {
             KWin::EffectWindow* win = m_effect->findWindowById(wid);
-            if (win && tileScreenNames.contains(m_effect->getWindowScreenName(win)) && !win->isMinimized()) {
+            if (win && tileScreenIds.contains(m_effect->getWindowScreenId(win)) && !win->isMinimized()) {
                 if (m_border.borderlessWindows.contains(wid)) {
                     setWindowBorderless(win, wid, false);
                 }
@@ -195,8 +195,8 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
             // These raises go ON TOP of the global restore, preserving user's
             // z-order choices (e.g. floated window raised to front) across
             // mode toggles.
-            for (const QString& screenName : tileScreenNames) {
-                const QStringList savedOrder = m_savedAutotileStackingOrder.value(screenName);
+            for (const QString& screenId : tileScreenIds) {
+                const QStringList savedOrder = m_savedAutotileStackingOrder.value(screenId);
                 if (savedOrder.isEmpty()) {
                     continue;
                 }
@@ -209,7 +209,7 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
                         }
                     }
                 }
-                m_savedAutotileStackingOrder.remove(screenName);
+                m_savedAutotileStackingOrder.remove(screenId);
             }
 
             if (!m_pendingAutotileFocusWindowId.isEmpty()) {
@@ -249,7 +249,7 @@ void AutotileHandler::slotWindowsTileRequested(const QString& tileRequestsJson)
             if (!snap.window || snap.window->isDeleted()) {
                 return;
             }
-            saveAndRecordPreAutotileGeometry(snap.windowId, snap.screenName, snap.window->frameGeometry());
+            saveAndRecordPreAutotileGeometry(snap.windowId, snap.screenId, snap.window->frameGeometry());
             qCInfo(lcEffect) << "Autotile tile request:" << snap.windowId << "QRect=" << snap.geometry;
             m_border.tiledWindows.insert(snap.windowId);
             if (m_border.hideTitleBars) {

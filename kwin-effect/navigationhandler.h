@@ -74,7 +74,7 @@ private:
         int successCount = 0;
         QString firstSourceZoneId;
         QString firstTargetZoneId;
-        QString firstScreenName;
+        QString firstScreenId;
         QSet<QString> snappedWindowIds; ///< window IDs that were actually snapped
     };
 

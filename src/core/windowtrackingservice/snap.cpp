@@ -170,7 +170,8 @@ SnapResult WindowTrackingService::calculateSnapToLastZone(const QString& windowI
     }
 
     // Don't cross-screen snap
-    if (!windowScreenName.isEmpty() && !m_lastUsedScreenName.isEmpty() && windowScreenName != m_lastUsedScreenName) {
+    if (!windowScreenName.isEmpty() && !m_lastUsedScreenName.isEmpty()
+        && !Utils::screensMatch(windowScreenName, m_lastUsedScreenName)) {
         return SnapResult::noSnap();
     }
 

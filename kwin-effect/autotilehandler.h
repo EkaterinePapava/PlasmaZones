@@ -43,9 +43,9 @@ public:
     // ═══════════════════════════════════════════════════════════════════
 
     void notifyWindowAdded(KWin::EffectWindow* w);
-    void onWindowClosed(const QString& windowId, const QString& screenName);
+    void onWindowClosed(const QString& windowId, const QString& screenId);
     void onDaemonReady();
-    void savePreAutotileForDesktopMove(const QString& windowId, const QString& screenName);
+    void savePreAutotileForDesktopMove(const QString& windowId, const QString& screenId);
     void handleWindowOutputChanged(KWin::EffectWindow* w);
 
     // D-Bus signal connections and settings
@@ -64,7 +64,7 @@ public:
 
     // Focus follows mouse: focus autotile window under cursor
     void setFocusFollowsMouse(bool enabled);
-    void handleCursorMoved(const QPointF& pos, const QString& screenName);
+    void handleCursorMoved(const QPointF& pos, const QString& screenId);
 
     // Screen accessors (for gating drag/snap/overlay behavior per-screen)
     bool isAutotileScreen(const QString& screenName) const;
