@@ -683,6 +683,8 @@ void PlasmaZonesEffect::setupWindowConnections(KWin::EffectWindow* w)
             *trackedScreen = newScreenId;
 
             // Delegate autotile handling (autotile→autotile, autotile→snapping, etc.)
+            // This must run even during drag so the autotile engine removes the
+            // window from the old screen's tiling state immediately.
             m_autotileHandler->handleWindowOutputChanged(safeW);
 
             // For snapping→snapping cross-screen moves: notify the daemon which
@@ -691,9 +693,12 @@ void PlasmaZonesEffect::setupWindowConnections(KWin::EffectWindow* w)
             // the stored screen matches and no unsnap occurs. If the user moved
             // the window via "Move to Screen" shortcut, the stored screen differs
             // and the daemon unsnaps.
+            // Skip during drag: the drag system owns snap state transitions
+            // (float, unsnap, size restore, pre-tile cleanup) and handles them
+            // in dragStopped() with richer context.
             if (!oldScreenId.isEmpty() && oldScreenId != newScreenId
                 && !m_autotileHandler->isAutotileScreen(oldScreenId)
-                && !m_autotileHandler->isAutotileScreen(newScreenId)) {
+                && !m_autotileHandler->isAutotileScreen(newScreenId) && !m_dragTracker->isDragging()) {
                 const QString windowId = getWindowId(safeW);
                 fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowScreenChanged"),
                                       {windowId, newScreenId}, QStringLiteral("cross-screen move"));

@@ -73,8 +73,22 @@ void WindowDragAdaptor::dragStopped(const QString& windowId, int cursorX, int cu
     // Release on an autotile screen: do not snap to manual overlay zone.
     // The autotile engine manages window placement on these screens; allowing a
     // manual drag-snap would conflict with the engine's layout.
-    if (useOverlayZone && releaseScreen && m_autotileEngine && m_autotileEngine->isAutotileScreen(releaseScreenName)) {
+    if (useOverlayZone && releaseScreen && m_autotileEngine && m_autotileEngine->isAutotileScreen(releaseScreenId)) {
         useOverlayZone = false;
+    }
+
+    // Cross-screen drag: if the window was snapped on a different screen, clear
+    // its snap/float state NOW — before any new zone detection or snap logic runs.
+    // During drag, outputChanged's windowScreenChanged is skipped (drag owns state).
+    // This is the single point where cross-screen state cleanup happens.
+    if (capturedWasSnapped && m_windowTracking && releaseScreen) {
+        QString storedScreen = m_windowTracking->service()->screenAssignments().value(windowId);
+        if (!storedScreen.isEmpty() && !Utils::screensMatch(storedScreen, releaseScreenId)) {
+            m_windowTracking->windowUnsnapped(windowId);
+            m_windowTracking->clearPreTileGeometry(windowId);
+            qCInfo(lcDbusWindow) << "Cross-screen drag: cleared snap/pre-tile state for" << windowId << "from"
+                                 << storedScreen << "to" << releaseScreenId;
+        }
     }
 
     // Check if a zone was selected via the zone selector (takes priority)
