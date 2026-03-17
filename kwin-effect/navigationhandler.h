@@ -131,6 +131,7 @@ private:
 
     PlasmaZonesEffect* m_effect;
     QSet<QString> m_floatingWindows;
+    uint64_t m_resnapGeneration = 0; ///< Invalidates stale stagger callbacks on rapid layout cycling
 };
 
 } // namespace PlasmaZones

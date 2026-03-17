@@ -962,48 +962,53 @@ void NavigationHandler::handleResnapToNewLayout(const QString& resnapData)
 {
     qCInfo(lcEffect) << "Resnap to new layout requested";
 
+    // Increment generation to invalidate any pending stagger callbacks from
+    // previous resnaps. Rapid layout cycling queues multiple stagger timers;
+    // only the latest generation's callback should execute.
+    const uint64_t gen = ++m_resnapGeneration;
+
     // Take the saved global stacking order snapshot from slotScreensChanged.
     // This is used to restore z-order after all resnap geometries are applied.
     auto savedStack = m_effect->m_autotileHandler->takeSavedGlobalStack();
-    std::function<void()> onResnapComplete;
-    if (!savedStack.isEmpty()) {
-        onResnapComplete = [savedStack]() {
+    auto* snapAssist = m_effect->m_snapAssistHandler.get();
+    auto* autotile = m_effect->m_autotileHandler.get();
+    bool snapAssistEnabled = snapAssist && snapAssist->isEnabled();
+
+    std::function<void()> onResnapComplete = [savedStack, snapAssist, autotile, snapAssistEnabled, gen, this]() {
+        // Stale callback from a previous resnap — layout has changed since
+        if (gen != m_resnapGeneration) {
+            return;
+        }
+        // Restore z-order
+        if (!savedStack.isEmpty()) {
             auto* ws = KWin::Workspace::self();
-            if (!ws) {
-                return;
-            }
-            for (const auto& wPtr : savedStack) {
-                if (wPtr && !wPtr->isDeleted()) {
-                    KWin::Window* kw = wPtr->window();
-                    if (kw) {
-                        ws->raiseWindow(kw);
+            if (ws) {
+                for (const auto& wPtr : savedStack) {
+                    if (wPtr && !wPtr->isDeleted()) {
+                        KWin::Window* kw = wPtr->window();
+                        if (kw) {
+                            ws->raiseWindow(kw);
+                        }
                     }
                 }
             }
-        };
-    }
+        }
+        // Show snap assist after all windows are placed
+        if (snapAssistEnabled) {
+            KWin::EffectWindow* activeWin = m_effect->getActiveWindow();
+            QString activeScreenId = activeWin ? m_effect->getWindowScreenId(activeWin) : QString();
+            if (!activeScreenId.isEmpty() && !autotile->isAutotileScreen(activeScreenId)) {
+                snapAssist->showContinuationIfNeeded(activeScreenId);
+            }
+        }
+    };
 
-    // Apply resnap geometries first, then use the result's screen for snap assist.
-    // Previously this used getActiveWindow()'s screen, which could be on a
-    // different monitor — causing snap assist to show zones for the wrong screen.
-    // The daemon now emits ONE batched signal for all screens, so this single call
-    // handles all windows atomically (no per-screen race condition).
+    // Apply resnap geometries. The onComplete callback fires AFTER all stagger
+    // animations finish, ensuring snap assist sees the final zone occupancy state.
     BatchSnapResult result = applyBatchSnapFromJson(resnapData, /*filterCurrentDesktop=*/true,
                                                     /*resolveFullWindowId=*/true, onResnapComplete);
 
-    // Use the screen from the first resnapped window (captured from the resnap
-    // target geometries) — this is the screen that just transitioned from autotile.
-    // firstScreenId is a stable screen ID (EDID-based) for D-Bus calls.
     const QString screenId = result.firstScreenId;
-
-    // Show snap assist continuation on the resnapped screen (not active window's screen).
-    // Skip autotile screens — snap assist is a manual-mode concept; the daemon would
-    // silently ignore the selection anyway (isAutotileScreen guard in signals.cpp).
-    if (m_effect->m_snapAssistHandler->isEnabled() && !screenId.isEmpty()) {
-        if (!m_effect->m_autotileHandler->isAutotileScreen(screenId)) {
-            m_effect->m_snapAssistHandler->showContinuationIfNeeded(screenId);
-        }
-    }
 
     if (result.status != BatchSnapResult::Success) {
         emitBatchFeedback(result, QStringLiteral("resnap"), screenId);
