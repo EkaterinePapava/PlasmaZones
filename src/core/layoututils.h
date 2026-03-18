@@ -58,6 +58,8 @@ struct PLASMAZONES_EXPORT UnifiedLayoutEntry
     QVariantList previewZones; ///< Preview zones (used for autotile algorithm previews)
     bool autoAssign = false; ///< Auto-assign: new windows fill first empty zone
     bool isAutotile = false; ///< True if this entry represents an autotile algorithm
+    int aspectRatioClass = 0; ///< AspectRatioClass enum value (0=Any, 1=Standard, etc.)
+    bool recommended = true; ///< True if layout matches the current screen's aspect ratio
 
     /**
      * @brief Extract the algorithm ID from an autotile entry
@@ -100,6 +102,12 @@ PLASMAZONES_EXPORT QVector<UnifiedLayoutEntry> buildUnifiedLayoutList(ILayoutMan
  * Filters out layouts that are:
  * - hiddenFromSelector = true
  * - Not allowed on the given screen/desktop/activity (if allow lists are non-empty)
+ * - Not matching the screen's aspect ratio class (if layout has an aspectRatioClass tag)
+ *
+ * Layouts tagged with a non-matching aspect ratio class are not removed entirely;
+ * they are moved to the end of the list so the selector can show them in a
+ * collapsed "Other" section. The `recommended` field in the returned entry
+ * indicates whether the layout matches the current screen's aspect ratio.
  *
  * @param layoutManager Layout manager interface
  * @param screenId Current screen ID (empty = skip screen filter)
@@ -107,10 +115,13 @@ PLASMAZONES_EXPORT QVector<UnifiedLayoutEntry> buildUnifiedLayoutList(ILayoutMan
  * @param activity Current activity ID (empty = skip activity filter)
  * @param includeManual Include manual zone-based layouts (default: true)
  * @param includeAutotile Include dynamic autotile algorithm layouts (default: true)
+ * @param screenAspectRatio Aspect ratio of the target screen (0 = skip AR filtering)
+ * @param filterByAspectRatio When true, exclude entries where recommended is false (default: false)
  */
 PLASMAZONES_EXPORT QVector<UnifiedLayoutEntry>
 buildUnifiedLayoutList(ILayoutManager* layoutManager, const QString& screenId, int virtualDesktop,
-                       const QString& activity, bool includeManual = true, bool includeAutotile = true);
+                       const QString& activity, bool includeManual = true, bool includeAutotile = true,
+                       qreal screenAspectRatio = 0.0, bool filterByAspectRatio = false);
 
 /**
  * @brief Convert a unified layout entry to QVariantMap for QML

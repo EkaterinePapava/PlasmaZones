@@ -28,7 +28,7 @@ ColumnLayout {
         function onAutotileEnabledChanged() {
             if (!root.settingsBridge.autotileEnabled && root.viewMode !== 0) {
                 root.viewMode = 0;
-                layoutGrid.currentIndex = -1;
+                layoutGrid.selectedLayoutId = "";
                 layoutGrid.rebuildModel();
                 layoutGrid.selectDefaultLayout(0);
             }
@@ -48,7 +48,7 @@ ColumnLayout {
         onRequestOpenLayoutsFolder: settingsController.openLayoutsFolder()
         onViewModeRequested: (mode) => {
             root.viewMode = mode;
-            layoutGrid.currentIndex = -1;
+            layoutGrid.selectedLayoutId = "";
             layoutGrid.rebuildModel();
             layoutGrid.selectDefaultLayout(mode);
         }
@@ -228,78 +228,85 @@ ColumnLayout {
 
             }
 
-            // ─── Layout Grid ───────────────────────────────────────────────────
-            GridView {
+            // ─── Layout Grid (grouped by aspect ratio) ─────────────────────
+            ListView {
                 id: layoutGrid
 
-                // Responsive cell sizing - aim for 2-4 columns
+                // Responsive cell sizing for Flow delegates
                 readonly property real minCellWidth: Kirigami.Units.gridUnit * 14
                 readonly property int columnCount: Math.max(2, Math.floor(width / minCellWidth))
-                readonly property real actualCellWidth: width / columnCount
-                readonly property int cellSpacing: Kirigami.Units.smallSpacing * 1.5
-
-                function _extractIds(list) {
-                    let ids = [];
-                    for (let i = 0; i < list.length; i++) {
-                        ids.push(String(list[i].id ?? ""));
-                    }
-                    return ids;
-                }
+                readonly property real cellWidth: width / columnCount
+                readonly property real cellHeight: Kirigami.Units.gridUnit * 12
+                // Selected layout tracking (across sections)
+                property string selectedLayoutId: ""
 
                 function rebuildModel() {
                     let allLayouts = settingsController.layouts;
                     // Filter by view mode
-                    let newLayouts = [];
+                    let filtered = [];
                     for (let i = 0; i < allLayouts.length; i++) {
                         let isAutotile = allLayouts[i].isAutotile === true;
                         if (root.viewMode === 0 && !isAutotile)
-                            newLayouts.push(allLayouts[i]);
+                            filtered.push(allLayouts[i]);
                         else if (root.viewMode === 1 && isAutotile)
-                            newLayouts.push(allLayouts[i]);
+                            filtered.push(allLayouts[i]);
                     }
-                    // Compare by ID list -- skip swap if order hasn't changed
-                    let oldIds = _extractIds(model);
-                    let newIds = _extractIds(newLayouts);
-                    if (oldIds.length === newIds.length) {
-                        let same = true;
-                        for (let i = 0; i < oldIds.length; i++) {
-                            if (oldIds[i] !== newIds[i]) {
-                                same = false;
-                                break;
-                            }
-                        }
-                        if (same) {
-                            for (let i = 0; i < newLayouts.length; i++) {
-                                model[i] = newLayouts[i];
-                            }
-                            return ;
-                        }
+                    // Group by aspect ratio class
+                    let aspectOrder = ["any", "standard", "ultrawide", "super-ultrawide", "portrait"];
+                    let aspectLabels = {
+                        "any": i18n("All Monitors"),
+                        "standard": i18n("Standard (16:9)"),
+                        "ultrawide": i18n("Ultrawide (21:9)"),
+                        "super-ultrawide": i18n("Super-Ultrawide (32:9)"),
+                        "portrait": i18n("Portrait (9:16)")
+                    };
+                    let groups = {
+                    };
+                    for (let i = 0; i < filtered.length; i++) {
+                        let cls = filtered[i].aspectRatioClass || "any";
+                        if (!groups[cls])
+                            groups[cls] = [];
+
+                        groups[cls].push(filtered[i]);
                     }
-                    // ID list actually changed -- full swap
-                    model = newLayouts;
+                    // Sort each group alphabetically
+                    for (let cls in groups) {
+                        groups[cls].sort((a, b) => {
+                            return (a.name || "").localeCompare(b.name || "");
+                        });
+                    }
+                    // Build section model: [{label, layouts}, ...]
+                    let sections = [];
+                    let groupCount = 0;
+                    for (let a = 0; a < aspectOrder.length; a++) {
+                        if (groups[aspectOrder[a]] && groups[aspectOrder[a]].length > 0)
+                            groupCount++;
+
+                    }
+                    for (let a = 0; a < aspectOrder.length; a++) {
+                        let cls = aspectOrder[a];
+                        if (groups[cls] && groups[cls].length > 0)
+                            sections.push({
+                            "label": groupCount > 1 ? aspectLabels[cls] : "",
+                            "layouts": groups[cls]
+                        });
+
+                    }
+                    model = sections;
                 }
 
                 function selectDefaultLayout(mode) {
                     let defaultId = (mode === 1) ? ("autotile:" + root.settingsBridge.autotileAlgorithm) : root.settingsBridge.defaultLayoutId;
                     if (defaultId)
-                        Qt.callLater(() => {
-                        return selectLayoutById(defaultId);
-                    });
+                        selectedLayoutId = defaultId;
 
                 }
 
                 function selectLayoutById(layoutId) {
-                    if (!layoutId || !model)
-                        return false;
+                    if (layoutId)
+                        selectedLayoutId = layoutId;
 
-                    for (let i = 0; i < model.length; i++) {
-                        if (model[i] && String(model[i].id) === String(layoutId)) {
-                            currentIndex = i;
-                            positionViewAtIndex(i, GridView.Contain);
-                            return true;
-                        }
-                    }
-                    return false;
+                    return layoutId !== "";
                 }
 
                 Layout.fillWidth: true
@@ -308,11 +315,8 @@ ColumnLayout {
                 Layout.preferredHeight: Math.max(root.layoutListMinHeight, contentHeight)
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                focus: true
-                keyNavigationEnabled: true
+                spacing: Kirigami.Units.largeSpacing
                 model: []
-                cellWidth: actualCellWidth
-                cellHeight: Kirigami.Units.gridUnit * 12
                 Component.onCompleted: {
                     rebuildModel();
                     selectDefaultLayout(root.viewMode);
@@ -324,7 +328,6 @@ ColumnLayout {
                     }
 
                     function onLayoutAdded(layoutId) {
-                        // Select and scroll to the new layout after the model rebuilds
                         Qt.callLater(() => {
                             layoutGrid.selectLayoutById(layoutId);
                         });
@@ -352,26 +355,66 @@ ColumnLayout {
                     explanation: root.viewMode === 1 ? i18n("Enable autotiling to use tiling algorithms") : i18n("Start the PlasmaZones daemon or create a new layout")
                 }
 
-                // ─── Layout Grid Delegate ────────────────────────────────────
-                delegate: LayoutGridDelegate {
-                    appSettings: root.settingsBridge
-                    cellWidth: layoutGrid.cellWidth
-                    cellHeight: layoutGrid.cellHeight
-                    viewMode: root.viewMode
-                    isSelected: GridView.isCurrentItem
-                    onSelected: (idx) => {
-                        layoutGrid.currentIndex = idx;
+                // ─── Section Delegate (header + Flow of layout cards) ────────
+                delegate: ColumnLayout {
+                    id: sectionDelegate
+
+                    required property var modelData
+                    required property int index
+
+                    width: layoutGrid.width
+                    spacing: Kirigami.Units.smallSpacing
+
+                    // Section header
+                    Label {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Kirigami.Units.smallSpacing
+                        text: sectionDelegate.modelData.label || ""
+                        visible: text.length > 0
+                        font.weight: Font.DemiBold
+                        opacity: 0.6
                     }
-                    onActivated: (layoutId) => {
-                        settingsController.editLayout(layoutId);
+
+                    Kirigami.Separator {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Kirigami.Units.smallSpacing
+                        Layout.rightMargin: Kirigami.Units.smallSpacing
+                        visible: (sectionDelegate.modelData.label || "").length > 0
                     }
-                    onDeleteRequested: (layout) => {
-                        deleteConfirmDialog.layoutToDelete = layout;
-                        deleteConfirmDialog.open();
+
+                    // Flow grid of layout cards
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        Repeater {
+                            model: sectionDelegate.modelData.layouts || []
+
+                            LayoutGridDelegate {
+                                appSettings: root.settingsBridge
+                                cellWidth: layoutGrid.cellWidth
+                                cellHeight: layoutGrid.cellHeight
+                                viewMode: root.viewMode
+                                isSelected: String(modelData.id) === layoutGrid.selectedLayoutId
+                                onSelected: (idx) => {
+                                    layoutGrid.selectedLayoutId = String(modelData.id);
+                                }
+                                onActivated: (layoutId) => {
+                                    settingsController.editLayout(layoutId);
+                                }
+                                onDeleteRequested: (layout) => {
+                                    deleteConfirmDialog.layoutToDelete = layout;
+                                    deleteConfirmDialog.open();
+                                }
+                                onContextMenuRequested: (layout) => {
+                                    layoutContextMenu.showForLayout(layout);
+                                }
+                            }
+
+                        }
+
                     }
-                    onContextMenuRequested: (layout) => {
-                        layoutContextMenu.showForLayout(layout);
-                    }
+
                 }
 
             }

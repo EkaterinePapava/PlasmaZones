@@ -258,6 +258,10 @@ public:
     {
         return true;
     }
+    static bool filterLayoutsByAspectRatio()
+    {
+        return true;
+    }
     static bool snapAssistFeatureEnabled()
     {
         return true;

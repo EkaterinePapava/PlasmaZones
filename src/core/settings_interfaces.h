@@ -302,6 +302,9 @@ public:
     virtual void setSnapAssistEnabled(bool enabled) = 0;
     virtual QVariantList snapAssistTriggers() const = 0;
     virtual void setSnapAssistTriggers(const QVariantList& triggers) = 0;
+
+    virtual bool filterLayoutsByAspectRatio() const = 0;
+    virtual void setFilterLayoutsByAspectRatio(bool filter) = 0;
 };
 
 /**

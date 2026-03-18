@@ -158,6 +158,17 @@ QJsonObject Layout::toJson() const
         json[JsonKeys::UseFullScreenGeometry] = true;
     }
 
+    // Aspect ratio classification - only serialize non-default values
+    if (m_aspectRatioClass != AspectRatioClass::Any) {
+        json[JsonKeys::AspectRatioClassKey] = ScreenClassification::toString(m_aspectRatioClass);
+    }
+    if (m_minAspectRatio > 0.0) {
+        json[JsonKeys::MinAspectRatio] = m_minAspectRatio;
+    }
+    if (m_maxAspectRatio > 0.0) {
+        json[JsonKeys::MaxAspectRatio] = m_maxAspectRatio;
+    }
+
     // Visibility filtering - only serialize non-default values
     if (m_hiddenFromSelector) {
         json[JsonKeys::HiddenFromSelector] = true;
@@ -218,6 +229,11 @@ Layout* Layout::fromJson(const QJsonObject& json, QObject* parent)
 
     // Full screen geometry mode
     layout->m_useFullScreenGeometry = json[JsonKeys::UseFullScreenGeometry].toBool(false);
+
+    // Aspect ratio classification
+    layout->m_aspectRatioClass = ScreenClassification::fromString(json[JsonKeys::AspectRatioClassKey].toString());
+    layout->m_minAspectRatio = json[JsonKeys::MinAspectRatio].toDouble(0.0);
+    layout->m_maxAspectRatio = json[JsonKeys::MaxAspectRatio].toDouble(0.0);
 
     // Visibility filtering
     layout->m_hiddenFromSelector = json[JsonKeys::HiddenFromSelector].toBool(false);

@@ -546,6 +546,13 @@ public:
     void setSnapAssistTriggers(const QVariantList&) override
     {
     }
+    bool filterLayoutsByAspectRatio() const override
+    {
+        return true;
+    }
+    void setFilterLayoutsByAspectRatio(bool) override
+    {
+    }
     QString defaultLayoutId() const override
     {
         return {};

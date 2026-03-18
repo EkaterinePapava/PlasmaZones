@@ -196,11 +196,30 @@ Flickable {
                 collapsible: true
 
                 contentItem: Kirigami.FormLayout {
+                    Kirigami.Separator {
+                        Kirigami.FormData.isSection: true
+                        Kirigami.FormData.label: i18n("Display")
+                    }
+
                     CheckBox {
-                        Kirigami.FormData.label: i18n("Display:")
+                        Kirigami.FormData.label: i18n("Multi-monitor:")
                         text: i18n("Show zones on all monitors while dragging")
                         checked: appSettings.showZonesOnAllMonitors
                         onToggled: appSettings.showZonesOnAllMonitors = checked
+                    }
+
+                    CheckBox {
+                        Kirigami.FormData.label: i18n("Aspect ratio filter:")
+                        text: i18n("Only show layouts matching this monitor's aspect ratio")
+                        checked: appSettings.filterLayoutsByAspectRatio
+                        onToggled: appSettings.filterLayoutsByAspectRatio = checked
+                        ToolTip.visible: hovered
+                        ToolTip.text: i18n("When enabled, the zone selector, layout picker, and cycle shortcuts only show layouts designed for the current monitor's aspect ratio. Layouts tagged as 'Any' always appear.")
+                    }
+
+                    Kirigami.Separator {
+                        Kirigami.FormData.isSection: true
+                        Kirigami.FormData.label: i18n("Window Handling")
                     }
 
                     CheckBox {
@@ -222,6 +241,11 @@ Flickable {
                         text: i18n("Restore original window size when unsnapping")
                         checked: appSettings.restoreOriginalSizeOnUnsnap
                         onToggled: appSettings.restoreOriginalSizeOnUnsnap = checked
+                    }
+
+                    Kirigami.Separator {
+                        Kirigami.FormData.isSection: true
+                        Kirigami.FormData.label: i18n("Session Restore")
                     }
 
                     CheckBox {

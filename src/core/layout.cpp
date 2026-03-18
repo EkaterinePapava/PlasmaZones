@@ -90,6 +90,9 @@ Layout::Layout(const Layout& other)
     , m_useFullScreenGeometry(other.m_useFullScreenGeometry)
     , m_shaderId(other.m_shaderId)
     , m_shaderParams(other.m_shaderParams)
+    , m_aspectRatioClass(other.m_aspectRatioClass)
+    , m_minAspectRatio(other.m_minAspectRatio)
+    , m_maxAspectRatio(other.m_maxAspectRatio)
     , m_hiddenFromSelector(other.m_hiddenFromSelector)
     , m_allowedScreens(other.m_allowedScreens)
     , m_allowedDesktops(other.m_allowedDesktops)
@@ -141,6 +144,12 @@ Layout& Layout::operator=(const Layout& other)
         m_autoAssign = other.m_autoAssign;
         bool fullScreenGeomDiff = m_useFullScreenGeometry != other.m_useFullScreenGeometry;
         m_useFullScreenGeometry = other.m_useFullScreenGeometry;
+        bool arChanged = m_aspectRatioClass != other.m_aspectRatioClass
+            || !qFuzzyCompare(1.0 + m_minAspectRatio, 1.0 + other.m_minAspectRatio)
+            || !qFuzzyCompare(1.0 + m_maxAspectRatio, 1.0 + other.m_maxAspectRatio);
+        m_aspectRatioClass = other.m_aspectRatioClass;
+        m_minAspectRatio = other.m_minAspectRatio;
+        m_maxAspectRatio = other.m_maxAspectRatio;
         m_hiddenFromSelector = other.m_hiddenFromSelector;
         m_allowedScreens = other.m_allowedScreens;
         m_allowedDesktops = other.m_allowedDesktops;
@@ -171,6 +180,8 @@ Layout& Layout::operator=(const Layout& other)
             Q_EMIT autoAssignChanged();
         if (fullScreenGeomDiff)
             Q_EMIT useFullScreenGeometryChanged();
+        if (arChanged)
+            Q_EMIT aspectRatioClassChanged();
 
         m_dirty = true;
         endBatchModify();
@@ -236,6 +247,62 @@ void Layout::setUsePerSideOuterGap(bool enabled)
         Q_EMIT outerGapChanged();
         emitModifiedIfNotBatched();
     }
+}
+
+// Aspect ratio classification setters
+void Layout::setAspectRatioClass(PlasmaZones::AspectRatioClass cls)
+{
+    if (m_aspectRatioClass != cls) {
+        m_aspectRatioClass = cls;
+        Q_EMIT aspectRatioClassChanged();
+        emitModifiedIfNotBatched();
+    }
+}
+
+void Layout::setAspectRatioClassInt(int cls)
+{
+    if (cls < 0 || cls > static_cast<int>(PlasmaZones::AspectRatioClass::Portrait)) {
+        cls = static_cast<int>(PlasmaZones::AspectRatioClass::Any);
+    }
+    setAspectRatioClass(static_cast<PlasmaZones::AspectRatioClass>(cls));
+}
+
+void Layout::setMinAspectRatio(qreal ratio)
+{
+    // Use 1.0+ shift to avoid qFuzzyCompare issues near zero
+    if (!qFuzzyCompare(1.0 + m_minAspectRatio, 1.0 + ratio)) {
+        m_minAspectRatio = ratio;
+        Q_EMIT aspectRatioClassChanged();
+        emitModifiedIfNotBatched();
+    }
+}
+
+void Layout::setMaxAspectRatio(qreal ratio)
+{
+    // Use 1.0+ shift to avoid qFuzzyCompare issues near zero
+    if (!qFuzzyCompare(1.0 + m_maxAspectRatio, 1.0 + ratio)) {
+        m_maxAspectRatio = ratio;
+        Q_EMIT aspectRatioClassChanged();
+        emitModifiedIfNotBatched();
+    }
+}
+
+bool Layout::matchesAspectRatio(qreal screenAspectRatio) const
+{
+    // Explicit min/max bounds take precedence over class matching
+    if (m_minAspectRatio > 0.0 || m_maxAspectRatio > 0.0) {
+        if (m_minAspectRatio > 0.0 && screenAspectRatio < m_minAspectRatio) {
+            return false;
+        }
+        if (m_maxAspectRatio > 0.0 && screenAspectRatio > m_maxAspectRatio) {
+            return false;
+        }
+        return true;
+    }
+
+    // Fall back to class matching
+    auto screenClass = ScreenClassification::classify(screenAspectRatio);
+    return ScreenClassification::matches(m_aspectRatioClass, screenClass);
 }
 
 // Source path setter (no layoutModified - internal tracking property)

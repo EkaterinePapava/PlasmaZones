@@ -88,9 +88,10 @@ QVariantList ZoneSelectorController::layouts() const
     if (m_screen) {
         screenId = Utils::screenIdentifier(m_screen);
     }
-    const auto entries =
-        LayoutUtils::buildUnifiedLayoutList(m_layoutManager, screenId, m_currentVirtualDesktop, m_currentActivity,
-                                            m_includeManualLayouts, m_includeAutotileLayouts);
+    const auto entries = LayoutUtils::buildUnifiedLayoutList(
+        m_layoutManager, screenId, m_currentVirtualDesktop, m_currentActivity, m_includeManualLayouts,
+        m_includeAutotileLayouts, Utils::screenAspectRatio(m_screen),
+        m_settings && m_settings->filterLayoutsByAspectRatio());
     return LayoutUtils::toVariantList(entries);
 }
 

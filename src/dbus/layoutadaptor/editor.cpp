@@ -172,6 +172,13 @@ bool LayoutAdaptor::updateLayout(const QString& layoutJson)
     // Update full screen geometry mode
     layout->setUseFullScreenGeometry(obj[JsonKeys::UseFullScreenGeometry].toBool(false));
 
+    // Update aspect ratio classification
+    if (obj.contains(JsonKeys::AspectRatioClassKey)) {
+        layout->setAspectRatioClassInt(obj[JsonKeys::AspectRatioClassKey].toInt(0));
+    } else {
+        layout->setAspectRatioClassInt(0);
+    }
+
     // Update shader settings
     layout->setShaderId(obj[JsonKeys::ShaderId].toString());
     if (obj.contains(JsonKeys::ShaderParams)) {

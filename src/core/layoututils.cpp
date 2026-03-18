@@ -153,6 +153,7 @@ static UnifiedLayoutEntry entryFromLayout(Layout* layout)
     entry.zoneCount = layout->zoneCount();
     entry.zones = zonesToVariantList(layout, ZoneField::Minimal);
     entry.autoAssign = layout->autoAssign();
+    entry.aspectRatioClass = static_cast<int>(layout->aspectRatioClass());
     return entry;
 }
 
@@ -182,8 +183,12 @@ static void appendAutotileEntries(QVector<UnifiedLayoutEntry>& list)
 
 static void sortUnifiedEntries(QVector<UnifiedLayoutEntry>& list)
 {
-    // Sort: manual layouts first (alphabetical), then autotile entries (alphabetical)
+    // Sort: recommended before non-recommended, manual before autotile, then alphabetical
     std::sort(list.begin(), list.end(), [](const UnifiedLayoutEntry& a, const UnifiedLayoutEntry& b) {
+        // Recommended layouts come first
+        if (a.recommended != b.recommended) {
+            return a.recommended; // recommended (true) before non-recommended (false)
+        }
         if (a.isAutotile != b.isAutotile) {
             return !a.isAutotile; // manual (false) before autotile (true)
         }
@@ -216,7 +221,8 @@ QVector<UnifiedLayoutEntry> buildUnifiedLayoutList(ILayoutManager* layoutManager
 
 QVector<UnifiedLayoutEntry> buildUnifiedLayoutList(ILayoutManager* layoutManager, const QString& screenId,
                                                    int virtualDesktop, const QString& activity, bool includeManual,
-                                                   bool includeAutotile)
+                                                   bool includeAutotile, qreal screenAspectRatio,
+                                                   bool filterByAspectRatio)
 {
     QVector<UnifiedLayoutEntry> list;
 
@@ -269,7 +275,20 @@ QVector<UnifiedLayoutEntry> buildUnifiedLayoutList(ILayoutManager* layoutManager
                 }
             }
 
-            list.append(entryFromLayout(layout));
+            auto entry = entryFromLayout(layout);
+
+            // Tag whether layout is recommended for this screen's aspect ratio
+            if (screenAspectRatio > 0.0) {
+                entry.recommended = layout->matchesAspectRatio(screenAspectRatio);
+            }
+
+            // When filterByAspectRatio is on, skip non-recommended layouts
+            // (unless this is the active layout, which always passes)
+            if (filterByAspectRatio && screenAspectRatio > 0.0 && !entry.recommended && !isActive) {
+                continue;
+            }
+
+            list.append(entry);
         }
     }
 
@@ -297,6 +316,8 @@ QVariantMap toVariantMap(const UnifiedLayoutEntry& entry)
     map[AutoAssign] = entry.autoAssign;
     map[QLatin1String("isAutotile")] = entry.isAutotile;
     map[IsSystem] = false;
+    map[AspectRatioClassKey] = ScreenClassification::toString(static_cast<AspectRatioClass>(entry.aspectRatioClass));
+    map[QLatin1String("recommended")] = entry.recommended;
 
     return map;
 }
@@ -326,6 +347,10 @@ QJsonObject toJson(const UnifiedLayoutEntry& entry)
     json[Type] = 0;
     json[Category] = static_cast<int>(entry.isAutotile ? LayoutCategory::Autotile : LayoutCategory::Manual);
     json[QLatin1String("isAutotile")] = entry.isAutotile;
+    if (entry.aspectRatioClass != 0) {
+        json[AspectRatioClassKey] =
+            ScreenClassification::toString(static_cast<AspectRatioClass>(entry.aspectRatioClass));
+    }
     if (entry.autoAssign) {
         json[AutoAssign] = true;
     }

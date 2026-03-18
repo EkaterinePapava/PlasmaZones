@@ -99,6 +99,7 @@ qt_add_resources(plasmazones-settings "shared_common_qml"
     PREFIX "/qt/qml/org/plasmazones/common"
     BASE "${CMAKE_SOURCE_DIR}/src/shared"
     FILES
+        ${CMAKE_SOURCE_DIR}/src/shared/AspectRatioBadge.qml
         ${CMAKE_SOURCE_DIR}/src/shared/ZonePreview.qml
         ${CMAKE_SOURCE_DIR}/src/shared/CategoryBadge.qml
 )

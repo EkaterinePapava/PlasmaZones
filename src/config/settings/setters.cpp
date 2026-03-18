@@ -293,6 +293,15 @@ void Settings::setDefaultLayoutId(const QString& layoutId)
     }
 }
 
+void Settings::setFilterLayoutsByAspectRatio(bool filter)
+{
+    if (m_filterLayoutsByAspectRatio != filter) {
+        m_filterLayoutsByAspectRatio = filter;
+        Q_EMIT filterLayoutsByAspectRatioChanged();
+        Q_EMIT settingsChanged();
+    }
+}
+
 SETTINGS_SETTER(const QStringList&, ExcludedApplications, m_excludedApplications, excludedApplicationsChanged)
 SETTINGS_SETTER(const QStringList&, ExcludedWindowClasses, m_excludedWindowClasses, excludedWindowClassesChanged)
 SETTINGS_SETTER(bool, ExcludeTransientWindows, m_excludeTransientWindows, excludeTransientWindowsChanged)

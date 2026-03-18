@@ -49,9 +49,10 @@ QVector<UnifiedLayoutEntry> UnifiedLayoutController::layouts() const
     if (!m_cacheValid) {
         // Use filtered overload to respect visibility settings (hiddenFromSelector, allowed lists)
         // and mode-based filtering (manual-only vs autotile-only)
-        m_cachedLayouts =
-            LayoutUtils::buildUnifiedLayoutList(m_layoutManager, m_currentScreenName, m_currentVirtualDesktop,
-                                                m_currentActivity, m_includeManualLayouts, m_includeAutotileLayouts);
+        m_cachedLayouts = LayoutUtils::buildUnifiedLayoutList(
+            m_layoutManager, m_currentScreenName, m_currentVirtualDesktop, m_currentActivity, m_includeManualLayouts,
+            m_includeAutotileLayouts, Utils::screenAspectRatio(m_currentScreenName),
+            m_settings && m_settings->filterLayoutsByAspectRatio());
 
         m_cacheValid = true;
     }

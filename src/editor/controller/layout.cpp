@@ -165,6 +165,7 @@ void EditorController::createNewLayout()
     m_outerGapRight = -1;
     m_overlayDisplayMode = -1;
     m_useFullScreenGeometry = false;
+    m_aspectRatioClass = 0;
 
     // Refresh available shaders from daemon
     refreshAvailableShaders();
@@ -183,6 +184,7 @@ void EditorController::createNewLayout()
     Q_EMIT outerGapChanged();
     Q_EMIT overlayDisplayModeChanged();
     Q_EMIT useFullScreenGeometryChanged();
+    Q_EMIT aspectRatioClassChanged();
 }
 
 void EditorController::loadLayout(const QString& layoutId)
@@ -373,6 +375,18 @@ void EditorController::loadLayout(const QString& layoutId)
         ? layoutObj[QLatin1String(JsonKeys::OuterGapRight)].toInt(-1)
         : -1;
     m_useFullScreenGeometry = layoutObj[QLatin1String(JsonKeys::UseFullScreenGeometry)].toBool(false);
+    if (layoutObj.contains(QLatin1String(JsonKeys::AspectRatioClassKey))) {
+        QJsonValue arVal = layoutObj[QLatin1String(JsonKeys::AspectRatioClassKey)];
+        if (arVal.isString()) {
+            // Canonical format from Layout::toJson() — string like "ultrawide"
+            m_aspectRatioClass = static_cast<int>(ScreenClassification::fromString(arVal.toString()));
+        } else {
+            // Int format (from editor save round-trip before daemon persists)
+            m_aspectRatioClass = arVal.toInt(0);
+        }
+    } else {
+        m_aspectRatioClass = 0;
+    }
     int oldOverlayDisplayMode = m_overlayDisplayMode;
     m_overlayDisplayMode = layoutObj.contains(QLatin1String(JsonKeys::OverlayDisplayMode))
         ? layoutObj[QLatin1String(JsonKeys::OverlayDisplayMode)].toInt(-1)
@@ -426,6 +440,7 @@ void EditorController::loadLayout(const QString& layoutId)
     if (m_useFullScreenGeometry != oldUseFullScreen) {
         Q_EMIT useFullScreenGeometryChanged();
     }
+    Q_EMIT aspectRatioClassChanged();
     if (m_overlayDisplayMode != oldOverlayDisplayMode) {
         Q_EMIT overlayDisplayModeChanged();
     }
@@ -561,6 +576,12 @@ void EditorController::saveLayout()
     // Include full screen geometry mode (only if enabled)
     if (m_useFullScreenGeometry) {
         layoutObj[QLatin1String(JsonKeys::UseFullScreenGeometry)] = true;
+    }
+
+    // Include aspect ratio class (only if not Any) — serialize as int for updateLayout D-Bus,
+    // which converts to the canonical string format via Layout::setAspectRatioClassInt()
+    if (m_aspectRatioClass != 0) {
+        layoutObj[QLatin1String(JsonKeys::AspectRatioClassKey)] = m_aspectRatioClass;
     }
 
     // Include visibility filtering allow-lists (only if non-empty)

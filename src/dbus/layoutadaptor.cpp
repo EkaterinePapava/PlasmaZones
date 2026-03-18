@@ -226,6 +226,11 @@ QStringList LayoutAdaptor::getLayoutList()
                     json[JsonKeys::DefaultOrder] = layout->defaultOrder();
                 }
 
+                // Include aspect ratio class so KCM can show the AR badge
+                if (layout->aspectRatioClass() != AspectRatioClass::Any) {
+                    json[JsonKeys::AspectRatioClassKey] = ScreenClassification::toString(layout->aspectRatioClass());
+                }
+
                 // Include allow-lists so KCM can show the filter badge
                 LayoutUtils::serializeAllowLists(json, layout->allowedScreens(), layout->allowedDesktops(),
                                                  layout->allowedActivities());
@@ -353,6 +358,14 @@ QString LayoutAdaptor::createLayout(const QString& name, const QString& type)
     }
 
     layout->setName(name);
+
+    // Auto-detect aspect ratio class from the primary screen
+    QScreen* screen = Utils::primaryScreen();
+    if (screen) {
+        QRect geo = screen->geometry();
+        layout->setAspectRatioClass(ScreenClassification::classify(geo.width(), geo.height()));
+    }
+
     m_layoutManager->addLayout(layout);
 
     qCInfo(lcDbusLayout) << "Created layout" << name << "of type" << type;
