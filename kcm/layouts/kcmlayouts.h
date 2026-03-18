@@ -40,8 +40,6 @@ class KCMLayouts : public KQuickConfigModule
 
     // Screens (for editor launch targeting)
     Q_PROPERTY(QVariantList screens READ screens NOTIFY screensChanged)
-    Q_PROPERTY(
-        QString selectedScreenName READ selectedScreenName WRITE setSelectedScreenName NOTIFY selectedScreenNameChanged)
 
 public:
     KCMLayouts(QObject* parent, const KPluginMetaData& data);
@@ -68,8 +66,6 @@ public:
 
     // Screens
     QVariantList screens() const;
-    QString selectedScreenName() const;
-    void setSelectedScreenName(const QString& name);
 
     // Layout management Q_INVOKABLE methods
     Q_INVOKABLE void createNewLayout();
@@ -82,6 +78,7 @@ public:
     Q_INVOKABLE void setLayoutHidden(const QString& layoutId, bool hidden);
     Q_INVOKABLE void setLayoutAutoAssign(const QString& layoutId, bool enabled);
     Q_INVOKABLE void openLayoutsFolder();
+    Q_INVOKABLE void editLayoutOnScreen(const QString& layoutId, const QString& screenId);
 
 public Q_SLOTS:
     void load() override;
@@ -103,15 +100,13 @@ Q_SIGNALS:
     void labelFontUnderlineChanged();
     void labelFontStrikeoutChanged();
     void screensChanged();
-    void selectedScreenNameChanged();
 
 private:
     void emitAllChanged();
-    QString currentScreenName() const;
+    QString currentScreenId() const;
 
     Settings* m_settings = nullptr;
     bool m_saving = false;
-    QString m_selectedScreenName;
     std::unique_ptr<LayoutManager> m_layoutManager;
     std::unique_ptr<ScreenHelper> m_screenHelper;
 };

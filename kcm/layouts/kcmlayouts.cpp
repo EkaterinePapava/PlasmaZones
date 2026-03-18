@@ -6,6 +6,9 @@
 #include <QDBusMessage>
 #include <QDesktopServices>
 #include <QDir>
+#include <QCursor>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QStandardPaths>
 #include <QTimer>
 #include "../common/dbusutils.h"
@@ -16,6 +19,7 @@
 #include <KPluginFactory>
 #include "../../src/config/settings.h"
 #include "../../src/core/constants.h"
+#include "../../src/core/utils.h"
 #include "../common/layoutmanager.h"
 
 K_PLUGIN_CLASS_WITH_JSON(PlasmaZones::KCMLayouts, "kcm_plasmazones_layouts.json")
@@ -31,7 +35,7 @@ KCMLayouts::KCMLayouts(QObject* parent, const KPluginMetaData& data)
     m_layoutManager = std::make_unique<LayoutManager>(
         m_settings,
         [this]() {
-            return currentScreenName();
+            return currentScreenId();
         },
         this);
     connect(m_layoutManager.get(), &LayoutManager::layoutsChanged, this, &KCMLayouts::layoutsChanged);
@@ -271,6 +275,19 @@ void KCMLayouts::openLayoutsFolder()
     QDesktopServices::openUrl(QUrl::fromLocalFile(path));
 }
 
+void KCMLayouts::editLayoutOnScreen(const QString& layoutId, const QString& screenId)
+{
+    if (layoutId.isEmpty() || screenId.isEmpty()) {
+        return;
+    }
+
+    QDBusMessage msg = QDBusMessage::createMethodCall(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                                      QString(DBus::Interface::LayoutManager),
+                                                      QStringLiteral("openEditorForLayoutOnScreen"));
+    msg << layoutId << screenId;
+    QDBusConnection::sessionBus().asyncCall(msg);
+}
+
 // ── Screens ──────────────────────────────────────────────────────────────
 
 QVariantList KCMLayouts::screens() const
@@ -278,24 +295,21 @@ QVariantList KCMLayouts::screens() const
     return m_screenHelper->screens();
 }
 
-QString KCMLayouts::selectedScreenName() const
+QString KCMLayouts::currentScreenId() const
 {
-    return m_selectedScreenName;
-}
-
-void KCMLayouts::setSelectedScreenName(const QString& name)
-{
-    if (m_selectedScreenName != name) {
-        m_selectedScreenName = name;
-        Q_EMIT selectedScreenNameChanged();
-    }
-}
-
-QString KCMLayouts::currentScreenName() const
-{
-    // Use the user-selected screen if set
-    if (!m_selectedScreenName.isEmpty()) {
-        return m_selectedScreenName;
+    // Resolve the cursor's screen to a screenId (EDID-based identifier) that
+    // matches what the daemon uses.  The screen list from ScreenHelper has
+    // `name` = screenId (from daemon's getScreens()), so we must compare
+    // using the same EDID-based format, not the Qt connector name.
+    QScreen* cursorScreen = QGuiApplication::screenAt(QCursor::pos());
+    if (cursorScreen) {
+        const QString cursorScreenId = Utils::screenIdentifier(cursorScreen);
+        const auto s = m_screenHelper->screens();
+        for (const QVariant& screen : s) {
+            if (screen.toMap().value(QStringLiteral("name")).toString() == cursorScreenId) {
+                return cursorScreenId;
+            }
+        }
     }
     // Fall back to the primary screen, then first screen
     const auto s = m_screenHelper->screens();
