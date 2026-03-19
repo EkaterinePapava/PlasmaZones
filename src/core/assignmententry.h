@@ -51,7 +51,10 @@ struct AssignmentEntry
     QString activeLayoutId() const
     {
         if (mode == Autotile) {
-            return !tilingAlgorithm.isEmpty() ? LayoutId::makeAutotileId(tilingAlgorithm) : QString();
+            // Return autotile prefix even with empty algorithm — signals "autotile mode,
+            // use default algorithm." Callers use LayoutId::isAutotile() to detect mode
+            // and extractAlgorithmId() to get the algorithm (empty = use default).
+            return LayoutId::makeAutotileId(tilingAlgorithm);
         }
         return snappingLayout;
     }

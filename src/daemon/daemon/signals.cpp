@@ -251,11 +251,9 @@ void Daemon::initializeAutotile()
                 presaveSnapFloats();
 
                 // Pre-seed autotile engine with saved autotile order (if available)
-                // or zone-ordered windows. Seed ALL screens for deterministic ordering
-                // on multi-monitor setups.
-                for (QScreen* s : m_screenManager->screens()) {
-                    seedAutotileOrderForScreen(Utils::screenIdentifier(s));
-                }
+                // or zone-ordered windows. Only seed the focused screen — the toggle
+                // is per-screen, not global.
+                seedAutotileOrderForScreen(screenId);
 
                 // Resolve algorithm from the AssignmentEntry's tilingAlgorithm
                 // (preserved even when mode is Snapping), then fall back to the
@@ -303,6 +301,10 @@ void Daemon::initializeAutotile()
                 QVector<RotationEntry> allResnapEntries;
                 for (auto it = m_lastAutotileOrders.constBegin(); it != m_lastAutotileOrders.constEnd(); ++it) {
                     if (it.key().desktop != desktop || it.key().activity != activity) {
+                        continue;
+                    }
+                    // Only resnap the focused screen — the toggle is per-screen
+                    if (it.key().screenId != screenId) {
                         continue;
                     }
                     const QStringList& fullOrder = it.value();

@@ -332,7 +332,7 @@ void AssignmentManager::clearTilingScreenDesktopAssignment(const QString& screen
     entry.tilingAlgorithm.clear();
 
     auto baseMode = m_screenModes.value(screenName, AssignmentEntry::Snapping);
-    if (!entry.snappingLayout.isEmpty() || (entry.mode == AssignmentEntry::Autotile && baseMode != entry.mode)) {
+    if (!entry.snappingLayout.isEmpty() || baseMode != entry.mode) {
         m_pendingDesktopEntries[key] = entry;
         m_clearedDesktopAssignments.remove(key);
     } else {
