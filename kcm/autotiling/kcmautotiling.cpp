@@ -91,12 +91,12 @@ void KCMAutotiling::save()
         m_settings->autotileInactiveBorderColor().name(QColor::HexArgb);
     batch[QStringLiteral("autotileUseSystemBorderColors")] = m_settings->autotileUseSystemBorderColors();
 
-    // Per-screen overrides are not in the daemon's settings registry;
-    // persist them locally via KConfig (m_settings->save() writes them).
-    m_settings->save();
-
-    // Batch-set all autotile settings on the daemon (saves + applies atomically)
+    // Batch-set general autotile settings on the daemon first (daemon saves internally).
+    // Then save per-screen overrides locally — this overwrites the daemon's stale
+    // per-screen values with the KCM's correct ones. notifyReload() makes the daemon
+    // re-read the final state.
     KCMDBus::setDaemonSettings(batch);
+    m_settings->save();
 
     KCMDBus::notifyReload();
 
