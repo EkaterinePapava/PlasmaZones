@@ -143,12 +143,22 @@ void AutotileHandler::updateHideTitleBarsSetting(bool enabled)
     const bool wasEnabled = m_border.hideTitleBars;
     m_border.hideTitleBars = enabled;
     if (wasEnabled && !enabled) {
+        // Turning OFF — restore title bars for all borderless windows
         m_border.zoneGeometries.clear();
         const QSet<QString> toRestore = m_border.borderlessWindows;
         for (const QString& windowId : toRestore) {
             KWin::EffectWindow* win = m_effect->findWindowById(windowId);
             if (win) {
                 setWindowBorderless(win, windowId, false);
+            }
+        }
+    } else if (!wasEnabled && enabled) {
+        // Turning ON — hide title bars for all currently tiled windows
+        const QSet<QString> tiled = m_border.tiledWindows;
+        for (const QString& windowId : tiled) {
+            KWin::EffectWindow* win = m_effect->findWindowById(windowId);
+            if (win) {
+                setWindowBorderless(win, windowId, true);
             }
         }
     }

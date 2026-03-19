@@ -100,7 +100,11 @@ public:
     }
     bool shouldShowBorderForWindow(const QString& windowId) const
     {
-        return isBorderlessWindow(windowId) || (m_border.showBorder && isTiledWindow(windowId));
+        // showBorder and hideTitleBars are independent toggles.
+        // showBorder=false means no borders, regardless of title bar state.
+        if (!m_border.showBorder)
+            return false;
+        return isBorderlessWindow(windowId) || isTiledWindow(windowId);
     }
     int borderWidth() const
     {
