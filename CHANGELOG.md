@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.3.6] - 2026-03-19
+
+### Fixed
+- **Navigation shortcuts snap to wrong screen on multi-monitor**: MoveWindow and SwapWindow keyboard shortcuts computed zone geometry for the wrong screen when KWin's `EffectWindow::screen()` disagreed with the daemon's stored screen assignment (common with similarly-named monitors like dual Samsung Odyssey G93SC ultrawides). The window would land on a third screen and immediately unsnap. Navigation targets now use the daemon's authoritative stored screen assignment, and the effect reads the corrected screen from the daemon's response.
+
+### Added
+- **KDE dependency migration plan**: `docs/kde-dependency-migration.md` documents how to make the daemon portable across Wayland compositors (GNOME, Hyprland, Sway) while retaining full KDE integration, behind a `USE_KDE_FRAMEWORKS` CMake option.
+
 ## [2.3.5] - 2026-03-19
 
 ### Fixed
@@ -832,7 +840,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.5...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.6...HEAD
+[2.3.6]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.5...v2.3.6
 [2.3.5]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.3...v2.3.5
 [2.3.3]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.2...v2.3.3
 [2.3.2]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.1...v2.3.2
