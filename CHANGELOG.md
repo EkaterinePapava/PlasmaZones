@@ -7,7 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [2.3.4] - 2026-03-19
+## [2.3.5] - 2026-03-19
 
 ### Fixed
 - **KCM assignment save rewrites modes**: The KCM decomposed per-screen AssignmentEntry (mode + snappingLayout + tilingAlgorithm) into two flat maps and merged them on save — losing mode information, reverting layouts after Apply, and corrupting autotile/snapping mode when editing the other mode's field. Replaced with per-entry D-Bus writes via new `setAssignmentEntry` method that preserves all fields independently.
@@ -832,8 +832,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.4...HEAD
-[2.3.4]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.3...v2.3.4
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.5...HEAD
+[2.3.5]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.3...v2.3.5
 [2.3.3]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.2...v2.3.3
 [2.3.2]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.1...v2.3.2
 [2.3.1]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.0...v2.3.1
