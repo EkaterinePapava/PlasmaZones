@@ -7,6 +7,25 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.3.4] - 2026-03-19
+
+### Fixed
+- **KCM assignment save rewrites modes**: The KCM decomposed per-screen AssignmentEntry (mode + snappingLayout + tilingAlgorithm) into two flat maps and merged them on save — losing mode information, reverting layouts after Apply, and corrupting autotile/snapping mode when editing the other mode's field. Replaced with per-entry D-Bus writes via new `setAssignmentEntry` method that preserves all fields independently.
+- **Clearing per-desktop override inherits base autotile mode**: Setting a per-desktop layout to "Use default" removed the entire entry, inheriting the base screen's mode (often autotile). Now keeps a mode-only marker entry that preserves the desktop's mode while cascading layout resolution to the parent scope.
+- **Monitor-level layout changes revert after Apply**: The batch `setAllScreenAssignments` D-Bus method used `fromLayoutId(id, existing)` which preserved the old mode instead of setting it from the layout ID type. Combined with the merge logic sending the wrong mode's ID, screens appeared to revert.
+- **KCM combo shows resolved layout instead of "Use default"**: After clearing a per-desktop assignment, the combo showed the inherited layout name instead of "Use default" because the D-Bus echo signal overwrote the KCM cache with the cascaded base layout. Added `setSaveBatchMode` to suppress `screenLayoutChanged` signals during the entire save batch.
+- **Layout cascade stops at mode-only entries**: `layoutForScreen` returned nullptr immediately when finding a mode-only entry (empty snapping in Snapping mode) instead of cascading to the parent scope. Now continues cascading through mode-only entries to find the effective layout.
+
+### Added
+- **Resnap/retile on KCM assignment changes**: Changing layouts via KCM assignments now triggers window resnap (snapping) or retile (autotile) with per-screen OSD, matching the behavior of the layout picker overlay and keyboard shortcuts. Uses dedicated `applyAssignmentChanges` D-Bus method to avoid feedback loops with the settings handler.
+- **Per-screen resnap buffer**: New `populateResnapBufferForAllScreens` method builds resnap data using a global zoneId-to-position map from all loaded layouts, independent of the single global active layout. Supports multi-monitor setups where each screen has a different layout assignment.
+- **Synchronous notifyReload**: KCM-to-daemon settings reload is now synchronous with `m_ignoreNextSettingsChanged` flag, preventing race conditions where the daemon's queued `settingsChanged` signal would trigger a spurious reload that reverts just-saved assignments.
+
+### Changed
+- **Assignment edits never change mode**: Selecting a snapping layout or tiling algorithm in the KCM only updates that field — mode is controlled exclusively by the daemon through global snapping/autotile toggle, not by individual assignment edits.
+- **Full AssignmentEntry tracking in KCM**: Replaced redundant flat pending maps (`m_pendingDesktopAssignments`, `m_pendingActivityAssignments`) with full `AssignmentEntry` pending maps that track mode + snappingLayout + tilingAlgorithm per context.
+- **Field-level clearing**: Clearing a snapping layout only clears the `snappingLayout` field, preserving mode and `tilingAlgorithm`. Prevents unintended mode inheritance from parent scopes.
+
 ## [2.3.3] - 2026-03-17
 
 ### Fixed
@@ -813,7 +832,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.3...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.4...HEAD
+[2.3.4]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.3...v2.3.4
 [2.3.3]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.2...v2.3.3
 [2.3.2]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.1...v2.3.2
 [2.3.1]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.0...v2.3.1
