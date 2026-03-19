@@ -150,10 +150,6 @@ void KCMAssignments::save()
     batch[QStringLiteral("disabledMonitors")] = QVariant::fromValue(m_settings->disabledMonitors());
     KCMDBus::setDaemonSettings(batch);
 
-    // Still call m_settings->save() for any per-screen or local-only state
-    // that is not covered by the daemon's settings registry.
-    m_settings->save();
-
     QStringList failedOperations;
     m_assignmentManager->save(failedOperations);
 

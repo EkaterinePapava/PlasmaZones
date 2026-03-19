@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFontDatabase>
+#include "../common/dbusutils.h"
 #include "../common/perscreenhelpers.h"
 #include "../common/screenhelper.h"
 #include "../common/screenprovider.h"
@@ -17,7 +18,7 @@
 
 namespace PlasmaZones {
 
-// ── Zones / Gaps getters ────────────────────────────────────────────────
+// -- Zones / Gaps getters ----------------------------------------------------
 
 int KCMSnapping::zonePadding() const
 {
@@ -59,7 +60,7 @@ int KCMSnapping::adjacentThreshold() const
     return m_settings->adjacentThreshold();
 }
 
-// ── Zones / Gaps setters ────────────────────────────────────────────────
+// -- Zones / Gaps setters ----------------------------------------------------
 
 void KCMSnapping::setZonePadding(int padding)
 {
@@ -133,7 +134,7 @@ void KCMSnapping::setAdjacentThreshold(int threshold)
     }
 }
 
-// ── Zone Selector getters ───────────────────────────────────────────────
+// -- Zone Selector getters ---------------------------------------------------
 
 bool KCMSnapping::zoneSelectorEnabled() const
 {
@@ -185,7 +186,7 @@ int KCMSnapping::zoneSelectorMaxRows() const
     return m_settings->zoneSelectorMaxRows();
 }
 
-// ── Zone Selector setters ───────────────────────────────────────────────
+// -- Zone Selector setters ---------------------------------------------------
 
 void KCMSnapping::setZoneSelectorEnabled(bool enabled)
 {
@@ -277,7 +278,7 @@ void KCMSnapping::setZoneSelectorMaxRows(int rows)
     }
 }
 
-// ── Screens ─────────────────────────────────────────────────────────────
+// -- Screens -----------------------------------------------------------------
 
 QVariantList KCMSnapping::screens() const
 {
@@ -289,7 +290,7 @@ void KCMSnapping::refreshScreens()
     m_screenHelper->refreshScreens();
 }
 
-// ── Font helpers ────────────────────────────────────────────────────────
+// -- Font helpers ------------------------------------------------------------
 
 QStringList KCMSnapping::fontStylesForFamily(const QString& family) const
 {
@@ -306,7 +307,7 @@ bool KCMSnapping::fontStyleItalic(const QString& family, const QString& style) c
     return QFontDatabase::italic(family, style);
 }
 
-// ── Color import ────────────────────────────────────────────────────────
+// -- Color import ------------------------------------------------------------
 
 void KCMSnapping::loadColorsFromPywal()
 {
@@ -348,7 +349,7 @@ void KCMSnapping::emitColorChanged()
     setNeedsSave(true);
 }
 
-// ── Per-screen settings ─────────────────────────────────────────────────
+// -- Per-screen settings -----------------------------------------------------
 
 // Per-screen snapping
 QVariantMap KCMSnapping::getPerScreenSnappingSettings(const QString& screenName) const
@@ -358,11 +359,13 @@ QVariantMap KCMSnapping::getPerScreenSnappingSettings(const QString& screenName)
 void KCMSnapping::setPerScreenSnappingSetting(const QString& screenName, const QString& key, const QVariant& value)
 {
     PerScreen::set(m_settings, screenName, key, value, &Settings::setPerScreenSnappingSetting);
+    KCMDBus::setPerScreenDaemonSetting(screenName, QStringLiteral("snapping"), key, value);
     setNeedsSave(true);
 }
 void KCMSnapping::clearPerScreenSnappingSettings(const QString& screenName)
 {
     PerScreen::clear(m_settings, screenName, &Settings::clearPerScreenSnappingSettings);
+    KCMDBus::clearPerScreenDaemonSettings(screenName, QStringLiteral("snapping"));
     setNeedsSave(true);
 }
 bool KCMSnapping::hasPerScreenSnappingSettings(const QString& screenName) const
@@ -378,11 +381,13 @@ QVariantMap KCMSnapping::getPerScreenZoneSelectorSettings(const QString& screenN
 void KCMSnapping::setPerScreenZoneSelectorSetting(const QString& screenName, const QString& key, const QVariant& value)
 {
     PerScreen::set(m_settings, screenName, key, value, &Settings::setPerScreenZoneSelectorSetting);
+    KCMDBus::setPerScreenDaemonSetting(screenName, QStringLiteral("zoneSelector"), key, value);
     setNeedsSave(true);
 }
 void KCMSnapping::clearPerScreenZoneSelectorSettings(const QString& screenName)
 {
     PerScreen::clear(m_settings, screenName, &Settings::clearPerScreenZoneSelectorSettings);
+    KCMDBus::clearPerScreenDaemonSettings(screenName, QStringLiteral("zoneSelector"));
     setNeedsSave(true);
 }
 bool KCMSnapping::hasPerScreenZoneSelectorSettings(const QString& screenName) const
@@ -390,7 +395,7 @@ bool KCMSnapping::hasPerScreenZoneSelectorSettings(const QString& screenName) co
     return PerScreen::has(m_settings, screenName, &Settings::hasPerScreenZoneSelectorSettings);
 }
 
-// ── Monitor disable ─────────────────────────────────────────────────────
+// -- Monitor disable ---------------------------------------------------------
 
 bool KCMSnapping::isMonitorDisabled(const QString& screenName) const
 {

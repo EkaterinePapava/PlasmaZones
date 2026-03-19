@@ -128,12 +128,8 @@ void KCMSnapping::save()
     batch[QStringLiteral("zoneSelectorSizeMode")] = m_settings->zoneSelectorSizeModeInt();
     batch[QStringLiteral("zoneSelectorMaxRows")] = m_settings->zoneSelectorMaxRows();
 
-    // Batch-set general snapping settings on the daemon first (daemon saves internally).
-    // Then save per-screen overrides locally — this overwrites the daemon's stale
-    // per-screen values with the KCM's correct ones. notifyReload() makes the daemon
-    // re-read the final state.
+    // All settings (general + per-screen) go through D-Bus. No direct KConfig writes.
     KCMDBus::setDaemonSettings(batch);
-    m_settings->save();
 
     KCMDBus::notifyReload();
 

@@ -615,6 +615,69 @@ QStringList SettingsAdaptor::getSettingKeys()
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Per-Screen Settings D-Bus Methods
+// ═══════════════════════════════════════════════════════════════════════════════
+
+void SettingsAdaptor::setPerScreenSetting(const QString& screenName, const QString& category, const QString& key,
+                                          const QDBusVariant& value)
+{
+    auto* concrete = qobject_cast<Settings*>(m_settings);
+    if (!concrete) {
+        qCWarning(lcDbusSettings) << "setPerScreenSetting: concrete Settings not available";
+        return;
+    }
+    if (category == QLatin1String("autotile")) {
+        concrete->setPerScreenAutotileSetting(screenName, key, value.variant());
+    } else if (category == QLatin1String("snapping")) {
+        concrete->setPerScreenSnappingSetting(screenName, key, value.variant());
+    } else if (category == QLatin1String("zoneSelector")) {
+        concrete->setPerScreenZoneSelectorSetting(screenName, key, value.variant());
+    } else {
+        qCWarning(lcDbusSettings) << "setPerScreenSetting: unknown category" << category;
+        return;
+    }
+    concrete->save();
+}
+
+void SettingsAdaptor::clearPerScreenSettings(const QString& screenName, const QString& category)
+{
+    auto* concrete = qobject_cast<Settings*>(m_settings);
+    if (!concrete) {
+        qCWarning(lcDbusSettings) << "clearPerScreenSettings: concrete Settings not available";
+        return;
+    }
+    if (category == QLatin1String("autotile")) {
+        concrete->clearPerScreenAutotileSettings(screenName);
+    } else if (category == QLatin1String("snapping")) {
+        concrete->clearPerScreenSnappingSettings(screenName);
+    } else if (category == QLatin1String("zoneSelector")) {
+        concrete->clearPerScreenZoneSelectorSettings(screenName);
+    } else {
+        qCWarning(lcDbusSettings) << "clearPerScreenSettings: unknown category" << category;
+        return;
+    }
+    scheduleSave();
+}
+
+QVariantMap SettingsAdaptor::getPerScreenSettings(const QString& screenName, const QString& category)
+{
+    auto* concrete = qobject_cast<Settings*>(m_settings);
+    if (!concrete) {
+        qCWarning(lcDbusSettings) << "getPerScreenSettings: concrete Settings not available";
+        return {};
+    }
+    if (category == QLatin1String("autotile")) {
+        return concrete->getPerScreenAutotileSettings(screenName);
+    } else if (category == QLatin1String("snapping")) {
+        return concrete->getPerScreenSnappingSettings(screenName);
+    } else if (category == QLatin1String("zoneSelector")) {
+        return concrete->getPerScreenZoneSelectorSettings(screenName);
+    }
+    qCWarning(lcDbusSettings) << "getPerScreenSettings: unknown category" << category;
+    return {};
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Shader Registry D-Bus Methods
 // ═══════════════════════════════════════════════════════════════════════════════
 

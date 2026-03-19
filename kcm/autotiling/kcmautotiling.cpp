@@ -46,7 +46,7 @@ KCMAutotiling::KCMAutotiling(QObject* parent, const KPluginMetaData& data)
 
 KCMAutotiling::~KCMAutotiling() = default;
 
-// ── Load / Save ─────────────────────────────────────────────────────────
+// -- Load / Save -------------------------------------------------------------
 
 void KCMAutotiling::load()
 {
@@ -91,12 +91,10 @@ void KCMAutotiling::save()
         m_settings->autotileInactiveBorderColor().name(QColor::HexArgb);
     batch[QStringLiteral("autotileUseSystemBorderColors")] = m_settings->autotileUseSystemBorderColors();
 
-    // Batch-set general autotile settings on the daemon first (daemon saves internally).
-    // Then save per-screen overrides locally — this overwrites the daemon's stale
-    // per-screen values with the KCM's correct ones. notifyReload() makes the daemon
-    // re-read the final state.
+    // Batch-set general autotile settings on the daemon (daemon saves internally).
+    // Per-screen overrides are sent via D-Bus in their setter methods, so no local
+    // m_settings->save() is needed. notifyReload() makes the daemon re-read.
     KCMDBus::setDaemonSettings(batch);
-    m_settings->save();
 
     KCMDBus::notifyReload();
 
@@ -177,7 +175,7 @@ void KCMAutotiling::emitAllChanged()
     Q_EMIT screensChanged();
 }
 
-// ── Enable ──────────────────────────────────────────────────────────────
+// -- Enable ------------------------------------------------------------------
 
 bool KCMAutotiling::autotileEnabled() const
 {
@@ -193,7 +191,7 @@ void KCMAutotiling::setAutotileEnabled(bool enabled)
     }
 }
 
-// ── Algorithm getters ───────────────────────────────────────────────────
+// -- Algorithm getters -------------------------------------------------------
 
 QString KCMAutotiling::autotileAlgorithm() const
 {
@@ -220,7 +218,7 @@ int KCMAutotiling::autotileCenteredMasterMasterCount() const
     return m_settings->autotileCenteredMasterMasterCount();
 }
 
-// ── Algorithm setters ───────────────────────────────────────────────────
+// -- Algorithm setters -------------------------------------------------------
 
 void KCMAutotiling::setAutotileAlgorithm(const QString& algorithm)
 {
@@ -271,7 +269,7 @@ void KCMAutotiling::setAutotileCenteredMasterMasterCount(int count)
     }
 }
 
-// ── Gaps getters ────────────────────────────────────────────────────────
+// -- Gaps getters ------------------------------------------------------------
 
 int KCMAutotiling::autotileInnerGap() const
 {
@@ -313,7 +311,7 @@ int KCMAutotiling::autotileOuterGapRight() const
     return m_settings->autotileOuterGapRight();
 }
 
-// ── Gaps setters ────────────────────────────────────────────────────────
+// -- Gaps setters ------------------------------------------------------------
 
 void KCMAutotiling::setAutotileInnerGap(int gap)
 {
@@ -393,7 +391,7 @@ void KCMAutotiling::setAutotileOuterGapRight(int gap)
     }
 }
 
-// ── Behavior getters ────────────────────────────────────────────────────
+// -- Behavior getters --------------------------------------------------------
 
 bool KCMAutotiling::autotileFocusNewWindows() const
 {
@@ -420,7 +418,7 @@ bool KCMAutotiling::autotileRespectMinimumSize() const
     return m_settings->autotileRespectMinimumSize();
 }
 
-// ── Behavior setters ────────────────────────────────────────────────────
+// -- Behavior setters --------------------------------------------------------
 
 void KCMAutotiling::setAutotileFocusNewWindows(bool focus)
 {
@@ -469,7 +467,7 @@ void KCMAutotiling::setAutotileRespectMinimumSize(bool respect)
     }
 }
 
-// ── Decorations / Borders getters ───────────────────────────────────────
+// -- Decorations / Borders getters -------------------------------------------
 
 bool KCMAutotiling::autotileHideTitleBars() const
 {
@@ -506,7 +504,7 @@ bool KCMAutotiling::autotileUseSystemBorderColors() const
     return m_settings->autotileUseSystemBorderColors();
 }
 
-// ── Decorations / Borders setters ───────────────────────────────────────
+// -- Decorations / Borders setters -------------------------------------------
 
 void KCMAutotiling::setAutotileHideTitleBars(bool hide)
 {
@@ -573,7 +571,7 @@ void KCMAutotiling::setAutotileUseSystemBorderColors(bool use)
     }
 }
 
-// ── Screens ─────────────────────────────────────────────────────────────
+// -- Screens -----------------------------------------------------------------
 
 QVariantList KCMAutotiling::screens() const
 {
@@ -585,7 +583,7 @@ void KCMAutotiling::refreshScreens()
     m_screenHelper->refreshScreens();
 }
 
-// ── Algorithm helpers ───────────────────────────────────────────────────
+// -- Algorithm helpers -------------------------------------------------------
 
 QVariantList KCMAutotiling::availableAlgorithms() const
 {
@@ -627,7 +625,7 @@ QVariantList KCMAutotiling::generateAlgorithmPreview(const QString& algorithmId,
     return AlgorithmRegistry::zonesToRelativeGeometry(zones, previewRect);
 }
 
-// ── Per-screen settings ─────────────────────────────────────────────────
+// -- Per-screen settings -----------------------------------------------------
 
 QVariantMap KCMAutotiling::getPerScreenAutotileSettings(const QString& screenName) const
 {
@@ -636,13 +634,16 @@ QVariantMap KCMAutotiling::getPerScreenAutotileSettings(const QString& screenNam
 
 void KCMAutotiling::setPerScreenAutotileSetting(const QString& screenName, const QString& key, const QVariant& value)
 {
+    // Update local cache (for immediate read-back by QML getters/has) AND push to daemon
     PerScreen::set(m_settings, screenName, key, value, &Settings::setPerScreenAutotileSetting);
+    KCMDBus::setPerScreenDaemonSetting(screenName, QStringLiteral("autotile"), key, value);
     setNeedsSave(true);
 }
 
 void KCMAutotiling::clearPerScreenAutotileSettings(const QString& screenName)
 {
     PerScreen::clear(m_settings, screenName, &Settings::clearPerScreenAutotileSettings);
+    KCMDBus::clearPerScreenDaemonSettings(screenName, QStringLiteral("autotile"));
     setNeedsSave(true);
 }
 
@@ -651,7 +652,7 @@ bool KCMAutotiling::hasPerScreenAutotileSettings(const QString& screenName) cons
     return PerScreen::has(m_settings, screenName, &Settings::hasPerScreenAutotileSettings);
 }
 
-// ── Monitor disable ─────────────────────────────────────────────────────
+// -- Monitor disable ---------------------------------------------------------
 
 bool KCMAutotiling::isMonitorDisabled(const QString& screenName) const
 {

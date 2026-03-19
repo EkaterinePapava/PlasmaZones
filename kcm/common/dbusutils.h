@@ -5,6 +5,7 @@
 
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QDBusMetaType>
 #include <QDBusPendingCall>
 #include "../../src/core/constants.h"
 
@@ -43,6 +44,28 @@ inline QDBusMessage setDaemonSettings(const QVariantMap& settings)
 {
     return callDaemon(QString(DBus::Interface::Settings), QStringLiteral("setSettings"),
                       {QVariant::fromValue(settings)});
+}
+
+/// Set a per-screen setting on the daemon (async — no round-trip wait).
+/// Categories: "autotile", "snapping", "zoneSelector".
+inline void setPerScreenDaemonSetting(const QString& screenName, const QString& category, const QString& key,
+                                      const QVariant& value)
+{
+    QDBusMessage msg =
+        QDBusMessage::createMethodCall(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                       QString(DBus::Interface::Settings), QStringLiteral("setPerScreenSetting"));
+    msg.setArguments({screenName, category, key, QVariant::fromValue(QDBusVariant(value))});
+    QDBusConnection::sessionBus().asyncCall(msg);
+}
+
+/// Clear all per-screen settings for a category on the daemon (async).
+inline void clearPerScreenDaemonSettings(const QString& screenName, const QString& category)
+{
+    QDBusMessage msg =
+        QDBusMessage::createMethodCall(QString(DBus::ServiceName), QString(DBus::ObjectPath),
+                                       QString(DBus::Interface::Settings), QStringLiteral("clearPerScreenSettings"));
+    msg.setArguments({screenName, category});
+    QDBusConnection::sessionBus().asyncCall(msg);
 }
 
 } // namespace PlasmaZones::KCMDBus
