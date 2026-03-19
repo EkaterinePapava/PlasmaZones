@@ -38,4 +38,11 @@ inline void notifyReload()
     QDBusConnection::sessionBus().call(msg, QDBus::Block, TimeoutMs);
 }
 
+/// Batch-set settings on the daemon. Synchronous call.
+inline QDBusMessage setDaemonSettings(const QVariantMap& settings)
+{
+    return callDaemon(QString(DBus::Interface::Settings), QStringLiteral("setSettings"),
+                      {QVariant::fromValue(settings)});
+}
+
 } // namespace PlasmaZones::KCMDBus

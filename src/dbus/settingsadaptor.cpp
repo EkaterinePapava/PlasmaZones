@@ -115,6 +115,12 @@ void SettingsAdaptor::initializeRegistry()
         return true;                                                                                                   \
     };
 
+    // Concrete Settings pointer for properties not on ISettings interface
+    auto* concrete = qobject_cast<Settings*>(m_settings);
+
+    // Activation settings
+    REGISTER_BOOL_SETTING("shiftDragToActivate", shiftDragToActivate, setShiftDragToActivate)
+
     // Drag activation triggers list (multi-bind)
     m_getters[QStringLiteral("dragActivationTriggers")] = [this]() {
         return QVariant::fromValue(m_settings->dragActivationTriggers());
@@ -147,6 +153,9 @@ void SettingsAdaptor::initializeRegistry()
         m_settings->setZoneSpanTriggers(v.toList());
         return true;
     };
+
+    REGISTER_BOOL_SETTING("toggleActivation", toggleActivation, setToggleActivation)
+    REGISTER_BOOL_SETTING("snappingEnabled", snappingEnabled, setSnappingEnabled)
 
     // Display settings
     REGISTER_BOOL_SETTING("showZonesOnAllMonitors", showZonesOnAllMonitors, setShowZonesOnAllMonitors)
@@ -227,15 +236,24 @@ void SettingsAdaptor::initializeRegistry()
     REGISTER_INT_SETTING("minimumZoneSizePx", minimumZoneSizePx, setMinimumZoneSizePx)
     REGISTER_INT_SETTING("minimumZoneDisplaySizePx", minimumZoneDisplaySizePx, setMinimumZoneDisplaySizePx)
 
-    // Activation
-    REGISTER_BOOL_SETTING("toggleActivation", toggleActivation, setToggleActivation)
-    REGISTER_BOOL_SETTING("snappingEnabled", snappingEnabled, setSnappingEnabled)
-
     // Behavior settings
     REGISTER_BOOL_SETTING("keepWindowsInZonesOnResolutionChange", keepWindowsInZonesOnResolutionChange,
                           setKeepWindowsInZonesOnResolutionChange)
     REGISTER_BOOL_SETTING("moveNewWindowsToLastZone", moveNewWindowsToLastZone, setMoveNewWindowsToLastZone)
     REGISTER_BOOL_SETTING("restoreOriginalSizeOnUnsnap", restoreOriginalSizeOnUnsnap, setRestoreOriginalSizeOnUnsnap)
+    // stickyWindowHandling: enum (0=TreatAsNormal, 1=RestoreOnly, 2=IgnoreAll)
+    m_getters[QStringLiteral("stickyWindowHandling")] = [this]() {
+        return static_cast<int>(m_settings->stickyWindowHandling());
+    };
+    m_setters[QStringLiteral("stickyWindowHandling")] = [this](const QVariant& v) {
+        int val = v.toInt();
+        if (val >= 0 && val <= 2) {
+            m_settings->setStickyWindowHandling(static_cast<StickyWindowHandling>(val));
+            return true;
+        }
+        return false;
+    };
+    REGISTER_BOOL_SETTING("restoreWindowsToZonesOnLogin", restoreWindowsToZonesOnLogin, setRestoreWindowsToZonesOnLogin)
     REGISTER_BOOL_SETTING("snapAssistFeatureEnabled", snapAssistFeatureEnabled, setSnapAssistFeatureEnabled)
     REGISTER_BOOL_SETTING("snapAssistEnabled", snapAssistEnabled, setSnapAssistEnabled)
 
@@ -248,17 +266,8 @@ void SettingsAdaptor::initializeRegistry()
         return true;
     };
 
-    // Zone selector
-    REGISTER_BOOL_SETTING("zoneSelectorEnabled", zoneSelectorEnabled, setZoneSelectorEnabled)
-
-    // Animation settings (global — applies to snapping and autotiling)
-    REGISTER_BOOL_SETTING("animationsEnabled", animationsEnabled, setAnimationsEnabled)
-    REGISTER_INT_SETTING("animationDuration", animationDuration, setAnimationDuration)
-    REGISTER_STRING_SETTING("animationEasingCurve", animationEasingCurve, setAnimationEasingCurve)
-
-    REGISTER_INT_SETTING("animationMinDistance", animationMinDistance, setAnimationMinDistance)
-    REGISTER_INT_SETTING("animationSequenceMode", animationSequenceMode, setAnimationSequenceMode)
-    REGISTER_INT_SETTING("animationStaggerInterval", animationStaggerInterval, setAnimationStaggerInterval)
+    // Default layout
+    REGISTER_STRING_SETTING("defaultLayoutId", defaultLayoutId, setDefaultLayoutId)
 
     // Exclusions
     REGISTER_STRINGLIST_SETTING("excludedApplications", excludedApplications, setExcludedApplications)
@@ -267,7 +276,196 @@ void SettingsAdaptor::initializeRegistry()
     REGISTER_INT_SETTING("minimumWindowWidth", minimumWindowWidth, setMinimumWindowWidth)
     REGISTER_INT_SETTING("minimumWindowHeight", minimumWindowHeight, setMinimumWindowHeight)
 
-    // Autotile decoration settings
+    // Zone selector settings
+    REGISTER_BOOL_SETTING("zoneSelectorEnabled", zoneSelectorEnabled, setZoneSelectorEnabled)
+    REGISTER_INT_SETTING("zoneSelectorTriggerDistance", zoneSelectorTriggerDistance, setZoneSelectorTriggerDistance)
+    // zoneSelectorPosition: enum (0=TopLeft .. 8=BottomRight)
+    m_getters[QStringLiteral("zoneSelectorPosition")] = [this]() {
+        return static_cast<int>(m_settings->zoneSelectorPosition());
+    };
+    m_setters[QStringLiteral("zoneSelectorPosition")] = [this](const QVariant& v) {
+        int val = v.toInt();
+        if (val >= 0 && val <= 8) {
+            m_settings->setZoneSelectorPosition(static_cast<ZoneSelectorPosition>(val));
+            return true;
+        }
+        return false;
+    };
+    // zoneSelectorLayoutMode: enum (0=Grid, 1=Horizontal, 2=Vertical)
+    m_getters[QStringLiteral("zoneSelectorLayoutMode")] = [this]() {
+        return static_cast<int>(m_settings->zoneSelectorLayoutMode());
+    };
+    m_setters[QStringLiteral("zoneSelectorLayoutMode")] = [this](const QVariant& v) {
+        int val = v.toInt();
+        if (val >= 0 && val <= 2) {
+            m_settings->setZoneSelectorLayoutMode(static_cast<ZoneSelectorLayoutMode>(val));
+            return true;
+        }
+        return false;
+    };
+    // zoneSelectorSizeMode: enum (0=Auto, 1=Manual)
+    m_getters[QStringLiteral("zoneSelectorSizeMode")] = [this]() {
+        return static_cast<int>(m_settings->zoneSelectorSizeMode());
+    };
+    m_setters[QStringLiteral("zoneSelectorSizeMode")] = [this](const QVariant& v) {
+        int val = v.toInt();
+        if (val >= 0 && val <= 1) {
+            m_settings->setZoneSelectorSizeMode(static_cast<ZoneSelectorSizeMode>(val));
+            return true;
+        }
+        return false;
+    };
+    REGISTER_INT_SETTING("zoneSelectorMaxRows", zoneSelectorMaxRows, setZoneSelectorMaxRows)
+    REGISTER_INT_SETTING("zoneSelectorPreviewWidth", zoneSelectorPreviewWidth, setZoneSelectorPreviewWidth)
+    REGISTER_INT_SETTING("zoneSelectorPreviewHeight", zoneSelectorPreviewHeight, setZoneSelectorPreviewHeight)
+    REGISTER_BOOL_SETTING("zoneSelectorPreviewLockAspect", zoneSelectorPreviewLockAspect,
+                          setZoneSelectorPreviewLockAspect)
+    REGISTER_INT_SETTING("zoneSelectorGridColumns", zoneSelectorGridColumns, setZoneSelectorGridColumns)
+
+    // Animation settings (global — applies to snapping and autotiling)
+    REGISTER_BOOL_SETTING("animationsEnabled", animationsEnabled, setAnimationsEnabled)
+    REGISTER_INT_SETTING("animationDuration", animationDuration, setAnimationDuration)
+    REGISTER_STRING_SETTING("animationEasingCurve", animationEasingCurve, setAnimationEasingCurve)
+    REGISTER_INT_SETTING("animationMinDistance", animationMinDistance, setAnimationMinDistance)
+    REGISTER_INT_SETTING("animationSequenceMode", animationSequenceMode, setAnimationSequenceMode)
+    REGISTER_INT_SETTING("animationStaggerInterval", animationStaggerInterval, setAnimationStaggerInterval)
+
+    // Autotile core settings (concrete Settings only)
+    if (concrete) {
+        m_getters[QStringLiteral("autotileEnabled")] = [concrete]() {
+            return concrete->autotileEnabled();
+        };
+        m_setters[QStringLiteral("autotileEnabled")] = [concrete](const QVariant& v) {
+            concrete->setAutotileEnabled(v.toBool());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileAlgorithm")] = [concrete]() {
+            return concrete->autotileAlgorithm();
+        };
+        m_setters[QStringLiteral("autotileAlgorithm")] = [concrete](const QVariant& v) {
+            concrete->setAutotileAlgorithm(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileSplitRatio")] = [concrete]() {
+            return concrete->autotileSplitRatio();
+        };
+        m_setters[QStringLiteral("autotileSplitRatio")] = [concrete](const QVariant& v) {
+            concrete->setAutotileSplitRatio(v.toDouble());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileMasterCount")] = [concrete]() {
+            return concrete->autotileMasterCount();
+        };
+        m_setters[QStringLiteral("autotileMasterCount")] = [concrete](const QVariant& v) {
+            concrete->setAutotileMasterCount(v.toInt());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileCenteredMasterSplitRatio")] = [concrete]() {
+            return concrete->autotileCenteredMasterSplitRatio();
+        };
+        m_setters[QStringLiteral("autotileCenteredMasterSplitRatio")] = [concrete](const QVariant& v) {
+            concrete->setAutotileCenteredMasterSplitRatio(v.toDouble());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileCenteredMasterMasterCount")] = [concrete]() {
+            return concrete->autotileCenteredMasterMasterCount();
+        };
+        m_setters[QStringLiteral("autotileCenteredMasterMasterCount")] = [concrete](const QVariant& v) {
+            concrete->setAutotileCenteredMasterMasterCount(v.toInt());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileInnerGap")] = [concrete]() {
+            return concrete->autotileInnerGap();
+        };
+        m_setters[QStringLiteral("autotileInnerGap")] = [concrete](const QVariant& v) {
+            concrete->setAutotileInnerGap(v.toInt());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileOuterGap")] = [concrete]() {
+            return concrete->autotileOuterGap();
+        };
+        m_setters[QStringLiteral("autotileOuterGap")] = [concrete](const QVariant& v) {
+            concrete->setAutotileOuterGap(v.toInt());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileUsePerSideOuterGap")] = [concrete]() {
+            return concrete->autotileUsePerSideOuterGap();
+        };
+        m_setters[QStringLiteral("autotileUsePerSideOuterGap")] = [concrete](const QVariant& v) {
+            concrete->setAutotileUsePerSideOuterGap(v.toBool());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileOuterGapTop")] = [concrete]() {
+            return concrete->autotileOuterGapTop();
+        };
+        m_setters[QStringLiteral("autotileOuterGapTop")] = [concrete](const QVariant& v) {
+            concrete->setAutotileOuterGapTop(v.toInt());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileOuterGapBottom")] = [concrete]() {
+            return concrete->autotileOuterGapBottom();
+        };
+        m_setters[QStringLiteral("autotileOuterGapBottom")] = [concrete](const QVariant& v) {
+            concrete->setAutotileOuterGapBottom(v.toInt());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileOuterGapLeft")] = [concrete]() {
+            return concrete->autotileOuterGapLeft();
+        };
+        m_setters[QStringLiteral("autotileOuterGapLeft")] = [concrete](const QVariant& v) {
+            concrete->setAutotileOuterGapLeft(v.toInt());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileOuterGapRight")] = [concrete]() {
+            return concrete->autotileOuterGapRight();
+        };
+        m_setters[QStringLiteral("autotileOuterGapRight")] = [concrete](const QVariant& v) {
+            concrete->setAutotileOuterGapRight(v.toInt());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileFocusNewWindows")] = [concrete]() {
+            return concrete->autotileFocusNewWindows();
+        };
+        m_setters[QStringLiteral("autotileFocusNewWindows")] = [concrete](const QVariant& v) {
+            concrete->setAutotileFocusNewWindows(v.toBool());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileSmartGaps")] = [concrete]() {
+            return concrete->autotileSmartGaps();
+        };
+        m_setters[QStringLiteral("autotileSmartGaps")] = [concrete](const QVariant& v) {
+            concrete->setAutotileSmartGaps(v.toBool());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileMaxWindows")] = [concrete]() {
+            return concrete->autotileMaxWindows();
+        };
+        m_setters[QStringLiteral("autotileMaxWindows")] = [concrete](const QVariant& v) {
+            concrete->setAutotileMaxWindows(v.toInt());
+            return true;
+        };
+        // autotileInsertPosition: enum (0=End, 1=AfterFocused, 2=AsMaster)
+        m_getters[QStringLiteral("autotileInsertPosition")] = [concrete]() {
+            return static_cast<int>(concrete->autotileInsertPosition());
+        };
+        m_setters[QStringLiteral("autotileInsertPosition")] = [concrete](const QVariant& v) {
+            int val = v.toInt();
+            if (val >= 0 && val <= 2) {
+                concrete->setAutotileInsertPosition(static_cast<Settings::AutotileInsertPosition>(val));
+                return true;
+            }
+            return false;
+        };
+        m_getters[QStringLiteral("autotileRespectMinimumSize")] = [concrete]() {
+            return concrete->autotileRespectMinimumSize();
+        };
+        m_setters[QStringLiteral("autotileRespectMinimumSize")] = [concrete](const QVariant& v) {
+            concrete->setAutotileRespectMinimumSize(v.toBool());
+            return true;
+        };
+    }
+
+    // Autotile decoration settings (on ISettings interface)
     REGISTER_BOOL_SETTING("autotileHideTitleBars", autotileHideTitleBars, setAutotileHideTitleBars)
     REGISTER_BOOL_SETTING("autotileShowBorder", autotileShowBorder, setAutotileShowBorder)
     REGISTER_INT_SETTING("autotileBorderWidth", autotileBorderWidth, setAutotileBorderWidth)
@@ -278,6 +476,396 @@ void SettingsAdaptor::initializeRegistry()
                           setAutotileUseSystemBorderColors)
     REGISTER_BOOL_SETTING("autotileFocusFollowsMouse", autotileFocusFollowsMouse, setAutotileFocusFollowsMouse)
     REGISTER_STRINGLIST_SETTING("lockedScreens", lockedScreens, setLockedScreens)
+
+    // Autotile shortcuts (concrete Settings only)
+    if (concrete) {
+        m_getters[QStringLiteral("autotileToggleShortcut")] = [concrete]() {
+            return concrete->autotileToggleShortcut();
+        };
+        m_setters[QStringLiteral("autotileToggleShortcut")] = [concrete](const QVariant& v) {
+            concrete->setAutotileToggleShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileFocusMasterShortcut")] = [concrete]() {
+            return concrete->autotileFocusMasterShortcut();
+        };
+        m_setters[QStringLiteral("autotileFocusMasterShortcut")] = [concrete](const QVariant& v) {
+            concrete->setAutotileFocusMasterShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileSwapMasterShortcut")] = [concrete]() {
+            return concrete->autotileSwapMasterShortcut();
+        };
+        m_setters[QStringLiteral("autotileSwapMasterShortcut")] = [concrete](const QVariant& v) {
+            concrete->setAutotileSwapMasterShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileIncMasterRatioShortcut")] = [concrete]() {
+            return concrete->autotileIncMasterRatioShortcut();
+        };
+        m_setters[QStringLiteral("autotileIncMasterRatioShortcut")] = [concrete](const QVariant& v) {
+            concrete->setAutotileIncMasterRatioShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileDecMasterRatioShortcut")] = [concrete]() {
+            return concrete->autotileDecMasterRatioShortcut();
+        };
+        m_setters[QStringLiteral("autotileDecMasterRatioShortcut")] = [concrete](const QVariant& v) {
+            concrete->setAutotileDecMasterRatioShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileIncMasterCountShortcut")] = [concrete]() {
+            return concrete->autotileIncMasterCountShortcut();
+        };
+        m_setters[QStringLiteral("autotileIncMasterCountShortcut")] = [concrete](const QVariant& v) {
+            concrete->setAutotileIncMasterCountShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileDecMasterCountShortcut")] = [concrete]() {
+            return concrete->autotileDecMasterCountShortcut();
+        };
+        m_setters[QStringLiteral("autotileDecMasterCountShortcut")] = [concrete](const QVariant& v) {
+            concrete->setAutotileDecMasterCountShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("autotileRetileShortcut")] = [concrete]() {
+            return concrete->autotileRetileShortcut();
+        };
+        m_setters[QStringLiteral("autotileRetileShortcut")] = [concrete](const QVariant& v) {
+            concrete->setAutotileRetileShortcut(v.toString());
+            return true;
+        };
+    }
+
+    // Global shortcuts (concrete Settings only)
+    if (concrete) {
+        m_getters[QStringLiteral("openEditorShortcut")] = [concrete]() {
+            return concrete->openEditorShortcut();
+        };
+        m_setters[QStringLiteral("openEditorShortcut")] = [concrete](const QVariant& v) {
+            concrete->setOpenEditorShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("previousLayoutShortcut")] = [concrete]() {
+            return concrete->previousLayoutShortcut();
+        };
+        m_setters[QStringLiteral("previousLayoutShortcut")] = [concrete](const QVariant& v) {
+            concrete->setPreviousLayoutShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("nextLayoutShortcut")] = [concrete]() {
+            return concrete->nextLayoutShortcut();
+        };
+        m_setters[QStringLiteral("nextLayoutShortcut")] = [concrete](const QVariant& v) {
+            concrete->setNextLayoutShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("quickLayout1Shortcut")] = [concrete]() {
+            return concrete->quickLayout1Shortcut();
+        };
+        m_setters[QStringLiteral("quickLayout1Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setQuickLayout1Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("quickLayout2Shortcut")] = [concrete]() {
+            return concrete->quickLayout2Shortcut();
+        };
+        m_setters[QStringLiteral("quickLayout2Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setQuickLayout2Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("quickLayout3Shortcut")] = [concrete]() {
+            return concrete->quickLayout3Shortcut();
+        };
+        m_setters[QStringLiteral("quickLayout3Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setQuickLayout3Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("quickLayout4Shortcut")] = [concrete]() {
+            return concrete->quickLayout4Shortcut();
+        };
+        m_setters[QStringLiteral("quickLayout4Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setQuickLayout4Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("quickLayout5Shortcut")] = [concrete]() {
+            return concrete->quickLayout5Shortcut();
+        };
+        m_setters[QStringLiteral("quickLayout5Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setQuickLayout5Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("quickLayout6Shortcut")] = [concrete]() {
+            return concrete->quickLayout6Shortcut();
+        };
+        m_setters[QStringLiteral("quickLayout6Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setQuickLayout6Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("quickLayout7Shortcut")] = [concrete]() {
+            return concrete->quickLayout7Shortcut();
+        };
+        m_setters[QStringLiteral("quickLayout7Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setQuickLayout7Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("quickLayout8Shortcut")] = [concrete]() {
+            return concrete->quickLayout8Shortcut();
+        };
+        m_setters[QStringLiteral("quickLayout8Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setQuickLayout8Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("quickLayout9Shortcut")] = [concrete]() {
+            return concrete->quickLayout9Shortcut();
+        };
+        m_setters[QStringLiteral("quickLayout9Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setQuickLayout9Shortcut(v.toString());
+            return true;
+        };
+
+        // Keyboard navigation shortcuts
+        m_getters[QStringLiteral("moveWindowLeftShortcut")] = [concrete]() {
+            return concrete->moveWindowLeftShortcut();
+        };
+        m_setters[QStringLiteral("moveWindowLeftShortcut")] = [concrete](const QVariant& v) {
+            concrete->setMoveWindowLeftShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("moveWindowRightShortcut")] = [concrete]() {
+            return concrete->moveWindowRightShortcut();
+        };
+        m_setters[QStringLiteral("moveWindowRightShortcut")] = [concrete](const QVariant& v) {
+            concrete->setMoveWindowRightShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("moveWindowUpShortcut")] = [concrete]() {
+            return concrete->moveWindowUpShortcut();
+        };
+        m_setters[QStringLiteral("moveWindowUpShortcut")] = [concrete](const QVariant& v) {
+            concrete->setMoveWindowUpShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("moveWindowDownShortcut")] = [concrete]() {
+            return concrete->moveWindowDownShortcut();
+        };
+        m_setters[QStringLiteral("moveWindowDownShortcut")] = [concrete](const QVariant& v) {
+            concrete->setMoveWindowDownShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("focusZoneLeftShortcut")] = [concrete]() {
+            return concrete->focusZoneLeftShortcut();
+        };
+        m_setters[QStringLiteral("focusZoneLeftShortcut")] = [concrete](const QVariant& v) {
+            concrete->setFocusZoneLeftShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("focusZoneRightShortcut")] = [concrete]() {
+            return concrete->focusZoneRightShortcut();
+        };
+        m_setters[QStringLiteral("focusZoneRightShortcut")] = [concrete](const QVariant& v) {
+            concrete->setFocusZoneRightShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("focusZoneUpShortcut")] = [concrete]() {
+            return concrete->focusZoneUpShortcut();
+        };
+        m_setters[QStringLiteral("focusZoneUpShortcut")] = [concrete](const QVariant& v) {
+            concrete->setFocusZoneUpShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("focusZoneDownShortcut")] = [concrete]() {
+            return concrete->focusZoneDownShortcut();
+        };
+        m_setters[QStringLiteral("focusZoneDownShortcut")] = [concrete](const QVariant& v) {
+            concrete->setFocusZoneDownShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("pushToEmptyZoneShortcut")] = [concrete]() {
+            return concrete->pushToEmptyZoneShortcut();
+        };
+        m_setters[QStringLiteral("pushToEmptyZoneShortcut")] = [concrete](const QVariant& v) {
+            concrete->setPushToEmptyZoneShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("restoreWindowSizeShortcut")] = [concrete]() {
+            return concrete->restoreWindowSizeShortcut();
+        };
+        m_setters[QStringLiteral("restoreWindowSizeShortcut")] = [concrete](const QVariant& v) {
+            concrete->setRestoreWindowSizeShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("toggleWindowFloatShortcut")] = [concrete]() {
+            return concrete->toggleWindowFloatShortcut();
+        };
+        m_setters[QStringLiteral("toggleWindowFloatShortcut")] = [concrete](const QVariant& v) {
+            concrete->setToggleWindowFloatShortcut(v.toString());
+            return true;
+        };
+
+        // Swap window shortcuts
+        m_getters[QStringLiteral("swapWindowLeftShortcut")] = [concrete]() {
+            return concrete->swapWindowLeftShortcut();
+        };
+        m_setters[QStringLiteral("swapWindowLeftShortcut")] = [concrete](const QVariant& v) {
+            concrete->setSwapWindowLeftShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("swapWindowRightShortcut")] = [concrete]() {
+            return concrete->swapWindowRightShortcut();
+        };
+        m_setters[QStringLiteral("swapWindowRightShortcut")] = [concrete](const QVariant& v) {
+            concrete->setSwapWindowRightShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("swapWindowUpShortcut")] = [concrete]() {
+            return concrete->swapWindowUpShortcut();
+        };
+        m_setters[QStringLiteral("swapWindowUpShortcut")] = [concrete](const QVariant& v) {
+            concrete->setSwapWindowUpShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("swapWindowDownShortcut")] = [concrete]() {
+            return concrete->swapWindowDownShortcut();
+        };
+        m_setters[QStringLiteral("swapWindowDownShortcut")] = [concrete](const QVariant& v) {
+            concrete->setSwapWindowDownShortcut(v.toString());
+            return true;
+        };
+
+        // Snap to zone by number shortcuts
+        m_getters[QStringLiteral("snapToZone1Shortcut")] = [concrete]() {
+            return concrete->snapToZone1Shortcut();
+        };
+        m_setters[QStringLiteral("snapToZone1Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setSnapToZone1Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("snapToZone2Shortcut")] = [concrete]() {
+            return concrete->snapToZone2Shortcut();
+        };
+        m_setters[QStringLiteral("snapToZone2Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setSnapToZone2Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("snapToZone3Shortcut")] = [concrete]() {
+            return concrete->snapToZone3Shortcut();
+        };
+        m_setters[QStringLiteral("snapToZone3Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setSnapToZone3Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("snapToZone4Shortcut")] = [concrete]() {
+            return concrete->snapToZone4Shortcut();
+        };
+        m_setters[QStringLiteral("snapToZone4Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setSnapToZone4Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("snapToZone5Shortcut")] = [concrete]() {
+            return concrete->snapToZone5Shortcut();
+        };
+        m_setters[QStringLiteral("snapToZone5Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setSnapToZone5Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("snapToZone6Shortcut")] = [concrete]() {
+            return concrete->snapToZone6Shortcut();
+        };
+        m_setters[QStringLiteral("snapToZone6Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setSnapToZone6Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("snapToZone7Shortcut")] = [concrete]() {
+            return concrete->snapToZone7Shortcut();
+        };
+        m_setters[QStringLiteral("snapToZone7Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setSnapToZone7Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("snapToZone8Shortcut")] = [concrete]() {
+            return concrete->snapToZone8Shortcut();
+        };
+        m_setters[QStringLiteral("snapToZone8Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setSnapToZone8Shortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("snapToZone9Shortcut")] = [concrete]() {
+            return concrete->snapToZone9Shortcut();
+        };
+        m_setters[QStringLiteral("snapToZone9Shortcut")] = [concrete](const QVariant& v) {
+            concrete->setSnapToZone9Shortcut(v.toString());
+            return true;
+        };
+
+        // Rotate windows shortcuts
+        m_getters[QStringLiteral("rotateWindowsClockwiseShortcut")] = [concrete]() {
+            return concrete->rotateWindowsClockwiseShortcut();
+        };
+        m_setters[QStringLiteral("rotateWindowsClockwiseShortcut")] = [concrete](const QVariant& v) {
+            concrete->setRotateWindowsClockwiseShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("rotateWindowsCounterclockwiseShortcut")] = [concrete]() {
+            return concrete->rotateWindowsCounterclockwiseShortcut();
+        };
+        m_setters[QStringLiteral("rotateWindowsCounterclockwiseShortcut")] = [concrete](const QVariant& v) {
+            concrete->setRotateWindowsCounterclockwiseShortcut(v.toString());
+            return true;
+        };
+
+        // Cycle windows in zone shortcuts
+        m_getters[QStringLiteral("cycleWindowForwardShortcut")] = [concrete]() {
+            return concrete->cycleWindowForwardShortcut();
+        };
+        m_setters[QStringLiteral("cycleWindowForwardShortcut")] = [concrete](const QVariant& v) {
+            concrete->setCycleWindowForwardShortcut(v.toString());
+            return true;
+        };
+        m_getters[QStringLiteral("cycleWindowBackwardShortcut")] = [concrete]() {
+            return concrete->cycleWindowBackwardShortcut();
+        };
+        m_setters[QStringLiteral("cycleWindowBackwardShortcut")] = [concrete](const QVariant& v) {
+            concrete->setCycleWindowBackwardShortcut(v.toString());
+            return true;
+        };
+
+        // Resnap to new layout shortcut
+        m_getters[QStringLiteral("resnapToNewLayoutShortcut")] = [concrete]() {
+            return concrete->resnapToNewLayoutShortcut();
+        };
+        m_setters[QStringLiteral("resnapToNewLayoutShortcut")] = [concrete](const QVariant& v) {
+            concrete->setResnapToNewLayoutShortcut(v.toString());
+            return true;
+        };
+
+        // Snap all windows shortcut
+        m_getters[QStringLiteral("snapAllWindowsShortcut")] = [concrete]() {
+            return concrete->snapAllWindowsShortcut();
+        };
+        m_setters[QStringLiteral("snapAllWindowsShortcut")] = [concrete](const QVariant& v) {
+            concrete->setSnapAllWindowsShortcut(v.toString());
+            return true;
+        };
+
+        // Layout picker shortcut
+        m_getters[QStringLiteral("layoutPickerShortcut")] = [concrete]() {
+            return concrete->layoutPickerShortcut();
+        };
+        m_setters[QStringLiteral("layoutPickerShortcut")] = [concrete](const QVariant& v) {
+            concrete->setLayoutPickerShortcut(v.toString());
+            return true;
+        };
+
+        // Toggle layout lock shortcut
+        m_getters[QStringLiteral("toggleLayoutLockShortcut")] = [concrete]() {
+            return concrete->toggleLayoutLockShortcut();
+        };
+        m_setters[QStringLiteral("toggleLayoutLockShortcut")] = [concrete](const QVariant& v) {
+            concrete->setToggleLayoutLockShortcut(v.toString());
+            return true;
+        };
+    }
 
 // Clean up macros (local scope)
 #undef REGISTER_STRING_SETTING
@@ -361,6 +949,38 @@ bool SettingsAdaptor::setSetting(const QString& key, const QDBusVariant& value)
 
     qCWarning(lcDbusSettings) << "Setting key not found:" << key;
     return false;
+}
+
+bool SettingsAdaptor::setSettings(const QVariantMap& settings)
+{
+    if (settings.isEmpty()) {
+        qCWarning(lcDbusSettings) << "setSettings: empty map";
+        return false;
+    }
+
+    // Stop any pending debounced save — we will save synchronously below
+    m_saveTimer->stop();
+
+    bool allOk = true;
+    for (auto it = settings.constBegin(); it != settings.constEnd(); ++it) {
+        const QString& key = it.key();
+        auto setter = m_setters.find(key);
+        if (setter == m_setters.end()) {
+            qCWarning(lcDbusSettings) << "setSettings: unknown key" << key;
+            allOk = false;
+            continue;
+        }
+        if (!setter.value()(it.value())) {
+            qCWarning(lcDbusSettings) << "setSettings: setter failed for key" << key;
+            allOk = false;
+        }
+    }
+
+    // Single synchronous save for the entire batch
+    m_settings->save();
+    qCInfo(lcDbusSettings) << "setSettings: batch applied" << settings.size() << "keys, allOk:" << allOk;
+
+    return allOk;
 }
 
 QStringList SettingsAdaptor::getSettingKeys()

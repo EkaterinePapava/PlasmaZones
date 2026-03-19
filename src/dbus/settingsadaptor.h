@@ -46,6 +46,19 @@ public Q_SLOTS:
     QString getAllSettings();
     QDBusVariant getSetting(const QString& key);
     bool setSetting(const QString& key, const QDBusVariant& value);
+
+    /**
+     * @brief Batch-set multiple settings in one D-Bus call.
+     *
+     * Applies all values via the setter registry, saves once (synchronously),
+     * and lets the KConfig change notification propagate settingsChanged.
+     * Unknown keys are logged as warnings but do not abort the batch.
+     *
+     * @param settings Map of setting key -> value
+     * @return true if every key was found in the registry and its setter succeeded
+     */
+    bool setSettings(const QVariantMap& settings);
+
     QStringList getSettingKeys();
 
     /**
