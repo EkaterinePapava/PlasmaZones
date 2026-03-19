@@ -696,9 +696,22 @@ void PlasmaZonesEffect::setupWindowConnections(KWin::EffectWindow* w)
             // Skip during drag: the drag system owns snap state transitions
             // (float, unsnap, size restore, pre-tile cleanup) and handles them
             // in dragStopped() with richer context.
+            // Skip when the old screen disappeared (monitor standby/disconnect):
+            // KWin reassigns orphaned windows to remaining outputs, firing
+            // outputChanged even though the window didn't actually move. The
+            // ScreenChangeHandler will resnap windows after the debounce settles.
+            // Also skip during an active screen geometry change (debounce in flight).
+            bool oldScreenStillConnected = false;
+            for (const auto* output : KWin::effects->screens()) {
+                if (outputScreenId(output) == oldScreenId) {
+                    oldScreenStillConnected = true;
+                    break;
+                }
+            }
             if (!oldScreenId.isEmpty() && oldScreenId != newScreenId
                 && !m_autotileHandler->isAutotileScreen(oldScreenId)
-                && !m_autotileHandler->isAutotileScreen(newScreenId) && !m_dragTracker->isDragging()) {
+                && !m_autotileHandler->isAutotileScreen(newScreenId) && !m_dragTracker->isDragging()
+                && oldScreenStillConnected && !m_screenChangeHandler->isScreenChangeInProgress()) {
                 const QString windowId = getWindowId(safeW);
                 fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowScreenChanged"),
                                       {windowId, newScreenId}, QStringLiteral("cross-screen move"));
