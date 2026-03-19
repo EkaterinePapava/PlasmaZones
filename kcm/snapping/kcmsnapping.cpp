@@ -56,7 +56,84 @@ void KCMSnapping::load()
 void KCMSnapping::save()
 {
     m_saving = true;
+
+    // Collect all managed settings into a batch for the daemon
+    QVariantMap batch;
+
+    // Activation
+    batch[QStringLiteral("snappingEnabled")] = m_settings->snappingEnabled();
+    batch[QStringLiteral("dragActivationTriggers")] = QVariant::fromValue(m_settings->dragActivationTriggers());
+    batch[QStringLiteral("toggleActivation")] = m_settings->toggleActivation();
+    batch[QStringLiteral("zoneSpanEnabled")] = m_settings->zoneSpanEnabled();
+    batch[QStringLiteral("zoneSpanTriggers")] = QVariant::fromValue(m_settings->zoneSpanTriggers());
+
+    // Snap Assist
+    batch[QStringLiteral("snapAssistFeatureEnabled")] = m_settings->snapAssistFeatureEnabled();
+    batch[QStringLiteral("snapAssistEnabled")] = m_settings->snapAssistEnabled();
+    batch[QStringLiteral("snapAssistTriggers")] = QVariant::fromValue(m_settings->snapAssistTriggers());
+
+    // Display / Behavior
+    batch[QStringLiteral("showZonesOnAllMonitors")] = m_settings->showZonesOnAllMonitors();
+    batch[QStringLiteral("showZoneNumbers")] = m_settings->showZoneNumbers();
+    batch[QStringLiteral("flashZonesOnSwitch")] = m_settings->flashZonesOnSwitch();
+    batch[QStringLiteral("keepWindowsInZonesOnResolutionChange")] = m_settings->keepWindowsInZonesOnResolutionChange();
+    batch[QStringLiteral("moveNewWindowsToLastZone")] = m_settings->moveNewWindowsToLastZone();
+    batch[QStringLiteral("restoreOriginalSizeOnUnsnap")] = m_settings->restoreOriginalSizeOnUnsnap();
+    batch[QStringLiteral("stickyWindowHandling")] = static_cast<int>(m_settings->stickyWindowHandling());
+    batch[QStringLiteral("restoreWindowsToZonesOnLogin")] = m_settings->restoreWindowsToZonesOnLogin();
+
+    // Appearance
+    batch[QStringLiteral("useSystemColors")] = m_settings->useSystemColors();
+    batch[QStringLiteral("highlightColor")] = m_settings->highlightColor().name(QColor::HexArgb);
+    batch[QStringLiteral("inactiveColor")] = m_settings->inactiveColor().name(QColor::HexArgb);
+    batch[QStringLiteral("borderColor")] = m_settings->borderColor().name(QColor::HexArgb);
+    batch[QStringLiteral("labelFontColor")] = m_settings->labelFontColor().name(QColor::HexArgb);
+    batch[QStringLiteral("activeOpacity")] = m_settings->activeOpacity();
+    batch[QStringLiteral("inactiveOpacity")] = m_settings->inactiveOpacity();
+    batch[QStringLiteral("borderWidth")] = m_settings->borderWidth();
+    batch[QStringLiteral("borderRadius")] = m_settings->borderRadius();
+    batch[QStringLiteral("enableBlur")] = m_settings->enableBlur();
+    batch[QStringLiteral("labelFontFamily")] = m_settings->labelFontFamily();
+    batch[QStringLiteral("labelFontSizeScale")] = m_settings->labelFontSizeScale();
+    batch[QStringLiteral("labelFontWeight")] = m_settings->labelFontWeight();
+    batch[QStringLiteral("labelFontItalic")] = m_settings->labelFontItalic();
+    batch[QStringLiteral("labelFontUnderline")] = m_settings->labelFontUnderline();
+    batch[QStringLiteral("labelFontStrikeout")] = m_settings->labelFontStrikeout();
+
+    // Shader Effects
+    batch[QStringLiteral("enableShaderEffects")] = m_settings->enableShaderEffects();
+    batch[QStringLiteral("shaderFrameRate")] = m_settings->shaderFrameRate();
+    batch[QStringLiteral("enableAudioVisualizer")] = m_settings->enableAudioVisualizer();
+    batch[QStringLiteral("audioSpectrumBarCount")] = m_settings->audioSpectrumBarCount();
+
+    // Zones / Gaps
+    batch[QStringLiteral("zonePadding")] = m_settings->zonePadding();
+    batch[QStringLiteral("outerGap")] = m_settings->outerGap();
+    batch[QStringLiteral("usePerSideOuterGap")] = m_settings->usePerSideOuterGap();
+    batch[QStringLiteral("outerGapTop")] = m_settings->outerGapTop();
+    batch[QStringLiteral("outerGapBottom")] = m_settings->outerGapBottom();
+    batch[QStringLiteral("outerGapLeft")] = m_settings->outerGapLeft();
+    batch[QStringLiteral("outerGapRight")] = m_settings->outerGapRight();
+    batch[QStringLiteral("adjacentThreshold")] = m_settings->adjacentThreshold();
+
+    // Zone Selector
+    batch[QStringLiteral("zoneSelectorEnabled")] = m_settings->zoneSelectorEnabled();
+    batch[QStringLiteral("zoneSelectorTriggerDistance")] = m_settings->zoneSelectorTriggerDistance();
+    batch[QStringLiteral("zoneSelectorPosition")] = m_settings->zoneSelectorPositionInt();
+    batch[QStringLiteral("zoneSelectorLayoutMode")] = m_settings->zoneSelectorLayoutModeInt();
+    batch[QStringLiteral("zoneSelectorPreviewWidth")] = m_settings->zoneSelectorPreviewWidth();
+    batch[QStringLiteral("zoneSelectorPreviewHeight")] = m_settings->zoneSelectorPreviewHeight();
+    batch[QStringLiteral("zoneSelectorPreviewLockAspect")] = m_settings->zoneSelectorPreviewLockAspect();
+    batch[QStringLiteral("zoneSelectorGridColumns")] = m_settings->zoneSelectorGridColumns();
+    batch[QStringLiteral("zoneSelectorSizeMode")] = m_settings->zoneSelectorSizeModeInt();
+    batch[QStringLiteral("zoneSelectorMaxRows")] = m_settings->zoneSelectorMaxRows();
+
+    // Per-screen overrides are not in the daemon's settings registry;
+    // persist them locally via KConfig (m_settings->save() writes them).
     m_settings->save();
+
+    // Batch-set all snapping settings on the daemon (saves + applies atomically)
+    KCMDBus::setDaemonSettings(batch);
 
     KCMDBus::notifyReload();
 

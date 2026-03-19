@@ -60,7 +60,43 @@ void KCMAutotiling::load()
 void KCMAutotiling::save()
 {
     m_saving = true;
+
+    // Collect all managed settings into a batch for the daemon
+    QVariantMap batch;
+    batch[QStringLiteral("autotileEnabled")] = m_settings->autotileEnabled();
+    batch[QStringLiteral("autotileAlgorithm")] = m_settings->autotileAlgorithm();
+    batch[QStringLiteral("autotileSplitRatio")] = m_settings->autotileSplitRatio();
+    batch[QStringLiteral("autotileMasterCount")] = m_settings->autotileMasterCount();
+    batch[QStringLiteral("autotileCenteredMasterSplitRatio")] = m_settings->autotileCenteredMasterSplitRatio();
+    batch[QStringLiteral("autotileCenteredMasterMasterCount")] = m_settings->autotileCenteredMasterMasterCount();
+    batch[QStringLiteral("autotileInnerGap")] = m_settings->autotileInnerGap();
+    batch[QStringLiteral("autotileOuterGap")] = m_settings->autotileOuterGap();
+    batch[QStringLiteral("autotileUsePerSideOuterGap")] = m_settings->autotileUsePerSideOuterGap();
+    batch[QStringLiteral("autotileOuterGapTop")] = m_settings->autotileOuterGapTop();
+    batch[QStringLiteral("autotileOuterGapBottom")] = m_settings->autotileOuterGapBottom();
+    batch[QStringLiteral("autotileOuterGapLeft")] = m_settings->autotileOuterGapLeft();
+    batch[QStringLiteral("autotileOuterGapRight")] = m_settings->autotileOuterGapRight();
+    batch[QStringLiteral("autotileFocusNewWindows")] = m_settings->autotileFocusNewWindows();
+    batch[QStringLiteral("autotileSmartGaps")] = m_settings->autotileSmartGaps();
+    batch[QStringLiteral("autotileMaxWindows")] = m_settings->autotileMaxWindows();
+    batch[QStringLiteral("autotileInsertPosition")] = m_settings->autotileInsertPositionInt();
+    batch[QStringLiteral("autotileFocusFollowsMouse")] = m_settings->autotileFocusFollowsMouse();
+    batch[QStringLiteral("autotileRespectMinimumSize")] = m_settings->autotileRespectMinimumSize();
+    batch[QStringLiteral("autotileHideTitleBars")] = m_settings->autotileHideTitleBars();
+    batch[QStringLiteral("autotileShowBorder")] = m_settings->autotileShowBorder();
+    batch[QStringLiteral("autotileBorderWidth")] = m_settings->autotileBorderWidth();
+    batch[QStringLiteral("autotileBorderRadius")] = m_settings->autotileBorderRadius();
+    batch[QStringLiteral("autotileBorderColor")] = m_settings->autotileBorderColor().name(QColor::HexArgb);
+    batch[QStringLiteral("autotileInactiveBorderColor")] =
+        m_settings->autotileInactiveBorderColor().name(QColor::HexArgb);
+    batch[QStringLiteral("autotileUseSystemBorderColors")] = m_settings->autotileUseSystemBorderColors();
+
+    // Per-screen overrides are not in the daemon's settings registry;
+    // persist them locally via KConfig (m_settings->save() writes them).
     m_settings->save();
+
+    // Batch-set all autotile settings on the daemon (saves + applies atomically)
+    KCMDBus::setDaemonSettings(batch);
 
     KCMDBus::notifyReload();
 

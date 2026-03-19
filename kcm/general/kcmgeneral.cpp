@@ -39,7 +39,20 @@ void KCMGeneral::load()
 void KCMGeneral::save()
 {
     m_saving = true;
-    m_settings->save();
+
+    // Collect all managed settings into a batch and send via D-Bus
+    QVariantMap batch;
+    batch[QStringLiteral("animationsEnabled")] = m_settings->animationsEnabled();
+    batch[QStringLiteral("animationDuration")] = m_settings->animationDuration();
+    batch[QStringLiteral("animationEasingCurve")] = m_settings->animationEasingCurve();
+    batch[QStringLiteral("animationMinDistance")] = m_settings->animationMinDistance();
+    batch[QStringLiteral("animationSequenceMode")] = m_settings->animationSequenceMode();
+    batch[QStringLiteral("animationStaggerInterval")] = m_settings->animationStaggerInterval();
+    batch[QStringLiteral("showOsdOnLayoutSwitch")] = m_settings->showOsdOnLayoutSwitch();
+    batch[QStringLiteral("showNavigationOsd")] = m_settings->showNavigationOsd();
+    batch[QStringLiteral("osdStyle")] = m_settings->osdStyleInt();
+    batch[QStringLiteral("overlayDisplayMode")] = m_settings->overlayDisplayModeInt();
+    KCMDBus::setDaemonSettings(batch);
 
     KCMDBus::notifyReload();
 

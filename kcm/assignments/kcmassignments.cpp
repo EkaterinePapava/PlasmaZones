@@ -143,6 +143,15 @@ void KCMAssignments::save()
     m_saving = true;
     m_layoutManager->setSaveInProgress(true);
 
+    // Batch the settings this KCM manages (lockedScreens, disabledMonitors)
+    // through the daemon's setSettings D-Bus method instead of direct KConfig writes.
+    QVariantMap batch;
+    batch[QStringLiteral("lockedScreens")] = QVariant::fromValue(m_settings->lockedScreens());
+    batch[QStringLiteral("disabledMonitors")] = QVariant::fromValue(m_settings->disabledMonitors());
+    KCMDBus::setDaemonSettings(batch);
+
+    // Still call m_settings->save() for any per-screen or local-only state
+    // that is not covered by the daemon's settings registry.
     m_settings->save();
 
     QStringList failedOperations;

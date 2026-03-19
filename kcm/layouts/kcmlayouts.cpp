@@ -81,8 +81,11 @@ void KCMLayouts::save()
     m_saving = true;
     m_layoutManager->setSaveInProgress(true);
 
-    // Save settings (defaultLayoutId, autotileAlgorithm)
-    m_settings->save();
+    // Send general settings managed by this KCM via D-Bus batch
+    QVariantMap batch;
+    batch[QStringLiteral("defaultLayoutId")] = m_settings->defaultLayoutId();
+    batch[QStringLiteral("autotileAlgorithm")] = m_settings->autotileAlgorithm();
+    KCMDBus::setDaemonSettings(batch);
 
     // Save pending layout states (hidden, auto-assign) via D-Bus
     QStringList failedOperations;

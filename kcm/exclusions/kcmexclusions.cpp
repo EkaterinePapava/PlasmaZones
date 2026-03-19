@@ -43,7 +43,15 @@ void KCMExclusions::load()
 void KCMExclusions::save()
 {
     m_saving = true;
-    m_settings->save();
+
+    // Collect all managed settings into a batch and send via D-Bus
+    QVariantMap batch;
+    batch[QStringLiteral("excludedApplications")] = QVariant::fromValue(m_settings->excludedApplications());
+    batch[QStringLiteral("excludedWindowClasses")] = QVariant::fromValue(m_settings->excludedWindowClasses());
+    batch[QStringLiteral("excludeTransientWindows")] = m_settings->excludeTransientWindows();
+    batch[QStringLiteral("minimumWindowWidth")] = m_settings->minimumWindowWidth();
+    batch[QStringLiteral("minimumWindowHeight")] = m_settings->minimumWindowHeight();
+    KCMDBus::setDaemonSettings(batch);
 
     KCMDBus::notifyReload();
 
