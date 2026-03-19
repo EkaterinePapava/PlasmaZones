@@ -7,6 +7,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.3.7] - 2026-03-19
+
+### Fixed
+- **Windows unsnap when monitor enters standby**: When a monitor (e.g., a TV) entered standby or disconnected, KWin reassigned orphaned windows to remaining outputs, firing `outputChanged` signals. The effect interpreted these as cross-screen moves and told the daemon to unsnap every affected window. Now suppresses `windowScreenChanged` when the old screen has disappeared from KWin's output list or a screen geometry change is in progress.
+
 ## [2.3.6] - 2026-03-19
 
 ### Fixed
@@ -840,7 +845,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.6...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.7...HEAD
+[2.3.7]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.6...v2.3.7
 [2.3.6]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.5...v2.3.6
 [2.3.5]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.3...v2.3.5
 [2.3.3]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.2...v2.3.3
