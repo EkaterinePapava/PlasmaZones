@@ -75,6 +75,13 @@ void NavigationHandler::applyDaemonSnapReply(QDBusPendingCallWatcher* watcher, Q
     QString zoneId = obj.value(QLatin1String("zoneId")).toString();
     QString geometryJson = obj.value(QLatin1String("geometryJson")).toString();
     QString sourceZoneId = obj.value(QLatin1String("sourceZoneId")).toString();
+    // Prefer the daemon's authoritative screen over the effect-captured one.
+    // The daemon resolves the stored screen assignment for snapped windows,
+    // which may differ from what KWin reports (multi-monitor edge cases).
+    QString effectiveScreen = obj.value(QLatin1String("screenName")).toString();
+    if (effectiveScreen.isEmpty()) {
+        effectiveScreen = screenId;
+    }
 
     QRect geometry = m_effect->parseZoneGeometry(geometryJson);
     if (!geometry.isValid())
@@ -87,7 +94,7 @@ void NavigationHandler::applyDaemonSnapReply(QDBusPendingCallWatcher* watcher, Q
     m_effect->applySnapGeometry(safeWindow, geometry);
     auto* snapIface = m_effect->windowTrackingInterface();
     if (snapIface && snapIface->isValid()) {
-        snapIface->asyncCall(QStringLiteral("windowSnapped"), windowId, zoneId, screenId);
+        snapIface->asyncCall(QStringLiteral("windowSnapped"), windowId, zoneId, effectiveScreen);
         snapIface->asyncCall(QStringLiteral("recordSnapIntent"), windowId, true);
     }
 }

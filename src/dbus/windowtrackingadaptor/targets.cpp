@@ -107,39 +107,53 @@ QString WindowTrackingAdaptor::getMoveTargetForWindow(const QString& windowId, c
     }
 
     QString currentZoneId = m_service->zoneForWindow(windowId);
+
+    // When the window is already snapped, trust the daemon's stored screen assignment
+    // over the effect-reported screenId. KWin's EffectWindow::screen() can disagree
+    // with the daemon after a snap (e.g. when two monitors share similar coordinates),
+    // causing geometry to be computed for the wrong screen → window lands on a third
+    // screen → windowScreenChanged fires → unsnap.
+    QString effectiveScreenId = screenId;
+    if (!currentZoneId.isEmpty()) {
+        QString storedScreen = m_service->screenAssignments().value(windowId);
+        if (!storedScreen.isEmpty()) {
+            effectiveScreenId = storedScreen;
+        }
+    }
+
     QString targetZoneId;
     if (currentZoneId.isEmpty()) {
-        targetZoneId = m_zoneDetectionAdaptor->getFirstZoneInDirection(direction, screenId);
+        targetZoneId = m_zoneDetectionAdaptor->getFirstZoneInDirection(direction, effectiveScreenId);
         if (targetZoneId.isEmpty()) {
             Q_EMIT navigationFeedback(false, QStringLiteral("move"), QStringLiteral("no_zones"), QString(), QString(),
-                                      screenId);
-            return QString::fromUtf8(
-                QJsonDocument(moveResult(false, QStringLiteral("no_zones"), QString(), QString(), QString(), screenId))
-                    .toJson(QJsonDocument::Compact));
+                                      effectiveScreenId);
+            return QString::fromUtf8(QJsonDocument(moveResult(false, QStringLiteral("no_zones"), QString(), QString(),
+                                                              QString(), effectiveScreenId))
+                                         .toJson(QJsonDocument::Compact));
         }
     } else {
         targetZoneId = m_zoneDetectionAdaptor->getAdjacentZone(currentZoneId, direction);
         if (targetZoneId.isEmpty()) {
             Q_EMIT navigationFeedback(false, QStringLiteral("move"), QStringLiteral("no_adjacent_zone"), currentZoneId,
-                                      QString(), screenId);
+                                      QString(), effectiveScreenId);
             return QString::fromUtf8(QJsonDocument(moveResult(false, QStringLiteral("no_adjacent_zone"), QString(),
-                                                              QString(), currentZoneId, screenId))
+                                                              QString(), currentZoneId, effectiveScreenId))
                                          .toJson(QJsonDocument::Compact));
         }
     }
 
-    QRect geo = m_service->zoneGeometry(targetZoneId, screenId);
+    QRect geo = m_service->zoneGeometry(targetZoneId, effectiveScreenId);
     if (!geo.isValid()) {
         Q_EMIT navigationFeedback(false, QStringLiteral("move"), QStringLiteral("geometry_error"), currentZoneId,
-                                  targetZoneId, screenId);
+                                  targetZoneId, effectiveScreenId);
         return QString::fromUtf8(QJsonDocument(moveResult(false, QStringLiteral("geometry_error"), targetZoneId,
-                                                          QString(), currentZoneId, screenId))
+                                                          QString(), currentZoneId, effectiveScreenId))
                                      .toJson(QJsonDocument::Compact));
     }
 
-    Q_EMIT navigationFeedback(true, QStringLiteral("move"), direction, currentZoneId, targetZoneId, screenId);
+    Q_EMIT navigationFeedback(true, QStringLiteral("move"), direction, currentZoneId, targetZoneId, effectiveScreenId);
     return QString::fromUtf8(QJsonDocument(moveResult(true, QString(), targetZoneId, GeometryUtils::rectToJson(geo),
-                                                      currentZoneId, screenId))
+                                                      currentZoneId, effectiveScreenId))
                                  .toJson(QJsonDocument::Compact));
 }
 
@@ -308,44 +322,54 @@ QString WindowTrackingAdaptor::getSwapTargetForWindow(const QString& windowId, c
                 .toJson(QJsonDocument::Compact));
     }
 
+    // Use stored screen assignment — see getMoveTargetForWindow comment
+    QString effectiveScreenId = screenId;
+    {
+        QString storedScreen = m_service->screenAssignments().value(windowId);
+        if (!storedScreen.isEmpty()) {
+            effectiveScreenId = storedScreen;
+        }
+    }
+
     QString targetZoneId = m_zoneDetectionAdaptor->getAdjacentZone(currentZoneId, direction);
     if (targetZoneId.isEmpty()) {
         Q_EMIT navigationFeedback(false, QStringLiteral("swap"), QStringLiteral("no_adjacent_zone"), currentZoneId,
-                                  QString(), screenId);
+                                  QString(), effectiveScreenId);
         return QString::fromUtf8(
             QJsonDocument(swapResult(false, QStringLiteral("no_adjacent_zone"), windowId, 0, 0, 0, 0, QString(),
-                                     QString(), 0, 0, 0, 0, QString(), screenId, currentZoneId, QString()))
+                                     QString(), 0, 0, 0, 0, QString(), effectiveScreenId, currentZoneId, QString()))
                 .toJson(QJsonDocument::Compact));
     }
 
-    QRect targetGeom = m_service->zoneGeometry(targetZoneId, screenId);
-    QRect currentGeom = m_service->zoneGeometry(currentZoneId, screenId);
+    QRect targetGeom = m_service->zoneGeometry(targetZoneId, effectiveScreenId);
+    QRect currentGeom = m_service->zoneGeometry(currentZoneId, effectiveScreenId);
     if (!targetGeom.isValid() || !currentGeom.isValid()) {
         Q_EMIT navigationFeedback(false, QStringLiteral("swap"), QStringLiteral("geometry_error"), currentZoneId,
-                                  targetZoneId, screenId);
+                                  targetZoneId, effectiveScreenId);
         return QString::fromUtf8(
             QJsonDocument(swapResult(false, QStringLiteral("geometry_error"), windowId, 0, 0, 0, 0, QString(),
-                                     QString(), 0, 0, 0, 0, QString(), screenId, currentZoneId, targetZoneId))
+                                     QString(), 0, 0, 0, 0, QString(), effectiveScreenId, currentZoneId, targetZoneId))
                 .toJson(QJsonDocument::Compact));
     }
 
     QStringList windowsInTargetZone = m_service->windowsInZone(targetZoneId);
     if (windowsInTargetZone.isEmpty()) {
-        Q_EMIT navigationFeedback(true, QStringLiteral("swap"), direction, currentZoneId, targetZoneId, screenId);
+        Q_EMIT navigationFeedback(true, QStringLiteral("swap"), direction, currentZoneId, targetZoneId,
+                                  effectiveScreenId);
         return QString::fromUtf8(
             QJsonDocument(swapResult(true, QStringLiteral("moved_to_empty"), windowId, targetGeom.x(), targetGeom.y(),
                                      targetGeom.width(), targetGeom.height(), targetZoneId, QString(), 0, 0, 0, 0,
-                                     QString(), screenId, currentZoneId, targetZoneId))
+                                     QString(), effectiveScreenId, currentZoneId, targetZoneId))
                 .toJson(QJsonDocument::Compact));
     }
 
     QString targetWindowId = windowsInTargetZone.first();
-    Q_EMIT navigationFeedback(true, QStringLiteral("swap"), direction, currentZoneId, targetZoneId, screenId);
+    Q_EMIT navigationFeedback(true, QStringLiteral("swap"), direction, currentZoneId, targetZoneId, effectiveScreenId);
     return QString::fromUtf8(
         QJsonDocument(swapResult(true, QString(), windowId, targetGeom.x(), targetGeom.y(), targetGeom.width(),
                                  targetGeom.height(), targetZoneId, targetWindowId, currentGeom.x(), currentGeom.y(),
-                                 currentGeom.width(), currentGeom.height(), currentZoneId, screenId, currentZoneId,
-                                 targetZoneId))
+                                 currentGeom.width(), currentGeom.height(), currentZoneId, effectiveScreenId,
+                                 currentZoneId, targetZoneId))
             .toJson(QJsonDocument::Compact));
 }
 
