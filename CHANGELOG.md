@@ -7,6 +7,24 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.3.8] - 2026-03-19
+
+### Added
+- **Batch settings D-Bus method**: New `setSettings(QVariantMap)` method applies multiple settings in one D-Bus call with a single KConfig save. Complete settings registry with 87 entries covering all autotile, zone selector, shortcut, and behavior settings.
+- **Per-screen settings D-Bus methods**: New `setPerScreenSetting`/`clearPerScreenSettings`/`getPerScreenSettings` D-Bus methods for autotile, snapping, and zone selector categories. Per-screen calls use async D-Bus to avoid blocking the KCM UI during slider interactions.
+- **Zone previews in autotile dropdowns**: Autotile algorithm dropdowns now show layout thumbnails with zone previews, matching the snapping layout dropdown UX.
+
+### Changed
+- **Daemon is sole KConfig writer**: All KCM settings writes now route through D-Bus to the daemon. No KCM sub-page calls `m_settings->save()` directly. Eliminates dual-writer race conditions between the KCM and daemon.
+- **Batch signal suppression**: `setSettings()` wraps setter calls in `QSignalBlocker` to prevent N intermediate `settingsChanged` emissions mid-batch. The KCM's `notifyReload()` triggers a single `settingsChanged` with all values committed.
+
+### Fixed
+- **Mode toggle affects all monitors**: `Meta+Shift+T` autotile toggle now only affects the focused screen's context. Previously, `seedAutotileOrderForScreen` and the resnap-from-autotile-order loop processed all screens instead of the shortcut's target screen.
+- **Clearing autotile algorithm to "Use default" switches to snapping mode**: `activeLayoutId()` now returns `"autotile:"` (recognized by `isAutotile()`) when mode is Autotile with empty algorithm, instead of returning empty string which caused `updateAutotileScreens` to drop the screen from autotile.
+- **showBorder and hideTitleBars are independent toggles**: Turning off borders no longer forces title bars to reappear. Turning on hideTitleBars now immediately hides title bars on all currently tiled windows instead of waiting for the next retile.
+- **KCM save ordering for per-screen overrides**: `setDaemonSettings()` now runs before `m_settings->save()` so per-screen overrides written by the KCM are not overwritten by the daemon's stale values.
+- **Navigation fallback screen**: Fall back to the KWin effect's screen when the daemon's stored screen assignment is gone, preventing navigation failures after monitor reconfiguration.
+
 ## [2.3.7] - 2026-03-19
 
 ### Fixed
@@ -845,7 +863,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.7...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.8...HEAD
+[2.3.8]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.7...v2.3.8
 [2.3.7]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.6...v2.3.7
 [2.3.6]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.5...v2.3.6
 [2.3.5]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.3...v2.3.5
