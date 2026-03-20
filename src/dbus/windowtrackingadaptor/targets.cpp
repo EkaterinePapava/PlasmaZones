@@ -84,42 +84,6 @@ static QJsonObject swapResult(bool success, const QString& reason, const QString
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Navigation Helpers
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * @brief Check if a window's stored screen assignment matches its actual screen.
- *
- * When a window is moved between monitors externally (KDE's Move-to-Screen
- * shortcut, manual drag that races with outputChanged), the zone assignment
- * may still point to the old screen's layout.  Navigating within that layout
- * produces wrong coordinates on the new screen.
- *
- * Returns true if the assignment is stale (screens differ), clearing
- * @p currentZoneId so callers treat the window as unsnapped.  Does NOT
- * mutate the tracking service — the subsequent windowSnapped() call from
- * the effect will reassign the window to the correct screen.
- */
-static bool clearStaleScreenAssignment(const WindowTrackingService* service,
-                                       const QString& windowId,
-                                       const QString& actualScreenId,
-                                       QString& currentZoneId,
-                                       const char* context)
-{
-    if (currentZoneId.isEmpty()) {
-        return false;
-    }
-    QString storedScreen = service->screenAssignments().value(windowId);
-    if (!storedScreen.isEmpty() && !Utils::screensMatch(storedScreen, actualScreenId)) {
-        qCInfo(lcCore) << context << ": window" << windowId << "has stale screen assignment"
-                       << storedScreen << "vs actual" << actualScreenId << "- treating as unsnapped";
-        currentZoneId.clear();
-        return true;
-    }
-    return false;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // Navigation Target Computation
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -144,13 +108,26 @@ QString WindowTrackingAdaptor::getMoveTargetForWindow(const QString& windowId, c
 
     QString currentZoneId = m_service->zoneForWindow(windowId);
 
-    // The caller (KWin effect) provides the window's actual screen via
-    // EffectWindow::screen(). Always use this — it reflects reality even
-    // when the stored assignment is stale (e.g., window moved between
-    // monitors via KDE's Move-to-Screen shortcut without resnapping).
+    // When the window is snapped, trust the daemon's stored screen assignment
+    // over the effect-reported screenId.  KWin's EffectWindow::screen() can
+    // return the wrong output for same-model multi-monitor setups (e.g. dual
+    // Samsung Odyssey G93SC with different serials).  The daemon's assignment
+    // is authoritative because it was set at snap time.
+    //
+    // When the window is NOT snapped (e.g. moved between monitors via KDE's
+    // Move-to-Screen shortcut — outputChanged fires and unsnaps it), we use
+    // the effect-provided screen since there's no stored assignment.
+    //
+    // Only use the stored screen if it's still connected — when a monitor
+    // enters standby, KWin rehomes windows but the stored assignment points
+    // at the dead output.
     QString effectiveScreenId = screenId;
-
-    clearStaleScreenAssignment(m_service, windowId, effectiveScreenId, currentZoneId, "Move");
+    if (!currentZoneId.isEmpty()) {
+        QString storedScreen = m_service->screenAssignments().value(windowId);
+        if (!storedScreen.isEmpty() && Utils::findScreenByIdOrName(storedScreen)) {
+            effectiveScreenId = storedScreen;
+        }
+    }
 
     QString targetZoneId;
     if (currentZoneId.isEmpty()) {
@@ -344,19 +321,22 @@ QString WindowTrackingAdaptor::getSwapTargetForWindow(const QString& windowId, c
     }
 
     QString currentZoneId = m_service->zoneForWindow(windowId);
-
-    // Use caller-provided screen — see getMoveTargetForWindow comment
-    QString effectiveScreenId = screenId;
-
-    clearStaleScreenAssignment(m_service, windowId, effectiveScreenId, currentZoneId, "Swap");
-
     if (currentZoneId.isEmpty()) {
         Q_EMIT navigationFeedback(false, QStringLiteral("swap"), QStringLiteral("not_snapped"), QString(), QString(),
-                                  effectiveScreenId);
+                                  screenId);
         return QString::fromUtf8(
             QJsonDocument(swapResult(false, QStringLiteral("not_snapped"), windowId, 0, 0, 0, 0, QString(), QString(),
-                                     0, 0, 0, 0, QString(), effectiveScreenId, QString(), QString()))
+                                     0, 0, 0, 0, QString(), screenId, QString(), QString()))
                 .toJson(QJsonDocument::Compact));
+    }
+
+    // Trust stored screen for snapped windows — see getMoveTargetForWindow comment
+    QString effectiveScreenId = screenId;
+    {
+        QString storedScreen = m_service->screenAssignments().value(windowId);
+        if (!storedScreen.isEmpty() && Utils::findScreenByIdOrName(storedScreen)) {
+            effectiveScreenId = storedScreen;
+        }
     }
 
     QString targetZoneId = m_zoneDetectionAdaptor->getAdjacentZone(currentZoneId, direction);
