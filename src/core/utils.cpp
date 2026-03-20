@@ -196,6 +196,28 @@ QScreen* findScreenByIdOrName(const QString& identifier)
                 return screen;
             }
         }
+
+        // Serial mismatch fallback: KWin's Output::serialNumber() can return
+        // the EDID text descriptor (e.g. "HNTY800697") while Qt's
+        // QScreen::serialNumber() returns the EDID header serial as hex/decimal
+        // (e.g. "810700097"). When serials differ but manufacturer + model match
+        // and there's exactly one such screen, it's the same physical monitor.
+        QStringList parts = identifier.split(QLatin1Char(':'));
+        if (parts.size() == 3) {
+            const QString& mfr = parts[0];
+            const QString& mdl = parts[1];
+            QScreen* candidate = nullptr;
+            int matchCount = 0;
+            for (QScreen* screen : QGuiApplication::screens()) {
+                if (screen->manufacturer() == mfr && screen->model() == mdl) {
+                    candidate = screen;
+                    ++matchCount;
+                }
+            }
+            if (matchCount == 1) {
+                return candidate;
+            }
+        }
     }
     return nullptr;
 }

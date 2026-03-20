@@ -7,6 +7,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.3.12] - 2026-03-21
+
+### Fixed
+- **EDID serial mismatch between effect and daemon**: KWin 6's `Output::serialNumber()` returns the EDID text serial descriptor (e.g. `HNTY800697`), while Qt's `QScreen::serialNumber()` returns the EDID header serial (e.g. `810700097`). This caused the daemon to fail screen lookups for IDs received from the KWin effect. `findScreenByIdOrName` now falls back to manufacturer + model matching when serials differ and there's exactly one screen of that make/model.
+
 ## [2.3.11] - 2026-03-20
 
 ### Fixed
@@ -878,7 +883,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.11...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.12...HEAD
+[2.3.12]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.11...v2.3.12
 [2.3.11]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.10...v2.3.11
 [2.3.10]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.9...v2.3.10
 [2.3.9]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.8...v2.3.9
