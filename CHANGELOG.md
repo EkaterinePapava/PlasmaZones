@@ -7,6 +7,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.3.10] - 2026-03-20
+
+### Fixed
+- **Move/Swap hotkeys use wrong screen's layout**: When a window was moved between monitors externally (KDE's Move-to-Screen shortcut, manual drag racing with `outputChanged`), keyboard navigation hotkeys used the stored screen assignment instead of the window's actual screen, snapping the window back to the old monitor or computing zone geometry from the wrong layout. Now always uses the effect-provided screen (`EffectWindow::screen()`) and detects stale assignments: if the stored screen differs from the actual screen, treats the window as unsnapped and navigates from scratch on the correct screen's layout.
+
 ## [2.3.9] - 2026-03-20
 
 ### Fixed
@@ -868,7 +873,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.9...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.10...HEAD
+[2.3.10]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.9...v2.3.10
 [2.3.9]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.8...v2.3.9
 [2.3.8]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.7...v2.3.8
 [2.3.7]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.6...v2.3.7
