@@ -11,8 +11,8 @@ Flickable {
     id: root
 
     // Layout constants
-    readonly property int sliderPreferredWidth: 200
-    readonly property int sliderValueLabelWidth: 40
+    readonly property int sliderPreferredWidth: Kirigami.Units.gridUnit * 16
+    readonly property int sliderValueLabelWidth: Kirigami.Units.gridUnit * 3
     readonly property int opacitySliderMax: 100
     readonly property int borderWidthMax: 10
     readonly property int borderRadiusMax: 50
@@ -43,6 +43,7 @@ Flickable {
     }
 
     contentHeight: content.implicitHeight
+    clip: true
 
     PerScreenOverrideHelper {
         id: snappingHelper
@@ -60,25 +61,12 @@ Flickable {
         spacing: Kirigami.Units.largeSpacing
 
         // Enable toggle
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: Kirigami.Units.largeSpacing
-
-            Label {
-                text: i18n("Enable Zone Snapping")
-                font.bold: true
+        SettingsToggleRow {
+            text: i18n("Enable Zone Snapping")
+            checked: appSettings.snappingEnabled
+            onToggled: (checked) => {
+                return appSettings.snappingEnabled = checked;
             }
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            Switch {
-                checked: appSettings.snappingEnabled
-                onToggled: appSettings.snappingEnabled = checked
-                Accessible.name: i18n("Enable zone snapping")
-            }
-
         }
 
         // =====================================================================
@@ -88,17 +76,13 @@ Flickable {
             Layout.fillWidth: true
             implicitHeight: appearanceCard.implicitHeight
 
-            Kirigami.Card {
+            SettingsCard {
                 id: appearanceCard
 
                 anchors.fill: parent
                 enabled: appSettings.snappingEnabled
-
-                header: Kirigami.Heading {
-                    text: i18n("Appearance")
-                    level: 3
-                    padding: Kirigami.Units.smallSpacing
-                }
+                headerText: i18n("Appearance")
+                collapsible: true
 
                 contentItem: Kirigami.FormLayout {
                     Kirigami.Separator {
@@ -115,64 +99,34 @@ Flickable {
                         onToggled: appSettings.useSystemColors = checked
                     }
 
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Highlight:")
+                    ColorSwatchRow {
+                        formLabel: i18n("Highlight:")
                         visible: !useSystemColorsCheck.checked
-                        spacing: Kirigami.Units.smallSpacing
-
-                        ColorButton {
-                            color: appSettings.highlightColor
-                            onClicked: {
-                                highlightColorDialog.selectedColor = appSettings.highlightColor;
-                                highlightColorDialog.open();
-                            }
+                        color: appSettings.highlightColor
+                        onClicked: {
+                            highlightColorDialog.selectedColor = appSettings.highlightColor;
+                            highlightColorDialog.open();
                         }
-
-                        Label {
-                            text: appSettings.highlightColor.toString().toUpperCase()
-                            font: Kirigami.Theme.fixedWidthFont
-                        }
-
                     }
 
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Inactive:")
+                    ColorSwatchRow {
+                        formLabel: i18n("Inactive:")
                         visible: !useSystemColorsCheck.checked
-                        spacing: Kirigami.Units.smallSpacing
-
-                        ColorButton {
-                            color: appSettings.inactiveColor
-                            onClicked: {
-                                inactiveColorDialog.selectedColor = appSettings.inactiveColor;
-                                inactiveColorDialog.open();
-                            }
+                        color: appSettings.inactiveColor
+                        onClicked: {
+                            inactiveColorDialog.selectedColor = appSettings.inactiveColor;
+                            inactiveColorDialog.open();
                         }
-
-                        Label {
-                            text: appSettings.inactiveColor.toString().toUpperCase()
-                            font: Kirigami.Theme.fixedWidthFont
-                        }
-
                     }
 
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Border:")
+                    ColorSwatchRow {
+                        formLabel: i18n("Border:")
                         visible: !useSystemColorsCheck.checked
-                        spacing: Kirigami.Units.smallSpacing
-
-                        ColorButton {
-                            color: appSettings.borderColor
-                            onClicked: {
-                                borderColorDialog.selectedColor = appSettings.borderColor;
-                                borderColorDialog.open();
-                            }
+                        color: appSettings.borderColor
+                        onClicked: {
+                            borderColorDialog.selectedColor = appSettings.borderColor;
+                            borderColorDialog.open();
                         }
-
-                        Label {
-                            text: appSettings.borderColor.toString().toUpperCase()
-                            font: Kirigami.Theme.fixedWidthFont
-                        }
-
                     }
 
                     RowLayout {
@@ -215,48 +169,24 @@ Flickable {
                     }
 
                     // Opacity subsection
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Active opacity:")
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Slider {
-                            id: activeOpacitySlider
-
-                            Layout.preferredWidth: root.sliderPreferredWidth
-                            from: 0
-                            to: root.opacitySliderMax
-                            value: appSettings.activeOpacity * root.opacitySliderMax
-                            onMoved: appSettings.activeOpacity = value / root.opacitySliderMax
-                            Accessible.name: i18n("Active zone opacity")
+                    SettingsSlider {
+                        formLabel: i18n("Active opacity:")
+                        from: 0
+                        to: root.opacitySliderMax
+                        value: appSettings.activeOpacity * root.opacitySliderMax
+                        onMoved: (value) => {
+                            return appSettings.activeOpacity = value / root.opacitySliderMax;
                         }
-
-                        Label {
-                            text: Math.round(activeOpacitySlider.value) + "%"
-                            Layout.preferredWidth: root.sliderValueLabelWidth
-                        }
-
                     }
 
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Inactive opacity:")
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Slider {
-                            id: inactiveOpacitySlider
-
-                            Layout.preferredWidth: root.sliderPreferredWidth
-                            from: 0
-                            to: root.opacitySliderMax
-                            value: appSettings.inactiveOpacity * root.opacitySliderMax
-                            onMoved: appSettings.inactiveOpacity = value / root.opacitySliderMax
-                            Accessible.name: i18n("Inactive zone opacity")
+                    SettingsSlider {
+                        formLabel: i18n("Inactive opacity:")
+                        from: 0
+                        to: root.opacitySliderMax
+                        value: appSettings.inactiveOpacity * root.opacitySliderMax
+                        onMoved: (value) => {
+                            return appSettings.inactiveOpacity = value / root.opacitySliderMax;
                         }
-
-                        Label {
-                            text: Math.round(inactiveOpacitySlider.value) + "%"
-                            Layout.preferredWidth: root.sliderValueLabelWidth
-                        }
-
                     }
 
                     Kirigami.Separator {
@@ -264,40 +194,24 @@ Flickable {
                         Kirigami.FormData.label: i18n("Border")
                     }
 
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Border width:")
-                        spacing: Kirigami.Units.smallSpacing
-
-                        SpinBox {
-                            from: 0
-                            to: root.borderWidthMax
-                            value: appSettings.borderWidth
-                            onValueModified: appSettings.borderWidth = value
-                            Accessible.name: i18n("Border width")
+                    SettingsSpinBox {
+                        formLabel: i18n("Border width:")
+                        from: 0
+                        to: root.borderWidthMax
+                        value: appSettings.borderWidth
+                        onValueModified: (value) => {
+                            return appSettings.borderWidth = value;
                         }
-
-                        Label {
-                            text: i18n("px")
-                        }
-
                     }
 
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Border radius:")
-                        spacing: Kirigami.Units.smallSpacing
-
-                        SpinBox {
-                            from: 0
-                            to: root.borderRadiusMax
-                            value: appSettings.borderRadius
-                            onValueModified: appSettings.borderRadius = value
-                            Accessible.name: i18n("Border radius")
+                    SettingsSpinBox {
+                        formLabel: i18n("Border radius:")
+                        from: 0
+                        to: root.borderRadiusMax
+                        value: appSettings.borderRadius
+                        onValueModified: (value) => {
+                            return appSettings.borderRadius = value;
                         }
-
-                        Label {
-                            text: i18n("px")
-                        }
-
                     }
 
                     Kirigami.Separator {
@@ -305,24 +219,14 @@ Flickable {
                         Kirigami.FormData.label: i18n("Zone Labels")
                     }
 
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Color:")
+                    ColorSwatchRow {
+                        formLabel: i18n("Color:")
                         visible: !useSystemColorsCheck.checked
-                        spacing: Kirigami.Units.smallSpacing
-
-                        ColorButton {
-                            color: appSettings.labelFontColor
-                            onClicked: {
-                                labelFontColorDialog.selectedColor = appSettings.labelFontColor;
-                                labelFontColorDialog.open();
-                            }
+                        color: appSettings.labelFontColor
+                        onClicked: {
+                            labelFontColorDialog.selectedColor = appSettings.labelFontColor;
+                            labelFontColorDialog.open();
                         }
-
-                        Label {
-                            text: appSettings.labelFontColor.toString().toUpperCase()
-                            font: Kirigami.Theme.fixedWidthFont
-                        }
-
                     }
 
                     RowLayout {
@@ -362,27 +266,15 @@ Flickable {
 
                     }
 
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Scale:")
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Slider {
-                            id: fontSizeScaleSlider
-
-                            Layout.preferredWidth: root.sliderPreferredWidth
-                            from: 25
-                            to: 300
-                            stepSize: 5
-                            value: appSettings.labelFontSizeScale * 100
-                            onMoved: appSettings.labelFontSizeScale = value / 100
-                            Accessible.name: i18n("Label font size scale")
+                    SettingsSlider {
+                        formLabel: i18n("Scale:")
+                        from: 25
+                        to: 300
+                        stepSize: 5
+                        value: appSettings.labelFontSizeScale * 100
+                        onMoved: (value) => {
+                            return appSettings.labelFontSizeScale = value / 100;
                         }
-
-                        Label {
-                            text: Math.round(fontSizeScaleSlider.value) + "%"
-                            Layout.preferredWidth: root.sliderValueLabelWidth
-                        }
-
                     }
 
                 }
@@ -398,17 +290,13 @@ Flickable {
             Layout.fillWidth: true
             implicitHeight: effectsCard.implicitHeight
 
-            Kirigami.Card {
+            SettingsCard {
                 id: effectsCard
 
                 anchors.fill: parent
                 enabled: appSettings.snappingEnabled
-
-                header: Kirigami.Heading {
-                    text: i18n("Effects")
-                    level: 3
-                    padding: Kirigami.Units.smallSpacing
-                }
+                headerText: i18n("Effects")
+                collapsible: true
 
                 contentItem: Kirigami.FormLayout {
                     Kirigami.Separator {
@@ -450,17 +338,13 @@ Flickable {
             Layout.fillWidth: true
             implicitHeight: shaderCard.implicitHeight
 
-            Kirigami.Card {
+            SettingsCard {
                 id: shaderCard
 
                 anchors.fill: parent
                 enabled: appSettings.snappingEnabled
-
-                header: Kirigami.Heading {
-                    text: i18n("Shader Effects")
-                    level: 3
-                    padding: Kirigami.Units.smallSpacing
-                }
+                headerText: i18n("Shader Effects")
+                collapsible: true
 
                 contentItem: Kirigami.FormLayout {
                     Kirigami.Separator {
@@ -477,28 +361,18 @@ Flickable {
                         onToggled: appSettings.enableShaderEffects = checked
                     }
 
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Frame rate:")
+                    SettingsSlider {
+                        formLabel: i18n("Frame rate:")
                         enabled: shaderEffectsCheck.checked
-                        opacity: enabled ? 1 : 0.6
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Slider {
-                            id: shaderFpsSlider
-
-                            Layout.preferredWidth: root.sliderPreferredWidth
-                            from: 30
-                            to: 144
-                            stepSize: 1
-                            value: appSettings.shaderFrameRate
-                            onMoved: appSettings.shaderFrameRate = Math.round(value)
+                        opacity: enabled ? 1 : 0.4
+                        from: 30
+                        to: 144
+                        value: appSettings.shaderFrameRate
+                        valueSuffix: " fps"
+                        labelWidth: 55
+                        onMoved: (value) => {
+                            return appSettings.shaderFrameRate = Math.round(value);
                         }
-
-                        Label {
-                            text: Math.round(shaderFpsSlider.value) + " fps"
-                            Layout.preferredWidth: root.sliderValueLabelWidth + 15
-                        }
-
                     }
 
                     Kirigami.Separator {
@@ -525,28 +399,19 @@ Flickable {
                         visible: !settingsController.cavaAvailable && shaderEffectsCheck.checked
                     }
 
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Spectrum bars:")
+                    SettingsSlider {
+                        formLabel: i18n("Spectrum bars:")
                         enabled: shaderEffectsCheck.checked && audioVizCheck.checked && settingsController.cavaAvailable
-                        opacity: enabled ? 1 : 0.6
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Slider {
-                            id: audioBarsSlider
-
-                            Layout.preferredWidth: root.sliderPreferredWidth
-                            from: 16
-                            to: 256
-                            stepSize: 2
-                            value: appSettings.audioSpectrumBarCount
-                            onMoved: appSettings.audioSpectrumBarCount = Math.round(value)
+                        opacity: enabled ? 1 : 0.4
+                        from: 16
+                        to: 256
+                        stepSize: 2
+                        value: appSettings.audioSpectrumBarCount
+                        valueSuffix: ""
+                        labelWidth: 55
+                        onMoved: (value) => {
+                            return appSettings.audioSpectrumBarCount = Math.round(value);
                         }
-
-                        Label {
-                            text: Math.round(audioBarsSlider.value)
-                            Layout.preferredWidth: root.sliderValueLabelWidth + 15
-                        }
-
                     }
 
                 }
@@ -562,17 +427,13 @@ Flickable {
             Layout.fillWidth: true
             implicitHeight: activationCard.implicitHeight
 
-            Kirigami.Card {
+            SettingsCard {
                 id: activationCard
 
                 anchors.fill: parent
                 enabled: appSettings.snappingEnabled
-
-                header: Kirigami.Heading {
-                    text: i18n("Activation")
-                    level: 3
-                    padding: Kirigami.Units.smallSpacing
-                }
+                headerText: i18n("Activation")
+                collapsible: true
 
                 contentItem: Kirigami.FormLayout {
                     Kirigami.Separator {
@@ -599,7 +460,7 @@ Flickable {
                         Layout.preferredWidth: root.sliderPreferredWidth
                         Kirigami.FormData.label: i18n("Hold to activate:")
                         enabled: !alwaysActivateCheck.checked
-                        opacity: enabled ? 1 : 0.6
+                        opacity: enabled ? 1 : 0.4
                         allowMultiple: true
                         acceptMode: acceptModeAll
                         triggers: settingsController.dragActivationTriggers
@@ -615,7 +476,7 @@ Flickable {
                         Layout.fillWidth: true
                         Kirigami.FormData.label: i18n("Toggle mode:")
                         enabled: !alwaysActivateCheck.checked
-                        opacity: enabled ? 1 : 0.6
+                        opacity: enabled ? 1 : 0.4
                         text: i18n("Tap trigger to toggle overlay")
                         checked: appSettings.toggleActivation
                         onToggled: appSettings.toggleActivation = checked
@@ -644,7 +505,7 @@ Flickable {
                         Layout.preferredWidth: root.sliderPreferredWidth
                         Kirigami.FormData.label: i18n("Modifier:")
                         enabled: zoneSpanEnabledCheck.checked
-                        opacity: enabled ? 1 : 0.6
+                        opacity: enabled ? 1 : 0.4
                         allowMultiple: true
                         acceptMode: acceptModeAll
                         triggers: settingsController.zoneSpanTriggers
@@ -656,29 +517,18 @@ Flickable {
                         }
                     }
 
-                    RowLayout {
+                    SettingsSpinBox {
                         Layout.preferredWidth: root.sliderPreferredWidth
-                        Kirigami.FormData.label: i18n("Edge threshold:")
+                        formLabel: i18n("Edge threshold:")
                         enabled: zoneSpanEnabledCheck.checked
-                        opacity: enabled ? 1 : 0.6
-                        spacing: Kirigami.Units.smallSpacing
-
-                        SpinBox {
-                            id: adjacentThresholdSpinBox
-
-                            from: 5
-                            to: root.thresholdMax
-                            value: appSettings.adjacentThreshold
-                            onValueModified: appSettings.adjacentThreshold = value
-                            Accessible.name: i18n("Edge threshold")
-                            ToolTip.visible: hovered
-                            ToolTip.text: i18n("Distance from zone edge for multi-zone selection")
+                        opacity: enabled ? 1 : 0.4
+                        from: 5
+                        to: root.thresholdMax
+                        value: appSettings.adjacentThreshold
+                        tooltipText: i18n("Distance from zone edge for multi-zone selection")
+                        onValueModified: (value) => {
+                            return appSettings.adjacentThreshold = value;
                         }
-
-                        Label {
-                            text: i18n("px")
-                        }
-
                     }
 
                     Kirigami.Separator {
@@ -703,7 +553,7 @@ Flickable {
                         checked: appSettings.snapAssistEnabled
                         onToggled: appSettings.snapAssistEnabled = checked
                         enabled: snapAssistFeatureEnabledCheck.checked
-                        opacity: enabled ? 1 : 0.6
+                        opacity: enabled ? 1 : 0.4
                         ToolTip.visible: hovered
                         ToolTip.text: i18n("When enabled, a window picker appears after every snap. When disabled, hold the trigger below while dropping to show the picker for that snap only.")
                     }
@@ -713,7 +563,7 @@ Flickable {
                         Layout.preferredWidth: root.sliderPreferredWidth
                         Kirigami.FormData.label: i18n("Hold to enable:")
                         enabled: snapAssistFeatureEnabledCheck.checked && !appSettings.snapAssistEnabled
-                        opacity: enabled ? 1 : 0.6
+                        opacity: enabled ? 1 : 0.4
                         allowMultiple: true
                         acceptMode: acceptModeAll
                         triggers: settingsController.snapAssistTriggers
@@ -738,17 +588,13 @@ Flickable {
             Layout.fillWidth: true
             implicitHeight: behaviorCard.implicitHeight
 
-            Kirigami.Card {
+            SettingsCard {
                 id: behaviorCard
 
                 anchors.fill: parent
                 enabled: appSettings.snappingEnabled
-
-                header: Kirigami.Heading {
-                    text: i18n("Behavior")
-                    level: 3
-                    padding: Kirigami.Units.smallSpacing
-                }
+                headerText: i18n("Behavior")
+                collapsible: true
 
                 contentItem: Kirigami.FormLayout {
                     CheckBox {
@@ -836,37 +682,25 @@ Flickable {
             Layout.fillWidth: true
             implicitHeight: gapsCard.implicitHeight
 
-            Kirigami.Card {
+            SettingsCard {
                 id: gapsCard
 
                 anchors.fill: parent
                 enabled: appSettings.snappingEnabled
-
-                header: Kirigami.Heading {
-                    text: i18n("Gaps")
-                    level: 3
-                    padding: Kirigami.Units.smallSpacing
-                }
+                headerText: i18n("Gaps")
+                collapsible: true
 
                 contentItem: Kirigami.FormLayout {
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Zone padding:")
-                        spacing: Kirigami.Units.smallSpacing
-
-                        SpinBox {
-                            from: 0
-                            to: root.paddingMax
-                            value: root.snappingSettingValue("ZonePadding", appSettings.zonePadding)
-                            onValueModified: root.writeSnappingSetting("ZonePadding", value, function(v) {
+                    SettingsSpinBox {
+                        formLabel: i18n("Zone padding:")
+                        from: 0
+                        to: root.paddingMax
+                        value: root.snappingSettingValue("ZonePadding", appSettings.zonePadding)
+                        onValueModified: (value) => {
+                            return root.writeSnappingSetting("ZonePadding", value, function(v) {
                                 appSettings.zonePadding = v;
-                            })
-                            Accessible.name: i18n("Zone padding")
+                            });
                         }
-
-                        Label {
-                            text: i18n("px")
-                        }
-
                     }
 
                     RowLayout {

@@ -42,8 +42,8 @@ ColumnLayout {
 
         Label {
             text: root.isPerScreen ? i18n("Per-Monitor Settings — %1", root.selectedScreenName) : i18n("Per-Monitor Settings — All Monitors")
-            opacity: 0.6
-            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+            opacity: 0.5
+            font: Kirigami.Theme.smallFont
         }
 
         Kirigami.Separator {
@@ -57,17 +57,12 @@ ColumnLayout {
         Layout.fillWidth: true
         implicitHeight: monitorSelectorCard.implicitHeight
 
-        Kirigami.Card {
+        SettingsCard {
             id: monitorSelectorCard
 
             anchors.fill: parent
             enabled: root.featureEnabled
-
-            header: Kirigami.Heading {
-                level: 3
-                text: i18n("Monitor")
-                padding: Kirigami.Units.smallSpacing
-            }
+            headerText: i18n("Monitor")
 
             contentItem: ColumnLayout {
                 spacing: Kirigami.Units.smallSpacing

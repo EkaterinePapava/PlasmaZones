@@ -1281,6 +1281,59 @@ QVariantList SettingsController::getRunningWindows() const
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Config export/import
+// ═══════════════════════════════════════════════════════════════════════════════
+
+bool SettingsController::exportAllSettings(const QString& filePath)
+{
+    if (filePath.isEmpty()) {
+        return false;
+    }
+    QString configPath =
+        QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + QStringLiteral("/plasmazonesrc");
+    if (!QFile::exists(configPath)) {
+        qCWarning(PlasmaZones::lcCore) << "Config file not found:" << configPath;
+        return false;
+    }
+    // Remove destination if it exists (QFile::copy won't overwrite)
+    if (QFile::exists(filePath)) {
+        QFile::remove(filePath);
+    }
+    bool ok = QFile::copy(configPath, filePath);
+    if (!ok) {
+        qCWarning(PlasmaZones::lcCore) << "Failed to export settings to:" << filePath;
+    }
+    return ok;
+}
+
+bool SettingsController::importAllSettings(const QString& filePath)
+{
+    if (filePath.isEmpty() || !QFile::exists(filePath)) {
+        return false;
+    }
+    QString configPath =
+        QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + QStringLiteral("/plasmazonesrc");
+    // Backup current config
+    QString backupPath = configPath + QStringLiteral(".bak");
+    if (QFile::exists(backupPath)) {
+        QFile::remove(backupPath);
+    }
+    QFile::copy(configPath, backupPath);
+    // Replace with imported file
+    if (QFile::exists(configPath)) {
+        QFile::remove(configPath);
+    }
+    bool ok = QFile::copy(filePath, configPath);
+    if (ok) {
+        m_settings.load();
+        Q_EMIT needsSaveChanged();
+    } else {
+        qCWarning(PlasmaZones::lcCore) << "Failed to import settings from:" << filePath;
+    }
+    return ok;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Algorithm helpers
 // ═══════════════════════════════════════════════════════════════════════════════
 

@@ -69,7 +69,15 @@ qt_add_qml_module(plasmazones-settings
         qml/ZoneSelectorSection.qml
         qml/EasingPreview.qml
         qml/EasingSettings.qml
+        qml/SettingsCard.qml
         qml/OsdCard.qml
+        qml/ShortcutCaptureField.qml
+        qml/ModifierComboBox.qml
+        qml/SettingsSlider.qml
+        qml/SettingsSpinBox.qml
+        qml/SettingsToggleRow.qml
+        qml/SettingsSwitch.qml
+        qml/ColorSwatchRow.qml
     NO_PLUGIN
 )
 

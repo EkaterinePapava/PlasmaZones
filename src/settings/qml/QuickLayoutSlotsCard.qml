@@ -11,7 +11,7 @@ import org.kde.kirigami as Kirigami
  *
  * Refactored to use cleaner structure with LayoutComboBox.
  */
-Kirigami.Card {
+SettingsCard {
     id: root
 
     required property var appSettings
@@ -30,11 +30,8 @@ Kirigami.Card {
             appSettings.setQuickLayoutSlot(slotNumber, value);
     }
 
-    header: Kirigami.Heading {
-        level: 3
-        text: root.viewMode === 1 ? i18n("Tiling Quick Shortcuts") : i18n("Quick Layout Shortcuts")
-        padding: Kirigami.Units.smallSpacing
-    }
+    headerText: root.viewMode === 1 ? i18n("Tiling Quick Shortcuts") : i18n("Quick Layout Shortcuts")
+    collapsible: true
 
     contentItem: ColumnLayout {
         spacing: Kirigami.Units.smallSpacing
@@ -88,7 +85,7 @@ Kirigami.Card {
 
                         Label {
                             text: slotDelegate.shortcutText !== "" ? slotDelegate.shortcutText : i18n("No shortcut assigned")
-                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            font: Kirigami.Theme.smallFont
                             opacity: slotDelegate.shortcutText !== "" ? 0.7 : 0.4
                         }
 

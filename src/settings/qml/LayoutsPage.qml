@@ -226,6 +226,7 @@ Flickable {
             readonly property real minCellWidth: Kirigami.Units.gridUnit * 14
             readonly property int columnCount: Math.max(2, Math.floor(width / minCellWidth))
             readonly property real actualCellWidth: width / columnCount
+            readonly property int cellSpacing: Kirigami.Units.smallSpacing * 1.5
 
             function _extractIds(list) {
                 let ids = [];
@@ -292,6 +293,8 @@ Flickable {
             }
 
             Layout.fillWidth: true
+            Layout.leftMargin: Kirigami.Units.smallSpacing
+            Layout.rightMargin: Kirigami.Units.smallSpacing
             Layout.preferredHeight: Math.max(root.layoutListMinHeight, contentHeight)
             clip: true
             boundsBehavior: Flickable.StopAtBounds

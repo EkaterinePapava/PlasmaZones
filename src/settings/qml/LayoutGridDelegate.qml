@@ -80,7 +80,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Kirigami.Units.smallSpacing
-            spacing: Kirigami.Units.smallSpacing / 2
+            spacing: Kirigami.Units.smallSpacing
 
             // Thumbnail area
             Item {
@@ -249,7 +249,7 @@ Item {
 
                 Label {
                     elide: Text.ElideRight
-                    font.pointSize: Kirigami.Theme.smallFont.pointSize
+                    font: Kirigami.Theme.smallFont
                     color: root.isSelected ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.disabledTextColor
                     text: i18n("%1 zones", root.modelData.zoneCount || 0)
                 }

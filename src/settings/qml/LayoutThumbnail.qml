@@ -81,7 +81,7 @@ Rectangle {
         anchors.margins: Kirigami.Units.smallSpacing
         text: root.layout ? (root.layout.name || i18n("Unnamed")) : ""
         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-        font.bold: isSelected
+        font.weight: isSelected ? Font.DemiBold : Font.Normal
         elide: Text.ElideRight
         horizontalAlignment: Text.AlignHCenter
 

@@ -12,7 +12,7 @@ import org.kde.kirigami as Kirigami
  * Lets users define rules like "firefox → zone 2" so windows auto-snap
  * to a specific zone when they open. Rules are per-layout.
  */
-Kirigami.Card {
+SettingsCard {
     id: root
 
     required property var appSettings
@@ -93,6 +93,8 @@ Kirigami.Card {
         updateSelectedLayoutZoneCount();
         refreshRules();
     }
+    headerText: root.viewMode === 1 ? i18n("App-to-Zone Tiling Rules") : i18n("App-to-Zone Rules")
+    collapsible: true
 
     Connections {
         function onAppRulesRefreshed() {
@@ -114,12 +116,6 @@ Kirigami.Card {
 
         target: root.windowPickerDialog
         enabled: root.pickerOpenedByUs
-    }
-
-    header: Kirigami.Heading {
-        level: 3
-        text: root.viewMode === 1 ? i18n("App-to-Zone Tiling Rules") : i18n("App-to-Zone Rules")
-        padding: Kirigami.Units.smallSpacing
     }
 
     contentItem: ColumnLayout {

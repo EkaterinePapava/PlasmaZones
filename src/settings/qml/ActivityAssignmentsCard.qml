@@ -11,7 +11,7 @@ import org.kde.kirigami as Kirigami
  *
  * Refactored to use AssignmentRow component, eliminating duplicated patterns.
  */
-Kirigami.Card {
+SettingsCard {
     id: root
 
     required property var appSettings
@@ -45,12 +45,8 @@ Kirigami.Card {
     }
 
     visible: appSettings.activitiesAvailable
-
-    header: Kirigami.Heading {
-        level: 3
-        text: root.viewMode === 1 ? i18n("Activity Tiling Assignments") : i18n("Activity Assignments")
-        padding: Kirigami.Units.smallSpacing
-    }
+    headerText: root.viewMode === 1 ? i18n("Activity Tiling Assignments") : i18n("Activity Assignments")
+    collapsible: true
 
     contentItem: ColumnLayout {
         spacing: Kirigami.Units.smallSpacing
@@ -112,7 +108,7 @@ Kirigami.Card {
                         Label {
                             Layout.fillWidth: true
                             text: activityDelegate.activityName
-                            font.bold: activityDelegate.activityId === root.appSettings.currentActivity
+                            font.weight: activityDelegate.activityId === root.appSettings.currentActivity ? Font.DemiBold : Font.Normal
                             elide: Text.ElideRight
                         }
 

@@ -13,9 +13,9 @@ Flickable {
 
     // Layout constants
     readonly property int gapMax: 50
-    readonly property int algorithmPreviewWidth: 280
-    readonly property int algorithmPreviewHeight: 160
-    readonly property int sliderValueLabelWidth: 40
+    readonly property int algorithmPreviewWidth: Kirigami.Units.gridUnit * 18
+    readonly property int algorithmPreviewHeight: Kirigami.Units.gridUnit * 10
+    readonly property int sliderValueLabelWidth: Kirigami.Units.gridUnit * 3
     readonly property bool bordersActive: hideTitleBarsCheck.checked || showBorderCheck.checked
     // Per-screen override helper (applies to Algorithm + Gaps cards)
     property alias selectedScreenName: psHelper.selectedScreenName
@@ -32,6 +32,7 @@ Flickable {
     }
 
     contentHeight: content.implicitHeight
+    clip: true
 
     PerScreenOverrideHelper {
         id: psHelper
@@ -51,39 +52,22 @@ Flickable {
         // =====================================================================
         // Enable toggle
         // =====================================================================
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: Kirigami.Units.largeSpacing
-
-            Label {
-                text: i18n("Enable Automatic Tiling")
-                font.bold: true
+        SettingsToggleRow {
+            text: i18n("Enable Automatic Tiling")
+            checked: appSettings.autotileEnabled
+            onToggled: (checked) => {
+                return appSettings.autotileEnabled = checked;
             }
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            Switch {
-                checked: appSettings.autotileEnabled
-                onToggled: appSettings.autotileEnabled = checked
-                Accessible.name: i18n("Enable automatic tiling")
-            }
-
         }
 
         // =====================================================================
         // Appearance Card (Borders + Colors, matching original structure)
         // =====================================================================
-        Kirigami.Card {
+        SettingsCard {
             Layout.fillWidth: true
             enabled: appSettings.autotileEnabled
-
-            header: Kirigami.Heading {
-                text: i18n("Appearance")
-                level: 3
-                padding: Kirigami.Units.smallSpacing
-            }
+            headerText: i18n("Appearance")
+            collapsible: true
 
             contentItem: Kirigami.FormLayout {
                 Kirigami.Separator {
@@ -100,44 +84,24 @@ Flickable {
                     onToggled: appSettings.autotileUseSystemBorderColors = checked
                 }
 
-                RowLayout {
-                    Kirigami.FormData.label: i18n("Active color:")
+                ColorSwatchRow {
+                    formLabel: i18n("Active color:")
                     visible: !useSystemColorsCheck.checked
-                    spacing: Kirigami.Units.smallSpacing
-
-                    ColorButton {
-                        color: appSettings.autotileBorderColor
-                        onClicked: {
-                            activeBorderColorDialog.selectedColor = appSettings.autotileBorderColor;
-                            activeBorderColorDialog.open();
-                        }
+                    color: appSettings.autotileBorderColor
+                    onClicked: {
+                        activeBorderColorDialog.selectedColor = appSettings.autotileBorderColor;
+                        activeBorderColorDialog.open();
                     }
-
-                    Label {
-                        text: appSettings.autotileBorderColor.toString().toUpperCase()
-                        font: Kirigami.Theme.fixedWidthFont
-                    }
-
                 }
 
-                RowLayout {
-                    Kirigami.FormData.label: i18n("Inactive color:")
+                ColorSwatchRow {
+                    formLabel: i18n("Inactive color:")
                     visible: !useSystemColorsCheck.checked
-                    spacing: Kirigami.Units.smallSpacing
-
-                    ColorButton {
-                        color: appSettings.autotileInactiveBorderColor
-                        onClicked: {
-                            inactiveBorderColorDialog.selectedColor = appSettings.autotileInactiveBorderColor;
-                            inactiveBorderColorDialog.open();
-                        }
+                    color: appSettings.autotileInactiveBorderColor
+                    onClicked: {
+                        inactiveBorderColorDialog.selectedColor = appSettings.autotileInactiveBorderColor;
+                        inactiveBorderColorDialog.open();
                     }
-
-                    Label {
-                        text: appSettings.autotileInactiveBorderColor.toString().toUpperCase()
-                        font: Kirigami.Theme.fixedWidthFont
-                    }
-
                 }
 
                 Kirigami.Separator {
@@ -172,44 +136,28 @@ Flickable {
                     ToolTip.text: i18n("Draw colored borders around all windows in tiling mode. Active color for focused, inactive for unfocused. Works with or without hidden title bars.")
                 }
 
-                RowLayout {
-                    Kirigami.FormData.label: i18n("Width:")
+                SettingsSpinBox {
+                    formLabel: i18n("Width:")
                     visible: root.bordersActive
-                    spacing: Kirigami.Units.smallSpacing
-
-                    SpinBox {
-                        from: 0
-                        to: 10
-                        value: appSettings.autotileBorderWidth
-                        onValueModified: appSettings.autotileBorderWidth = value
-                        ToolTip.visible: hovered
-                        ToolTip.text: i18n("Colored border drawn around tiled windows (0 to disable)")
+                    from: 0
+                    to: 10
+                    value: appSettings.autotileBorderWidth
+                    tooltipText: i18n("Colored border drawn around tiled windows (0 to disable)")
+                    onValueModified: (value) => {
+                        return appSettings.autotileBorderWidth = value;
                     }
-
-                    Label {
-                        text: i18n("px")
-                    }
-
                 }
 
-                RowLayout {
-                    Kirigami.FormData.label: i18n("Corner radius:")
+                SettingsSpinBox {
+                    formLabel: i18n("Corner radius:")
                     visible: root.bordersActive
-                    spacing: Kirigami.Units.smallSpacing
-
-                    SpinBox {
-                        from: 0
-                        to: 20
-                        value: appSettings.autotileBorderRadius
-                        onValueModified: appSettings.autotileBorderRadius = value
-                        ToolTip.visible: hovered
-                        ToolTip.text: i18n("Corner radius for the border (0 for square corners)")
+                    from: 0
+                    to: 20
+                    value: appSettings.autotileBorderRadius
+                    tooltipText: i18n("Corner radius for the border (0 for square corners)")
+                    onValueModified: (value) => {
+                        return appSettings.autotileBorderRadius = value;
                     }
-
-                    Label {
-                        text: i18n("px")
-                    }
-
                 }
 
             }
@@ -219,15 +167,11 @@ Flickable {
         // =====================================================================
         // Behavior Card
         // =====================================================================
-        Kirigami.Card {
+        SettingsCard {
             Layout.fillWidth: true
             enabled: appSettings.autotileEnabled
-
-            header: Kirigami.Heading {
-                text: i18n("Behavior")
-                level: 3
-                padding: Kirigami.Units.smallSpacing
-            }
+            headerText: i18n("Behavior")
+            collapsible: true
 
             contentItem: Kirigami.FormLayout {
                 ComboBox {
@@ -294,36 +238,24 @@ Flickable {
         // =====================================================================
         // Gaps Card (per-monitor)
         // =====================================================================
-        Kirigami.Card {
+        SettingsCard {
             Layout.fillWidth: true
             enabled: appSettings.autotileEnabled
-
-            header: Kirigami.Heading {
-                text: i18n("Gaps")
-                level: 3
-                padding: Kirigami.Units.smallSpacing
-            }
+            headerText: i18n("Gaps")
+            collapsible: true
 
             contentItem: Kirigami.FormLayout {
-                RowLayout {
-                    Kirigami.FormData.label: i18n("Inner gap:")
-                    spacing: Kirigami.Units.smallSpacing
-
-                    SpinBox {
-                        from: 0
-                        to: root.gapMax
-                        value: root.settingValue("InnerGap", appSettings.autotileInnerGap)
-                        onValueModified: root.writeSetting("InnerGap", value, function(v) {
+                SettingsSpinBox {
+                    formLabel: i18n("Inner gap:")
+                    from: 0
+                    to: root.gapMax
+                    value: root.settingValue("InnerGap", appSettings.autotileInnerGap)
+                    tooltipText: i18n("Gap between tiled windows")
+                    onValueModified: (value) => {
+                        return root.writeSetting("InnerGap", value, function(v) {
                             appSettings.autotileInnerGap = v;
-                        })
-                        ToolTip.visible: hovered
-                        ToolTip.text: i18n("Gap between tiled windows")
+                        });
                     }
-
-                    Label {
-                        text: i18n("px")
-                    }
-
                 }
 
                 RowLayout {
@@ -456,15 +388,11 @@ Flickable {
         // =====================================================================
         // Algorithm Card (per-monitor)
         // =====================================================================
-        Kirigami.Card {
+        SettingsCard {
             Layout.fillWidth: true
             enabled: appSettings.autotileEnabled
-
-            header: Kirigami.Heading {
-                text: i18n("Algorithm")
-                level: 3
-                padding: Kirigami.Units.smallSpacing
-            }
+            headerText: i18n("Algorithm")
+            collapsible: true
 
             contentItem: ColumnLayout {
                 spacing: Kirigami.Units.largeSpacing
@@ -496,7 +424,7 @@ Flickable {
                                 appSettings: settingsController
                                 showLabel: false
                                 algorithmId: root.effectiveAlgorithm
-                                windowCount: previewWindowSlider.value
+                                windowCount: previewWindowSlider.slider.value
                                 splitRatio: root.effectiveAlgorithm === "centered-master" ? (root.settingValue("SplitRatio", appSettings.autotileCenteredMasterSplitRatio) || 0.5) : (root.settingValue("SplitRatio", appSettings.autotileSplitRatio) || 0.6)
                                 masterCount: root.effectiveAlgorithm === "centered-master" ? (root.settingValue("MasterCount", appSettings.autotileCenteredMasterMasterCount) || 1) : (root.settingValue("MasterCount", appSettings.autotileMasterCount) || 1)
                             }
@@ -508,7 +436,7 @@ Flickable {
                             anchors.horizontalCenter: parent.horizontalCenter
                             anchors.top: parent.bottom
                             anchors.topMargin: Kirigami.Units.smallSpacing
-                            text: i18np("Max %n window", "Max %n windows", previewWindowSlider.value)
+                            text: i18np("Max %n window", "Max %n windows", previewWindowSlider.slider.value)
                             font: Kirigami.Theme.fixedWidthFont
                             opacity: 0.7
                         }
@@ -588,42 +516,32 @@ Flickable {
                     Label {
                         Layout.alignment: Qt.AlignHCenter
                         text: i18n("Max Windows")
-                        font.bold: true
+                        font.weight: Font.DemiBold
                     }
 
-                    RowLayout {
+                    SettingsSlider {
+                        id: previewWindowSlider
+
                         Layout.fillWidth: true
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Slider {
-                            id: previewWindowSlider
-
-                            Layout.fillWidth: true
-                            Accessible.name: i18n("Maximum windows preview")
-                            from: 1
-                            to: 12
-                            stepSize: 1
-                            onMoved: root.writeSetting("MaxWindows", Math.round(value), function(v) {
+                        from: 1
+                        to: 12
+                        stepSize: 1
+                        formatValue: function(v) {
+                            return Math.round(v).toString();
+                        }
+                        onMoved: (value) => {
+                            return root.writeSetting("MaxWindows", Math.round(value), function(v) {
                                 appSettings.autotileMaxWindows = v;
-                            })
-                            ToolTip.visible: hovered
-                            ToolTip.text: i18n("Maximum number of windows to tile with this algorithm")
-
-                            Binding on value {
-                                value: root.settingValue("MaxWindows", appSettings.autotileMaxWindows)
-                                when: !previewWindowSlider.pressed
-                                restoreMode: Binding.RestoreNone
-                            }
-
+                            });
                         }
+                    }
 
-                        Label {
-                            text: Math.round(previewWindowSlider.value)
-                            Layout.preferredWidth: root.sliderValueLabelWidth
-                            horizontalAlignment: Text.AlignRight
-                            font: Kirigami.Theme.fixedWidthFont
-                        }
-
+                    Binding {
+                        target: previewWindowSlider.slider
+                        property: "value"
+                        value: root.settingValue("MaxWindows", appSettings.autotileMaxWindows)
+                        when: !previewWindowSlider.slider.pressed
+                        restoreMode: Binding.RestoreNone
                     }
 
                 }
@@ -645,48 +563,37 @@ Flickable {
                     Label {
                         Layout.alignment: Qt.AlignHCenter
                         text: root.effectiveAlgorithm === "three-column" || root.effectiveAlgorithm === "centered-master" ? i18n("Center Ratio") : i18n("Master Ratio")
-                        font.bold: true
+                        font.weight: Font.DemiBold
                     }
 
-                    RowLayout {
+                    SettingsSlider {
+                        id: splitRatioSlider
+
                         Layout.fillWidth: true
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Slider {
-                            id: splitRatioSlider
-
-                            Layout.fillWidth: true
-                            from: 0.1
-                            to: 0.9
-                            stepSize: 0.05
-                            onMoved: {
-                                if (root.effectiveAlgorithm === "centered-master")
-                                    root.writeSetting("SplitRatio", value, function(v) {
-                                    appSettings.autotileCenteredMasterSplitRatio = v;
-                                });
-                                else
-                                    root.writeSetting("SplitRatio", value, function(v) {
-                                    appSettings.autotileSplitRatio = v;
-                                });
-                            }
-                            ToolTip.visible: hovered
-                            ToolTip.text: root.effectiveAlgorithm === "three-column" || root.effectiveAlgorithm === "centered-master" ? i18n("Proportion of screen width for the center column") : i18n("Proportion of screen width for the master area")
-
-                            Binding on value {
-                                value: root.effectiveAlgorithm === "centered-master" ? root.settingValue("SplitRatio", appSettings.autotileCenteredMasterSplitRatio) : root.settingValue("SplitRatio", appSettings.autotileSplitRatio)
-                                when: !splitRatioSlider.pressed
-                                restoreMode: Binding.RestoreNone
-                            }
-
+                        from: 0.1
+                        to: 0.9
+                        stepSize: 0.05
+                        formatValue: function(v) {
+                            return Math.round(v * 100) + "%";
                         }
-
-                        Label {
-                            text: Math.round(splitRatioSlider.value * 100) + "%"
-                            Layout.preferredWidth: root.sliderValueLabelWidth
-                            horizontalAlignment: Text.AlignRight
-                            font: Kirigami.Theme.fixedWidthFont
+                        onMoved: (value) => {
+                            if (root.effectiveAlgorithm === "centered-master")
+                                root.writeSetting("SplitRatio", value, function(v) {
+                                appSettings.autotileCenteredMasterSplitRatio = v;
+                            });
+                            else
+                                root.writeSetting("SplitRatio", value, function(v) {
+                                appSettings.autotileSplitRatio = v;
+                            });
                         }
+                    }
 
+                    Binding {
+                        target: splitRatioSlider.slider
+                        property: "value"
+                        value: root.effectiveAlgorithm === "centered-master" ? root.settingValue("SplitRatio", appSettings.autotileCenteredMasterSplitRatio) : root.settingValue("SplitRatio", appSettings.autotileSplitRatio)
+                        when: !splitRatioSlider.slider.pressed
+                        restoreMode: Binding.RestoreNone
                     }
 
                     // Master count - for master-stack and centered-master

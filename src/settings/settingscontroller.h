@@ -282,6 +282,10 @@ public:
     Q_INVOKABLE void loadColorsFromFile(const QString& filePath);
     Q_INVOKABLE QVariantList getRunningWindows() const;
 
+    // ── Config export/import ────────────────────────────────────────────────
+    Q_INVOKABLE bool exportAllSettings(const QString& filePath);
+    Q_INVOKABLE bool importAllSettings(const QString& filePath);
+
     // ── Algorithm helpers ────────────────────────────────────────────────────
     Q_INVOKABLE QVariantList availableAlgorithms() const;
     Q_INVOKABLE QVariantList generateAlgorithmPreview(const QString& algorithmId, int windowCount, double splitRatio,
