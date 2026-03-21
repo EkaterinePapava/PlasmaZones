@@ -398,8 +398,15 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
         // would use effectiveAlgorithm() with the stale per-screen override (OLD algo),
         // producing wrong geometries and emitting a bad windowsTiled signal to KWin.
         // Deferring to the next event loop pass ensures per-screen overrides are current.
+        //
+        // Only retile screens that actually use the global algorithm (no per-screen
+        // override). Screens with per-screen algorithm overrides are unaffected by
+        // this global change and are handled by updateAutotileScreens() when the
+        // layoutAssigned signal fires from applyEntry().
         for (const QString& screen : m_autotileScreens) {
-            scheduleRetileForScreen(screen);
+            if (effectiveAlgorithmId(screen) == newId) {
+                scheduleRetileForScreen(screen);
+            }
         }
     }
 }

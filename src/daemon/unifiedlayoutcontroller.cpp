@@ -238,9 +238,18 @@ bool UnifiedLayoutController::applyEntry(const UnifiedLayoutEntry& entry)
                 // assignment to correctly populate the resnap buffer.
                 m_layoutManager->assignLayout(m_currentScreenName, m_currentVirtualDesktop, QString(), layout);
             }
-            // Always update global active layout (fires activeLayoutChanged →
-            // onLayoutChanged → resnap buffer population)
-            m_layoutManager->setActiveLayout(layout);
+            // Update global active layout pointer so overlay/zone detector
+            // queries see the new layout, but suppress activeLayoutChanged
+            // to prevent resnap buffer population and zone recalculation on
+            // ALL screens. The per-screen assignment (assignLayout above)
+            // already fired layoutAssigned which handles per-screen zone
+            // recalculation. Without blocking, setActiveLayout fires
+            // activeLayoutChanged → onLayoutChanged → resnap/recalc on
+            // every screen, not just the target.
+            {
+                const QSignalBlocker blocker(m_layoutManager);
+                m_layoutManager->setActiveLayout(layout);
+            }
             setCurrentLayoutId(entry.id);
             qCInfo(lcDaemon) << "Applied unified layout=" << entry.name << "screen=" << m_currentScreenName;
             Q_EMIT layoutApplied(layout);
