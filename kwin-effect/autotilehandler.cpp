@@ -218,16 +218,16 @@ void AutotileHandler::handleCursorMoved(const QPointF& pos, const QString& scree
 // Geometry persistence
 // ═══════════════════════════════════════════════════════════════════════════════
 
-bool AutotileHandler::saveAndRecordPreAutotileGeometry(const QString& windowId, const QString& screenName,
+bool AutotileHandler::saveAndRecordPreAutotileGeometry(const QString& windowId, const QString& screenId,
                                                        const QRectF& frame)
 {
-    if (windowId.isEmpty() || screenName.isEmpty()) {
+    if (windowId.isEmpty() || screenId.isEmpty()) {
         return false;
     }
     if (!frame.isValid() || frame.width() <= 0 || frame.height() <= 0) {
         return false;
     }
-    auto& screenGeometries = m_preAutotileGeometries[screenName];
+    auto& screenGeometries = m_preAutotileGeometries[screenId];
     // Use EXACT windowId match only — NOT stableId fallback.
     // Multiple instances of the same app (e.g., 3 Dolphin windows) share a stableId.
     // hasSavedGeometryForWindow's stableId fallback would return true after the first
@@ -238,20 +238,20 @@ bool AutotileHandler::saveAndRecordPreAutotileGeometry(const QString& windowId, 
         return false;
     }
     screenGeometries[windowId] = frame;
-    qCDebug(lcEffect) << "Saved pre-autotile geometry for" << windowId << "on" << screenName << ":" << frame;
+    qCDebug(lcEffect) << "Saved pre-autotile geometry for" << windowId << "on" << screenId << ":" << frame;
     if (m_effect->m_daemonServiceRegistered) {
         // Use overwrite=false so a pre-existing snap geometry is preserved when
         // autotile activates on a screen with already-snapped windows. The effect-
         // local cache (screenGeometries) already guards against redundant stores
         // within an autotile session; overwrite=false prevents cross-mode clobbering.
-        // Resolve screen ID (EDID-based) for daemon tracking D-Bus calls;
-        // the screenName parameter may already be a screen ID from callers that
-        // use getWindowScreenId(), but re-resolve to be safe.
-        QString screenId = m_effect->getWindowScreenId(m_effect->findWindowById(windowId));
+        // Re-resolve screen ID (EDID-based) for daemon tracking D-Bus calls;
+        // the screenId parameter may already be correct from callers that use
+        // getWindowScreenId(), but re-resolve to be safe.
+        QString resolvedScreenId = m_effect->getWindowScreenId(m_effect->findWindowById(windowId));
         m_effect->fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("storePreTileGeometry"),
                                         {windowId, static_cast<int>(frame.x()), static_cast<int>(frame.y()),
                                          static_cast<int>(frame.width()), static_cast<int>(frame.height()),
-                                         screenId.isEmpty() ? screenName : screenId, false},
+                                         resolvedScreenId.isEmpty() ? screenId : resolvedScreenId, false},
                                         QStringLiteral("storePreTileGeometry"));
     }
     return true;
@@ -294,9 +294,9 @@ void AutotileHandler::setWindowBorderless(KWin::EffectWindow* w, const QString& 
 // Screen accessors
 // ═══════════════════════════════════════════════════════════════════════════════
 
-bool AutotileHandler::isAutotileScreen(const QString& screenName) const
+bool AutotileHandler::isAutotileScreen(const QString& screenId) const
 {
-    return m_autotileScreens.contains(screenName);
+    return m_autotileScreens.contains(screenId);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

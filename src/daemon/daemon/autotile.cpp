@@ -277,12 +277,10 @@ QHash<Daemon::DesktopContextKey, QStringList> Daemon::captureAutotileOrders() co
     }
     const int desktop = currentDesktop();
     const QString activity = currentActivity();
-    for (const QString& screenName : m_autotileEngine->autotileScreens()) {
-        QStringList order = m_autotileEngine->tiledWindowOrder(screenName);
+    for (const QString& screenId : m_autotileEngine->autotileScreens()) {
+        QStringList order = m_autotileEngine->tiledWindowOrder(screenId);
         if (!order.isEmpty()) {
-            // Use connector name as screenId — consistent with how
-            // seedAutotileOrderForScreen looks up by connector name.
-            orders[DesktopContextKey{screenName, desktop, activity}] = order;
+            orders[DesktopContextKey{screenId, desktop, activity}] = order;
         }
     }
     return orders;
@@ -303,7 +301,7 @@ void Daemon::restoreAutotileOnlyGeometries(const QSet<QString>& excludeWindows, 
         if (desktop >= 0 && (it.key().desktop != desktop || it.key().activity != activity)) {
             continue;
         }
-        const QString& screenName = it.key().screenId;
+        const QString& screenId = it.key().screenId;
         for (const QString& windowId : it.value()) {
             if (excludeWindows.contains(windowId))
                 continue;
@@ -311,7 +309,7 @@ void Daemon::restoreAutotileOnlyGeometries(const QSet<QString>& excludeWindows, 
                 continue;
             if (wts->isWindowFloating(windowId))
                 continue;
-            m_windowTrackingAdaptor->applyGeometryForFloat(windowId, screenName);
+            m_windowTrackingAdaptor->applyGeometryForFloat(windowId, screenId);
         }
     }
 }
@@ -332,7 +330,7 @@ QVector<RotationEntry> Daemon::buildAutotileRestoreEntries(const QSet<QString>& 
         if (desktop >= 0 && (it.key().desktop != desktop || it.key().activity != activity)) {
             continue;
         }
-        const QString& screenName = it.key().screenId;
+        const QString& screenId = it.key().screenId;
         for (const QString& windowId : it.value()) {
             if (excludeWindows.contains(windowId))
                 continue;
@@ -340,7 +338,7 @@ QVector<RotationEntry> Daemon::buildAutotileRestoreEntries(const QSet<QString>& 
                 continue;
             if (wts->isWindowFloating(windowId))
                 continue;
-            auto geo = wts->validatedPreTileGeometry(windowId, screenName);
+            auto geo = wts->validatedPreTileGeometry(windowId, screenId);
             if (geo) {
                 RotationEntry entry;
                 entry.windowId = windowId;
@@ -348,7 +346,7 @@ QVector<RotationEntry> Daemon::buildAutotileRestoreEntries(const QSet<QString>& 
                 entry.targetGeometry = *geo;
                 entries.append(entry);
                 qCInfo(lcDaemon) << "Batched float-restore: windowId=" << windowId << "geo=" << *geo
-                                 << "screen=" << screenName;
+                                 << "screen=" << screenId;
             }
         }
     }
@@ -370,7 +368,7 @@ void Daemon::presaveSnapFloats()
     }
 }
 
-void Daemon::seedAutotileOrderForScreen(const QString& screenName)
+void Daemon::seedAutotileOrderForScreen(const QString& screenId)
 {
     if (!m_autotileEngine || !m_windowTrackingAdaptor) {
         return;
@@ -379,12 +377,12 @@ void Daemon::seedAutotileOrderForScreen(const QString& screenName)
     // Prefer saved autotile order from last mode toggle (deterministic re-entry).
     // Falls back to zone-ordered window list when no saved order exists (first
     // activation, or windows changed between toggles).
-    DesktopContextKey orderKey{screenName, currentDesktop(), currentActivity()};
+    DesktopContextKey orderKey{screenId, currentDesktop(), currentActivity()};
     QStringList order = m_lastAutotileOrders.value(orderKey);
     if (order.isEmpty()) {
         WindowTrackingService* wts = m_windowTrackingAdaptor->service();
         if (wts) {
-            order = wts->buildZoneOrderedWindowList(screenName);
+            order = wts->buildZoneOrderedWindowList(screenId);
         }
     }
 
@@ -395,7 +393,7 @@ void Daemon::seedAutotileOrderForScreen(const QString& screenName)
         // Un-snapped windows (not in zoneOrder) keep their saved floating state
         // so they stay floating when autotile is re-enabled.
         m_autotileEngine->clearSavedFloatingForWindows(order);
-        m_autotileEngine->setInitialWindowOrder(screenName, order);
+        m_autotileEngine->setInitialWindowOrder(screenId, order);
     }
 }
 

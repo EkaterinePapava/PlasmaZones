@@ -92,10 +92,6 @@ QJsonArray SnapAssistHandler::buildCandidates(const QString& excludeWindowId, co
     QJsonArray candidates;
     const auto windows = KWin::effects->stackingOrder();
 
-    // screenId may be a connector name ("DP-3") or a stable screen ID
-    // ("LG Electronics:LG Ultra HD:45071"). Detect format by checking for ':'.
-    const bool screenIsId = screenId.contains(QLatin1Char(':'));
-
     for (KWin::EffectWindow* w : windows) {
         if (!w || !m_effect->shouldHandleWindow(w) || w->isMinimized() || !w->isOnCurrentDesktop()
             || !w->isOnCurrentActivity()) {
@@ -130,9 +126,9 @@ QJsonArray SnapAssistHandler::buildCandidates(const QString& excludeWindowId, co
             }
         }
 
-        // Compare using the same format as the input (screen ID or connector name)
+        // Always use EDID-based screen ID for comparison
         if (!screenId.isEmpty()) {
-            QString winScreen = screenIsId ? m_effect->getWindowScreenId(w) : m_effect->getWindowScreenName(w);
+            QString winScreen = m_effect->getWindowScreenId(w);
             if (winScreen != screenId) {
                 continue;
             }

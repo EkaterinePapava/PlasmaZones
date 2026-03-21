@@ -113,7 +113,7 @@ SnapResult WindowTrackingService::calculateSnapToAppRule(const QString& windowId
 
     for (QScreen* screen : Utils::allScreens()) {
         QString screenId = Utils::screenIdentifier(screen);
-        if (screenId == windowScreenName || screen->name() == windowScreenName) {
+        if (Utils::screensMatch(screenId, windowScreenName)) {
             continue;
         }
 

@@ -83,7 +83,7 @@ public:
     void handleCursorMoved(const QPointF& pos, const QString& screenId);
 
     // Screen accessors (for gating drag/snap/overlay behavior per-screen)
-    bool isAutotileScreen(const QString& screenName) const;
+    bool isAutotileScreen(const QString& screenId) const;
     const QSet<QString>& autotileScreens() const
     {
         return m_autotileScreens;
@@ -169,8 +169,8 @@ public Q_SLOTS:
     void slotWindowsTileRequested(const QString& tileRequestsJson);
     void slotFocusWindowRequested(const QString& windowId);
     void slotEnabledChanged(bool enabled);
-    void slotScreensChanged(const QStringList& screenNames, bool isDesktopSwitch);
-    void slotWindowFloatingChanged(const QString& windowId, bool isFloating, const QString& screenName);
+    void slotScreensChanged(const QStringList& screenIds, bool isDesktopSwitch);
+    void slotWindowFloatingChanged(const QString& windowId, bool isFloating, const QString& screenId);
 
     // Window state change handlers (connected per-window in setupWindowConnections)
     void slotWindowMinimizedChanged(KWin::EffectWindow* w);
@@ -204,7 +204,7 @@ private:
      * @return true if the window should be notified to the autotile daemon
      */
     bool isEligibleForAutotileNotify(KWin::EffectWindow* w) const;
-    bool saveAndRecordPreAutotileGeometry(const QString& windowId, const QString& screenName, const QRectF& frame);
+    bool saveAndRecordPreAutotileGeometry(const QString& windowId, const QString& screenId, const QRectF& frame);
     bool shouldApplyBorderInset(const QString& windowId) const;
     void reportDiscoveredMinSize(const QString& windowId, int minWidth, int minHeight);
 
@@ -229,7 +229,7 @@ private:
     QHash<QString, QStringList> m_savedSnapStackingOrder; ///< snap-mode stacking order, restored on autotile→snap
     QHash<QString, QStringList> m_savedAutotileStackingOrder; ///< autotile stacking order, restored on snap→autotile
     QSet<QString> m_notifiedWindows;
-    QHash<QString, QString> m_notifiedWindowScreens; ///< windowId → screen name at time of notification
+    QHash<QString, QString> m_notifiedWindowScreens; ///< windowId → screen ID at time of notification
     QSet<QString> m_savedNotifiedForDesktopReturn; ///< windows removed from m_notifiedWindows on desktop switch
     QHash<QString, QRectF>
         m_savedPreAutotileForDesktopMove; ///< pre-autotile geometries for windows moved to another desktop

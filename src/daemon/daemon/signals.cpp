@@ -48,20 +48,20 @@ void Daemon::initializeAutotile()
                 && m_settings->showOsdOnLayoutSwitch() && m_overlayService) {
                 auto* algo = AlgorithmRegistry::instance()->algorithm(algorithmId);
                 QString displayName = algo ? algo->name() : algorithmId;
-                QString screenName =
+                QString screenId =
                     m_unifiedLayoutController ? m_unifiedLayoutController->currentScreenName() : QString();
-                if (screenName.isEmpty() && m_windowTrackingAdaptor) {
+                if (screenId.isEmpty() && m_windowTrackingAdaptor) {
                     if (QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor)) {
-                        screenName = Utils::screenIdentifier(screen);
+                        screenId = Utils::screenIdentifier(screen);
                     }
                 }
-                showAlgorithmOsdDeferred(algorithmId, displayName, screenName);
+                showAlgorithmOsdDeferred(algorithmId, displayName, screenId);
             }
         });
 
         // Sync autotile float state and show OSD when a window is floated/unfloated
         connect(m_autotileEngine.get(), &AutotileEngine::windowFloatingChanged, this,
-                [this](const QString& windowId, bool floating, const QString& screenName) {
+                [this](const QString& windowId, bool floating, const QString& screenId) {
                     // Sync floating state to WindowTrackingService and propagate
                     // to KWin effect's NavigationHandler::m_floatingWindows via D-Bus signal.
                     // Also track autotile origin so mode transitions can distinguish
@@ -97,14 +97,14 @@ void Daemon::initializeAutotile()
                     // original position. The effect does NOT apply geometry on float — the daemon is
                     // the single source.
                     if (floating && m_windowTrackingAdaptor) {
-                        m_windowTrackingAdaptor->applyGeometryForFloat(windowId, screenName);
+                        m_windowTrackingAdaptor->applyGeometryForFloat(windowId, screenId);
                     }
 
                     // Use "Floating" and "Tiled" labels for autotile (not "Snapped" for unfloat)
                     if (m_settings && m_settings->showNavigationOsd() && m_overlayService) {
                         QString reason = floating ? QStringLiteral("floated") : QStringLiteral("tiled");
                         m_overlayService->showNavigationOsd(true, QStringLiteral("float"), reason, QString(), QString(),
-                                                            screenName);
+                                                            screenId);
                     }
                 });
 
@@ -113,7 +113,7 @@ void Daemon::initializeAutotile()
         // handles geometry restore directly. Here we only update daemon-side
         // WTS state without emitting per-window D-Bus signals.
         connect(m_autotileEngine.get(), &AutotileEngine::windowsBatchFloated, this,
-                [this](const QStringList& windowIds, const QString& screenName) {
+                [this](const QStringList& windowIds, const QString& screenId) {
                     if (!m_windowTrackingAdaptor) {
                         return;
                     }
@@ -128,7 +128,7 @@ void Daemon::initializeAutotile()
                     }
                     if (m_settings && m_settings->showNavigationOsd() && m_overlayService && !windowIds.isEmpty()) {
                         m_overlayService->showNavigationOsd(true, QStringLiteral("float"), QStringLiteral("overflow"),
-                                                            QString(), QString(), screenName);
+                                                            QString(), QString(), screenId);
                     }
                 });
 
@@ -308,7 +308,7 @@ void Daemon::initializeAutotile()
                         continue;
                     }
                     const QStringList& fullOrder = it.value();
-                    const QString& screenName = it.key().screenId;
+                    const QString& resnapScreenId = it.key().screenId;
 
                     // Filter out floating windows — windowsReleasedFromTiling already
                     // restored their snap-float state. Resnapping them would override
@@ -326,13 +326,13 @@ void Daemon::initializeAutotile()
                         windowOrder.append(windowId);
                     }
 
-                    Layout* screenLayout = m_layoutManager->resolveLayoutForScreen(screenName);
+                    Layout* screenLayout = m_layoutManager->resolveLayoutForScreen(resnapScreenId);
                     int zoneCount = screenLayout ? screenLayout->zoneCount() : 0;
                     for (int i = 0; i < std::min(static_cast<int>(windowOrder.size()), zoneCount); ++i) {
                         resnappedWindows.insert(windowOrder.at(i));
                     }
                     QVector<RotationEntry> entries =
-                        m_snapEngine->calculateResnapEntriesFromAutotileOrder(windowOrder, screenName);
+                        m_snapEngine->calculateResnapEntriesFromAutotileOrder(windowOrder, resnapScreenId);
                     allResnapEntries.append(entries);
                 }
                 // Batch float-restore entries into the resnap signal:
@@ -460,8 +460,8 @@ void Daemon::connectLayoutSignals()
         // layout is ever replaced between now and next event loop pass.
         if (m_settings && m_settings->showOsdOnLayoutSwitch()) {
             QUuid layoutId = layout->id();
-            QString screenName = m_unifiedLayoutController->currentScreenName();
-            showLayoutOsdDeferred(layoutId, screenName);
+            QString screenId = m_unifiedLayoutController->currentScreenName();
+            showLayoutOsdDeferred(layoutId, screenId);
         }
     });
 
@@ -479,8 +479,8 @@ void Daemon::connectLayoutSignals()
                 // process incoming tiling requests until the OSD handler returns.
                 if (m_settings && m_settings->showOsdOnLayoutSwitch() && m_autotileEngine && m_overlayService) {
                     QString algorithmId = m_autotileEngine->algorithm();
-                    QString screenName = m_unifiedLayoutController->currentScreenName();
-                    showAlgorithmOsdDeferred(algorithmId, algorithmName, screenName);
+                    QString screenId = m_unifiedLayoutController->currentScreenName();
+                    showAlgorithmOsdDeferred(algorithmId, algorithmName, screenId);
                 }
             });
 

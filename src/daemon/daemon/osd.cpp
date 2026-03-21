@@ -149,7 +149,7 @@ void Daemon::showLockedPreviewOsd(const QString& screenName)
 }
 
 void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString& displayName,
-                                       const QString& screenName)
+                                       const QString& screenId)
 {
     auto* algo = AlgorithmRegistry::instance()->algorithm(algorithmId);
     if (!algo) {
@@ -180,13 +180,7 @@ void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString
         if (m_overlayService) {
             int windowCount = 0;
             if (m_autotileEngine) {
-                // AutotileEngine uses connector names (e.g. "DP-2"), not screen
-                // IDs (e.g. "LG Electronics:LG Ultra HD:115107"). Convert if needed.
-                QString connectorName = Utils::screenNameForId(screenName);
-                if (connectorName.isEmpty()) {
-                    connectorName = screenName; // already a connector name
-                }
-                TilingState* state = m_autotileEngine->stateForScreen(connectorName);
+                TilingState* state = m_autotileEngine->stateForScreen(screenId);
                 if (state) {
                     windowCount = state->tiledWindowCount();
                 }
@@ -194,8 +188,8 @@ void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString
             QVariantList zones = AlgorithmRegistry::generatePreviewZones(algo, windowCount > 0 ? windowCount : -1);
             QString layoutId = LayoutId::makeAutotileId(algorithmId);
             m_overlayService->showLayoutOsd(layoutId, displayName, zones, static_cast<int>(LayoutCategory::Autotile),
-                                            false, screenName);
-            qCInfo(lcDaemon) << "Preview OSD: algorithm=" << displayName << "screen=" << screenName;
+                                            false, screenId);
+            qCInfo(lcDaemon) << "Preview OSD: algorithm=" << displayName << "screen=" << screenId;
         } else {
             qCWarning(lcDaemon) << "Overlay service not available for preview OSD";
         }
@@ -203,23 +197,23 @@ void Daemon::showLayoutOsdForAlgorithm(const QString& algorithmId, const QString
     }
 }
 
-void Daemon::showLayoutOsdDeferred(const QUuid& layoutId, const QString& screenName)
+void Daemon::showLayoutOsdDeferred(const QUuid& layoutId, const QString& screenId)
 {
     // Defer OSD display so first-time QML compilation of LayoutOsd.qml (~100-300ms)
     // doesn't block the daemon event loop during layout switches.
-    QTimer::singleShot(0, this, [this, layoutId, screenName]() {
+    QTimer::singleShot(0, this, [this, layoutId, screenId]() {
         Layout* l = m_layoutManager ? m_layoutManager->layoutById(layoutId) : nullptr;
         if (l) {
-            showLayoutOsd(l, screenName);
+            showLayoutOsd(l, screenId);
         }
     });
 }
 
 void Daemon::showAlgorithmOsdDeferred(const QString& algorithmId, const QString& algorithmName,
-                                      const QString& screenName)
+                                      const QString& screenId)
 {
-    QTimer::singleShot(0, this, [this, algorithmId, algorithmName, screenName]() {
-        showLayoutOsdForAlgorithm(algorithmId, algorithmName, screenName);
+    QTimer::singleShot(0, this, [this, algorithmId, algorithmName, screenId]() {
+        showLayoutOsdForAlgorithm(algorithmId, algorithmName, screenId);
     });
 }
 

@@ -62,20 +62,20 @@ public:
      * @brief Assign a window to a zone
      * @param windowId Full window ID
      * @param zoneId Zone UUID string
-     * @param screenName Screen where the zone is located
+     * @param screenId Screen where the zone is located
      * @param virtualDesktop Virtual desktop number (1-based, 0 = all)
      */
-    void assignWindowToZone(const QString& windowId, const QString& zoneId, const QString& screenName,
+    void assignWindowToZone(const QString& windowId, const QString& zoneId, const QString& screenId,
                             int virtualDesktop);
 
     /**
      * @brief Assign a window to multiple zones (multi-zone snap)
      * @param windowId Full window ID
      * @param zoneIds List of zone UUID strings (first is primary)
-     * @param screenName Screen where the zones are located
+     * @param screenId Screen where the zones are located
      * @param virtualDesktop Virtual desktop number (1-based, 0 = all)
      */
-    void assignWindowToZones(const QString& windowId, const QStringList& zoneIds, const QString& screenName,
+    void assignWindowToZones(const QString& windowId, const QStringList& zoneIds, const QString& screenId,
                              int virtualDesktop);
 
     /**

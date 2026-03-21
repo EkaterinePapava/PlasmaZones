@@ -88,13 +88,13 @@ void AutotileAdaptor::setAlgorithm(const QString& algorithmId)
 // Tiling Operations
 // ═══════════════════════════════════════════════════════════════════════════
 
-void AutotileAdaptor::retile(const QString& screenName)
+void AutotileAdaptor::retile(const QString& screenId)
 {
     if (!ensureEngine("retile")) {
         return;
     }
-    qCDebug(lcDbusAutotile) << "retile: screen=" << (screenName.isEmpty() ? QStringLiteral("all") : screenName);
-    m_engine->retile(screenName);
+    qCDebug(lcDbusAutotile) << "retile: screen=" << (screenId.isEmpty() ? QStringLiteral("all") : screenId);
+    m_engine->retile(screenId);
 }
 
 void AutotileAdaptor::retileAllScreens()
@@ -177,7 +177,7 @@ void AutotileAdaptor::focusPrevious()
     m_engine->focusPrevious();
 }
 
-void AutotileAdaptor::windowOpened(const QString& windowId, const QString& screenName, int minWidth, int minHeight)
+void AutotileAdaptor::windowOpened(const QString& windowId, const QString& screenId, int minWidth, int minHeight)
 {
     if (!ensureEngine("windowOpened")) {
         return;
@@ -186,13 +186,13 @@ void AutotileAdaptor::windowOpened(const QString& windowId, const QString& scree
         qCDebug(lcDbusAutotile) << "windowOpened: empty window ID";
         return;
     }
-    if (screenName.isEmpty()) {
-        qCDebug(lcDbusAutotile) << "windowOpened: empty screen name for window" << windowId;
+    if (screenId.isEmpty()) {
+        qCDebug(lcDbusAutotile) << "windowOpened: empty screen ID for window" << windowId;
         return;
     }
-    qCDebug(lcDbusAutotile) << "windowOpened: windowId=" << windowId << "screen=" << screenName
+    qCDebug(lcDbusAutotile) << "windowOpened: windowId=" << windowId << "screen=" << screenId
                             << "minSize=" << minWidth << "x" << minHeight;
-    m_engine->windowOpened(windowId, screenName, qMax(0, minWidth), qMax(0, minHeight));
+    m_engine->windowOpened(windowId, screenId, qMax(0, minWidth), qMax(0, minHeight));
 }
 
 void AutotileAdaptor::windowsOpenedBatch(const QString& batchJson)
@@ -253,7 +253,7 @@ void AutotileAdaptor::windowClosed(const QString& windowId)
     m_engine->windowClosed(windowId);
 }
 
-void AutotileAdaptor::notifyWindowFocused(const QString& windowId, const QString& screenName)
+void AutotileAdaptor::notifyWindowFocused(const QString& windowId, const QString& screenId)
 {
     if (!ensureEngine("notifyWindowFocused")) {
         return;
@@ -262,15 +262,15 @@ void AutotileAdaptor::notifyWindowFocused(const QString& windowId, const QString
         qCDebug(lcDbusAutotile) << "notifyWindowFocused: empty window ID (focus cleared)";
         return;
     }
-    if (screenName.isEmpty()) {
-        qCDebug(lcDbusAutotile) << "notifyWindowFocused: empty screenName";
+    if (screenId.isEmpty()) {
+        qCDebug(lcDbusAutotile) << "notifyWindowFocused: empty screenId";
         return;
     }
-    qCDebug(lcDbusAutotile) << "notifyWindowFocused: windowId=" << windowId << "screen=" << screenName;
-    // R2 fix: Pass screen name to engine so m_windowToScreen is updated on focus
+    qCDebug(lcDbusAutotile) << "notifyWindowFocused: windowId=" << windowId << "screen=" << screenId;
+    // R2 fix: Pass screen ID to engine so m_windowToScreen is updated on focus
     // change. This also addresses R5 (cross-screen window movement detection) since
     // focus events carry the current screen, updating stale m_windowToScreen entries.
-    m_engine->windowFocused(windowId, screenName);
+    m_engine->windowFocused(windowId, screenId);
 }
 
 // floatWindow, unfloatWindow, toggleFocusedWindowFloat, toggleWindowFloat removed:

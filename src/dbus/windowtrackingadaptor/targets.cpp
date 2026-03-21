@@ -166,54 +166,54 @@ QString WindowTrackingAdaptor::getMoveTargetForWindow(const QString& windowId, c
 }
 
 QString WindowTrackingAdaptor::getFocusTargetForWindow(const QString& windowId, const QString& direction,
-                                                       const QString& screenName)
+                                                       const QString& screenId)
 {
     if (!validateWindowId(windowId, QStringLiteral("getFocusTargetForWindow"))) {
         return QString::fromUtf8(QJsonDocument(focusResult(false, QStringLiteral("invalid_window"), QString(),
-                                                           QString(), QString(), screenName))
+                                                           QString(), QString(), screenId))
                                      .toJson(QJsonDocument::Compact));
     }
     if (!validateDirection(direction, QStringLiteral("focus"))) {
         return QString::fromUtf8(QJsonDocument(focusResult(false, QStringLiteral("invalid_direction"), QString(),
-                                                           QString(), QString(), screenName))
+                                                           QString(), QString(), screenId))
                                      .toJson(QJsonDocument::Compact));
     }
     if (!m_zoneDetectionAdaptor) {
         return QString::fromUtf8(QJsonDocument(focusResult(false, QStringLiteral("no_zone_detection"), QString(),
-                                                           QString(), QString(), screenName))
+                                                           QString(), QString(), screenId))
                                      .toJson(QJsonDocument::Compact));
     }
 
     QString currentZoneId = m_service->zoneForWindow(windowId);
     if (currentZoneId.isEmpty()) {
         Q_EMIT navigationFeedback(false, QStringLiteral("focus"), QStringLiteral("not_snapped"), QString(), QString(),
-                                  screenName);
+                                  screenId);
         return QString::fromUtf8(QJsonDocument(focusResult(false, QStringLiteral("not_snapped"), QString(), QString(),
-                                                           QString(), screenName))
+                                                           QString(), screenId))
                                      .toJson(QJsonDocument::Compact));
     }
 
     QString targetZoneId = m_zoneDetectionAdaptor->getAdjacentZone(currentZoneId, direction);
     if (targetZoneId.isEmpty()) {
         Q_EMIT navigationFeedback(false, QStringLiteral("focus"), QStringLiteral("no_adjacent_zone"), currentZoneId,
-                                  QString(), screenName);
+                                  QString(), screenId);
         return QString::fromUtf8(QJsonDocument(focusResult(false, QStringLiteral("no_adjacent_zone"), QString(),
-                                                           currentZoneId, QString(), screenName))
+                                                           currentZoneId, QString(), screenId))
                                      .toJson(QJsonDocument::Compact));
     }
 
     QStringList windowsInZone = m_service->windowsInZone(targetZoneId);
     if (windowsInZone.isEmpty()) {
         Q_EMIT navigationFeedback(false, QStringLiteral("focus"), QStringLiteral("no_window_in_zone"), currentZoneId,
-                                  targetZoneId, screenName);
+                                  targetZoneId, screenId);
         return QString::fromUtf8(QJsonDocument(focusResult(false, QStringLiteral("no_window_in_zone"), QString(),
-                                                           currentZoneId, targetZoneId, screenName))
+                                                           currentZoneId, targetZoneId, screenId))
                                      .toJson(QJsonDocument::Compact));
     }
 
-    Q_EMIT navigationFeedback(true, QStringLiteral("focus"), direction, currentZoneId, targetZoneId, screenName);
+    Q_EMIT navigationFeedback(true, QStringLiteral("focus"), direction, currentZoneId, targetZoneId, screenId);
     return QString::fromUtf8(
-        QJsonDocument(focusResult(true, QString(), windowsInZone.first(), currentZoneId, targetZoneId, screenName))
+        QJsonDocument(focusResult(true, QString(), windowsInZone.first(), currentZoneId, targetZoneId, screenId))
             .toJson(QJsonDocument::Compact));
 }
 

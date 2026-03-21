@@ -497,7 +497,7 @@ public Q_SLOTS:
      * @param screenName Screen for zone resolution
      * @return JSON: {success, reason, windowIdToActivate, sourceZoneId, targetZoneId, screenName}
      */
-    QString getFocusTargetForWindow(const QString& windowId, const QString& direction, const QString& screenName);
+    QString getFocusTargetForWindow(const QString& windowId, const QString& direction, const QString& screenId);
 
     /**
      * @brief Get restore geometry for a snapped window

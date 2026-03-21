@@ -51,13 +51,13 @@ WindowTrackingService::~WindowTrackingService()
 // ═══════════════════════════════════════════════════════════════════════════════
 
 void WindowTrackingService::assignWindowToZone(const QString& windowId, const QString& zoneId,
-                                               const QString& screenName, int virtualDesktop)
+                                               const QString& screenId, int virtualDesktop)
 {
-    assignWindowToZones(windowId, QStringList{zoneId}, screenName, virtualDesktop);
+    assignWindowToZones(windowId, QStringList{zoneId}, screenId, virtualDesktop);
 }
 
 void WindowTrackingService::assignWindowToZones(const QString& windowId, const QStringList& zoneIds,
-                                                const QString& screenName, int virtualDesktop)
+                                                const QString& screenId, int virtualDesktop)
 {
     if (windowId.isEmpty() || zoneIds.isEmpty() || zoneIds.first().isEmpty()) {
         return;
@@ -68,7 +68,7 @@ void WindowTrackingService::assignWindowToZones(const QString& windowId, const Q
     bool zoneChanged = (previousZones != zoneIds);
 
     m_windowZoneAssignments[windowId] = zoneIds;
-    m_windowScreenAssignments[windowId] = screenName;
+    m_windowScreenAssignments[windowId] = screenId;
     m_windowDesktopAssignments[windowId] = virtualDesktop;
 
     // NOTE: Do NOT store to m_pendingRestoreQueues here!

@@ -44,7 +44,7 @@ void AutotileHandler::slotEnabledChanged(bool enabled)
     }
 }
 
-void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool isDesktopSwitch)
+void AutotileHandler::slotScreensChanged(const QStringList& screenIds, bool isDesktopSwitch)
 {
     // Invalidate in-flight stagger timers from prior autotile/restore operations.
     // Without this, a desktop switch can race with a pending stagger from the
@@ -52,7 +52,7 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
     ++m_autotileStaggerGeneration;
     ++m_restoreStaggerGeneration;
 
-    const QSet<QString> newScreens(screenNames.begin(), screenNames.end());
+    const QSet<QString> newScreens(screenIds.begin(), screenIds.end());
     const QSet<QString> removed = m_autotileScreens - newScreens;
     const QSet<QString> added = newScreens - m_autotileScreens;
 
@@ -430,11 +430,11 @@ void AutotileHandler::slotScreensChanged(const QStringList& screenNames, bool is
     qCInfo(lcEffect) << "Autotile screens changed:" << m_autotileScreens;
 }
 
-void AutotileHandler::slotWindowFloatingChanged(const QString& windowId, bool isFloating, const QString& screenName)
+void AutotileHandler::slotWindowFloatingChanged(const QString& windowId, bool isFloating, const QString& screenId)
 {
-    Q_UNUSED(screenName)
+    Q_UNUSED(screenId)
     qCInfo(lcEffect) << "Autotile floating changed:" << windowId << "isFloating:" << isFloating
-                     << "screen:" << screenName;
+                     << "screen:" << screenId;
 
     if (!isFloating) {
         m_effect->m_navigationHandler->setWindowFloating(windowId, false);

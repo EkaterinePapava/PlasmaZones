@@ -113,7 +113,7 @@ private:
      *
      * Uses showOsdOnLayoutSwitch and osdStyle settings, same as manual layout switch.
      */
-    void showLayoutOsdForAlgorithm(const QString& algorithmId, const QString& displayName, const QString& screenName);
+    void showLayoutOsdForAlgorithm(const QString& algorithmId, const QString& displayName, const QString& screenId);
     void clearHighlight();
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -161,9 +161,9 @@ private:
      * engine's setInitialWindowOrder(). Used by both per-screen toggle and global
      * snapping→autotile transition.
      *
-     * @param screenName Screen connector name
+     * @param screenId Screen identifier
      */
-    void seedAutotileOrderForScreen(const QString& screenName);
+    void seedAutotileOrderForScreen(const QString& screenId);
 
     /**
      * @brief Handle autotile feature being disabled (clear assignments, restore manual mode)
@@ -226,9 +226,9 @@ private:
                                                        const QString& activity);
 
     /** @brief Show layout OSD deferred (avoids blocking on first-time QML compilation) */
-    void showLayoutOsdDeferred(const QUuid& layoutId, const QString& screenName);
+    void showLayoutOsdDeferred(const QUuid& layoutId, const QString& screenId);
     /** @brief Show algorithm OSD deferred (avoids blocking on first-time QML compilation) */
-    void showAlgorithmOsdDeferred(const QString& algorithmId, const QString& algorithmName, const QString& screenName);
+    void showAlgorithmOsdDeferred(const QString& algorithmId, const QString& algorithmName, const QString& screenId);
 
     /**
      * @brief Show OSD for the current desktop's layout/algorithm on desktop or activity switch

@@ -14,6 +14,9 @@
 #include <QDBusPendingCallWatcher>
 #include <QDBusReply>
 #include <QDBusServiceWatcher>
+#include <QDir>
+#include <QFile>
+#include <QGuiApplication>
 #include <QIcon>
 #include <QImage>
 #include <QJsonArray>
@@ -22,6 +25,7 @@
 #include <QJsonParseError>
 #include <QKeyEvent>
 #include <QLoggingCategory>
+#include <QScreen>
 #include <QtMath>
 #include <QPixmap>
 #include <QPointer>
@@ -363,6 +367,10 @@ PlasmaZonesEffect::PlasmaZonesEffect()
     // In KWin 6, use virtualScreenGeometryChanged (not per-screen signal)
     connect(KWin::effects, &KWin::EffectsHandler::virtualScreenGeometryChanged, m_screenChangeHandler.get(),
             &ScreenChangeHandler::slotScreenGeometryChanged);
+    // Invalidate screen ID cache on screen changes (connector names may be reassigned)
+    connect(KWin::effects, &KWin::EffectsHandler::virtualScreenGeometryChanged, this, [this]() {
+        m_screenIdCache.clear();
+    });
 
     // Connect to daemon's settingsChanged D-Bus signal
     QDBusConnection::sessionBus().connect(DBus::ServiceName, DBus::ObjectPath, DBus::Interface::Settings,
@@ -411,7 +419,7 @@ PlasmaZonesEffect::PlasmaZonesEffect()
                                           QStringLiteral("daemonReady"), this, SLOT(slotDaemonReady()));
 
     // Watch for daemon D-Bus service registration and unregistration.
-    // After a daemon restart, m_lastCursorConnector is still valid in the effect
+    // After a daemon restart, m_lastCursorOutput is still valid in the effect
     // but the daemon's lastCursorScreenName/lastActiveScreenName are empty.
     // Without this, keyboard shortcuts (rotate, etc.) operate on all screens
     // because resolveShortcutScreen returns nullptr.
@@ -479,7 +487,7 @@ PlasmaZonesEffect::PlasmaZonesEffect()
     // here because that would turn on the edge effect visually; the daemon's config approach
     // is the right way to prevent Quick Tile from activating.
 
-    // Seed m_lastCursorConnector with the compositor's active screen. This ensures
+    // Seed m_lastCursorOutput with the compositor's active screen. This ensures
     // the daemon has a valid cursor screen even if no mouse movement occurs after login.
     // slotMouseChanged will overwrite this as soon as the cursor moves.
     //
@@ -489,7 +497,7 @@ PlasmaZonesEffect::PlasmaZonesEffect()
     // to avoid synchronous QDBusInterface creation on the compositor thread.
     auto* initialScreen = KWin::effects->activeScreen();
     if (initialScreen) {
-        m_lastCursorConnector = initialScreen->name();
+        m_lastCursorOutput = initialScreen->name();
     }
 
     qCInfo(lcEffect) << "initialized: C++ effect with D-Bus support and mouseChanged connection";
@@ -828,11 +836,11 @@ void PlasmaZonesEffect::slotMouseChanged(const QPointF& pos, const QPointF& oldp
     // not on every pixel move. This gives the daemon accurate cursor-based screen info
     // on Wayland where QCursor::pos() is unreliable for background processes.
     auto* output = KWin::effects->screenAt(pos.toPoint());
-    QString screenName;
+    QString connectorName;
     if (output) {
-        screenName = output->name();
-        if (screenName != m_lastCursorConnector) {
-            m_lastCursorConnector = screenName;
+        connectorName = output->name();
+        if (connectorName != m_lastCursorOutput) {
+            m_lastCursorOutput = connectorName;
             if (ensureWindowTrackingReady("report cursor screen")) {
                 m_windowTrackingInterface->asyncCall(QStringLiteral("cursorScreenChanged"), outputScreenId(output));
             }
@@ -915,16 +923,16 @@ void PlasmaZonesEffect::slotDaemonReady()
     }
 
     // Re-push cursor screen (resolve connector name to EDID-based screen ID)
-    if (!m_lastCursorConnector.isEmpty()) {
+    if (!m_lastCursorOutput.isEmpty()) {
         QString cursorScreenId;
         for (const auto* output : KWin::effects->screens()) {
-            if (output->name() == m_lastCursorConnector) {
+            if (output->name() == m_lastCursorOutput) {
                 cursorScreenId = outputScreenId(output);
                 break;
             }
         }
         if (cursorScreenId.isEmpty()) {
-            cursorScreenId = m_lastCursorConnector; // fallback
+            cursorScreenId = m_lastCursorOutput; // fallback
         }
         fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("cursorScreenChanged"), {cursorScreenId},
                               QStringLiteral("cursorScreenChanged"));
@@ -1712,31 +1720,42 @@ KWin::EffectWindow* PlasmaZonesEffect::getActiveWindow() const
     return nullptr;
 }
 
-QString PlasmaZonesEffect::getWindowScreenName(KWin::EffectWindow* w) const
-{
-    if (!w) {
-        return QString();
-    }
-
-    // Get screen from EffectWindow - returns KWin::Output*
-    auto* output = w->screen();
-    if (output) {
-        return output->name();
-    }
-    return QString();
-}
-
-QString PlasmaZonesEffect::outputScreenId(const KWin::LogicalOutput* output)
+QString PlasmaZonesEffect::outputScreenId(const KWin::LogicalOutput* output) const
 {
     if (!output) {
         return QString();
     }
+    const QString connectorName = output->name();
+
+    // Cache: screen IDs are stable for the lifetime of an output. Caching avoids
+    // repeated QGuiApplication::screens() iteration and sysfs reads (~30Hz during drag).
+    // Invalidated on screen add/remove (m_screenIdCache cleared by screen change handler).
+    auto it = m_screenIdCache.constFind(connectorName);
+    if (it != m_screenIdCache.constEnd()) {
+        return *it;
+    }
+
+    // Build a screen ID that exactly matches the daemon's Utils::screenIdentifier().
+    // The daemon uses QScreen::serialNumber() with a sysfs EDID fallback. KWin's
+    // Output::serialNumber() may return a different EDID field (text serial descriptor
+    // vs header serial). Mirror the daemon's resolution order to produce identical IDs.
+    //
+    // Note: duplicates daemon's readEdidHeaderSerial() for the sysfs fallback because
+    // the effect plugin can't link plasmazones_core. The EDID header format (bytes 0-15)
+    // is a hardware standard that won't change.
     const QString manufacturer = output->manufacturer();
     const QString model = output->model();
-    QString serial = output->serialNumber();
-    // KWin returns the EDID header serial (bytes 12-15) as hex (e.g. "0x0001C1A3"),
-    // but the daemon's readEdidHeaderSerial() returns decimal (e.g. "115107").
-    // Normalize to decimal so both sides produce identical screen IDs.
+    QString serial;
+
+    // Try QScreen::serialNumber() (same source as daemon)
+    for (QScreen* screen : QGuiApplication::screens()) {
+        if (screen->name() == connectorName) {
+            serial = screen->serialNumber();
+            break;
+        }
+    }
+
+    // Normalize hex header serial to decimal (same as daemon)
     if (!serial.isEmpty() && serial.startsWith(QLatin1String("0x"), Qt::CaseInsensitive)) {
         bool ok = false;
         uint32_t numericSerial = serial.toUInt(&ok, 16);
@@ -1744,14 +1763,49 @@ QString PlasmaZonesEffect::outputScreenId(const KWin::LogicalOutput* output)
             serial = QString::number(numericSerial);
         }
     }
+
+    // Fallback: sysfs EDID header serial (bytes 12-15, little-endian uint32)
+    if (serial.isEmpty()) {
+        QDir drmDir(QStringLiteral("/sys/class/drm"));
+        if (drmDir.exists()) {
+            for (const QString& entry : drmDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+                int dashPos = entry.indexOf(QLatin1Char('-'));
+                if (dashPos < 0 || entry.mid(dashPos + 1) != connectorName) {
+                    continue;
+                }
+                QFile edidFile(drmDir.filePath(entry) + QStringLiteral("/edid"));
+                if (!edidFile.open(QIODevice::ReadOnly)) {
+                    continue;
+                }
+                QByteArray header = edidFile.read(16);
+                if (header.size() < 16) {
+                    continue;
+                }
+                const auto* data = reinterpret_cast<const uint8_t*>(header.constData());
+                if (data[0] != 0x00 || data[1] != 0xFF || data[2] != 0xFF || data[3] != 0xFF
+                    || data[4] != 0xFF || data[5] != 0xFF || data[6] != 0xFF || data[7] != 0x00) {
+                    continue;
+                }
+                uint32_t headerSerial = data[12] | (static_cast<uint32_t>(data[13]) << 8)
+                    | (static_cast<uint32_t>(data[14]) << 16) | (static_cast<uint32_t>(data[15]) << 24);
+                if (headerSerial != 0) {
+                    serial = QString::number(headerSerial);
+                    break;
+                }
+            }
+        }
+    }
+
+    QString result;
     if (!serial.isEmpty()) {
-        return manufacturer + QLatin1Char(':') + model + QLatin1Char(':') + serial;
+        result = manufacturer + QLatin1Char(':') + model + QLatin1Char(':') + serial;
+    } else if (!manufacturer.isEmpty() || !model.isEmpty()) {
+        result = manufacturer + QLatin1Char(':') + model;
+    } else {
+        result = connectorName;
     }
-    if (!manufacturer.isEmpty() || !model.isEmpty()) {
-        return manufacturer + QLatin1Char(':') + model;
-    }
-    // Fallback: connector name (virtual displays, some embedded panels)
-    return output->name();
+    m_screenIdCache.insert(connectorName, result);
+    return result;
 }
 
 QString PlasmaZonesEffect::getWindowScreenId(KWin::EffectWindow* w) const
@@ -1826,20 +1880,17 @@ void PlasmaZonesEffect::slotMoveSpecificWindowToZoneRequested(const QString& win
     // assist selection, KWin may not have updated the window's output assignment
     // yet, causing getWindowScreenId() to return the OLD screen.
     QString screenId;
-    QString screenName;
     const auto outputs = KWin::effects->screens();
     QPoint geoCenter = geometry.center();
     for (const auto* output : outputs) {
         if (output->geometry().contains(geoCenter)) {
             screenId = outputScreenId(output);
-            screenName = output->name();
             break;
         }
     }
     // Fallback to window's reported screen if geometry doesn't resolve
     if (screenId.isEmpty()) {
         screenId = getWindowScreenId(targetWindow);
-        screenName = getWindowScreenName(targetWindow);
     }
 
     if (ensureWindowTrackingReady("snap assist windowSnapped")) {
@@ -1988,8 +2039,8 @@ void PlasmaZonesEffect::slotSnapAllWindowsRequested(const QString& screenId)
             // User-initiated snap commands override floating state.
             // windowSnapped() on the daemon will clear floating via clearFloatingStateForSnap().
 
-            // screenId may be a screen ID from the daemon; compare with matching format
-            QString winScreen = screenId.contains(QLatin1Char(':')) ? getWindowScreenId(w) : getWindowScreenName(w);
+            // Always use EDID-based screen ID for comparison
+            QString winScreen = getWindowScreenId(w);
             if (winScreen != screenId) {
                 qCDebug(lcEffect) << "snap-all: skipping window on different screen" << appId;
                 continue;

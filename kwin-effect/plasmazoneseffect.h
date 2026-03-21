@@ -224,17 +224,19 @@ private:
 
     // Navigation helpers
     KWin::EffectWindow* getActiveWindow() const;
-    QString getWindowScreenName(KWin::EffectWindow* w) const;
 
     /**
      * @brief Build a stable EDID-based screen identifier from a KWin::Output.
      *
-     * Format: "manufacturer:model:serial" — matches Utils::screenIdentifier() on
-     * the daemon side.  Falls back to the connector name when EDID fields are empty.
-     * Prefer this over getWindowScreenName() for any value that crosses the D-Bus
-     * boundary into the daemon's layout/tracking system (which keys on screen IDs).
+     * Mirrors the daemon's Utils::screenIdentifier() exactly: tries
+     * QScreen::serialNumber(), normalizes hex, falls back to sysfs EDID
+     * header serial. This ensures both sides produce identical screen IDs
+     * regardless of which EDID field KWin's Output::serialNumber() returns.
+     *
+     * Format: "manufacturer:model:serial" — falls back to connector name
+     * when EDID fields are empty.
      */
-    static QString outputScreenId(const KWin::LogicalOutput* output);
+    QString outputScreenId(const KWin::LogicalOutput* output) const;
     QString getWindowScreenId(KWin::EffectWindow* w) const;
 
     /**
@@ -497,10 +499,15 @@ private:
     bool m_daemonServiceRegistered = false;
     bool m_daemonReadyRestoresDone = false; ///< set after slotDaemonReady snap restores dispatched
 
-    // Cursor screen tracking (for daemon shortcut screen detection on Wayland)
-    // Updated in slotMouseChanged() whenever the cursor crosses to a different monitor.
-    // Reported to daemon via cursorScreenChanged D-Bus call.
-    QString m_lastCursorConnector;
+    // Screen ID cache: connector name → EDID screen ID (manufacturer:model:serial).
+    // Avoids repeated QScreen iteration and sysfs reads during drag (~30Hz).
+    // Cleared on screen geometry changes (add/remove/reconfigure).
+    mutable QHash<QString, QString> m_screenIdCache;
+
+    // Cursor output tracking (for daemon shortcut screen detection on Wayland)
+    // Stores the connector name of the last output the cursor was on.
+    // Used for deduplication only — the actual D-Bus call sends the EDID screen ID.
+    QString m_lastCursorOutput;
 };
 
 } // namespace PlasmaZones
