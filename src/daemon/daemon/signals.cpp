@@ -488,49 +488,29 @@ void Daemon::connectLayoutSignals()
     // or unified layout controller — NOT on every internal layout change.
 
     // Connect zone selector manual layout selection (drop on zone)
-    // Screen name comes directly from the zone selector window
+    // Screen name comes directly from the zone selector window.
+    // Routes through UnifiedLayoutController::applyLayoutById() + resnapIfManualMode(),
+    // the same path as cycle/quick-layout shortcuts, for consistent resnap behavior.
     connect(m_overlayService.get(), &OverlayService::manualLayoutSelected, this,
             [this](const QString& layoutId, const QString& screenId) {
-                if (!m_layoutManager) {
+                if (!m_layoutManager || !m_unifiedLayoutController) {
                     return;
                 }
                 // Check if snapping layout is locked
-                QString lockScreenId = screenId.isEmpty() ? QString() : Utils::screenIdForName(screenId);
-                if (!lockScreenId.isEmpty() && isCurrentContextLockedForMode(lockScreenId, 0)) {
+                const QString resolvedScreenId = screenId.isEmpty() ? QString() : Utils::screenIdForName(screenId);
+                if (!resolvedScreenId.isEmpty() && isCurrentContextLockedForMode(resolvedScreenId, 0)) {
                     showLockedPreviewOsd(screenId);
                     return;
                 }
-                Layout* layout = m_layoutManager->layoutById(QUuid::fromString(layoutId));
-                if (!layout) {
+                if (!resolvedScreenId.isEmpty()) {
+                    m_unifiedLayoutController->setCurrentScreenName(resolvedScreenId);
+                }
+                if (!m_unifiedLayoutController->applyLayoutById(layoutId)) {
                     return;
                 }
-                const QString resolvedScreenId = screenId.isEmpty() ? QString() : Utils::screenIdForName(screenId);
-                const int desktop = m_virtualDesktopManager ? m_virtualDesktopManager->currentDesktop() : 0;
-                const QString activity = (m_activityManager && ActivityManager::isAvailable())
-                    ? m_activityManager->currentActivity()
-                    : QString();
-
-                if (!resolvedScreenId.isEmpty()) {
-                    // Write per-desktop assignment with empty activity so it applies
-                    // regardless of which activity is active.
-                    if (!activity.isEmpty()) {
-                        m_layoutManager->clearAssignment(resolvedScreenId, desktop, activity);
-                    }
-                    // assignLayout FIRST so resolveLayoutForScreen() sees the new
-                    // assignment when onLayoutChanged() populates the resnap buffer.
-                    m_layoutManager->assignLayout(resolvedScreenId, desktop, QString(), layout);
-                }
-                // Update global active layout — fires activeLayoutChanged →
-                // onLayoutChanged → resnap buffer population.
-                m_layoutManager->setActiveLayout(layout);
-                qCInfo(lcDaemon) << "Zone selector: manual layout selected, layout=" << layout->name()
+                qCInfo(lcDaemon) << "Zone selector: manual layout selected, layout=" << layoutId
                                  << "screen=" << screenId;
-                m_overlayService->showLayoutOsd(layout, screenId);
-                // Resnap windows to the new layout's zones
-                if (m_snapEngine) {
-                    m_suppressResnapOsd = 1;
-                    m_snapEngine->resnapToNewLayout();
-                }
+                resnapIfManualMode();
             });
 }
 

@@ -247,6 +247,19 @@ void Daemon::resnapIfManualMode()
             return; // This screen is autotile — engine handles retile
         }
     }
+    // Populate the resnap buffer before resnapping. UnifiedLayoutController::applyEntry()
+    // blocks activeLayoutChanged (QSignalBlocker) to prevent whole-screen recalculation,
+    // which also prevents onLayoutChanged() from populating the resnap buffer.
+    // Additionally, when the global active layout is already the target (e.g. second
+    // screen cycling to the same layout), setActiveLayout is a no-op and no signal fires.
+    // Explicitly populating here mirrors the KCM's assignmentChangesApplied path.
+    if (m_windowTrackingAdaptor) {
+        QSet<QString> autotileScreens;
+        if (m_autotileEngine) {
+            autotileScreens = m_autotileEngine->autotileScreens();
+        }
+        m_windowTrackingAdaptor->service()->populateResnapBufferForAllScreens(autotileScreens);
+    }
     m_suppressResnapOsd = 1;
     m_snapEngine->resnapToNewLayout();
 }

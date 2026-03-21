@@ -388,11 +388,7 @@ void Daemon::connectShortcutSignals()
         if (!m_unifiedLayoutController->applyLayoutById(layoutId)) {
             return;
         }
-        // Suppress resnap OSD — the layout switch OSD already provides feedback
-        if (m_windowTrackingAdaptor) {
-            m_suppressResnapOsd = 1;
-            m_windowTrackingAdaptor->resnapToNewLayout();
-        }
+        resnapIfManualMode();
     });
 
     // Toggle layout lock shortcut — locks/unlocks current screen at screen-level for current mode
