@@ -47,11 +47,16 @@ Item {
 
     }
 
+    HoverHandler {
+        id: cardHover
+        // HoverHandler doesn't get stolen by child ToolButtons, unlike
+        // MouseArea.containsMouse which flickers when children intercept hover.
+        onHoveredChanged: root.isHovered = hovered
+    }
+
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        hoverEnabled: true
-        onContainsMouseChanged: root.isHovered = containsMouse
         onClicked: (mouse) => {
             if (mouse.button === Qt.RightButton) {
                 root.selected(root.index);
