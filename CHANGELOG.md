@@ -7,6 +7,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.3.14] - 2026-03-21
+
+### Fixed
+- **Flickering icons on layout card hover** ([#235]): The visibility and auto-assign toggle icons in the KCM layouts grid flickered when hovering over them. The `ToolButton` controls stole hover from the underlying `MouseArea`, causing a containsMouse feedback loop. Replaced `MouseArea` hover tracking with a `HoverHandler` which doesn't lose hover state when child controls intercept mouse events.
+
 ## [2.3.13] - 2026-03-21
 
 ### Fixed
@@ -893,7 +898,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.13...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.14...HEAD
+[2.3.14]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.13...v2.3.14
 [2.3.13]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.12...v2.3.13
 [2.3.12]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.11...v2.3.12
 [2.3.11]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.10...v2.3.11
