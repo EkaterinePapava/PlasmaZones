@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.3.13] - 2026-03-21
+
+### Fixed
+- **Resnap buffer empty on layout change**: Cycling layouts, using the layout picker, or selecting from the zone selector never resnapped windows to the new layout's zones. `UnifiedLayoutController::applyEntry()` blocks `activeLayoutChanged` via `QSignalBlocker`, which prevented `onLayoutChanged()` from populating the resnap buffer. All layout change paths now explicitly populate the buffer via `populateResnapBufferForAllScreens()` before resnapping.
+- **Per-screen mode toggle and layout cycle scoped to target screen**: Mode toggle (autotile/snapping) and layout cycling now correctly operate on the focused screen only, rather than affecting the global active layout state for all screens.
+
+### Changed
+- **Unified layout change resnap path**: Layout picker, zone selector, cycle, and quick-layout shortcuts all route through `resnapIfManualMode()` instead of using separate inline resnap logic. Eliminates duplicate code and ensures consistent resnap behavior across all layout change entry points.
+- **Renamed screenName variables to screenId/connectorName**: Internal refactor for consistent naming of screen identifiers throughout the codebase.
+
 ## [2.3.12] - 2026-03-21
 
 ### Fixed
