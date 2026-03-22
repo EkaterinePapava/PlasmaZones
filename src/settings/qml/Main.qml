@@ -159,14 +159,14 @@ ApplicationWindow {
                 // Insert divider after this item
                 if (item.hasDividerAfter)
                     sidebarModel.append({
-                        "name": "__divider__",
-                        "label": "",
-                        "iconName": "",
-                        "hasChildren": false,
-                        "isBackButton": false,
-                        "hasDividerAfter": false,
-                        "isDivider": true
-                    });
+                    "name": "__divider__",
+                    "label": "",
+                    "iconName": "",
+                    "hasChildren": false,
+                    "isBackButton": false,
+                    "hasDividerAfter": false,
+                    "isDivider": true
+                });
 
             }
         } else {
@@ -821,6 +821,35 @@ ApplicationWindow {
                                 return window._mainItemLabel(settingsController.activePage);
                             }
                             opacity: 0.5
+                        }
+
+                    }
+
+                    // Unsaved changes indicator
+                    Label {
+                        visible: settingsController.needsSave
+                        text: "●"
+                        color: Kirigami.Theme.highlightColor
+                        font: Kirigami.Theme.smallFont
+
+                        SequentialAnimation on opacity {
+                            loops: Animation.Infinite
+                            running: settingsController.needsSave
+
+                            NumberAnimation {
+                                from: 1
+                                to: 0.4
+                                duration: 1000
+                                easing.type: Easing.InOutSine
+                            }
+
+                            NumberAnimation {
+                                from: 0.4
+                                to: 1
+                                duration: 1000
+                                easing.type: Easing.InOutSine
+                            }
+
                         }
 
                     }
