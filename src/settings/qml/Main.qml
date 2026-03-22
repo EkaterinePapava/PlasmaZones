@@ -13,6 +13,8 @@ ApplicationWindow {
     readonly property bool sidebarCompact: window.width < Kirigami.Units.gridUnit * 50
     // Track page navigation for transitions
     property int _previousIndex: 0
+    // Shortcut overlay visibility
+    property bool _showShortcuts: false
     // ── Drill-down sidebar state ─────────────────────────────────────
     // "main" = top-level list; otherwise the parent name (e.g. "snapping")
     property string _sidebarMode: "main"
@@ -21,42 +23,50 @@ ApplicationWindow {
         "name": "layouts",
         "label": "Layouts",
         "iconName": "view-grid",
-        "hasChildren": false
+        "hasChildren": false,
+        "hasDividerAfter": false
     }, {
         "name": "snapping",
         "label": "Snapping",
         "iconName": "view-split-left-right",
-        "hasChildren": true
+        "hasChildren": true,
+        "hasDividerAfter": false
     }, {
         "name": "tiling",
         "label": "Tiling",
         "iconName": "window-duplicate",
-        "hasChildren": true
+        "hasChildren": true,
+        "hasDividerAfter": false
     }, {
         "name": "apprules",
         "label": "App Rules",
         "iconName": "application-x-executable",
-        "hasChildren": false
+        "hasChildren": false,
+        "hasDividerAfter": true
     }, {
         "name": "exclusions",
         "label": "Exclusions",
         "iconName": "dialog-cancel",
-        "hasChildren": false
+        "hasChildren": false,
+        "hasDividerAfter": false
     }, {
         "name": "editor",
         "label": "Editor",
         "iconName": "document-edit",
-        "hasChildren": false
+        "hasChildren": false,
+        "hasDividerAfter": false
     }, {
         "name": "general",
         "label": "General",
         "iconName": "configure",
-        "hasChildren": false
+        "hasChildren": false,
+        "hasDividerAfter": false
     }, {
         "name": "about",
         "label": "About",
         "iconName": "help-about",
-        "hasChildren": false
+        "hasChildren": false,
+        "hasDividerAfter": false
     }]
     // Children for each parent
     readonly property var _childItems: ({
@@ -130,16 +140,34 @@ ApplicationWindow {
 
     function _rebuildSidebar() {
         sidebarModel.clear();
+        let searchText = sidebarSearch.text.toLowerCase();
         if (_sidebarMode === "main") {
             for (let i = 0; i < _mainItems.length; i++) {
                 let item = _mainItems[i];
+                if (searchText && item.label.toLowerCase().indexOf(searchText) < 0)
+                    continue;
+
                 sidebarModel.append({
                     "name": item.name,
                     "label": item.label,
                     "iconName": item.iconName,
                     "hasChildren": item.hasChildren,
-                    "isBackButton": false
+                    "isBackButton": false,
+                    "hasDividerAfter": false,
+                    "isDivider": false
                 });
+                // Insert divider after this item
+                if (item.hasDividerAfter)
+                    sidebarModel.append({
+                        "name": "__divider__",
+                        "label": "",
+                        "iconName": "",
+                        "hasChildren": false,
+                        "isBackButton": false,
+                        "hasDividerAfter": false,
+                        "isDivider": true
+                    });
+
             }
         } else {
             // Find parent label
@@ -150,23 +178,30 @@ ApplicationWindow {
                     break;
                 }
             }
-            // Back button row
+            // Back button row (always visible)
             sidebarModel.append({
                 "name": "__back__",
                 "label": parentLabel,
                 "iconName": "arrow-left",
                 "hasChildren": false,
-                "isBackButton": true
+                "isBackButton": true,
+                "hasDividerAfter": false,
+                "isDivider": false
             });
             // Child items
             let children = _childItems[_sidebarMode] || [];
             for (let i = 0; i < children.length; i++) {
+                if (searchText && children[i].label.toLowerCase().indexOf(searchText) < 0)
+                    continue;
+
                 sidebarModel.append({
                     "name": children[i].name,
                     "label": children[i].label,
                     "iconName": children[i].iconName,
                     "hasChildren": false,
-                    "isBackButton": false
+                    "isBackButton": false,
+                    "hasDividerAfter": false,
+                    "isDivider": false
                 });
             }
         }
@@ -208,22 +243,18 @@ ApplicationWindow {
 
     // Drill into a parent category and select the first child
     function _drillIn(parentName) {
-        _sidebarMode = parentName;
-        _rebuildSidebar();
         let children = _childItems[parentName];
-        if (children && children.length > 0)
-            settingsController.activePage = children[0].name;
-
+        let firstChild = (children && children.length > 0) ? children[0].name : "";
+        sidebarTransition.pendingMode = parentName;
+        sidebarTransition.pendingPage = firstChild;
+        sidebarTransition.restart();
     }
 
     // Return to the main sidebar list, selecting the parent item
     function _drillOut() {
-        let parent = _sidebarMode;
-        _sidebarMode = "main";
-        _rebuildSidebar();
-        // Navigate to the first non-parent item (e.g. "layouts")
-        // so the sidebar has a valid highlight
-        settingsController.activePage = "layouts";
+        sidebarTransition.pendingMode = "main";
+        sidebarTransition.pendingPage = "layouts";
+        sidebarTransition.restart();
     }
 
     title: i18n("PlasmaZones Settings")
@@ -283,6 +314,41 @@ ApplicationWindow {
         id: sidebarModel
     }
 
+    // Sidebar drill-in/out transition animation
+    SequentialAnimation {
+        id: sidebarTransition
+
+        property string pendingMode: ""
+        property string pendingPage: ""
+
+        NumberAnimation {
+            target: sidebar
+            property: "opacity"
+            to: 0
+            duration: 80
+            easing.type: Easing.InQuad
+        }
+
+        ScriptAction {
+            script: {
+                window._sidebarMode = sidebarTransition.pendingMode;
+                window._rebuildSidebar();
+                if (sidebarTransition.pendingPage)
+                    settingsController.activePage = sidebarTransition.pendingPage;
+
+            }
+        }
+
+        NumberAnimation {
+            target: sidebar
+            property: "opacity"
+            to: 1
+            duration: 120
+            easing.type: Easing.OutQuad
+        }
+
+    }
+
     Shortcut {
         sequence: "Ctrl+PgUp"
         onActivated: {
@@ -319,6 +385,11 @@ ApplicationWindow {
         }
     }
 
+    Shortcut {
+        sequence: "?"
+        onActivated: window._showShortcuts = !window._showShortcuts
+    }
+
     RowLayout {
         id: mainContent
 
@@ -339,6 +410,29 @@ ApplicationWindow {
             ColumnLayout {
                 anchors.fill: parent
                 spacing: 0
+
+                // Search field
+                TextField {
+                    id: sidebarSearch
+
+                    Layout.fillWidth: true
+                    Layout.margins: Kirigami.Units.smallSpacing
+                    placeholderText: i18n("Search...")
+                    visible: !window.sidebarCompact
+                    leftPadding: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
+                    onTextChanged: _rebuildSidebar()
+
+                    Kirigami.Icon {
+                        source: "search"
+                        anchors.left: parent.left
+                        anchors.leftMargin: Kirigami.Units.smallSpacing
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Kirigami.Units.iconSizes.small
+                        height: Kirigami.Units.iconSizes.small
+                        opacity: 0.5
+                    }
+
+                }
 
                 // Navigation list
                 ListView {
@@ -366,6 +460,8 @@ ApplicationWindow {
                         required property string iconName
                         required property bool hasChildren
                         required property bool isBackButton
+                        required property bool hasDividerAfter
+                        required property bool isDivider
                         readonly property bool isActive: {
                             if (isBackButton)
                                 return false;
@@ -377,7 +473,8 @@ ApplicationWindow {
                         }
 
                         width: sidebar.width
-                        height: isBackButton ? Kirigami.Units.gridUnit * 2.6 : Kirigami.Units.gridUnit * 2.2
+                        height: isDivider ? Kirigami.Units.largeSpacing : (isBackButton ? Kirigami.Units.gridUnit * 2.6 : Kirigami.Units.gridUnit * 2.2)
+                        enabled: !isDivider
                         highlighted: isActive
                         onClicked: {
                             if (isBackButton) {
@@ -403,6 +500,16 @@ ApplicationWindow {
                         ToolTip.visible: window.sidebarCompact && navDelegate.hovered
                         ToolTip.text: label
                         ToolTip.delay: 300
+
+                        // Section divider rendering (when this delegate is a divider item)
+                        Kirigami.Separator {
+                            visible: navDelegate.isDivider
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: Kirigami.Units.largeSpacing
+                            anchors.rightMargin: Kirigami.Units.largeSpacing
+                        }
 
                         background: Rectangle {
                             color: {
@@ -677,17 +784,45 @@ ApplicationWindow {
                     anchors.fill: parent
                     spacing: Kirigami.Units.smallSpacing
 
-                    Label {
-                        // Show "Parent > Child"
+                    Row {
+                        spacing: Kirigami.Units.smallSpacing
 
-                        text: {
-                            if (window._sidebarMode !== "main")
-                                return window._parentLabel() + "  \u203A  " + window._subPageLabel(settingsController.activePage);
+                        // Parent name (clickable when drilled in)
+                        Label {
+                            visible: window._sidebarMode !== "main"
+                            text: window._parentLabel()
+                            opacity: parentMouse.containsMouse ? 0.8 : 0.5
+                            font.underline: parentMouse.containsMouse
 
-                            // Top-level: just show page name
-                            return window._mainItemLabel(settingsController.activePage);
+                            MouseArea {
+                                id: parentMouse
+
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: window._drillOut()
+                            }
+
                         }
-                        opacity: 0.5
+
+                        // Separator
+                        Label {
+                            visible: window._sidebarMode !== "main"
+                            text: "\u203A"
+                            opacity: 0.5
+                        }
+
+                        // Current page name
+                        Label {
+                            text: {
+                                if (window._sidebarMode !== "main")
+                                    return window._subPageLabel(settingsController.activePage);
+
+                                return window._mainItemLabel(settingsController.activePage);
+                            }
+                            opacity: 0.5
+                        }
+
                     }
 
                     Item {
@@ -920,6 +1055,124 @@ ApplicationWindow {
 
                 }
 
+            }
+
+        }
+
+    }
+
+    // ── Keyboard shortcut overlay ──────────────────────────────────
+    Rectangle {
+        id: shortcutOverlay
+
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.6)
+        visible: opacity > 0
+        opacity: window._showShortcuts ? 1 : 0
+        z: 200
+        Keys.onEscapePressed: window._showShortcuts = false
+        focus: window._showShortcuts
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: window._showShortcuts = false
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.6, Kirigami.Units.gridUnit * 30)
+            height: shortcutContent.implicitHeight + Kirigami.Units.largeSpacing * 3
+            radius: Kirigami.Units.smallSpacing * 2
+            color: Kirigami.Theme.backgroundColor
+            border.width: Math.round(Kirigami.Units.devicePixelRatio)
+            border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15)
+
+            ColumnLayout {
+                id: shortcutContent
+
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing * 1.5
+                spacing: Kirigami.Units.largeSpacing
+
+                Label {
+                    text: i18n("Keyboard Shortcuts")
+                    font.weight: Font.DemiBold
+                    font.pixelSize: Kirigami.Units.gridUnit * 1.2
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                }
+
+                // Shortcut entries
+                Repeater {
+                    model: [{
+                        "key": "Meta+Shift+P",
+                        "action": i18n("Open PlasmaZones Settings")
+                    }, {
+                        "key": "Meta+Shift+E",
+                        "action": i18n("Open Zone Editor")
+                    }, {
+                        "key": "Ctrl+PgUp",
+                        "action": i18n("Previous page")
+                    }, {
+                        "key": "Ctrl+PgDown",
+                        "action": i18n("Next page")
+                    }, {
+                        "key": "?",
+                        "action": i18n("Toggle this overlay")
+                    }]
+
+                    delegate: RowLayout {
+                        Layout.fillWidth: true
+
+                        Label {
+                            text: modelData.action
+                            Layout.fillWidth: true
+                            opacity: 0.7
+                        }
+
+                        Rectangle {
+                            implicitWidth: keyLabel.implicitWidth + Kirigami.Units.largeSpacing
+                            implicitHeight: keyLabel.implicitHeight + Kirigami.Units.smallSpacing
+                            radius: Kirigami.Units.smallSpacing / 2
+                            color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.08)
+                            border.width: Math.round(Kirigami.Units.devicePixelRatio)
+                            border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15)
+
+                            Label {
+                                id: keyLabel
+
+                                anchors.centerIn: parent
+                                text: modelData.key
+                                font: Kirigami.Theme.smallFont
+                            }
+
+                        }
+
+                    }
+
+                }
+
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    text: i18n("Press ? or Escape to close")
+                    opacity: 0.4
+                    Layout.alignment: Qt.AlignHCenter
+                    font: Kirigami.Theme.smallFont
+                }
+
+            }
+
+        }
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 200
             }
 
         }

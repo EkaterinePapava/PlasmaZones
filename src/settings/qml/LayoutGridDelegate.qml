@@ -288,6 +288,30 @@ Item {
 
         }
 
+        transform: Scale {
+            origin.x: cardBackground.width / 2
+            origin.y: cardBackground.height / 2
+            xScale: root.isHovered ? 1.02 : 1
+            yScale: root.isHovered ? 1.02 : 1
+
+            Behavior on xScale {
+                NumberAnimation {
+                    duration: 150
+                    easing.type: Easing.OutCubic
+                }
+
+            }
+
+            Behavior on yScale {
+                NumberAnimation {
+                    duration: 150
+                    easing.type: Easing.OutCubic
+                }
+
+            }
+
+        }
+
     }
 
 }

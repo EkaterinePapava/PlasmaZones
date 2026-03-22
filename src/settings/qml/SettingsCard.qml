@@ -42,6 +42,15 @@ Item {
     property bool collapsible: false
     property bool collapsed: false
 
+    onCollapsedChanged: {
+        if (collapsed) {
+            expandAnim.stop();
+            collapseAnim.start();
+        } else {
+            collapseAnim.stop();
+            expandAnim.start();
+        }
+    }
     Layout.fillWidth: true
     implicitHeight: cardBg.height + (hoverHandler.hovered && enabled ? 1 : 0)
     implicitWidth: cardBg.width
@@ -193,9 +202,9 @@ Item {
 
             anchors.top: headerSep.bottom
             width: parent.width
-            height: root.collapsed ? 0 : contentColumn.implicitHeight
+            height: contentColumn.implicitHeight
             clip: true
-            opacity: root.collapsed ? 0 : 1
+            opacity: 1
 
             Item {
                 id: contentColumn
@@ -210,17 +219,43 @@ Item {
                 }
             }
 
-            Behavior on height {
+            SequentialAnimation {
+                id: collapseAnim
+
                 NumberAnimation {
-                    duration: 250
+                    target: contentClip
+                    property: "opacity"
+                    to: 0
+                    duration: 150
+                    easing.type: Easing.InCubic
+                }
+
+                NumberAnimation {
+                    target: contentClip
+                    property: "height"
+                    to: 0
+                    duration: 200
                     easing.type: Easing.OutCubic
                 }
 
             }
 
-            Behavior on opacity {
+            SequentialAnimation {
+                id: expandAnim
+
                 NumberAnimation {
+                    target: contentClip
+                    property: "height"
+                    to: contentColumn.implicitHeight
                     duration: 200
+                    easing.type: Easing.OutCubic
+                }
+
+                NumberAnimation {
+                    target: contentClip
+                    property: "opacity"
+                    to: 1
+                    duration: 150
                     easing.type: Easing.OutCubic
                 }
 
