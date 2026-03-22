@@ -51,6 +51,7 @@ qt_add_qml_module(plasmazones-settings
         qml/TilingAssignmentsPage.qml
         qml/TilingQuickShortcutsPage.qml
         qml/AboutPage.qml
+        qml/MonitorStatePage.qml
         # Sub-components (copied from KCM)
         qml/MonitorAssignmentsCard.qml
         qml/ActivityAssignmentsCard.qml

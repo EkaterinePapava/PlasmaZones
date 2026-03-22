@@ -19,11 +19,12 @@ ColumnLayout {
     required property var appSettings
     property string selectedScreenName: ""
     property bool hasOverrides: false
+    property bool showAllMonitors: true
     readonly property bool isPerScreen: selectedScreenName !== ""
 
     signal resetClicked()
 
-    visible: appSettings.screens.length > 1
+    visible: showAllMonitors ? appSettings.screens.length > 1 : appSettings.screens.length > 0
     spacing: Kirigami.Units.smallSpacing
 
     // Hot-unplug: reset selection if selected screen disappears
@@ -57,6 +58,7 @@ ColumnLayout {
 
             // "All Monitors" option
             Rectangle {
+                visible: root.showAllMonitors
                 width: allMonitorContent.implicitWidth + Kirigami.Units.largeSpacing * 2
                 height: allMonitorContent.implicitHeight + Kirigami.Units.largeSpacing
                 radius: Kirigami.Units.smallSpacing
@@ -211,7 +213,7 @@ ColumnLayout {
     // Per-screen info/reset row
     RowLayout {
         Layout.fillWidth: true
-        visible: root.isPerScreen
+        visible: root.isPerScreen && root.showAllMonitors
         spacing: Kirigami.Units.smallSpacing
 
         Kirigami.InlineMessage {

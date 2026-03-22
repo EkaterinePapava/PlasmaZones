@@ -21,6 +21,7 @@
 #include <QVariantList>
 #include <QTimer>
 #include <memory>
+#include <optional>
 
 namespace PlasmaZones {
 
@@ -286,6 +287,15 @@ public:
     Q_INVOKABLE bool exportAllSettings(const QString& filePath);
     Q_INVOKABLE bool importAllSettings(const QString& filePath);
 
+    // ── Screen state query ─────────────────────────────────────────────────
+    Q_INVOKABLE QVariantList getScreenStates() const;
+    Q_INVOKABLE bool hasStagedAssignment(const QString& screenName) const;
+    Q_INVOKABLE QVariantMap getStagedAssignment(const QString& screenName) const;
+
+    // ── Atomic mode+layout staging (overview page) ──────────────────────────
+    Q_INVOKABLE void stageAssignmentEntry(const QString& screenName, int mode, const QString& snappingLayoutId,
+                                          const QString& tilingAlgorithmId);
+
     // ── Algorithm helpers ────────────────────────────────────────────────────
     Q_INVOKABLE QVariantList availableAlgorithms() const;
     Q_INVOKABLE QVariantList generateAlgorithmPreview(const QString& algorithmId, int windowCount, double splitRatio,
@@ -377,7 +387,7 @@ private:
     DaemonController m_daemonController;
     ScreenHelper m_screenHelper;
     std::unique_ptr<IConfigBackend> m_editorConfig;
-    QString m_activePage = QStringLiteral("layouts");
+    QString m_activePage = QStringLiteral("overview");
     bool m_needsSave = false;
     bool m_saving = false;
 
@@ -391,6 +401,32 @@ private:
     bool m_activitiesAvailable = false;
     QVariantList m_activities;
     QString m_currentActivity;
+
+    // Staged assignment changes (applied on save, discarded on load/reset)
+    struct StagedAssignment
+    {
+        QString screenId;
+        int virtualDesktop = 0;
+        QString activityId;
+        // Snapping — nullopt means not staged (use D-Bus), empty string means cleared
+        std::optional<QString> snappingLayoutId;
+        // Tiling — nullopt means not staged, empty string means cleared
+        std::optional<QString> tilingAlgorithmId;
+        // Explicit mode — when set, flush uses setAssignmentEntry (atomic mode+layout)
+        std::optional<int> stagedMode;
+        // Full clear overrides individual fields
+        bool fullCleared = false;
+    };
+    QHash<QString, StagedAssignment> m_stagedAssignments;
+
+    static QString assignmentCacheKey(const QString& screen, int desktop, const QString& activity);
+    StagedAssignment& stagedEntry(const QString& screen, int desktop, const QString& activity);
+    const StagedAssignment* stagedEntryConst(const QString& screen, int desktop, const QString& activity) const;
+    void flushStagedAssignments();
+
+    // Staged getter helpers — return true if handled (result set), false to fall through to D-Bus
+    bool stagedSnappingLayout(const QString& screen, int desktop, const QString& activity, QString& out) const;
+    bool stagedTilingLayout(const QString& screen, int desktop, const QString& activity, QString& out) const;
 
     // Editor settings cache
     QString m_editorDuplicateShortcut;

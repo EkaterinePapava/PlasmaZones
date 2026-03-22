@@ -20,50 +20,56 @@ ApplicationWindow {
     property string _sidebarMode: "main"
     // Main sidebar items
     readonly property var _mainItems: [{
+        "name": "overview",
+        "label": i18n("Overview"),
+        "iconName": "monitor",
+        "hasChildren": false,
+        "hasDividerAfter": true
+    }, {
         "name": "layouts",
-        "label": "Layouts",
+        "label": i18n("Layouts"),
         "iconName": "view-grid",
         "hasChildren": false,
         "hasDividerAfter": false
     }, {
         "name": "snapping",
-        "label": "Snapping",
+        "label": i18n("Snapping"),
         "iconName": "view-split-left-right",
         "hasChildren": true,
         "hasDividerAfter": false
     }, {
         "name": "tiling",
-        "label": "Tiling",
+        "label": i18n("Tiling"),
         "iconName": "window-duplicate",
         "hasChildren": true,
         "hasDividerAfter": false
     }, {
         "name": "apprules",
-        "label": "App Rules",
+        "label": i18n("App Rules"),
         "iconName": "application-x-executable",
         "hasChildren": false,
         "hasDividerAfter": true
     }, {
         "name": "exclusions",
-        "label": "Exclusions",
+        "label": i18n("Exclusions"),
         "iconName": "dialog-cancel",
         "hasChildren": false,
         "hasDividerAfter": false
     }, {
         "name": "editor",
-        "label": "Editor",
+        "label": i18n("Editor"),
         "iconName": "document-edit",
         "hasChildren": false,
         "hasDividerAfter": false
     }, {
         "name": "general",
-        "label": "General",
+        "label": i18n("General"),
         "iconName": "configure",
         "hasChildren": false,
         "hasDividerAfter": false
     }, {
         "name": "about",
-        "label": "About",
+        "label": i18n("About"),
         "iconName": "help-about",
         "hasChildren": false,
         "hasDividerAfter": false
@@ -72,53 +78,54 @@ ApplicationWindow {
     readonly property var _childItems: ({
         "snapping": [{
             "name": "snap-appearance",
-            "label": "Appearance",
+            "label": i18n("Appearance"),
             "iconName": "preferences-desktop-color"
         }, {
             "name": "snap-behavior",
-            "label": "Behavior",
+            "label": i18n("Behavior"),
             "iconName": "preferences-system"
         }, {
             "name": "snap-zoneselector",
-            "label": "Zone Layout",
+            "label": i18n("Zone Layout"),
             "iconName": "view-choose"
         }, {
             "name": "snap-effects",
-            "label": "Effects",
+            "label": i18n("Effects"),
             "iconName": "preferences-desktop-effects"
         }, {
             "name": "snap-assignments",
-            "label": "Assignments",
+            "label": i18n("Assignments"),
             "iconName": "view-list-details"
         }, {
             "name": "snap-shortcuts",
-            "label": "Quick Shortcuts",
+            "label": i18n("Quick Shortcuts"),
             "iconName": "bookmark"
         }],
         "tiling": [{
             "name": "tile-appearance",
-            "label": "Appearance",
+            "label": i18n("Appearance"),
             "iconName": "preferences-desktop-color"
         }, {
             "name": "tile-behavior",
-            "label": "Behavior",
+            "label": i18n("Behavior"),
             "iconName": "preferences-system"
         }, {
             "name": "tile-algorithm",
-            "label": "Algorithm",
+            "label": i18n("Algorithm"),
             "iconName": "view-grid"
         }, {
             "name": "tile-assignments",
-            "label": "Assignments",
+            "label": i18n("Assignments"),
             "iconName": "view-list-details"
         }, {
             "name": "tile-shortcuts",
-            "label": "Quick Shortcuts",
+            "label": i18n("Quick Shortcuts"),
             "iconName": "bookmark"
         }]
     })
     // Page component map -- loaded on demand by Loader
     readonly property var _pageComponents: ({
+        "overview": "MonitorStatePage.qml",
         "layouts": "LayoutsPage.qml",
         "snap-appearance": "SnappingAppearancePage.qml",
         "snap-behavior": "SnappingBehaviorPage.qml",
