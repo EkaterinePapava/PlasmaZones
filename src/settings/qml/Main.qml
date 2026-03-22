@@ -548,8 +548,9 @@ ApplicationWindow {
                 // Daemon status
                 Pane {
                     Layout.fillWidth: true
-                    padding: Kirigami.Units.smallSpacing
+                    padding: Kirigami.Units.smallSpacing * 1.5
                     topPadding: Kirigami.Units.smallSpacing * 2
+                    bottomPadding: Kirigami.Units.smallSpacing * 2
 
                     RowLayout {
                         anchors.fill: parent
