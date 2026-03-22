@@ -68,7 +68,7 @@ Flickable {
 
     // Stage the current local state for the selected screen (flushed on Apply).
     // Uses setAssignmentEntry targeting the exact (screen, desktop, activity)
-    // context from getScreenStates — same D-Bus method the KCM batch save uses.
+    // context from getScreenStates — most specific context wins.
     function _stageCurrentState() {
         if (!_selectedScreen)
             return ;
