@@ -27,6 +27,8 @@ ColumnLayout {
     required property QtObject constants
     // Whether the parent tab is currently visible (for conditional tooltips)
     property bool isCurrentTab: false
+    // Whether to show the internal MonitorSelectorSection (hide when parent provides one)
+    property bool showMonitorSelector: true
     // Screen aspect ratio for preview calculations (with safety check)
     property real screenAspectRatio: 16 / 9
     readonly property real safeAspectRatio: screenAspectRatio > 0 ? screenAspectRatio : (16 / 9)
@@ -55,6 +57,10 @@ ColumnLayout {
         return settingValue("PreviewHeight", appSettings.zoneSelectorPreviewHeight);
     }
     readonly property int effectiveTriggerDistance: settingValue("TriggerDistance", appSettings.zoneSelectorTriggerDistance)
+
+    function resetOverrides() {
+        psHelper.clearOverrides();
+    }
 
     function settingValue(key, globalValue) {
         return psHelper.settingValue(key, globalValue);
@@ -94,6 +100,7 @@ ColumnLayout {
 
     MonitorSelectorSection {
         Layout.fillWidth: true
+        visible: root.showMonitorSelector
         appSettings: root.controller
         featureEnabled: root.appSettings.zoneSelectorEnabled
         selectedScreenName: root.selectedScreenName

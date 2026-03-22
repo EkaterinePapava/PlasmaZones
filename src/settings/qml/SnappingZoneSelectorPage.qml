@@ -55,16 +55,23 @@ Flickable {
         spacing: Kirigami.Units.largeSpacing
 
         // =====================================================================
-        // PER-MONITOR SNAPPING OVERRIDES
+        // PER-MONITOR SELECTION (shared between gaps and zone selector)
         // =====================================================================
         MonitorSelectorSection {
+            id: monitorSelector
+
             Layout.fillWidth: true
             appSettings: settingsController
-            featureEnabled: settingsController.settings.snappingEnabled
             selectedScreenName: snappingHelper.selectedScreenName
             hasOverrides: snappingHelper.hasOverrides
-            onSelectedScreenNameChanged: snappingHelper.selectedScreenName = selectedScreenName
-            onResetClicked: snappingHelper.clearOverrides()
+            onSelectedScreenNameChanged: {
+                snappingHelper.selectedScreenName = selectedScreenName;
+                zoneSelectorSection.selectedScreenName = selectedScreenName;
+            }
+            onResetClicked: {
+                snappingHelper.clearOverrides();
+                zoneSelectorSection.resetOverrides();
+            }
         }
 
         // =====================================================================
@@ -217,12 +224,15 @@ Flickable {
         // ZONE SELECTOR (per-monitor popup configuration)
         // =====================================================================
         ZoneSelectorSection {
+            id: zoneSelectorSection
+
             Layout.fillWidth: true
             appSettings: settingsController.settings
             controller: settingsController
             constants: root
             isCurrentTab: true
             screenAspectRatio: root.screenAspectRatio
+            showMonitorSelector: false
         }
 
     }

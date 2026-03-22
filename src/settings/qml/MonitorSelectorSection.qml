@@ -7,21 +7,16 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 
 /**
- * @brief Shared per-monitor section divider + monitor selector card
+ * @brief Visual monitor selector with KCM display settings-style icons.
  *
- * Combines the section divider ("Per-Monitor Settings — ...") and the monitor
- * selection card (ScreenComboBox + info/reset row) used identically in
- * AutotilingTab and ZoneSelectorSection.
- *
- * Includes a hot-unplug handler: when ScreenComboBox internally resets its
- * index (e.g. a monitor disappears), the Connections block detects the
- * currentValue change and syncs selectedScreenName back to the parent.
+ * Shows a horizontal row of clickable monitor representations.
+ * "All Monitors" is the default; clicking a specific monitor selects it
+ * for per-screen overrides. Active monitor has an accent border.
  */
 ColumnLayout {
     id: root
 
     required property var appSettings
-    property bool featureEnabled: true
     property string selectedScreenName: ""
     property bool hasOverrides: false
     readonly property bool isPerScreen: selectedScreenName !== ""
@@ -29,73 +24,209 @@ ColumnLayout {
     signal resetClicked()
 
     visible: appSettings.screens.length > 1
-    spacing: Kirigami.Units.largeSpacing
+    spacing: Kirigami.Units.smallSpacing
 
-    // Monitor selector card
+    // Hot-unplug: reset selection if selected screen disappears
+    Connections {
+        function onScreensChanged() {
+            if (root.selectedScreenName === "")
+                return ;
+
+            let screens = root.appSettings.screens;
+            for (let i = 0; i < screens.length; i++) {
+                if (screens[i].name === root.selectedScreenName)
+                    return ;
+
+            }
+            root.selectedScreenName = "";
+        }
+
+        target: root.appSettings
+    }
+
+    // Monitor icons row — centered via Item wrapper
     Item {
         Layout.fillWidth: true
-        implicitHeight: monitorSelectorCard.implicitHeight
+        implicitHeight: monitorRow.implicitHeight
 
-        SettingsCard {
-            id: monitorSelectorCard
+        RowLayout {
+            id: monitorRow
 
-            anchors.fill: parent
-            enabled: root.featureEnabled
-            headerText: i18n("Monitor")
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: Kirigami.Units.largeSpacing
 
-            contentItem: ColumnLayout {
-                spacing: Kirigami.Units.smallSpacing
+            // "All Monitors" option
+            Rectangle {
+                width: allMonitorContent.implicitWidth + Kirigami.Units.largeSpacing * 2
+                height: allMonitorContent.implicitHeight + Kirigami.Units.largeSpacing
+                radius: Kirigami.Units.smallSpacing
+                color: !root.isPerScreen ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.1) : allMonitorMouse.containsMouse ? Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.06) : "transparent"
+                border.width: Math.round(Kirigami.Units.devicePixelRatio)
+                border.color: !root.isPerScreen ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.5) : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.1)
+                Accessible.role: Accessible.RadioButton
+                Accessible.name: i18n("All Monitors")
+                Accessible.checked: !root.isPerScreen
 
-                ScreenComboBox {
-                    id: monitorCombo
+                ColumnLayout {
+                    id: allMonitorContent
 
-                    Layout.fillWidth: true
-                    appSettings: root.appSettings
-                    noneText: i18n("All Monitors (Default)")
-                    Accessible.name: i18n("Monitor selection")
-                    onActivated: {
-                        root.selectedScreenName = currentScreenName;
+                    anchors.centerIn: parent
+                    spacing: Kirigami.Units.smallSpacing / 2
+
+                    Kirigami.Icon {
+                        source: "monitor"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                        Layout.alignment: Qt.AlignHCenter
+                        opacity: !root.isPerScreen ? 1 : 0.5
                     }
+
+                    Label {
+                        text: i18n("All Monitors")
+                        font: Kirigami.Theme.smallFont
+                        Layout.alignment: Qt.AlignHCenter
+                        opacity: !root.isPerScreen ? 1 : 0.5
+                    }
+
                 }
 
-                // Sync selectedScreenName on hot-unplug: when ScreenComboBox
-                // internally resets (screen disappears), currentValue changes
-                // and we propagate that to the parent.
-                Connections {
-                    function onCurrentValueChanged() {
-                        if (monitorCombo.currentScreenName !== root.selectedScreenName)
-                            root.selectedScreenName = monitorCombo.currentScreenName;
+                MouseArea {
+                    id: allMonitorMouse
 
-                    }
-
-                    target: monitorCombo
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
+                    onClicked: root.selectedScreenName = ""
                 }
 
-                // Per-screen info/reset row
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: Kirigami.Units.smallSpacing
-                    Layout.topMargin: Kirigami.Units.smallSpacing * 2
-                    visible: root.isPerScreen
-
-                    Kirigami.InlineMessage {
-                        Layout.fillWidth: true
-                        type: root.hasOverrides ? Kirigami.MessageType.Positive : Kirigami.MessageType.Information
-                        text: root.hasOverrides ? i18n("Custom settings for this monitor") : i18n("Using default settings (editing below will create an override)")
-                        visible: true
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 150
                     }
 
-                    Button {
-                        text: i18n("Reset to defaults")
-                        icon.name: "edit-clear"
-                        visible: root.hasOverrides
-                        onClicked: root.resetClicked()
+                }
+
+                Behavior on border.color {
+                    ColorAnimation {
+                        duration: 150
                     }
 
                 }
 
             }
 
+            // Individual monitors
+            Repeater {
+                model: root.appSettings.screens
+
+                delegate: Rectangle {
+                    required property var modelData
+                    required property int index
+                    readonly property string screenName: modelData.name || ""
+                    readonly property bool isSelected: root.selectedScreenName === screenName
+
+                    width: monitorContent.implicitWidth + Kirigami.Units.largeSpacing * 2
+                    height: monitorContent.implicitHeight + Kirigami.Units.largeSpacing
+                    radius: Kirigami.Units.smallSpacing
+                    color: isSelected ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.1) : monitorMouse.containsMouse ? Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.06) : "transparent"
+                    border.width: Math.round(Kirigami.Units.devicePixelRatio)
+                    border.color: isSelected ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.5) : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.1)
+                    Accessible.role: Accessible.RadioButton
+                    Accessible.name: screenName
+                    Accessible.checked: isSelected
+
+                    ColumnLayout {
+                        id: monitorContent
+
+                        anchors.centerIn: parent
+                        spacing: Kirigami.Units.smallSpacing / 2
+
+                        Kirigami.Icon {
+                            source: "monitor"
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                            Layout.alignment: Qt.AlignHCenter
+                            opacity: isSelected ? 1 : 0.5
+                        }
+
+                        Label {
+                            text: {
+                                let s = modelData;
+                                let parts = [];
+                                if (s.manufacturer)
+                                    parts.push(s.manufacturer);
+
+                                if (s.model)
+                                    parts.push(s.model);
+
+                                if (parts.length === 0)
+                                    parts.push(screenName);
+
+                                let label = parts.join(" ");
+                                if (s.isPrimary)
+                                    label += " " + i18n("(Primary)");
+
+                                return label;
+                            }
+                            font: Kirigami.Theme.smallFont
+                            Layout.alignment: Qt.AlignHCenter
+                            opacity: isSelected ? 1 : 0.5
+                            elide: Text.ElideRight
+                            Layout.maximumWidth: Kirigami.Units.gridUnit * 15
+                        }
+
+                    }
+
+                    MouseArea {
+                        id: monitorMouse
+
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true
+                        onClicked: root.selectedScreenName = screenName
+                    }
+
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: 150
+                        }
+
+                    }
+
+                    Behavior on border.color {
+                        ColorAnimation {
+                            duration: 150
+                        }
+
+                    }
+
+                }
+
+            }
+
+        }
+
+    }
+
+    // Per-screen info/reset row
+    RowLayout {
+        Layout.fillWidth: true
+        visible: root.isPerScreen
+        spacing: Kirigami.Units.smallSpacing
+
+        Kirigami.InlineMessage {
+            Layout.fillWidth: true
+            type: root.hasOverrides ? Kirigami.MessageType.Positive : Kirigami.MessageType.Information
+            text: root.hasOverrides ? i18n("Custom settings for this monitor") : i18n("Using default settings (editing below will create an override)")
+            visible: true
+        }
+
+        Button {
+            text: i18n("Reset")
+            icon.name: "edit-clear"
+            flat: true
+            visible: root.hasOverrides
+            onClicked: root.resetClicked()
         }
 
     }
