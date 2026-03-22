@@ -113,6 +113,11 @@ Item {
 
                 // Top-left indicator row (default star + restriction badge)
                 Row {
+                    // Status icons use ToolTip.delay instead of HoverHandler to
+                    // avoid "mouse grabber ambiguous" warnings.  HoverHandler on
+                    // small items inside a parent MouseArea creates competing
+                    // hover targets that Qt cannot resolve unambiguously.
+
                     anchors.top: parent.top
                     anchors.left: parent.left
                     anchors.margins: Kirigami.Units.smallSpacing
@@ -126,11 +131,16 @@ Item {
                         width: Kirigami.Units.iconSizes.small
                         height: Kirigami.Units.iconSizes.small
                         color: Kirigami.Theme.positiveTextColor
-                        ToolTip.visible: defaultIconHover.hovered
+                        ToolTip.delay: Kirigami.Units.toolTipDelay
+                        ToolTip.visible: defaultIconMA.containsMouse && visible
                         ToolTip.text: root.viewMode === 1 ? i18n("Default autotile algorithm") : i18n("Default layout")
 
-                        HoverHandler {
-                            id: defaultIconHover
+                        MouseArea {
+                            id: defaultIconMA
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.NoButton
                         }
 
                     }
@@ -141,11 +151,16 @@ Item {
                         width: Kirigami.Units.iconSizes.small
                         height: Kirigami.Units.iconSizes.small
                         color: Kirigami.Theme.disabledTextColor
-                        ToolTip.visible: systemIconHover.hovered
+                        ToolTip.delay: Kirigami.Units.toolTipDelay
+                        ToolTip.visible: systemIconMA.containsMouse && visible
                         ToolTip.text: root.modelData.isSystem ? i18n("System layout (read-only)") : i18n("Modified system layout")
 
-                        HoverHandler {
-                            id: systemIconHover
+                        MouseArea {
+                            id: systemIconMA
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.NoButton
                         }
 
                     }
@@ -162,11 +177,16 @@ Item {
                         width: Kirigami.Units.iconSizes.small
                         height: Kirigami.Units.iconSizes.small
                         color: Kirigami.Theme.disabledTextColor
-                        ToolTip.visible: filterIconHover.hovered
+                        ToolTip.delay: Kirigami.Units.toolTipDelay
+                        ToolTip.visible: filterIconMA.containsMouse && visible
                         ToolTip.text: i18n("This layout is restricted to specific screens, desktops, or activities")
 
-                        HoverHandler {
-                            id: filterIconHover
+                        MouseArea {
+                            id: filterIconMA
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.NoButton
                         }
 
                     }
