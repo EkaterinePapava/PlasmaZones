@@ -13,23 +13,238 @@ ApplicationWindow {
     readonly property bool sidebarCompact: window.width < Kirigami.Units.gridUnit * 50
     // Track page navigation for transitions
     property int _previousIndex: 0
-    // Page component map — loaded on demand by StackView
-    property var _pageComponents: ({
+    // ── Drill-down sidebar state ─────────────────────────────────────
+    // "main" = top-level list; otherwise the parent name (e.g. "snapping")
+    property string _sidebarMode: "main"
+    // Main sidebar items
+    readonly property var _mainItems: [{
+        "name": "layouts",
+        "label": "Layouts",
+        "iconName": "view-grid",
+        "hasChildren": false
+    }, {
+        "name": "snapping",
+        "label": "Snapping",
+        "iconName": "view-split-left-right",
+        "hasChildren": true
+    }, {
+        "name": "tiling",
+        "label": "Tiling",
+        "iconName": "window-duplicate",
+        "hasChildren": true
+    }, {
+        "name": "assignments",
+        "label": "Assignments",
+        "iconName": "view-list-details",
+        "hasChildren": true
+    }, {
+        "name": "exclusions",
+        "label": "Exclusions",
+        "iconName": "dialog-cancel",
+        "hasChildren": false
+    }, {
+        "name": "editor",
+        "label": "Editor",
+        "iconName": "document-edit",
+        "hasChildren": false
+    }, {
+        "name": "general",
+        "label": "General",
+        "iconName": "configure",
+        "hasChildren": false
+    }, {
+        "name": "about",
+        "label": "About",
+        "iconName": "help-about",
+        "hasChildren": false
+    }]
+    // Children for each parent
+    readonly property var _childItems: ({
+        "snapping": [{
+            "name": "snap-appearance",
+            "label": "Appearance",
+            "iconName": "preferences-desktop-color"
+        }, {
+            "name": "snap-behavior",
+            "label": "Behavior",
+            "iconName": "preferences-system"
+        }, {
+            "name": "snap-gaps",
+            "label": "Gaps",
+            "iconName": "distribute-horizontal"
+        }, {
+            "name": "snap-zoneselector",
+            "label": "Zone Selector",
+            "iconName": "view-choose"
+        }, {
+            "name": "snap-effects",
+            "label": "Effects",
+            "iconName": "preferences-desktop-effects"
+        }],
+        "tiling": [{
+            "name": "tile-appearance",
+            "label": "Appearance",
+            "iconName": "preferences-desktop-color"
+        }, {
+            "name": "tile-behavior",
+            "label": "Behavior",
+            "iconName": "preferences-system"
+        }, {
+            "name": "tile-gaps",
+            "label": "Gaps",
+            "iconName": "distribute-horizontal"
+        }, {
+            "name": "tile-algorithm",
+            "label": "Algorithm",
+            "iconName": "view-grid"
+        }],
+        "assignments": [{
+            "name": "monitors",
+            "label": "Monitors",
+            "iconName": "monitor"
+        }, {
+            "name": "activities",
+            "label": "Activities",
+            "iconName": "activities"
+        }, {
+            "name": "apprules",
+            "label": "App Rules",
+            "iconName": "application-x-executable"
+        }, {
+            "name": "quickslots",
+            "label": "Quick Shortcuts",
+            "iconName": "bookmark"
+        }]
+    })
+    // Page component map -- loaded on demand by Loader
+    readonly property var _pageComponents: ({
         "layouts": "LayoutsPage.qml",
-        "snapping": "SnappingPage.qml",
-        "autotiling": "AutotilingPage.qml",
-        "assignments": "AssignmentsPage.qml",
+        "snap-appearance": "SnappingAppearancePage.qml",
+        "snap-behavior": "SnappingBehaviorPage.qml",
+        "snap-gaps": "SnappingGapsPage.qml",
+        "snap-zoneselector": "SnappingZoneSelectorPage.qml",
+        "snap-effects": "SnappingEffectsPage.qml",
+        "tile-appearance": "TilingAppearancePage.qml",
+        "tile-behavior": "TilingBehaviorPage.qml",
+        "tile-gaps": "TilingGapsPage.qml",
+        "tile-algorithm": "TilingAlgorithmPage.qml",
+        "monitors": "AssignmentsMonitorsPage.qml",
+        "activities": "AssignmentsActivitiesPage.qml",
+        "apprules": "AssignmentsAppRulesPage.qml",
+        "quickslots": "AssignmentsQuickSlotsPage.qml",
         "exclusions": "ExclusionsPage.qml",
         "editor": "EditorPage.qml",
         "general": "GeneralPage.qml",
         "about": "AboutPage.qml"
     })
 
+    function _rebuildSidebar() {
+        sidebarModel.clear();
+        if (_sidebarMode === "main") {
+            for (let i = 0; i < _mainItems.length; i++) {
+                let item = _mainItems[i];
+                sidebarModel.append({
+                    "name": item.name,
+                    "label": item.label,
+                    "iconName": item.iconName,
+                    "hasChildren": item.hasChildren,
+                    "isBackButton": false
+                });
+            }
+        } else {
+            // Find parent label
+            let parentLabel = _sidebarMode;
+            for (let i = 0; i < _mainItems.length; i++) {
+                if (_mainItems[i].name === _sidebarMode) {
+                    parentLabel = _mainItems[i].label;
+                    break;
+                }
+            }
+            // Back button row
+            sidebarModel.append({
+                "name": "__back__",
+                "label": parentLabel,
+                "iconName": "arrow-left",
+                "hasChildren": false,
+                "isBackButton": true
+            });
+            // Child items
+            let children = _childItems[_sidebarMode] || [];
+            for (let i = 0; i < children.length; i++) {
+                sidebarModel.append({
+                    "name": children[i].name,
+                    "label": children[i].label,
+                    "iconName": children[i].iconName,
+                    "hasChildren": false,
+                    "isBackButton": false
+                });
+            }
+        }
+    }
+
+    // Helper: find the parent label for the current sidebar mode
+    function _parentLabel() {
+        for (let i = 0; i < _mainItems.length; i++) {
+            if (_mainItems[i].name === _sidebarMode)
+                return _mainItems[i].label;
+
+        }
+        return _sidebarMode;
+    }
+
+    // Helper: find a subpage label by name
+    function _subPageLabel(pageName) {
+        let children = _childItems[_sidebarMode];
+        if (!children)
+            return pageName;
+
+        for (let i = 0; i < children.length; i++) {
+            if (children[i].name === pageName)
+                return children[i].label;
+
+        }
+        return pageName;
+    }
+
+    // Helper: find a main-item label by name
+    function _mainItemLabel(pageName) {
+        for (let i = 0; i < _mainItems.length; i++) {
+            if (_mainItems[i].name === pageName)
+                return _mainItems[i].label;
+
+        }
+        return pageName;
+    }
+
+    // Drill into a parent category and select the first child
+    function _drillIn(parentName) {
+        _sidebarMode = parentName;
+        _rebuildSidebar();
+        let children = _childItems[parentName];
+        if (children && children.length > 0)
+            settingsController.activePage = children[0].name;
+
+    }
+
+    // Return to the main sidebar list, selecting the parent item
+    function _drillOut() {
+        let parent = _sidebarMode;
+        _sidebarMode = "main";
+        _rebuildSidebar();
+        // Navigate to the first non-parent item (e.g. "layouts")
+        // so the sidebar has a valid highlight
+        settingsController.activePage = "layouts";
+    }
+
     title: i18n("PlasmaZones Settings")
     width: Kirigami.Units.gridUnit * 80
     height: Kirigami.Units.gridUnit * 48
     visible: true
+    onClosing: {
+        settingsController.saveWindowGeometry(window.x, window.y, window.width, window.height);
+    }
     Component.onCompleted: {
+        // Restore window geometry
         var geo = settingsController.loadWindowGeometry();
         if (geo.width > 0 && geo.height > 0) {
             window.width = geo.width;
@@ -39,16 +254,42 @@ ApplicationWindow {
             window.x = geo.x;
             window.y = geo.y;
         }
+        // Build initial sidebar
+        _rebuildSidebar();
+        // If the active page is a child of a category, drill in
+        let page = settingsController.activePage;
+        let parents = Object.keys(_childItems);
+        for (let p = 0; p < parents.length; p++) {
+            let children = _childItems[parents[p]];
+            for (let c = 0; c < children.length; c++) {
+                if (children[c].name === page) {
+                    _sidebarMode = parents[p];
+                    _rebuildSidebar();
+                    return ;
+                }
+            }
+        }
     }
-    onClosing: {
-        settingsController.saveWindowGeometry(window.x, window.y, window.width, window.height);
+
+    // Visible sidebar model (rebuilt when _sidebarMode changes)
+    ListModel {
+        id: sidebarModel
     }
 
     Shortcut {
         sequence: "Ctrl+PgUp"
         onActivated: {
-            if (sidebar.currentIndex > 0)
-                settingsController.activePage = pageModel.get(sidebar.currentIndex - 1).name;
+            let idx = sidebar.currentIndex;
+            for (let i = idx - 1; i >= 0; i--) {
+                let item = sidebarModel.get(i);
+                if (!item.isBackButton && !item.hasChildren) {
+                    settingsController.activePage = item.name;
+                    return ;
+                }
+            }
+            // At boundary — drill out if in a sub-category
+            if (_sidebarMode !== "main")
+                _drillOut();
 
         }
     }
@@ -56,74 +297,19 @@ ApplicationWindow {
     Shortcut {
         sequence: "Ctrl+PgDown"
         onActivated: {
-            if (sidebar.currentIndex < pageModel.count - 1)
-                settingsController.activePage = pageModel.get(sidebar.currentIndex + 1).name;
+            let idx = sidebar.currentIndex;
+            for (let i = idx + 1; i < sidebarModel.count; i++) {
+                let item = sidebarModel.get(i);
+                if (!item.isBackButton && !item.hasChildren) {
+                    settingsController.activePage = item.name;
+                    return ;
+                }
+            }
+            // At boundary — drill out if in a sub-category
+            if (_sidebarMode !== "main")
+                _drillOut();
 
         }
-    }
-
-    ListModel {
-        id: pageModel
-
-        // ── Display ──
-        ListElement {
-            name: "layouts"
-            label: "Layouts"
-            iconName: "view-grid"
-            section: "Display"
-        }
-
-        ListElement {
-            name: "snapping"
-            label: "Snapping"
-            iconName: "view-split-left-right"
-            section: "Display"
-        }
-
-        ListElement {
-            name: "autotiling"
-            label: "Tiling"
-            iconName: "window-duplicate"
-            section: "Display"
-        }
-
-        // ── Behavior ──
-        ListElement {
-            name: "assignments"
-            label: "Assignments"
-            iconName: "view-list-details"
-            section: "Behavior"
-        }
-
-        ListElement {
-            name: "exclusions"
-            label: "Exclusions"
-            iconName: "dialog-cancel"
-            section: "Behavior"
-        }
-
-        ListElement {
-            name: "editor"
-            label: "Editor"
-            iconName: "document-edit"
-            section: "Behavior"
-        }
-
-        // ── System ──
-        ListElement {
-            name: "general"
-            label: "General"
-            iconName: "configure"
-            section: "System"
-        }
-
-        ListElement {
-            name: "about"
-            label: "About"
-            iconName: "help-about"
-            section: "System"
-        }
-
     }
 
     RowLayout {
@@ -132,9 +318,9 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
-        // ═══════════════════════════════════════════════════════════════════
+        // =================================================================
         // SIDEBAR
-        // ═══════════════════════════════════════════════════════════════════
+        // =================================================================
         Pane {
             id: sidebarPane
 
@@ -147,48 +333,22 @@ ApplicationWindow {
                 anchors.fill: parent
                 spacing: 0
 
-                // Navigation list with sections
+                // Navigation list
                 ListView {
                     id: sidebar
 
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    model: pageModel
+                    model: sidebarModel
                     currentIndex: {
-                        for (var i = 0; i < pageModel.count; i++) {
-                            if (pageModel.get(i).name === settingsController.activePage)
+                        for (var i = 0; i < sidebarModel.count; i++) {
+                            if (sidebarModel.get(i).name === settingsController.activePage)
                                 return i;
 
                         }
-                        return 0;
+                        return -1;
                     }
                     clip: true
-                    section.property: "section"
-
-                    section.delegate: Item {
-                        required property string section
-
-                        width: sidebar.width
-                        height: window.sidebarCompact ? Kirigami.Units.smallSpacing : (sectionLabel.implicitHeight + Kirigami.Units.largeSpacing)
-                        clip: true
-
-                        Label {
-                            id: sectionLabel
-
-                            anchors.left: parent.left
-                            anchors.leftMargin: Kirigami.Units.largeSpacing
-                            anchors.bottom: parent.bottom
-                            anchors.bottomMargin: Kirigami.Units.smallSpacing / 2
-                            text: parent.section
-                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                            font.family: Kirigami.Theme.smallFont.family
-                            font.weight: Font.DemiBold
-                            font.capitalization: Font.AllUppercase
-                            font.letterSpacing: 1.2
-                            opacity: window.sidebarCompact ? 0 : 0.5
-                        }
-
-                    }
 
                     delegate: ItemDelegate {
                         id: navDelegate
@@ -197,25 +357,52 @@ ApplicationWindow {
                         required property string name
                         required property string label
                         required property string iconName
+                        required property bool hasChildren
+                        required property bool isBackButton
+                        readonly property bool isActive: {
+                            if (isBackButton)
+                                return false;
+
+                            if (hasChildren)
+                                return false;
+
+                            return name === settingsController.activePage;
+                        }
 
                         width: sidebar.width
-                        height: Kirigami.Units.gridUnit * 2.5
-                        highlighted: ListView.isCurrentItem
+                        height: isBackButton ? Kirigami.Units.gridUnit * 2.6 : Kirigami.Units.gridUnit * 2.2
+                        highlighted: isActive
                         onClicked: {
+                            if (isBackButton) {
+                                window._drillOut();
+                                return ;
+                            }
+                            if (hasChildren) {
+                                window._drillIn(name);
+                                return ;
+                            }
                             window._previousIndex = sidebar.currentIndex;
                             settingsController.activePage = name;
                         }
                         leftPadding: window.sidebarCompact ? 0 : Kirigami.Units.smallSpacing
                         rightPadding: window.sidebarCompact ? 0 : Kirigami.Units.smallSpacing
                         ToolTip.visible: window.sidebarCompact && navDelegate.hovered
-                        ToolTip.text: navDelegate.label
+                        ToolTip.text: label
                         ToolTip.delay: 300
 
                         background: Rectangle {
-                            color: navDelegate.highlighted ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.12) : navDelegate.hovered ? Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.06) : "transparent"
+                            color: {
+                                if (navDelegate.isActive)
+                                    return Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.12);
+
+                                if (navDelegate.hovered)
+                                    return Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.06);
+
+                                return "transparent";
+                            }
                             radius: Kirigami.Units.smallSpacing
 
-                            // Left accent bar
+                            // Left accent bar for active item
                             Rectangle {
                                 anchors.left: parent.left
                                 anchors.verticalCenter: parent.verticalCenter
@@ -223,7 +410,19 @@ ApplicationWindow {
                                 height: parent.height * 0.5
                                 radius: width / 2
                                 color: Kirigami.Theme.highlightColor
-                                visible: navDelegate.highlighted
+                                visible: navDelegate.isActive
+                            }
+
+                            // Bottom separator after back button
+                            Rectangle {
+                                visible: navDelegate.isBackButton
+                                anchors.bottom: parent.bottom
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.leftMargin: Kirigami.Units.smallSpacing
+                                anchors.rightMargin: Kirigami.Units.smallSpacing
+                                height: Math.round(Kirigami.Units.devicePixelRatio)
+                                color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.1)
                             }
 
                             Behavior on color {
@@ -244,7 +443,15 @@ ApplicationWindow {
                                 Layout.preferredHeight: Kirigami.Units.iconSizes.small
                                 Layout.fillWidth: window.sidebarCompact
                                 Layout.alignment: Qt.AlignVCenter
-                                opacity: navDelegate.highlighted ? 1 : 0.7
+                                opacity: {
+                                    if (navDelegate.isBackButton)
+                                        return 0.7;
+
+                                    if (navDelegate.isActive)
+                                        return 1;
+
+                                    return 0.7;
+                                }
 
                                 Behavior on opacity {
                                     NumberAnimation {
@@ -258,8 +465,24 @@ ApplicationWindow {
                             Label {
                                 text: navDelegate.label
                                 Layout.fillWidth: true
-                                font.weight: navDelegate.highlighted ? Font.DemiBold : Font.Normal
-                                opacity: navDelegate.highlighted ? 1 : 0.7
+                                font.weight: {
+                                    if (navDelegate.isBackButton)
+                                        return Font.DemiBold;
+
+                                    if (navDelegate.isActive)
+                                        return Font.DemiBold;
+
+                                    return Font.Normal;
+                                }
+                                opacity: {
+                                    if (navDelegate.isBackButton)
+                                        return 0.8;
+
+                                    if (navDelegate.isActive)
+                                        return 1;
+
+                                    return 0.7;
+                                }
                                 visible: !window.sidebarCompact
 
                                 Behavior on opacity {
@@ -269,6 +492,16 @@ ApplicationWindow {
 
                                 }
 
+                            }
+
+                            // Right chevron for items with children
+                            Kirigami.Icon {
+                                source: "go-next"
+                                Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                                Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                                Layout.alignment: Qt.AlignVCenter
+                                opacity: 0.3
+                                visible: navDelegate.hasChildren && !window.sidebarCompact
                             }
 
                         }
@@ -386,21 +619,21 @@ ApplicationWindow {
 
         }
 
-        // ═══════════════════════════════════════════════════════════════════
+        // =================================================================
         // CONTENT AREA
-        // ═══════════════════════════════════════════════════════════════════
+        // =================================================================
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 0
 
-            // ── Breadcrumb header ──────────────────────────────────────
+            // -- Breadcrumb header ----------------------------------------
+            // Breadcrumb — always visible (essential in compact mode for context)
             Pane {
                 Layout.fillWidth: true
                 padding: Kirigami.Units.largeSpacing
                 topPadding: Kirigami.Units.smallSpacing * 2
                 bottomPadding: Kirigami.Units.smallSpacing * 2
-                visible: !window.sidebarCompact
 
                 RowLayout {
                     anchors.fill: parent
@@ -408,13 +641,12 @@ ApplicationWindow {
 
                     Label {
                         text: {
-                            let idx = sidebar.currentIndex;
-                            if (idx < 0 || idx >= pageModel.count)
-                                return "";
+                            if (window._sidebarMode !== "main")
+                                // Show "Parent > Child"
+                                return window._parentLabel() + "  \u203A  " + window._subPageLabel(settingsController.activePage);
 
-                            let section = pageModel.get(idx).section;
-                            let label = pageModel.get(idx).label;
-                            return section + "  ›  " + label;
+                            // Top-level: just show page name
+                            return window._mainItemLabel(settingsController.activePage);
                         }
                         opacity: 0.5
                     }
@@ -478,7 +710,7 @@ ApplicationWindow {
 
                 }
 
-                // ── Toast notification ──────────────────────────────────
+                // -- Toast notification -----------------------------------
                 Rectangle {
                     id: toast
 
@@ -543,7 +775,7 @@ ApplicationWindow {
 
             }
 
-            // ── Footer action bar ───────────────────────────────────────
+            // -- Footer action bar ----------------------------------------
             Rectangle {
                 Layout.fillWidth: true
                 height: Math.round(Kirigami.Units.devicePixelRatio)

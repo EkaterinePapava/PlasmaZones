@@ -35,12 +35,22 @@ qt_add_qml_module(plasmazones-settings
     QML_FILES
         qml/Main.qml
         qml/GeneralPage.qml
-        qml/SnappingPage.qml
-        qml/AutotilingPage.qml
+        qml/SnappingAppearancePage.qml
+        qml/SnappingEffectsPage.qml
+        qml/SnappingBehaviorPage.qml
+        qml/SnappingGapsPage.qml
+        qml/SnappingZoneSelectorPage.qml
+        qml/TilingAppearancePage.qml
+        qml/TilingBehaviorPage.qml
+        qml/TilingGapsPage.qml
+        qml/TilingAlgorithmPage.qml
         qml/ExclusionsPage.qml
         qml/EditorPage.qml
         qml/LayoutsPage.qml
-        qml/AssignmentsPage.qml
+        qml/AssignmentsMonitorsPage.qml
+        qml/AssignmentsActivitiesPage.qml
+        qml/AssignmentsAppRulesPage.qml
+        qml/AssignmentsQuickSlotsPage.qml
         qml/AboutPage.qml
         # Sub-components (copied from KCM)
         qml/MonitorAssignmentsCard.qml
