@@ -247,14 +247,25 @@ void ShaderRegistry::reWatchShaderFiles()
     }
 
     // After a refresh (which may follow delete+recreate installs), re-add any
-    // shader files that lost their inotify watch due to inode replacement.
+    // shader files AND subdirectories that lost their inotify watch due to
+    // inode replacement. cmake --install replaces entire directories, causing
+    // both directory and file watches to be dropped (new inodes).
     auto reWatch = [this](const QString& dir) {
         if (!QDir(dir).exists()) {
             return;
         }
+        // Re-watch the top-level shader directory itself
+        if (!m_watcher->directories().contains(dir)) {
+            m_watcher->addPath(dir);
+        }
         QDir dirObj(dir);
         for (const QString& subdir : dirObj.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-            QDir sub(dirObj.filePath(subdir));
+            const QString subPath = dirObj.filePath(subdir);
+            // Re-watch subdirectory (lost after cmake --install replaces it)
+            if (!m_watcher->directories().contains(subPath)) {
+                m_watcher->addPath(subPath);
+            }
+            QDir sub(subPath);
             const QStringList files = sub.entryList(QStringList{QStringLiteral("*.frag"), QStringLiteral("*.vert"),
                                                                 QStringLiteral("*.glsl"), QStringLiteral("*.json")},
                                                     QDir::Files);
