@@ -86,6 +86,7 @@ qt_add_qml_module(plasmazones-settings
         qml/SettingsSpinBox.qml
         qml/SettingsToggleRow.qml
         qml/SettingsSwitch.qml
+        qml/SettingsButtonGroup.qml
         qml/ColorSwatchRow.qml
     NO_PLUGIN
 )
