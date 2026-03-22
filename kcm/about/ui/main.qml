@@ -111,41 +111,4 @@ KCMUtils.SimpleKCM {
 
     }
 
-    // Daemon enable/disable header (same as before)
-    header: ColumnLayout {
-        width: parent.width
-        spacing: 0
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: Kirigami.Units.largeSpacing
-
-            Label {
-                text: i18n("Enable PlasmaZones")
-                font.bold: true
-            }
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            Label {
-                text: kcm.daemonRunning ? i18n("Running") : i18n("Stopped")
-                opacity: 0.7
-            }
-
-            Switch {
-                checked: kcm.daemonEnabled
-                onToggled: kcm.daemonEnabled = checked
-                Accessible.name: i18n("Enable PlasmaZones")
-            }
-
-        }
-
-        Kirigami.Separator {
-            Layout.fillWidth: true
-        }
-
-    }
-
 }

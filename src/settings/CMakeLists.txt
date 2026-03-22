@@ -9,9 +9,9 @@ set(plasmazones_settings_SRCS
     main.cpp
     settingscontroller.h
     settingscontroller.cpp
-    # DaemonController shared with About KCM — kept in kcm/common/
-    ${CMAKE_SOURCE_DIR}/kcm/common/daemoncontroller.h
-    ${CMAKE_SOURCE_DIR}/kcm/common/daemoncontroller.cpp
+    # DaemonController — daemon lifecycle management (start/stop/status)
+    ${CMAKE_SOURCE_DIR}/src/common/daemoncontroller.h
+    ${CMAKE_SOURCE_DIR}/src/common/daemoncontroller.cpp
     # Qt-only utilities (standalone-only, no KDE Framework deps)
     screenhelper.h
     screenhelper.cpp

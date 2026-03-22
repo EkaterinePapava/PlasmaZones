@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "kcmabout.h"
-#include "../common/daemoncontroller.h"
 #include <QDesktopServices>
 #include <QProcess>
 #include <QUrl>
@@ -12,24 +11,17 @@
 #include <KSharedConfig>
 #include "../../src/config/updatechecker.h"
 #include "../../src/core/constants.h"
-#include "../plasmazonesmoduledata.h"
 #include "version.h"
 
-K_PLUGIN_FACTORY_WITH_JSON(KCMAboutFactory, "kcm_plasmazones_about.json", registerPlugin<PlasmaZones::KCMAbout>();
-                           registerPlugin<PlasmaZones::PlasmaZonesModuleData>();)
+K_PLUGIN_FACTORY_WITH_JSON(KCMAboutFactory, "kcm_plasmazones_about.json", registerPlugin<PlasmaZones::KCMAbout>();)
 
 namespace PlasmaZones {
 
 KCMAbout::KCMAbout(QObject* parent, const KPluginMetaData& data)
     : KQuickConfigModule(parent, data)
 {
-    // No Apply/Default buttons — daemon toggle is immediate
+    // No Apply/Default buttons — this page is informational + launcher
     setButtons({});
-
-    // Daemon lifecycle management
-    m_daemonController = std::make_unique<DaemonController>(nullptr);
-    connect(m_daemonController.get(), &DaemonController::runningChanged, this, &KCMAbout::daemonRunningChanged);
-    connect(m_daemonController.get(), &DaemonController::enabledChanged, this, &KCMAbout::daemonEnabledChanged);
 
     // Update checker
     m_updateChecker = new UpdateChecker(this);
@@ -48,21 +40,6 @@ KCMAbout::KCMAbout(QObject* parent, const KPluginMetaData& data)
 }
 
 KCMAbout::~KCMAbout() = default;
-
-bool KCMAbout::isDaemonRunning() const
-{
-    return m_daemonController->isRunning();
-}
-
-bool KCMAbout::isDaemonEnabled() const
-{
-    return m_daemonController->isEnabled();
-}
-
-void KCMAbout::setDaemonEnabled(bool enabled)
-{
-    m_daemonController->setEnabled(enabled);
-}
 
 QString KCMAbout::currentVersion() const
 {
