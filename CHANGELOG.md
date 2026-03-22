@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.3.17] - 2026-03-22
+
+### Added
+- **Arch Drift branded shader**: Terminal rain columns, isometric chevron grid, traveling data packets, and CRT scan lines — designed around the spirit of Arch Linux (minimalism, precision, the CLI). Logo interior features roiling cloud flow, lightning flashes, rain streaks, animated energy contour waves, summit beacon, and traveling edge pulses. 95-vertex SDF polygon from the official Crystal SVG. All 32 parameter slots wired. Optimized with merged polygon+edge loop and AABB early-outs.
+- **EndeavourOS Drift branded shader**: Constellation network background with 24 dots on Lissajous orbits connected by proximity lines, warm gradient wash, and tri-sail SDF logo (58 vertices total) from the official SVG. Logo interior uses tri-sail interference — each sail's noise flows at 120-degree offsets, creating color interference bands in overlap regions. Bass shockwave rings, treble flash bursts, and per-sail color shifting on mids.
+
+### Fixed
+- **Layout card icon hover flicker** ([#235]): Status icons (favorite, lock, filter) inside layout cards spammed `mouse grabber ambiguous` warnings on hover. The `HoverHandler` inside each small `Kirigami.Icon` competed with the parent `MouseArea` for hover delivery. Replaced with `MouseArea { hoverEnabled; acceptedButtons: NoButton }` which respects the parent-child containment hierarchy. Added `ToolTip.delay` to match the ToolButton tooltip pattern.
+- **Shader file watcher dropped after cmake install**: `cmake --install` replaces entire shader subdirectories with new inodes, silently dropping both directory and file inotify watches. `reWatchShaderFiles()` now re-adds the top-level shader directory and each subdirectory if they lost their watch.
+
 ## [2.3.16] - 2026-03-21
 
 ### Fixed
