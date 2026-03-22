@@ -50,7 +50,6 @@ Flickable {
         MonitorSelectorSection {
             Layout.fillWidth: true
             appSettings: settingsController
-            featureEnabled: settingsController.settings.autotileEnabled
             selectedScreenName: root.selectedScreenName
             hasOverrides: root.hasOverrides
             onSelectedScreenNameChanged: root.selectedScreenName = selectedScreenName

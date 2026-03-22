@@ -31,7 +31,6 @@ ColumnLayout {
     MonitorSelectorSection {
         Layout.fillWidth: true
         appSettings: selectorRoot.controller
-        featureEnabled: true
         selectedScreenName: selectorRoot.constants.selectedSnappingScreenName
         hasOverrides: selectorRoot.constants.hasSnappingOverrides
         onSelectedScreenNameChanged: selectorRoot.constants.selectedSnappingScreenName = selectedScreenName

@@ -102,7 +102,6 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: root.showMonitorSelector
         appSettings: root.controller
-        featureEnabled: root.appSettings.zoneSelectorEnabled
         selectedScreenName: root.selectedScreenName
         hasOverrides: root.hasOverrides
         onSelectedScreenNameChanged: root.selectedScreenName = selectedScreenName
