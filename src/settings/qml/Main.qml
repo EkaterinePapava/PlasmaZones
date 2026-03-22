@@ -292,10 +292,10 @@ ApplicationWindow {
         sidebarTransition.restart();
     }
 
-    // Return to the main sidebar list, selecting the parent item
+    // Return to the main sidebar list, selecting the parent category
     function _drillOut() {
         sidebarTransition.pendingMode = "main";
-        sidebarTransition.pendingPage = "layouts";
+        sidebarTransition.pendingPage = _sidebarMode !== "main" ? _sidebarMode : "overview";
         sidebarTransition.restart();
     }
 

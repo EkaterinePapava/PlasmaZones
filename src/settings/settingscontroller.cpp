@@ -425,6 +425,7 @@ void SettingsController::flushStagedAssignments()
             else
                 DaemonDBus::callDaemon(QString(DBus::Interface::LayoutManager), QStringLiteral("clearAssignment"),
                                        {s.screenId});
+            continue;
         }
 
         // Explicit mode staging (overview page) — uses setAssignmentEntry for the
