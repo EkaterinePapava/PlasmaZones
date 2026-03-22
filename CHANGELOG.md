@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.3.16] - 2026-03-21
+
+### Fixed
+- **Layout card button flicker on hover** ([#235]): The Auto-assign and Visibility toggle buttons flickered when hovered. Two cooperating causes: (1) the right-anchored Row reflowed leftward when buttons toggled `visible:`, shifting button positions and destabilizing hover; (2) `ToolTip.visible: hovered` with no delay opened a popup that stole pointer focus on some compositors. Wrapped each ToolButton in a fixed-size Item to eliminate geometry reflow and added `ToolTip.delay` to break the feedback loop.
+- **Zone selector grid ignoring columns/rows at fixed preview sizes**: The `maxRows` setting was only applied when preview size was "Auto". Fixed to apply for all size modes in Grid layout.
+
+### Changed
+- **Improved zone selector edge scrolling**: Widened auto-scroll trigger zone from 32px to 48px and increased max scroll speed by 75% for more responsive scrolling during window drag.
+- **Zone selector scroll D-Bus API**: Added `selectorScrollWheel` D-Bus method and `applyScrollDelta` QML function for programmatic scrolling. Infrastructure is wired and ready for when KWin exposes pointer axis events to effects.
+
 ## [2.3.15] - 2026-03-21
 
 ### Fixed
@@ -908,7 +918,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.15...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.16...HEAD
+[2.3.16]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.15...v2.3.16
 [2.3.15]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.14...v2.3.15
 [2.3.14]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.13...v2.3.14
 [2.3.13]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.12...v2.3.13
