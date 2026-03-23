@@ -639,6 +639,17 @@ public Q_SLOTS:
      */
     void requestReapplyWindowGeometries();
 
+    /**
+     * @brief Process a batch of resnap entries: bookkeeping + emit applyGeometriesBatch
+     *
+     * Called by SnapEngine::emitBatchedResnap (via SnapAdaptor relay) for the
+     * autotile→snapping transition. The Daemon layer calls emitBatchedResnap
+     * directly on the SnapEngine, bypassing the WTA's navigation methods.
+     *
+     * @param resnapData Serialized RotationEntry JSON array
+     */
+    void handleBatchedResnap(const QString& resnapData);
+
 Q_SIGNALS:
     void windowZoneChanged(const QString& windowId, const QString& zoneId);
 
@@ -773,6 +784,29 @@ Q_SIGNALS:
     void applyGeometryRequested(const QString& windowId, const QString& geometryJson, const QString& zoneId,
                                 const QString& screenId);
 
+    /**
+     * @brief Daemon requests KWin to activate (focus) a window
+     * @param windowId Window to activate
+     * @note Used by daemon-driven focus/cycle navigation — daemon resolves the target,
+     *       effect just calls KWin::effects->activateWindow()
+     */
+    void activateWindowRequested(const QString& windowId);
+
+    /**
+     * @brief Daemon requests KWin to apply geometries for a batch of windows
+     * @param batchJson JSON array of [{windowId, x, y, width, height, targetZoneId, sourceZoneId}]
+     * @param action Navigation action type ("rotate", "resnap", "snap_all") for feedback
+     * @note Daemon handles windowSnapped bookkeeping internally before emitting.
+     *       Effect just applies geometry with stagger — no windowsSnappedBatch callback.
+     */
+    void applyGeometriesBatch(const QString& batchJson, const QString& action);
+
+    /**
+     * @brief Daemon requests KWin to raise windows in order (z-order restoration)
+     * @param windowIds Ordered list of window IDs (bottom-to-top)
+     */
+    void raiseWindowsRequested(const QStringList& windowIds);
+
 public Q_SLOTS:
     /**
      * @brief Daemon-driven float toggle. KWin calls with active window; daemon does logic and emits
@@ -889,6 +923,7 @@ private:
     // ═══════════════════════════════════════════════════════════════════════════════
     // Screen tracking (from KWin effect's D-Bus calls)
     // ═══════════════════════════════════════════════════════════════════════════════
+    QString m_lastActiveWindowId; // From windowActivated (focused window's ID)
     QString m_lastActiveScreenId; // From windowActivated (focused window's screen)
     QString m_lastCursorScreenId; // From cursorScreenChanged (cursor's screen)
 

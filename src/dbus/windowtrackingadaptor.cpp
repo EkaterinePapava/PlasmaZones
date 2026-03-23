@@ -340,6 +340,9 @@ void WindowTrackingAdaptor::windowActivated(const QString& windowId, const QStri
         return;
     }
 
+    // Track the active window for daemon-driven navigation (move/focus/swap/etc.)
+    m_lastActiveWindowId = windowId;
+
     // Track the active window's screen as fallback for shortcut screen detection.
     // The primary source is now cursorScreenChanged (from KWin effect's mouseChanged).
     if (!screenId.isEmpty()) {
