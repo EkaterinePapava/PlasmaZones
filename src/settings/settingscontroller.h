@@ -8,6 +8,7 @@
 #pragma once
 
 #include "../config/settings.h"
+#include "../config/updatechecker.h"
 #include "../common/daemoncontroller.h"
 #include "screenhelper.h"
 #include "../core/constants.h"
@@ -33,6 +34,9 @@ class SettingsController : public QObject
     Q_PROPERTY(bool daemonRunning READ daemonRunning NOTIFY daemonRunningChanged)
     Q_PROPERTY(Settings* settings READ settings CONSTANT)
     Q_PROPERTY(DaemonController* daemonController READ daemonController CONSTANT)
+    Q_PROPERTY(UpdateChecker* updateChecker READ updateChecker CONSTANT)
+    Q_PROPERTY(QString dismissedUpdateVersion READ dismissedUpdateVersion WRITE setDismissedUpdateVersion NOTIFY
+                   dismissedUpdateVersionChanged)
 
     // Layout management
     Q_PROPERTY(QVariantList layouts READ layouts NOTIFY layoutsChanged)
@@ -106,6 +110,16 @@ public:
     {
         return &m_daemonController;
     }
+    UpdateChecker* updateChecker()
+    {
+        return &m_updateChecker;
+    }
+    QString dismissedUpdateVersion() const
+    {
+        return m_dismissedUpdateVersion;
+    }
+    void setDismissedUpdateVersion(const QString& version);
+    Q_INVOKABLE void dismissUpdate();
 
     // Layout accessors
     QVariantList layouts() const
@@ -333,6 +347,7 @@ Q_SIGNALS:
     void layoutsChanged();
     void layoutAdded(const QString& layoutId);
     void screensChanged();
+    void dismissedUpdateVersionChanged();
 
     // Virtual desktop / activity / assignment signals
     void virtualDesktopsChanged();
@@ -385,6 +400,8 @@ private:
 
     Settings m_settings;
     DaemonController m_daemonController;
+    UpdateChecker m_updateChecker;
+    QString m_dismissedUpdateVersion;
     ScreenHelper m_screenHelper;
     QString m_activePage = QStringLiteral("overview");
     bool m_needsSave = false;

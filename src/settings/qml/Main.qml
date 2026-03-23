@@ -939,6 +939,59 @@ ApplicationWindow {
 
             }
 
+            // ── Update banner (visible on all pages) ─────────────────────
+            Pane {
+                id: updateBanner
+
+                Layout.fillWidth: true
+                visible: settingsController.updateChecker.updateAvailable && settingsController.updateChecker.latestVersion !== settingsController.dismissedUpdateVersion
+                padding: Kirigami.Units.smallSpacing
+                topPadding: Kirigami.Units.smallSpacing
+                bottomPadding: Kirigami.Units.smallSpacing
+
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Kirigami.Icon {
+                        source: "update-none"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                        color: Kirigami.Theme.positiveTextColor
+                    }
+
+                    Label {
+                        text: i18n("PlasmaZones %1 is available", settingsController.updateChecker.latestVersion)
+                        Layout.fillWidth: true
+                        color: Kirigami.Theme.positiveTextColor
+                    }
+
+                    Button {
+                        text: i18n("View Release")
+                        flat: true
+                        icon.name: "internet-web-browser"
+                        visible: settingsController.updateChecker.releaseUrl.length > 0
+                        onClicked: Qt.openUrlExternally(settingsController.updateChecker.releaseUrl)
+                    }
+
+                    ToolButton {
+                        icon.name: "dialog-close"
+                        display: ToolButton.IconOnly
+                        onClicked: settingsController.dismissUpdate()
+                        ToolTip.text: i18n("Dismiss")
+                        ToolTip.visible: hovered
+                    }
+
+                }
+
+                background: Rectangle {
+                    color: Qt.rgba(Kirigami.Theme.positiveTextColor.r, Kirigami.Theme.positiveTextColor.g, Kirigami.Theme.positiveTextColor.b, 0.15)
+                    border.width: Math.round(Kirigami.Units.devicePixelRatio)
+                    border.color: Qt.rgba(Kirigami.Theme.positiveTextColor.r, Kirigami.Theme.positiveTextColor.g, Kirigami.Theme.positiveTextColor.b, 0.3)
+                }
+
+            }
+
             // Page content with crossfade transition
             Item {
                 id: pageContainer

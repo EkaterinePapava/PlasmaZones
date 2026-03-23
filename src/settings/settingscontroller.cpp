@@ -128,10 +128,32 @@ SettingsController::SettingsController(QObject* parent)
     // Forward lock state changes (from Settings::load() after external D-Bus settingsChanged)
     connect(&m_settings, &Settings::lockedScreensChanged, this, &SettingsController::lockedScreensChanged);
 
+    // Load dismissed update version from app-local settings
+    {
+        QSettings appSettings(QStringLiteral("plasmazones"), QStringLiteral("settings-window"));
+        m_dismissedUpdateVersion = appSettings.value(QStringLiteral("dismissedUpdateVersion")).toString();
+    }
+
     // Initial loads
     scheduleLayoutLoad();
     refreshVirtualDesktops();
     refreshActivities();
+    m_updateChecker.checkForUpdates();
+}
+
+void SettingsController::setDismissedUpdateVersion(const QString& version)
+{
+    if (m_dismissedUpdateVersion != version) {
+        m_dismissedUpdateVersion = version;
+        QSettings appSettings(QStringLiteral("plasmazones"), QStringLiteral("settings-window"));
+        appSettings.setValue(QStringLiteral("dismissedUpdateVersion"), version);
+        Q_EMIT dismissedUpdateVersionChanged();
+    }
+}
+
+void SettingsController::dismissUpdate()
+{
+    setDismissedUpdateVersion(m_updateChecker.latestVersion());
 }
 
 void SettingsController::setActivePage(const QString& page)
