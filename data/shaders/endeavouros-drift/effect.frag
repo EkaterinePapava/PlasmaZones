@@ -324,94 +324,27 @@ vec2 computeInstanceUV(int idx, int totalCount, vec2 globalUV, float aspect, flo
 
 
 // =========================================================================
-//  CONSTELLATION NETWORK BACKGROUND
+//  WIND CURRENT BACKGROUND (no loops — pure math)
+//  Flowing current lines + parallax sail silhouettes
 // =========================================================================
 
-const int CONSTELLATION_COUNT = 14;
+// Wind current: a single flowing line at a given Y with sine displacement
+float windCurrent(vec2 uv, float baseY, float freq, float amp, float speed, float time) {
+    float wave = baseY + sin(uv.x * freq + time * speed) * amp
+                       + sin(uv.x * freq * 2.3 + time * speed * 1.7) * amp * 0.4;
+    return smoothstep(0.004, 0.0, abs(uv.y - wave));
+}
 
-vec3 constellationNetwork(vec2 uv, float time, float bassEnv, float midsEnv, float trebleEnv,
-                          float particleStr, float connThreshold,
-                          float orbitScale, float lineStr, vec2 orbitCenter,
-                          vec3 palPrimary, vec3 palSecondary, vec3 palAccent, vec3 palGlow) {
-    vec3 col = vec3(0.0);
-    vec2 dots[14]; vec3 dotColors[14];
-    // Bass makes dots scatter outward from center (explosive feel)
-    float scatter = 1.0 + bassEnv * 0.6;
-    for (int i = 0; i < CONSTELLATION_COUNT; i++) {
-        float fi = float(i);
-        float h1=hash21(vec2(fi*7.13,3.91)), h2=hash21(vec2(fi*11.37,17.53)), h3=hash21(vec2(fi*5.79,23.11));
-        dots[i] = vec2(orbitCenter.x + sin(time*(0.12+h1*0.18)+h1*TAU)*(0.32+h3*0.15)*(orbitScale)*scatter,
-                        orbitCenter.y + cos(time*(0.10+h2*0.16)+h2*TAU)*(0.28+h1*0.12)*(orbitScale)*scatter);
-        float cs = mod(fi, 3.0);
-        dotColors[i] = cs < 1.0 ? palPrimary : cs < 2.0 ? palSecondary : palAccent;
-    }
-
-    // Mids expand the connection radius — more connections on mid-heavy music
-    float connectionThreshold = connThreshold * 0.6 + midsEnv * 0.2;
-
-    for (int i = 0; i < CONSTELLATION_COUNT; i++) {
-        vec2 dPos = dots[i];
-        float dist = length(uv - dPos);
-        float fi = float(i);
-
-        // Dot glow: treble makes dots twinkle
-        float twinklePhase = hash21(vec2(fi, floor(time * 4.0)));
-        float dotBright = 1.0 + bassEnv * 0.5 + trebleEnv * 2.0 * step(0.4, twinklePhase);
-        float dotRadius = 0.007 + bassEnv * 0.003;
-        float dotMask = smoothstep(dotRadius, dotRadius * 0.1, dist);
-        float dotHalo = exp(-dist * 50.0) * (0.25 + bassEnv * 0.25);
-
-        col += dotColors[i] * (dotMask + dotHalo) * dotBright * particleStr;
-
-        // Treble flash (merged here to reuse dist — avoids second 14-iteration loop)
-        float flashChance = step(0.5, hash21(vec2(fi, floor(time * 6.0))));
-        col += dotColors[i] * exp(-dist * 30.0) * trebleEnv * 2.0 * flashChance;
-
-        // Skip inner loop if fragment is far from this dot — no connection
-        // line can be visible if we're further than the max connection range
-        if (dist > connectionThreshold + 0.04) continue;
-
-        // Connection lines to nearby dots
-        for (int j = i + 1; j < CONSTELLATION_COUNT; j++) {
-            vec2 dPos2 = dots[j];
-            float dotDist = length(dPos - dPos2);
-
-            if (dotDist < connectionThreshold) {
-                float lineDist = sdSegment(uv, dPos, dPos2);
-                float lineWidth = 0.003;
-                float lineMask = smoothstep(lineWidth, lineWidth * 0.1, lineDist);
-
-                float proximity = 1.0 - dotDist / connectionThreshold;
-                proximity *= proximity;
-
-                float lineBass = 0.6 + bassEnv * 1.5;
-                float linePhase = fract(time * 0.25 + hash21(vec2(fi, float(j))) * TAU);
-                float linePulse = 0.5 + 0.5 * sin(linePhase * TAU);
-
-                vec3 lineCol = mix(dotColors[i], dotColors[j], 0.5);
-                col += lineCol * 0.5 * lineMask * proximity * linePulse * lineBass * particleStr * lineStr;
-            }
-        }
-    }
-
-    // ── Bass shockwave: expanding ring from center on bass hits ──
-    {
-        // 2 staggered shockwave rings
-        for (int sw = 0; sw < 2; sw++) {
-            float swPhase = fract(time * 0.8 + float(sw) * 0.5);
-            float swRadius = swPhase * 0.6;
-            float swAge = swPhase;
-            float swDist = abs(length(uv - vec2(0.5)) - swRadius);
-            float swMask = smoothstep(0.015, 0.0, swDist) * (1.0 - swAge * swAge);
-            swMask *= bassEnv * 2.0;
-            vec3 swCol = mix(palPrimary, palAccent, swPhase);
-            col += swCol * swMask * 0.6;
-        }
-    }
-
-    // (treble flash merged into main dot loop above)
-
-    return col;
+// Sail silhouette: a simple triangle at a given position/size
+float sailSilhouette(vec2 uv, vec2 pos, float size, float lean) {
+    vec2 p = uv - pos;
+    p.x -= p.y * lean; // lean the sail
+    // Triangle: narrow at top, wide at bottom
+    float width = size * (0.1 + 0.9 * clamp(p.y / size + 0.5, 0.0, 1.0));
+    float inX = smoothstep(width, width - 0.005, abs(p.x));
+    float inY = smoothstep(-size * 0.5 - 0.005, -size * 0.5, p.y)
+              * smoothstep(size * 0.5 + 0.005, size * 0.5, p.y);
+    return inX * inY;
 }
 
 
@@ -479,54 +412,93 @@ vec4 renderEosZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor, 
     if (d < 0.0) {
 
         // =============================================================
-        //  BACKGROUND: Warm gradient wash + Constellation network
+        //  BACKGROUND: Warm gradient + Wind currents + Sail silhouettes
+        //  The voyage theme: flowing wind, distant sails, warm horizon
+        //  No loops — all pure math (sin/smoothstep/mix)
         // =============================================================
 
-        // Warm gradient fill: purple (top-left) to coral (bottom-right)
-        // This IS the background — rich and visible, not a faint tint
+        // Warm tri-color gradient: purple top → mixed mid → coral bottom
         float gradT = dot(globalUV, vec2(cos(gradAngle), sin(gradAngle)));
-        vec3 gradBase = mix(palSecondary * 0.35, palAccent * 0.25, smoothstep(0.0, 1.0, gradT));
-        vec3 col = gradBase * brightness;
+        vec3 gradTop = palSecondary * 0.35;
+        vec3 gradMid = mix(palPrimary, palGlow, 0.3) * 0.25;
+        vec3 gradBot = palAccent * 0.25;
+        float gt = smoothstep(0.0, 1.0, gradT);
+        vec3 col = mix(mix(gradTop, gradMid, smoothstep(0.0, 0.5, gt)),
+                        gradBot, smoothstep(0.5, 1.0, gt)) * brightness;
 
-        // Simplex noise color wash — adds movement and texture to the gradient
+        // Simplex noise color wash for movement
         {
             float n1 = simplex2D(globalUV * 3.0 + time * speed * 0.3) * 0.5 + 0.5;
             float n2 = simplex2D(globalUV * 2.0 + time * speed * 0.2 + vec2(50.0)) * 0.5 + 0.5;
             vec3 washCol = paletteSweep(n1 * contrast + midsEnv * 0.15,
                                          palPrimary, palSecondary, palAccent, palGlow, midsEnv);
-            col = mix(col, washCol * brightness * 0.5, n2 * 0.4);
+            col = mix(col, washCol * brightness * 0.5, n2 * 0.45);
         }
 
-        // Purple wash at top, coral warmth at bottom
-        col += palSecondary * 0.1 * (1.0 - globalUV.y) * brightness;
-        col += palAccent * 0.06 * globalUV.y * brightness;
-
-        // -- Constellation network (primary feature) --
+        // ── Wind current lines (6 flowing lines, no loops needed) ────
+        // Each line uses a different frequency/speed/color — suggests wind/ocean
         {
-            float orbitTime = time * flowSpeed;
-            vec3 network = constellationNetwork(globalUV, orbitTime, bassEnv, midsEnv, trebleEnv,
-                                                particleStr * 2.5, connThreshold,
-                                                gridScale / 5.0, gridStrength * 5.0,
-                                                vec2(gradCenterX, gradCenterY),
-                                                palPrimary, palSecondary, palAccent, palGlow);
-            col += network * brightness * 1.5;
+            float windSpeed = flowSpeed * 3.0;
+            float windStr = gridStrength * 3.0;
+            float bassWind = 1.0 + bassEnv * 0.8; // bass makes wind stronger
+
+            // 6 current lines at different depths with tri-color tinting
+            float w1 = windCurrent(globalUV, 0.15, 8.0, 0.03 * bassWind, windSpeed * 1.0, time);
+            float w2 = windCurrent(globalUV, 0.30, 6.0, 0.04 * bassWind, windSpeed * 0.8, time);
+            float w3 = windCurrent(globalUV, 0.45, 10.0, 0.025 * bassWind, windSpeed * 1.2, time);
+            float w4 = windCurrent(globalUV, 0.60, 7.0, 0.035 * bassWind, windSpeed * 0.9, time);
+            float w5 = windCurrent(globalUV, 0.75, 9.0, 0.03 * bassWind, windSpeed * 1.1, time);
+            float w6 = windCurrent(globalUV, 0.88, 5.0, 0.045 * bassWind, windSpeed * 0.7, time);
+
+            col += palPrimary   * (w1 + w4) * windStr * brightness;
+            col += palSecondary * (w2 + w5) * windStr * brightness;
+            col += palAccent    * (w3 + w6) * windStr * brightness;
+
+            // Mids add secondary wave layer (slightly offset)
+            float midsWave = midsEnv * 0.5;
+            if (midsWave > 0.01) {
+                float wm1 = windCurrent(globalUV, 0.22, 12.0, 0.02, windSpeed * 1.5, time);
+                float wm2 = windCurrent(globalUV, 0.55, 11.0, 0.02, windSpeed * 1.3, time);
+                col += palGlow * (wm1 + wm2) * midsWave * windStr * brightness;
+            }
         }
 
-        // Ambient noise texture
+        // ── Parallax sail silhouettes (3 distant sails drifting) ────
+        // Echoes the logo's shape at different depths — the fleet theme
         {
-            float noise = simplex2D(globalUV * 35.0 + time * 0.08) * 0.5 + 0.5;
-            col += palGlow * noise * 0.03 * brightness;
+            float sailStr = particleStr * 1.5;
+            vec2 center = vec2(gradCenterX, gradCenterY);
+
+            // Sail 1: large, far, slow — purple tint
+            float s1 = sailSilhouette(globalUV,
+                center + vec2(sin(time * speed * 0.3) * 0.15 - 0.25,
+                              cos(time * speed * 0.2) * 0.05 + 0.1),
+                0.15 + bassEnv * 0.02, 0.3);
+            col += palSecondary * s1 * 0.12 * sailStr * brightness;
+
+            // Sail 2: medium, mid-depth — periwinkle
+            float s2 = sailSilhouette(globalUV,
+                center + vec2(sin(time * speed * 0.5 + 2.0) * 0.2 + 0.2,
+                              cos(time * speed * 0.3 + 1.0) * 0.06 - 0.05),
+                0.10 + bassEnv * 0.015, -0.2);
+            col += palPrimary * s2 * 0.15 * sailStr * brightness;
+
+            // Sail 3: small, near, fastest — coral
+            float s3 = sailSilhouette(globalUV,
+                center + vec2(sin(time * speed * 0.7 + 4.0) * 0.25 + 0.05,
+                              cos(time * speed * 0.4 + 3.0) * 0.07 + 0.15),
+                0.07 + bassEnv * 0.01, 0.15);
+            col += palAccent * s3 * 0.18 * sailStr * brightness;
         }
 
-        // Bass: whole-scene color flash toward warm coral on heavy hits
+        // ── Bass: color flash + breathing ────────────────────────
         col = mix(col, col + palAccent * 0.15, bassEnv * 0.6);
-        // Bass breathing
         col *= (1.0 + bassEnv * 0.4);
 
-        // Mids: palette warmth shift — purple-heavy music shifts toward warm coral
+        // ── Mids: warmth shift ───────────────────────────────────
         col = mix(col, col * mix(vec3(1.0), palAccent * 1.5, 0.15), midsEnv * 0.4);
 
-        // Treble: sharp bright flicker across the background (branchless)
+        // ── Treble: grid flicker ─────────────────────────────────
         {
             vec2 flickerGrid = floor(globalUV * 30.0 + time * 8.0);
             float flicker = step(0.92, hash21(flickerGrid)) * trebleEnv;
