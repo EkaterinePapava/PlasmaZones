@@ -1882,7 +1882,11 @@ void PlasmaZonesEffect::slotApplyGeometryRequested(const QString& windowId, cons
     // The daemon handles windowSnapped/recordSnapIntent internally, but only the effect
     // knows the window's current frame geometry for pre-tile storage.
     if (!zoneId.isEmpty()) {
-        ensurePreSnapGeometryStored(w, getWindowId(w));
+        // Capture frame geometry synchronously BEFORE applySnapGeometry moves the window.
+        // ensurePreSnapGeometryStored is async (D-Bus hasPreTileGeometry check) — without
+        // pre-capturing, the callback would read the post-move geometry instead of the
+        // original free-floating position.
+        ensurePreSnapGeometryStored(w, getWindowId(w), w->frameGeometry());
     }
 
     applySnapGeometry(w, geometry);
@@ -1964,12 +1968,12 @@ void PlasmaZonesEffect::slotApplyGeometriesBatch(const QString& batchJson, const
         return;
     }
 
-    // Store pre-snap geometries before any timers fire
-    for (const auto& p : pending) {
-        if (p.window) {
-            ensurePreSnapGeometryStored(p.window, getWindowId(p.window));
-        }
-    }
+    // Note: ensurePreSnapGeometryStored is NOT called here. Batch operations (rotate, resnap)
+    // move windows between zones — their pre-tile geometry is already stored from the original
+    // snap. The daemon's processBatchEntries calls clearPreTileGeometry only for __restore__
+    // entries (overflow windows). Calling ensurePreSnapGeometryStored here would race with
+    // the daemon's clearPreTileGeometry and store the zone geometry as pre-tile, corrupting
+    // the restore path on subsequent mode transitions.
 
     // Capture stacking order before applying geometries (moveResize raises on Wayland)
     const auto allWindows = KWin::effects->stackingOrder();

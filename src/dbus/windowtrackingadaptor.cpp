@@ -321,6 +321,13 @@ void WindowTrackingAdaptor::windowClosed(const QString& windowId)
         return;
     }
 
+    // Clear active window tracking if the closed window was the active one.
+    // Without this, navigation shortcuts after closing the active window would
+    // operate on a stale ID, producing confusing OSD failure messages.
+    if (m_lastActiveWindowId == windowId) {
+        m_lastActiveWindowId.clear();
+    }
+
     m_service->windowClosed(windowId);
     qCDebug(lcDbusWindow) << "Cleaned up tracking data for closed window" << windowId;
 }

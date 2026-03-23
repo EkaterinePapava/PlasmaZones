@@ -43,13 +43,13 @@ SnapAdaptor::SnapAdaptor(SnapEngine* engine, WindowTrackingAdaptor* adaptor, QOb
     // for proper bookkeeping (windowSnapped per entry) + applyGeometriesBatch emission.
     connect(m_engine, &SnapEngine::resnapToNewLayoutRequested, adaptor, &WindowTrackingAdaptor::handleBatchedResnap);
 
-    qCDebug(lcDbusWindow) << "SnapAdaptor initialized with 6 signal connections";
+    qCDebug(lcDbusWindow) << "SnapAdaptor initialized with 5 signal connections";
 }
 
 void SnapAdaptor::clearEngine()
 {
     if (m_engine && m_adaptor) {
-        // All 10 connections are m_engine → m_adaptor (not m_engine → this),
+        // All connections are m_engine → m_adaptor (not m_engine → this),
         // so we must disconnect from the actual receiver.
         disconnect(m_engine, nullptr, m_adaptor, nullptr);
     }

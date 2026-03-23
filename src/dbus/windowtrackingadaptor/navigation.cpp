@@ -305,6 +305,14 @@ static bool processBatchEntries(WindowTrackingAdaptor* adaptor, const QVector<Ro
                     break;
                 }
             }
+            // Fallback: use cursor/active screen if geometry doesn't resolve to a screen
+            // (possible if zone geometries reference a disconnected monitor)
+            if (screenId.isEmpty()) {
+                screenId = adaptor->lastCursorScreenName();
+                if (screenId.isEmpty()) {
+                    screenId = adaptor->lastActiveScreenName();
+                }
+            }
             adaptor->windowSnapped(entry.windowId, entry.targetZoneId, screenId);
         }
     }
