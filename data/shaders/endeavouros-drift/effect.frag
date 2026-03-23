@@ -217,7 +217,7 @@ vec2 sdBlueWithEdge(vec2 p) {
     vec2 dLo = BLUE_AABB_LO - p; vec2 dHi = p - BLUE_AABB_HI;
     vec2 outside = max(max(dLo, dHi), vec2(0.0));
     float boxDist2 = dot(outside, outside);
-    if (boxDist2 > 0.0004) { float bd = sqrt(boxDist2); return vec2(bd, bd); }
+    if (boxDist2 > 0.06) { float bd = sqrt(boxDist2); return vec2(bd, bd); }
     POLY_SDF_BODY(EOS_BLUE_POLY, EOS_BLUE_N)
     return vec2(s * edgeDist, edgeDist);
 }
@@ -225,7 +225,7 @@ vec2 sdRedWithEdge(vec2 p) {
     vec2 dLo = RED_AABB_LO - p; vec2 dHi = p - RED_AABB_HI;
     vec2 outside = max(max(dLo, dHi), vec2(0.0));
     float boxDist2 = dot(outside, outside);
-    if (boxDist2 > 0.0004) { float bd = sqrt(boxDist2); return vec2(bd, bd); }
+    if (boxDist2 > 0.06) { float bd = sqrt(boxDist2); return vec2(bd, bd); }
     POLY_SDF_BODY(EOS_RED_POLY, EOS_RED_N)
     return vec2(s * edgeDist, edgeDist);
 }
@@ -233,7 +233,7 @@ vec2 sdPurpWithEdge(vec2 p) {
     vec2 dLo = PURP_AABB_LO - p; vec2 dHi = p - PURP_AABB_HI;
     vec2 outside = max(max(dLo, dHi), vec2(0.0));
     float boxDist2 = dot(outside, outside);
-    if (boxDist2 > 0.0004) { float bd = sqrt(boxDist2); return vec2(bd, bd); }
+    if (boxDist2 > 0.06) { float bd = sqrt(boxDist2); return vec2(bd, bd); }
     POLY_SDF_BODY(EOS_PURP_POLY, EOS_PURP_N)
     return vec2(s * edgeDist, edgeDist);
 }
