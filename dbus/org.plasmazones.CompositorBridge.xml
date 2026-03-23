@@ -2,7 +2,7 @@
 "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
     <interface name="org.plasmazones.CompositorBridge">
-        <annotation name="org.gtk.GDBus.DocString" value="Compositor-agnostic bridge protocol. Compositor bridges register here and receive window manipulation commands via signals. EXPERIMENTAL — may change before v2."/>
+        <annotation name="org.gtk.GDBus.DocString" value="Compositor-agnostic bridge protocol. Compositor bridges register here and receive window manipulation commands via signals."/>
 
         <!-- Bridge registration (compositor → daemon) -->
         <method name="registerBridge">

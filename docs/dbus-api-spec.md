@@ -1,18 +1,8 @@
 # PlasmaZones D-Bus API Specification
 
-**Version**: 1.1
 **Service**: `org.plasmazones`
 **Object Path**: `/PlasmaZones`
-**Interfaces**: 7 (+ 3 planned)
-
-## Stability Tiers
-
-| Tier | Guarantee | Scope |
-|------|-----------|-------|
-| **Stable** | No breaking changes within major version | All v1.0 methods/signals |
-| **v1.1** | Additive only, may refine before v2 | New methods added in this document |
-| **Experimental** | May change before stabilization | CompositorBridge protocol |
-| **Internal** | No external stability guarantee | Methods annotated `@internal` |
+**Interfaces**: 10
 
 ## Window ID Format
 
@@ -31,104 +21,102 @@ Window-to-zone assignment tracking, floating state, navigation commands, and sna
 
 ### Methods
 
-| Method | Signature | Returns | Stability | Purpose |
-|--------|-----------|---------|-----------|---------|
-| `windowSnapped` | `(s windowId, s zoneId, s screenId)` | void | Stable | Record window snapped to zone |
-| `windowSnappedMultiZone` | `(s windowId, as zoneIds, s screenId)` | void | Stable | Record multi-zone snap |
-| `windowUnsnapped` | `(s windowId)` | void | Stable | Record window unsnapped |
-| `windowsSnappedBatch` | `(s batchJson)` | void | Stable | Batch snap confirmations (JSON) |
-| `windowScreenChanged` | `(s windowId, s newScreenId)` | void | Stable | Notify cross-screen move |
-| `setWindowSticky` | `(s windowId, b sticky)` | void | Stable | Set all-desktops state |
-| `windowClosed` | `(s windowId)` | void | Stable | Clean up tracking for closed window |
-| `windowActivated` | `(s windowId, s screenId)` | void | Stable | Notify window gained focus |
-| `cursorScreenChanged` | `(s screenId)` | void | Stable | Cursor crossed to different monitor |
-| `getZoneForWindow` | `(s windowId)` | `s zoneId` | Stable | Query current zone |
-| `getMultiZoneForWindow` | `(s windowId)` | `as zoneIds` | Stable | Query all zones window spans |
-| `getWindowsInZone` | `(s zoneId)` | `as windowIds` | Stable | Get windows in zone |
-| `getSnappedWindows` | `()` | `as windowIds` | Stable | Get all snapped windows |
-| `getEmptyZonesJson` | `(s screenId)` | `s json` | Stable | Empty zones with geometry (JSON) |
-| `getLastUsedZoneId` | `()` | `s zoneId` | Stable | Last used zone for auto-snap |
-| `storePreTileGeometry` | `(s windowId, i x, i y, i w, i h, s screenId, b overwrite)` | void | Stable | Store geometry before snap/tile |
-| `hasPreTileGeometry` | `(s windowId)` | `b` | Stable | Check if pre-tile geometry exists |
-| `getPreTileGeometry` | `(s windowId)` | `b found, i x, i y, i w, i h` | Stable | Get raw pre-tile geometry |
-| `getValidatedPreTileGeometry` | `(s windowId)` | `b found, i x, i y, i w, i h` | Stable | Get pre-tile geometry (screen-validated) |
-| `clearPreTileGeometry` | `(s windowId)` | void | Stable | Clear stored pre-tile geometry |
-| `getPreTileGeometriesJson` | `()` | `s json` | Stable | All pre-tile geometries as JSON |
-| `setWindowFloating` | `(s windowId, b floating)` | void | Stable | Set floating state |
-| `isWindowFloating` | `(s windowId)` | `b` | Stable | Check floating state |
-| `queryWindowFloating` | `(s windowId)` | `b` | Stable | Query floating (for effect sync) |
-| `getFloatingWindows` | `()` | `as windowIds` | Stable | Get all floating windows |
-| `windowUnsnappedForFloat` | `(s windowId)` | void | Stable | Unsnap for float (saves pre-float zone) |
-| `getPreFloatZone` | `(s windowId)` | `b found, s zoneId` | Stable | Get zone to restore on unfloat |
-| `clearPreFloatZone` | `(s windowId)` | void | Stable | Clear pre-float zone |
-| `calculateUnfloatRestore` | `(s windowId, s screenId)` | `s json` | Stable | Calculate unfloat geometry+zones |
-| `getZoneGeometry` | `(s zoneId)` | `s json` | Stable | Zone geometry (primary screen) |
-| `getZoneGeometryForScreen` | `(s zoneId, s screenId)` | `s json` | Stable | Zone geometry for screen |
-| `findEmptyZone` | `()` | `s zoneId` | Stable | First empty zone ID |
-| `snapToAppRule` | `(s windowId, s screenId, b sticky)` | `i x, i y, i w, i h, b shouldSnap` | Stable | Auto-snap via app rule |
-| `snapToLastZone` | `(s windowId, s screenId, b sticky)` | `i x, i y, i w, i h, b shouldSnap` | Stable | Auto-snap to last used zone |
-| `snapToEmptyZone` | `(s windowId, s screenId, b sticky)` | `i x, i y, i w, i h, b shouldSnap` | Stable | Auto-assign to first empty zone |
-| `restoreToPersistedZone` | `(s windowId, s screenId, b sticky)` | `i x, i y, i w, i h, b shouldRestore` | Stable | Restore from session persistence |
-| `resolveWindowRestore` | `(s windowId, s screenId, b sticky)` | `i x, i y, i w, i h, b shouldSnap` | Stable | Full 4-level snap fallback chain |
-| `getUpdatedWindowGeometries` | `()` | `s json` | Stable | Updated geometries after resolution change |
-| `recordSnapIntent` | `(s windowId, b wasUserInitiated)` | void | Stable | Record user vs auto snap |
-| `reportNavigationFeedback` | `(b success, s action, s reason, s sourceZoneId, s targetZoneId, s screenId)` | void | Stable | Report nav result for OSD |
-| `toggleFloatForWindow` | `(s windowId, s screenId)` | void | Stable | Daemon-driven float toggle |
-| `setWindowFloatingForScreen` | `(s windowId, s screenId, b floating)` | void | Stable | Explicit directional float set |
-| `applyGeometryForFloat` | `(s windowId, s screenId)` | `b applied` | Stable | Apply pre-tile geometry on float |
-| `requestMoveSpecificWindowToZone` | `(s windowId, s zoneId, s geometryJson)` | void | Stable | Snap Assist: move specific window |
-| `saveState` | `()` | void | Stable | Persist tracking state |
-| `loadState` | `()` | void | Stable | Load persisted state |
-| `saveStateOnShutdown` | `()` | void | Internal | Flush state on daemon exit |
-| `requestReapplyWindowGeometries` | `()` | void | Internal | Trigger geometry reapply |
-| `handleBatchedResnap` | `(s resnapData)` | void | Internal | Process batched resnap from SnapEngine |
+| Method | Signature | Returns | Purpose |
+|--------|-----------|---------|---------|
+| `windowSnapped` | `(s windowId, s zoneId, s screenId)` | void | Record window snapped to zone |
+| `windowSnappedMultiZone` | `(s windowId, as zoneIds, s screenId)` | void | Record multi-zone snap |
+| `windowUnsnapped` | `(s windowId)` | void | Record window unsnapped |
+| `windowsSnappedBatch` | `(s batchJson)` | void | Batch snap confirmations (JSON) |
+| `windowScreenChanged` | `(s windowId, s newScreenId)` | void | Notify cross-screen move |
+| `setWindowSticky` | `(s windowId, b sticky)` | void | Set all-desktops state |
+| `windowClosed` | `(s windowId)` | void | Clean up tracking for closed window |
+| `windowActivated` | `(s windowId, s screenId)` | void | Notify window gained focus |
+| `cursorScreenChanged` | `(s screenId)` | void | Cursor crossed to different monitor |
+| `getZoneForWindow` | `(s windowId)` | `s zoneId` | Query current zone |
+| `getMultiZoneForWindow` | `(s windowId)` | `as zoneIds` | Query all zones window spans |
+| `getWindowsInZone` | `(s zoneId)` | `as windowIds` | Get windows in zone |
+| `getSnappedWindows` | `()` | `as windowIds` | Get all snapped windows |
+| `getEmptyZonesJson` | `(s screenId)` | `s json` | Empty zones with geometry (JSON) |
+| `getLastUsedZoneId` | `()` | `s zoneId` | Last used zone for auto-snap |
+| `storePreTileGeometry` | `(s windowId, i x, i y, i w, i h, s screenId, b overwrite)` | void | Store geometry before snap/tile |
+| `hasPreTileGeometry` | `(s windowId)` | `b` | Check if pre-tile geometry exists |
+| `getPreTileGeometry` | `(s windowId)` | `b found, i x, i y, i w, i h` | Get raw pre-tile geometry |
+| `getValidatedPreTileGeometry` | `(s windowId)` | `b found, i x, i y, i w, i h` | Get pre-tile geometry (screen-validated) |
+| `clearPreTileGeometry` | `(s windowId)` | void | Clear stored pre-tile geometry |
+| `getPreTileGeometriesJson` | `()` | `s json` | All pre-tile geometries as JSON |
+| `setWindowFloating` | `(s windowId, b floating)` | void | Set floating state |
+| `isWindowFloating` | `(s windowId)` | `b` | Check floating state |
+| `queryWindowFloating` | `(s windowId)` | `b` | Query floating (for effect sync) |
+| `getFloatingWindows` | `()` | `as windowIds` | Get all floating windows |
+| `windowUnsnappedForFloat` | `(s windowId)` | void | Unsnap for float (saves pre-float zone) |
+| `getPreFloatZone` | `(s windowId)` | `b found, s zoneId` | Get zone to restore on unfloat |
+| `clearPreFloatZone` | `(s windowId)` | void | Clear pre-float zone |
+| `calculateUnfloatRestore` | `(s windowId, s screenId)` | `s json` | Calculate unfloat geometry+zones |
+| `getZoneGeometry` | `(s zoneId)` | `s json` | Zone geometry (primary screen) |
+| `getZoneGeometryForScreen` | `(s zoneId, s screenId)` | `s json` | Zone geometry for screen |
+| `findEmptyZone` | `()` | `s zoneId` | First empty zone ID |
+| `snapToAppRule` | `(s windowId, s screenId, b sticky)` | `i x, i y, i w, i h, b shouldSnap` | Auto-snap via app rule |
+| `snapToLastZone` | `(s windowId, s screenId, b sticky)` | `i x, i y, i w, i h, b shouldSnap` | Auto-snap to last used zone |
+| `snapToEmptyZone` | `(s windowId, s screenId, b sticky)` | `i x, i y, i w, i h, b shouldSnap` | Auto-assign to first empty zone |
+| `restoreToPersistedZone` | `(s windowId, s screenId, b sticky)` | `i x, i y, i w, i h, b shouldRestore` | Restore from session persistence |
+| `resolveWindowRestore` | `(s windowId, s screenId, b sticky)` | `i x, i y, i w, i h, b shouldSnap` | Full 4-level snap fallback chain |
+| `getUpdatedWindowGeometries` | `()` | `s json` | Updated geometries after resolution change |
+| `recordSnapIntent` | `(s windowId, b wasUserInitiated)` | void | Record user vs auto snap |
+| `reportNavigationFeedback` | `(b success, s action, s reason, s sourceZoneId, s targetZoneId, s screenId)` | void | Report nav result for OSD |
+| `toggleFloatForWindow` | `(s windowId, s screenId)` | void | Daemon-driven float toggle |
+| `setWindowFloatingForScreen` | `(s windowId, s screenId, b floating)` | void | Explicit directional float set |
+| `applyGeometryForFloat` | `(s windowId, s screenId)` | `b applied` | Apply pre-tile geometry on float |
+| `requestMoveSpecificWindowToZone` | `(s windowId, s zoneId, s geometryJson)` | void | Snap Assist: move specific window |
+| `saveState` | `()` | void | Persist tracking state |
+| `loadState` | `()` | void | Load persisted state |
+| `saveStateOnShutdown` | `()` | void | Flush state on daemon exit |
+| `requestReapplyWindowGeometries` | `()` | void | Trigger geometry reapply |
+| `handleBatchedResnap` | `(s resnapData)` | void | Process batched resnap from SnapEngine |
 | **Navigation (daemon-driven)** | | | |
-| `moveWindowToAdjacentZone` | `(s direction)` | void | Stable | Move active window to adjacent zone |
-| `focusAdjacentZone` | `(s direction)` | void | Stable | Focus window in adjacent zone |
-| `pushToEmptyZone` | `(s screenId)` | void | Stable | Push active window to first empty zone |
-| `restoreWindowSize` | `()` | void | Stable | Restore active window to pre-snap size |
-| `toggleWindowFloat` | `()` | void | Stable | Toggle float for active window |
-| `swapWindowWithAdjacentZone` | `(s direction)` | void | Stable | Swap active window with adjacent |
-| `snapToZoneByNumber` | `(i zoneNumber, s screenId)` | void | Stable | Snap active window to zone 1-9 |
-| `rotateWindowsInLayout` | `(b clockwise, s screenId)` | void | Stable | Rotate all windows in layout |
-| `cycleWindowsInZone` | `(b forward)` | void | Stable | Cycle focus within zone |
-| `resnapToNewLayout` | `()` | void | Stable | Resnap windows after layout change |
-| `resnapCurrentAssignments` | `(s screenFilter)` | void | Stable | Resnap from current assignments |
-| `resnapFromAutotileOrder` | `(as windowOrder, s screenId)` | void | Stable | Resnap using autotile window order |
-| `snapAllWindows` | `(s screenId)` | void | Stable | Trigger snap-all on screen |
-| `calculateSnapAllWindows` | `(as windowIds, s screenId)` | `s json` | Stable | Calculate snap-all assignments |
+| `moveWindowToAdjacentZone` | `(s direction)` | void | Move active window to adjacent zone |
+| `focusAdjacentZone` | `(s direction)` | void | Focus window in adjacent zone |
+| `pushToEmptyZone` | `(s screenId)` | void | Push active window to first empty zone |
+| `restoreWindowSize` | `()` | void | Restore active window to pre-snap size |
+| `toggleWindowFloat` | `()` | void | Toggle float for active window |
+| `swapWindowWithAdjacentZone` | `(s direction)` | void | Swap active window with adjacent |
+| `snapToZoneByNumber` | `(i zoneNumber, s screenId)` | void | Snap active window to zone 1-9 |
+| `rotateWindowsInLayout` | `(b clockwise, s screenId)` | void | Rotate all windows in layout |
+| `cycleWindowsInZone` | `(b forward)` | void | Cycle focus within zone |
+| `resnapToNewLayout` | `()` | void | Resnap windows after layout change |
+| `resnapCurrentAssignments` | `(s screenFilter)` | void | Resnap from current assignments |
+| `resnapFromAutotileOrder` | `(as windowOrder, s screenId)` | void | Resnap using autotile window order |
+| `snapAllWindows` | `(s screenId)` | void | Trigger snap-all on screen |
+| `calculateSnapAllWindows` | `(as windowIds, s screenId)` | `s json` | Calculate snap-all assignments |
 | **Target computation** | | | |
-| `getMoveTargetForWindow` | `(s windowId, s direction, s screenId)` | `s json` | Stable | Compute move target geometry |
-| `getFocusTargetForWindow` | `(s windowId, s direction, s screenId)` | `s json` | Stable | Compute focus target window |
-| `getPushTargetForWindow` | `(s windowId, s screenId)` | `s json` | Stable | Compute push target geometry |
-| `getSwapTargetForWindow` | `(s windowId, s direction, s screenId)` | `s json` | Stable | Compute swap target data |
-| `getSnapToZoneByNumberTarget` | `(s windowId, i zoneNumber, s screenId)` | `s json` | Stable | Compute snap-by-number geometry |
-| `getRestoreForWindow` | `(s windowId, s screenId)` | `s json` | Stable | Compute restore geometry |
-| `getCycleTargetForWindow` | `(s windowId, b forward, s screenId)` | `s json` | Stable | Compute cycle target window |
-| **Planned v1.1** | | | |
-| `moveWindowToZone` | `(s windowId, s zoneId)` | void | v1.1 | Convenience: snap window to zone |
-| `swapWindowsById` | `(s windowId1, s windowId2)` | void | v1.1 | Convenience: swap two windows |
-| `getWindowState` | `(s windowId)` | `s json` | v1.1 | Window state snapshot |
-| `getAllWindowStates` | `()` | `s json` | v1.1 | All window states for TUI |
+| `getMoveTargetForWindow` | `(s windowId, s direction, s screenId)` | `s json` | Compute move target geometry |
+| `getFocusTargetForWindow` | `(s windowId, s direction, s screenId)` | `s json` | Compute focus target window |
+| `getPushTargetForWindow` | `(s windowId, s screenId)` | `s json` | Compute push target geometry |
+| `getSwapTargetForWindow` | `(s windowId, s direction, s screenId)` | `s json` | Compute swap target data |
+| `getSnapToZoneByNumberTarget` | `(s windowId, i zoneNumber, s screenId)` | `s json` | Compute snap-by-number geometry |
+| `getRestoreForWindow` | `(s windowId, s screenId)` | `s json` | Compute restore geometry |
+| `getCycleTargetForWindow` | `(s windowId, b forward, s screenId)` | `s json` | Compute cycle target window |
+| `moveWindowToZone` | `(s windowId, s zoneId)` | void | Convenience: snap window to zone |
+| `swapWindowsById` | `(s windowId1, s windowId2)` | void | Convenience: swap two windows |
+| `getWindowState` | `(s windowId)` | `s json` | Window state snapshot |
+| `getAllWindowStates` | `()` | `s json` | All window states for TUI |
 
 ### Signals
 
-| Signal | Signature | Stability | Purpose |
-|--------|-----------|-----------|---------|
-| `windowZoneChanged` | `(s windowId, s zoneId)` | Stable | Zone assignment changed |
-| `windowFloatingChanged` | `(s windowId, b isFloating, s screenId)` | Stable | Floating state changed |
-| `toggleWindowFloatRequested` | `(b shouldFloat)` | Stable | Float toggle shortcut pressed |
-| `navigationFeedback` | `(b success, s action, s reason, s sourceZoneId, s targetZoneId, s screenId)` | Stable | Navigation result for OSD |
-| `pendingRestoresAvailable` | `()` | Stable | Pending zone restores ready |
-| `reapplyWindowGeometriesRequested` | `()` | Stable | Reapply after panel change |
-| `snapAllWindowsRequested` | `(s screenId)` | Stable | Effect should collect candidates |
-| `moveSpecificWindowToZoneRequested` | `(s windowId, s zoneId, s geometryJson)` | Stable | Move specific window (Snap Assist) |
-| `applyGeometryRequested` | `(s windowId, s geometryJson, s zoneId, s screenId)` | Stable | Apply geometry to window |
-| `activateWindowRequested` | `(s windowId)` | Stable | Activate/focus window |
-| `applyGeometriesBatch` | `(s batchJson, s action)` | Stable | Batch geometry application |
-| `raiseWindowsRequested` | `(as windowIds)` | Stable | Raise windows in order |
-| **Planned v1.1** | | | |
-| `windowStateChanged` | `(s windowId, s stateJson)` | v1.1 | Unified change stream |
+| Signal | Signature | Purpose |
+|--------|-----------|---------|
+| `windowZoneChanged` | `(s windowId, s zoneId)` | Zone assignment changed |
+| `windowFloatingChanged` | `(s windowId, b isFloating, s screenId)` | Floating state changed |
+| `toggleWindowFloatRequested` | `(b shouldFloat)` | Float toggle shortcut pressed |
+| `navigationFeedback` | `(b success, s action, s reason, s sourceZoneId, s targetZoneId, s screenId)` | Navigation result for OSD |
+| `pendingRestoresAvailable` | `()` | Pending zone restores ready |
+| `reapplyWindowGeometriesRequested` | `()` | Reapply after panel change |
+| `snapAllWindowsRequested` | `(s screenId)` | Effect should collect candidates |
+| `moveSpecificWindowToZoneRequested` | `(s windowId, s zoneId, s geometryJson)` | Move specific window (Snap Assist) |
+| `applyGeometryRequested` | `(s windowId, s geometryJson, s zoneId, s screenId)` | Apply geometry to window |
+| `activateWindowRequested` | `(s windowId)` | Activate/focus window |
+| `applyGeometriesBatch` | `(s batchJson, s action)` | Batch geometry application |
+| `raiseWindowsRequested` | `(as windowIds)` | Raise windows in order |
+| `windowStateChanged` | `(s windowId, s stateJson)` | Unified change stream |
 
 ---
 
@@ -257,7 +245,6 @@ Configuration registry, shader metadata, and running window enumeration.
 | `refreshShaders` | `()` | void | Reload shader registry |
 | `getRunningWindows` | `()` | `s json` | Running windows (blocks for effect) |
 | `provideRunningWindows` | `(s json)` | void | Effect callback with windows |
-| **Planned v1.1** | | | |
 | `getSettingSchema` | `(s key)` | `s json` | Setting metadata (type, range, description) |
 | `getAllSettingSchemas` | `()` | `s json` | All setting schemas |
 
@@ -376,63 +363,75 @@ Zone detection at coordinates, adjacency navigation, zone enumeration.
 
 ---
 
-## Planned Interfaces
+---
 
-### 9. org.plasmazones.Shader (v1.1)
+## 9. org.plasmazones.Shader
 
-Dedicated shader management for the Shader Editor.
+Shader discovery, parameter introspection, compilation lifecycle, and user shader monitoring.
 
-| Method/Signal | Signature | Purpose |
-|---------------|-----------|---------|
-| `assignShaderToZone(s zoneId, s shaderId, s paramsJson)` | Method | Per-zone shader assignment |
-| `getShaderForZone(s zoneId)` | Method → `s json` | Get zone's shader+params |
-| `clearShaderFromZone(s zoneId)` | Method | Remove zone shader |
-| `getZoneShaderAssignments(s layoutId)` | Method → `s json` | All zone-shader pairs for layout |
-| `shaderCompilationStarted(s shaderId)` | Signal | Compilation began |
-| `shaderCompilationFinished(s shaderId, b success, s error)` | Signal | Compilation result |
-| `userShaderAdded(s shaderId, s name, s path)` | Signal | New user shader detected |
-| `userShaderRemoved(s shaderId)` | Signal | User shader deleted |
+### Methods
 
-### 10. org.plasmazones.CompositorBridge (Experimental)
+| Method | Signature | Returns | Purpose |
+|--------|-----------|---------|---------|
+| `availableShaders` | `()` | `av` | List shader metadata |
+| `shaderInfo` | `(s shaderId)` | `a{sv}` | Shader details by ID |
+| `defaultShaderParams` | `(s shaderId)` | `a{sv}` | Default parameter values |
+| `translateShaderParams` | `(s shaderId, a{sv} params)` | `a{sv}` | Translate param IDs to uniform names |
+| `shadersEnabled` | `()` | `b` | Shaders compiled in? |
+| `userShadersEnabled` | `()` | `b` | User shaders supported? |
+| `userShaderDirectory` | `()` | `s` | Path to user shader dir |
+| `openUserShaderDirectory` | `()` | void | Open in file manager |
+| `refreshShaders` | `()` | void | Reload shader registry |
 
-Compositor-agnostic window control protocol.
-
-**Registration:**
-
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `registerBridge(s compositor, s version, as capabilities)` | → `s json` | Register compositor bridge |
-| `reportModifierState(i modifiers, i mouseButtons)` | void | Report input state |
-
-**Capabilities**: `borderless`, `maximize`, `border_rendering`, `modifier_tracking`, `animation`
-
-**Commands (signals, daemon → bridge):**
+### Signals
 
 | Signal | Signature | Purpose |
 |--------|-----------|---------|
-| `applyWindowGeometry(s windowId, i x, i y, i w, i h, s zoneId, b skipAnimation)` | Geometry command |
-| `applyWindowGeometriesBatch(s batchJson)` | Batch geometry command |
-| `activateWindow(s windowId)` | Focus command |
-| `raiseWindows(as windowIds)` | Z-order command |
-| `setWindowBorderless(s windowId, b borderless)` | Decoration command |
-| `maximizeWindow(s windowId, i mode)` | Maximize command |
-| `windowBorderRequested(s windowId, i x, i y, i w, i h, i borderW, i borderR, s activeColor, s inactiveColor, b isActive)` | Border rendering |
-| `windowBorderRemoved(s windowId)` | Border removal |
+| `shaderCompilationStarted` | `(s shaderId)` | Compilation began |
+| `shaderCompilationFinished` | `(s shaderId, b success, s error)` | Compilation result |
+| `shadersChanged` | `()` | Shader list changed (added/removed/reloaded) |
 
-### 11. org.plasmazones.Control (v1.1)
+---
 
-High-level convenience API for third-party integrations.
+## 10. org.plasmazones.CompositorBridge
 
-| Method/Signal | Signature | Purpose |
-|---------------|-----------|---------|
-| `getApiVersion()` | → `i` | Protocol version (1) |
-| `getApiCapabilities()` | → `as` | Supported feature strings |
-| `snapWindowToLayout(s windowId, s layoutId, i zoneNumber)` | One-call snap |
-| `toggleAutotileForScreen(s screenId)` | Toggle autotile mode |
-| `getFullState()` | → `s json` | Complete state snapshot |
-| `subscribe(s eventPattern)` | → `s subscriptionId` | Event subscription |
-| `unsubscribe(s subscriptionId)` | void | Cancel subscription |
-| `event(s subscriptionId, s eventType, s eventJson)` | Signal | Filtered event stream |
+Compositor-agnostic window control protocol. Bridges register and receive window manipulation commands via signals. Currently staged infrastructure — the KWin effect uses the existing WindowTracking signals; future compositor bridges (Hyprland, Sway) will subscribe to these signals.
+
+### Methods
+
+| Method | Signature | Returns | Purpose |
+|--------|-----------|---------|---------|
+| `registerBridge` | `(s compositor, s version, as capabilities)` | `s json` | Register bridge, returns `{apiVersion, bridgeName, sessionId}` |
+| `reportModifierState` | `(i modifiers, i mouseButtons)` | void | Report input state for non-drag contexts |
+
+**Capabilities**: `borderless`, `maximize`, `animation`, `borders`, `modifiers`
+
+### Signals (daemon → bridge)
+
+| Signal | Signature | Purpose |
+|--------|-----------|---------|
+| `applyWindowGeometry` | `(s windowId, i x, i y, i w, i h, s zoneId, b skipAnimation)` | Apply geometry |
+| `applyWindowGeometriesBatch` | `(s batchJson, s action)` | Batch geometry |
+| `activateWindow` | `(s windowId)` | Focus window |
+| `raiseWindows` | `(as windowIds)` | Z-order restoration |
+| `setWindowBorderless` | `(s windowId, b borderless)` | Hide/show title bar |
+| `maximizeWindow` | `(s windowId, i mode)` | 0=restore, 3=full maximize |
+| `bridgeRegistered` | `(s compositor, s version, as capabilities)` | Bridge registered |
+| `modifierStateChanged` | `(i modifiers, i mouseButtons)` | Modifier state reported |
+
+---
+
+## 11. org.plasmazones.Control
+
+High-level convenience API for third-party integrations and scripts.
+
+### Methods
+
+| Method | Signature | Returns | Purpose |
+|--------|-----------|---------|---------|
+| `snapWindowToZone` | `(s windowId, i zoneNumber, s screenId)` | void | Snap window to zone by number |
+| `toggleAutotileForScreen` | `(s screenId)` | void | Toggle snapping/autotile mode |
+| `getFullState` | `()` | `s json` | Complete daemon state snapshot |
 
 ---
 
@@ -470,15 +469,25 @@ High-level convenience API for third-party integrations.
 ]
 ```
 
-### Window State (v1.1 getWindowState)
+### Window State Snapshot (getWindowState)
 ```json
 {
   "windowId": "app|uuid",
   "zoneId": "uuid",
   "screenId": "manufacturer:model:serial",
   "isFloating": false,
-  "isAutotiled": true,
-  "geometry": {"x": 0, "y": 32, "width": 1600, "height": 858}
+  "isSticky": false
+}
+```
+
+### Window State Change Event (windowStateChanged signal)
+```json
+{
+  "windowId": "app|uuid",
+  "zoneId": "uuid",
+  "screenId": "manufacturer:model:serial",
+  "isFloating": false,
+  "changeType": "snapped"
 }
 ```
 
@@ -489,15 +498,11 @@ High-level convenience API for third-party integrations.
 ]
 ```
 
-### Setting Schema (v1.1 getSettingSchema)
+### Setting Schema (getSettingSchema)
 ```json
 {
-  "type": "int",
-  "min": 0,
-  "max": 50,
-  "default": 8,
-  "description": "Gap between tiled windows in pixels",
-  "enumValues": null
+  "key": "zonePadding",
+  "type": "int"
 }
 ```
 

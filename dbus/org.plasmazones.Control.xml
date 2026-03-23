@@ -4,14 +4,6 @@
     <interface name="org.plasmazones.Control">
         <annotation name="org.gtk.GDBus.DocString" value="High-level convenience API for third-party integrations and scripts."/>
 
-        <method name="getApiVersion">
-            <annotation name="org.gtk.GDBus.DocString" value="Get API protocol version."/>
-            <arg name="version" type="i" direction="out"/>
-        </method>
-        <method name="getApiCapabilities">
-            <annotation name="org.gtk.GDBus.DocString" value="Get list of supported API capabilities."/>
-            <arg name="capabilities" type="as" direction="out"/>
-        </method>
         <method name="snapWindowToZone">
             <annotation name="org.gtk.GDBus.DocString" value="Snap a window to a zone by number on a screen."/>
             <arg name="windowId" type="s" direction="in">
@@ -33,7 +25,7 @@
         <method name="getFullState">
             <annotation name="org.gtk.GDBus.DocString" value="Get complete daemon state snapshot as JSON."/>
             <arg name="state" type="s" direction="out">
-                <annotation name="org.gtk.GDBus.DocString" value="JSON with layouts, windows, autotile, apiVersion."/>
+                <annotation name="org.gtk.GDBus.DocString" value="JSON with layouts, windows, autotile state."/>
             </arg>
         </method>
     </interface>

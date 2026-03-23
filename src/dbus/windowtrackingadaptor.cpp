@@ -227,6 +227,14 @@ void WindowTrackingAdaptor::windowSnappedMultiZone(const QString& windowId, cons
 
     qCInfo(lcDbusWindow) << "Window" << windowId << "snapped to multi-zone:" << zoneIds << "on screen"
                          << resolvedScreen;
+
+    QJsonObject stateObj;
+    stateObj[QLatin1String("windowId")] = windowId;
+    stateObj[QLatin1String("zoneId")] = primaryZoneId;
+    stateObj[QLatin1String("screenId")] = resolvedScreen;
+    stateObj[QLatin1String("isFloating")] = false;
+    stateObj[QLatin1String("changeType")] = QStringLiteral("snapped");
+    Q_EMIT windowStateChanged(windowId, QString::fromUtf8(QJsonDocument(stateObj).toJson(QJsonDocument::Compact)));
 }
 
 void WindowTrackingAdaptor::windowUnsnapped(const QString& windowId)

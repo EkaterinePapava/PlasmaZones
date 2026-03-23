@@ -15,6 +15,7 @@ class WindowTrackingAdaptor;
 class LayoutAdaptor;
 class AutotileEngine;
 class LayoutManager;
+class Zone;
 
 /**
  * @brief D-Bus adaptor for high-level convenience API
@@ -31,27 +32,13 @@ class PLASMAZONES_EXPORT ControlAdaptor : public QDBusAbstractAdaptor
     Q_CLASSINFO("D-Bus Interface", "org.plasmazones.Control")
 
 public:
-    explicit ControlAdaptor(WindowTrackingAdaptor* wta, LayoutManager* layoutManager, AutotileEngine* autotileEngine,
-                            QObject* parent = nullptr);
+    explicit ControlAdaptor(WindowTrackingAdaptor* wta, LayoutAdaptor* layoutAdaptor, LayoutManager* layoutManager,
+                            AutotileEngine* autotileEngine, QObject* parent = nullptr);
     ~ControlAdaptor() override = default;
 
 public Q_SLOTS:
     // ═══════════════════════════════════════════════════════════════════════════
     // Version and capabilities
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * @brief Get the API protocol version
-     * @return Version number (currently 1)
-     */
-    int getApiVersion();
-
-    /**
-     * @brief Get supported API capabilities
-     * @return List of capability strings
-     */
-    QStringList getApiCapabilities();
-
     // ═══════════════════════════════════════════════════════════════════════════
     // High-level operations
     // ═══════════════════════════════════════════════════════════════════════════
@@ -80,6 +67,7 @@ public Q_SLOTS:
 
 private:
     WindowTrackingAdaptor* m_wta;
+    LayoutAdaptor* m_layoutAdaptor;
     LayoutManager* m_layoutManager;
     AutotileEngine* m_autotileEngine;
 };

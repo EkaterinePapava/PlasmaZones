@@ -51,6 +51,10 @@ void WindowTrackingAdaptor::swapWindowsById(const QString& windowId1, const QStr
     if (!validateWindowId(windowId2, QStringLiteral("swapWindowsById (window2)"))) {
         return;
     }
+    if (windowId1 == windowId2) {
+        qCWarning(lcDbusWindow) << "swapWindowsById: cannot swap window with itself:" << windowId1;
+        return;
+    }
 
     // Get each window's current zone
     QString zoneId1 = m_service->zoneForWindow(windowId1);

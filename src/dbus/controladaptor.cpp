@@ -17,25 +17,14 @@
 
 namespace PlasmaZones {
 
-ControlAdaptor::ControlAdaptor(WindowTrackingAdaptor* wta, LayoutManager* layoutManager, AutotileEngine* autotileEngine,
-                               QObject* parent)
+ControlAdaptor::ControlAdaptor(WindowTrackingAdaptor* wta, LayoutAdaptor* layoutAdaptor, LayoutManager* layoutManager,
+                               AutotileEngine* autotileEngine, QObject* parent)
     : QDBusAbstractAdaptor(parent)
     , m_wta(wta)
+    , m_layoutAdaptor(layoutAdaptor)
     , m_layoutManager(layoutManager)
     , m_autotileEngine(autotileEngine)
 {
-}
-
-int ControlAdaptor::getApiVersion()
-{
-    return 1;
-}
-
-QStringList ControlAdaptor::getApiCapabilities()
-{
-    return {QStringLiteral("window_tracking"),   QStringLiteral("autotile"),          QStringLiteral("shader"),
-            QStringLiteral("compositor_bridge"), QStringLiteral("layout_management"), QStringLiteral("zone_detection"),
-            QStringLiteral("settings"),          QStringLiteral("screen_management"), QStringLiteral("window_drag")};
 }
 
 void ControlAdaptor::snapWindowToZone(const QString& windowId, int zoneNumber, const QString& screenId)
@@ -81,12 +70,12 @@ void ControlAdaptor::toggleAutotileForScreen(const QString& screenId)
     qCInfo(lcDbusWindow) << "toggleAutotileForScreen:" << screenId << "from" << (isAutotile ? "autotile" : "snapping")
                          << "to" << (newMode == 1 ? "autotile" : "snapping");
 
-    // Find the LayoutAdaptor on the same parent
-    auto* layoutAdaptor = parent()->findChild<LayoutAdaptor*>();
-    if (layoutAdaptor) {
+    if (m_layoutAdaptor) {
         // setAssignmentEntry(screenId, desktop=0 (current), activity="" (current), mode, layout, algorithm)
-        layoutAdaptor->setAssignmentEntry(screenId, 0, QString(), newMode, QString(), QString());
-        layoutAdaptor->applyAssignmentChanges();
+        m_layoutAdaptor->setAssignmentEntry(screenId, 0, QString(), newMode, QString(), QString());
+        m_layoutAdaptor->applyAssignmentChanges();
+    } else {
+        qCWarning(lcDbusWindow) << "toggleAutotileForScreen: LayoutAdaptor not available";
     }
 }
 
@@ -129,8 +118,6 @@ QString ControlAdaptor::getFullState()
         autotile[QLatin1String("screens")] = screens;
         state[QLatin1String("autotile")] = autotile;
     }
-
-    state[QLatin1String("apiVersion")] = 1;
 
     return QString::fromUtf8(QJsonDocument(state).toJson(QJsonDocument::Compact));
 }

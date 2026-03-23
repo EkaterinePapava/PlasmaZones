@@ -18,6 +18,11 @@ CompositorBridgeAdaptor::CompositorBridgeAdaptor(QObject* parent)
 QString CompositorBridgeAdaptor::registerBridge(const QString& compositorName, const QString& version,
                                                 const QStringList& capabilities)
 {
+    if (!m_bridgeName.isEmpty()) {
+        qCWarning(lcDbusWindow) << "Compositor bridge re-registration: replacing" << m_bridgeName << m_bridgeVersion
+                                << "with" << compositorName << version;
+    }
+
     m_bridgeName = compositorName;
     m_bridgeVersion = version;
     m_capabilities = capabilities;
