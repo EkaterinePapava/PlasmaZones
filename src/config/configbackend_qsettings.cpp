@@ -221,6 +221,11 @@ std::unique_ptr<ConfigGroup> QSettingsConfigBackend::group(const QString& name)
 
 void QSettingsConfigBackend::reparseConfiguration()
 {
+    // Destroy old QSettings BEFORE creating the new one. Qt's QConfFile
+    // cache is keyed by file path — if the old object is still alive when
+    // the new one is constructed, QConfFile::fromName() returns the cached
+    // (stale) entry and the file is never re-read from disk.
+    m_settings.reset();
     m_settings = std::make_unique<QSettings>(m_filePath, kconfigIniFormat());
 }
 

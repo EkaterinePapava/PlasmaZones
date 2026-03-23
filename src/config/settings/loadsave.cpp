@@ -444,9 +444,13 @@ void Settings::loadAutotilingConfig(IConfigBackend* backend)
         m_autotileUseSystemBorderColors = autotiling2->readBool(QStringLiteral("AutotileUseSystemBorderColors"),
                                                                 ConfigDefaults::autotileUseSystemBorderColors());
         QString lockedScreensStr = autotiling2->readString(QStringLiteral("LockedScreens"));
-        m_lockedScreens = lockedScreensStr.isEmpty() ? QStringList() : lockedScreensStr.split(QLatin1Char(','));
-        for (auto& s : m_lockedScreens)
+        QStringList newLocked = lockedScreensStr.isEmpty() ? QStringList() : lockedScreensStr.split(QLatin1Char(','));
+        for (auto& s : newLocked)
             s = s.trimmed();
+        if (m_lockedScreens != newLocked) {
+            m_lockedScreens = newLocked;
+            Q_EMIT lockedScreensChanged();
+        }
     }
 
     // Autotile Shortcuts

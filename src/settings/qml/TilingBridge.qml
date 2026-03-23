@@ -14,6 +14,8 @@ QtObject {
     // --- Per-desktop tiling assignments ---
     // --- Per-activity tiling assignments ---
     // --- Quick layout slots (tiling) ---
+    // lockedScreensChanged is forwarded via _externalSignals Connections
+    // lockedScreensChanged is forwarded via _externalSignals Connections
 
     readonly property bool autotileEnabled: appSettings.autotileEnabled
     readonly property string autotileAlgorithm: appSettings.autotileAlgorithm
@@ -27,6 +29,24 @@ QtObject {
     readonly property bool activitiesAvailable: settingsController.activitiesAvailable
     readonly property var activities: settingsController.activities
     readonly property string currentActivity: settingsController.currentActivity
+    // Forward external lock/slot changes (daemon shortcuts) to QML consumers
+    property Connections _externalSignals
+
+    _externalSignals: Connections {
+        function onLockedScreensChanged() {
+            lockedScreensChanged();
+        }
+
+        function onQuickLayoutSlotsChanged() {
+            quickLayoutSlotsChanged();
+        }
+
+        function onScreenLayoutChanged() {
+            screenAssignmentsChanged();
+        }
+
+        target: settingsController
+    }
 
     signal screenAssignmentsChanged()
     signal tilingScreenAssignmentsChanged()
@@ -65,7 +85,6 @@ QtObject {
 
     function toggleScreenLock(screen, mode) {
         settingsController.toggleScreenLock(screen, mode);
-        lockedScreensChanged();
     }
 
     function isContextLocked(screen, desktop, activity, mode) {
@@ -74,7 +93,6 @@ QtObject {
 
     function toggleContextLock(screen, desktop, activity, mode) {
         settingsController.toggleContextLock(screen, desktop, activity, mode);
-        lockedScreensChanged();
     }
 
     function hasExplicitTilingAssignmentForScreenDesktop(screen, desktop) {

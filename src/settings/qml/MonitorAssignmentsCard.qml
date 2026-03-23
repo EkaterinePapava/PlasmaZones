@@ -17,9 +17,20 @@ SettingsCard {
     required property var appSettings
     // 0 = snapping (zone layouts), 1 = tiling (autotile algorithms)
     property int viewMode: 0
+    // Revision counter — incremented when lock state changes externally,
+    // forcing lock-dependent bindings to re-evaluate.
+    property int _lockRevision: 0
 
     headerText: root.viewMode === 1 ? i18n("Monitor Tiling Assignments") : i18n("Monitor Assignments")
     collapsible: true
+
+    Connections {
+        function onLockedScreensChanged() {
+            root._lockRevision++;
+        }
+
+        target: root.appSettings
+    }
 
     contentItem: ColumnLayout {
         spacing: Kirigami.Units.smallSpacing
@@ -135,6 +146,7 @@ SettingsCard {
                             Layout.preferredWidth: Kirigami.Units.gridUnit * 16
                             enabled: {
                                 void (monitorDelegate._assignmentRevision);
+                                void (root._lockRevision);
                                 return !root.appSettings.isScreenLocked(monitorDelegate.screenName, root.viewMode);
                             }
                             appSettings: root.appSettings
@@ -186,6 +198,7 @@ SettingsCard {
                             icon.name: "edit-clear"
                             enabled: {
                                 void (monitorDelegate._assignmentRevision);
+                                void (root._lockRevision);
                                 return !root.appSettings.isScreenLocked(monitorDelegate.screenName, root.viewMode);
                             }
                             onClicked: {
@@ -202,15 +215,18 @@ SettingsCard {
                         ToolButton {
                             icon.name: {
                                 void (monitorDelegate._assignmentRevision);
+                                void (root._lockRevision);
                                 return root.appSettings.isScreenLocked(monitorDelegate.screenName, root.viewMode) ? "object-locked" : "object-unlocked";
                             }
                             opacity: {
                                 void (monitorDelegate._assignmentRevision);
+                                void (root._lockRevision);
                                 return root.appSettings.isScreenLocked(monitorDelegate.screenName, root.viewMode) ? 1 : 0.4;
                             }
                             display: ToolButton.IconOnly
                             ToolTip.text: {
                                 void (monitorDelegate._assignmentRevision);
+                                void (root._lockRevision);
                                 return root.appSettings.isScreenLocked(monitorDelegate.screenName, root.viewMode) ? i18n("Unlock layout for this monitor") : i18n("Lock layout for this monitor");
                             }
                             ToolTip.visible: hovered
@@ -298,6 +314,7 @@ SettingsCard {
                                     Layout.fillWidth: true
                                     enabled: {
                                         void (monitorDelegate._assignmentRevision);
+                                        void (root._lockRevision);
                                         return !root.appSettings.isContextLocked(monitorDelegate.screenName, desktopRowContainer.desktopNumber, "", root.viewMode);
                                     }
                                     appSettings: root.appSettings
@@ -334,15 +351,18 @@ SettingsCard {
                                 ToolButton {
                                     icon.name: {
                                         void (monitorDelegate._assignmentRevision);
+                                        void (root._lockRevision);
                                         return root.appSettings.isContextLocked(monitorDelegate.screenName, desktopRowContainer.desktopNumber, "", root.viewMode) ? "object-locked" : "object-unlocked";
                                     }
                                     opacity: {
                                         void (monitorDelegate._assignmentRevision);
+                                        void (root._lockRevision);
                                         return root.appSettings.isContextLocked(monitorDelegate.screenName, desktopRowContainer.desktopNumber, "", root.viewMode) ? 1 : 0.4;
                                     }
                                     display: ToolButton.IconOnly
                                     ToolTip.text: {
                                         void (monitorDelegate._assignmentRevision);
+                                        void (root._lockRevision);
                                         return root.appSettings.isContextLocked(monitorDelegate.screenName, desktopRowContainer.desktopNumber, "", root.viewMode) ? i18n("Unlock layout for %1", desktopRowContainer.desktopName) : i18n("Lock layout for %1", desktopRowContainer.desktopName);
                                     }
                                     ToolTip.visible: hovered

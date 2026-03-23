@@ -17,6 +17,7 @@ SettingsCard {
     required property var appSettings
     // 0 = snapping (zone layouts), 1 = tiling (autotile algorithms)
     property int viewMode: 0
+    property int _lockRevision: 0
 
     function getScreenLayout(screenName) {
         return viewMode === 1 ? (appSettings.getTilingLayoutForScreen(screenName) || "") : (appSettings.getLayoutForScreen(screenName) || "");
@@ -46,6 +47,14 @@ SettingsCard {
     visible: appSettings.activitiesAvailable
     headerText: root.viewMode === 1 ? i18n("Activity Tiling Assignments") : i18n("Activity Assignments")
     collapsible: true
+
+    Connections {
+        function onLockedScreensChanged() {
+            root._lockRevision++;
+        }
+
+        target: root.appSettings
+    }
 
     contentItem: ColumnLayout {
         spacing: Kirigami.Units.smallSpacing
@@ -146,6 +155,7 @@ SettingsCard {
                                 Layout.fillWidth: true
                                 enabled: {
                                     void (activityDelegate._activityRevision);
+                                    void (root._lockRevision);
                                     return !root.appSettings.isContextLocked(activityScreenRow.screenName, 0, activityDelegate.activityId, root.viewMode);
                                 }
                                 appSettings: root.appSettings
@@ -204,15 +214,18 @@ SettingsCard {
                             ToolButton {
                                 icon.name: {
                                     void (activityDelegate._activityRevision);
+                                    void (root._lockRevision);
                                     return root.appSettings.isContextLocked(activityScreenRow.screenName, 0, activityDelegate.activityId, root.viewMode) ? "object-locked" : "object-unlocked";
                                 }
                                 opacity: {
                                     void (activityDelegate._activityRevision);
+                                    void (root._lockRevision);
                                     return root.appSettings.isContextLocked(activityScreenRow.screenName, 0, activityDelegate.activityId, root.viewMode) ? 1 : 0.4;
                                 }
                                 display: ToolButton.IconOnly
                                 ToolTip.text: {
                                     void (activityDelegate._activityRevision);
+                                    void (root._lockRevision);
                                     return root.appSettings.isContextLocked(activityScreenRow.screenName, 0, activityDelegate.activityId, root.viewMode) ? i18n("Unlock layout for %1 on %2", activityDelegate.activityName, activityScreenRow.screenName) : i18n("Lock layout for %1 on %2", activityDelegate.activityName, activityScreenRow.screenName);
                                 }
                                 ToolTip.visible: hovered

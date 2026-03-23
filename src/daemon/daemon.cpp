@@ -393,9 +393,12 @@ bool Daemon::init()
         m_windowTrackingAdaptor->service()->populateResnapBufferForAllScreens(autotileScreens);
         m_snapEngine->resnapToNewLayout();
 
-        // Show OSD for all screens
+        // Show OSD for all screens — use locked OSD variant when context is locked
         for (const auto& osd : std::as_const(osdEntries)) {
-            if (osd.isAutotile) {
+            int mode = osd.isAutotile ? 1 : 0;
+            if (isCurrentContextLockedForMode(osd.screenId, mode)) {
+                showLockedPreviewOsd(osd.screenId);
+            } else if (osd.isAutotile) {
                 if (!osd.algoId.isEmpty())
                     showLayoutOsdForAlgorithm(osd.algoId, osd.algoId, osd.screenId);
             } else {

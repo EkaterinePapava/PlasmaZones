@@ -434,7 +434,10 @@ void Settings::setPerScreenZoneSelectorSetting(const QString& screenIdOrName, co
         return;
     }
 
-    QVariantMap& screenSettings = m_perScreenZoneSelectorSettings[screenIdOrName];
+    // Resolve to EDID-based screen ID so the key matches daemon lookups
+    const QString resolved =
+        Utils::isConnectorName(screenIdOrName) ? Utils::screenIdForName(screenIdOrName) : screenIdOrName;
+    QVariantMap& screenSettings = m_perScreenZoneSelectorSettings[resolved];
     if (screenSettings.value(key) == validated) {
         return;
     }
@@ -487,7 +490,10 @@ void Settings::setPerScreenAutotileSetting(const QString& screenIdOrName, const 
     // Animation keys ("AnimationsEnabled", etc.) have no "Autotile" prefix.
     const QString normalizedKey = key.startsWith(QLatin1String("Autotile")) ? key.mid(8) : key;
 
-    QVariantMap& screenSettings = m_perScreenAutotileSettings[screenIdOrName];
+    // Resolve to EDID-based screen ID so the key matches daemon lookups
+    const QString resolved =
+        Utils::isConnectorName(screenIdOrName) ? Utils::screenIdForName(screenIdOrName) : screenIdOrName;
+    QVariantMap& screenSettings = m_perScreenAutotileSettings[resolved];
     if (screenSettings.value(normalizedKey) == validated) {
         return;
     }
@@ -529,7 +535,10 @@ void Settings::setPerScreenSnappingSetting(const QString& screenIdOrName, const 
         return;
     }
 
-    QVariantMap& screenSettings = m_perScreenSnappingSettings[screenIdOrName];
+    // Resolve to EDID-based screen ID so the key matches daemon lookups
+    const QString resolved =
+        Utils::isConnectorName(screenIdOrName) ? Utils::screenIdForName(screenIdOrName) : screenIdOrName;
+    QVariantMap& screenSettings = m_perScreenSnappingSettings[resolved];
     if (screenSettings.value(key) == validated) {
         return;
     }

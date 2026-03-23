@@ -4,6 +4,7 @@
 #include "settingscontroller.h"
 #include "../core/constants.h"
 #include "../core/logging.h"
+#include "../core/utils.h"
 #include "dbusutils.h"
 
 #include "../autotile/AlgorithmRegistry.h"
@@ -124,6 +125,8 @@ SettingsController::SettingsController(QObject* parent)
             &SettingsController::editorSnapOverrideModifierChanged);
     connect(&m_settings, &Settings::fillOnDropEnabledChanged, this, &SettingsController::fillOnDropEnabledChanged);
     connect(&m_settings, &Settings::fillOnDropModifierChanged, this, &SettingsController::fillOnDropModifierChanged);
+    // Forward lock state changes (from Settings::load() after external D-Bus settingsChanged)
+    connect(&m_settings, &Settings::lockedScreensChanged, this, &SettingsController::lockedScreensChanged);
 
     // Initial loads
     scheduleLayoutLoad();
@@ -421,7 +424,10 @@ bool SettingsController::fontStyleItalic(const QString& family, const QString& s
 
 QString SettingsController::assignmentCacheKey(const QString& screen, int desktop, const QString& activity)
 {
-    return screen + QChar(0x1F) + QString::number(desktop) + QChar(0x1F) + activity;
+    // Resolve connector names to EDID-based screen IDs so cache keys
+    // match regardless of whether the caller passes "DP-3" or the full ID
+    QString resolved = Utils::screenIdForName(screen);
+    return resolved + QChar(0x1F) + QString::number(desktop) + QChar(0x1F) + activity;
 }
 
 SettingsController::StagedAssignment& SettingsController::stagedEntry(const QString& screen, int desktop,
@@ -431,7 +437,7 @@ SettingsController::StagedAssignment& SettingsController::stagedEntry(const QStr
     auto it = m_stagedAssignments.find(key);
     if (it == m_stagedAssignments.end()) {
         StagedAssignment entry;
-        entry.screenId = screen;
+        entry.screenId = Utils::screenIdForName(screen);
         entry.virtualDesktop = desktop;
         entry.activityId = activity;
         it = m_stagedAssignments.insert(key, entry);
@@ -1003,7 +1009,10 @@ void SettingsController::removeAppRuleFromLayout(const QString& layoutId, int in
 
 static QString lockKey(const QString& screenName, int mode)
 {
-    return QString::number(mode) + QStringLiteral(":") + screenName;
+    // Resolve connector names (e.g., "DP-3") to EDID-based screen IDs
+    // to match the daemon's lock key format
+    QString resolved = Utils::screenIdForName(screenName);
+    return QString::number(mode) + QStringLiteral(":") + resolved;
 }
 
 bool SettingsController::isScreenLocked(const QString& screenName, int mode) const
