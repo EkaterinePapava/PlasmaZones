@@ -14,7 +14,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSignalBlocker>
-#include "config/configbackend.h"
 #include "config/configbackend_qsettings.h"
 
 namespace PlasmaZones {
@@ -325,7 +324,7 @@ void SettingsBridge::syncAlgorithmToSettings(const QString& algoId, qreal splitR
 
 void SettingsBridge::saveState()
 {
-    auto backend = PlasmaZones::createDefaultConfigBackend();
+    auto backend = PlasmaZones::QSettingsConfigBackend::createDefault();
     auto group = backend->group(QStringLiteral("AutoTileState"));
 
     // Save global state (algorithm only — autotile screens are derived from
@@ -362,7 +361,7 @@ void SettingsBridge::saveState()
 
 void SettingsBridge::loadState()
 {
-    auto backend = PlasmaZones::createDefaultConfigBackend();
+    auto backend = PlasmaZones::QSettingsConfigBackend::createDefault();
     auto group = backend->group(QStringLiteral("AutoTileState"));
 
     if (!group->hasKey(QStringLiteral("algorithm")) && !group->hasKey(QStringLiteral("screenStates"))) {

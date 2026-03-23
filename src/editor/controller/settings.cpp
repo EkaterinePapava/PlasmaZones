@@ -9,7 +9,6 @@
 #include "../helpers/SettingsDbusQueries.h"
 
 #include "pz_i18n.h"
-#include "../../config/configbackend.h"
 #include "../../config/configbackend_qsettings.h"
 #include <QRegularExpression>
 
@@ -110,7 +109,7 @@ void EditorController::setDefaultZoneColors(const QString& highlightColor, const
 
 void EditorController::loadEditorSettings()
 {
-    auto backend = PlasmaZones::createDefaultConfigBackend();
+    auto backend = PlasmaZones::QSettingsConfigBackend::createDefault();
 
     // Note: Per-layout zonePadding/outerGap overrides are loaded from the layout JSON
     // in loadLayout(). The global settings are cached here for performance (avoids D-Bus calls).
@@ -197,7 +196,7 @@ void EditorController::loadEditorSettings()
 
 void EditorController::saveEditorSettings()
 {
-    auto backend = PlasmaZones::createDefaultConfigBackend();
+    auto backend = PlasmaZones::QSettingsConfigBackend::createDefault();
     auto editorGroup = backend->group(QStringLiteral("Editor"));
 
     // Save snapping settings

@@ -14,7 +14,7 @@
 
 namespace PlasmaZones {
 
-class IConfigBackend;
+class QSettingsConfigBackend;
 
 /**
  * @brief Manages all layouts and their assignments to screens/desktops
@@ -259,7 +259,7 @@ private:
     QJsonObject loadAllAutotileOverrides() const;
     void saveAllAutotileOverrides(const QJsonObject& all);
     ISettings* m_settings = nullptr;
-    std::unique_ptr<IConfigBackend> m_configBackend;
+    std::unique_ptr<QSettingsConfigBackend> m_configBackend;
     QString m_layoutDirectory;
     QVector<Layout*> m_layouts;
     Layout* m_activeLayout = nullptr;

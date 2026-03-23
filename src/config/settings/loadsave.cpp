@@ -12,7 +12,7 @@ namespace PlasmaZones {
 
 // ── load() helpers ───────────────────────────────────────────────────────────
 
-void Settings::loadActivationConfig(ConfigGroup& activation)
+void Settings::loadActivationConfig(QSettingsConfigGroup& activation)
 {
     m_shiftDragToActivate = activation.readBool(QStringLiteral("ShiftDrag"), ConfigDefaults::shiftDrag());
 
@@ -60,7 +60,7 @@ void Settings::loadActivationConfig(ConfigGroup& activation)
     m_snappingEnabled = activation.readBool(QStringLiteral("SnappingEnabled"), ConfigDefaults::snappingEnabled());
 }
 
-void Settings::loadDisplayConfig(ConfigGroup& display)
+void Settings::loadDisplayConfig(QSettingsConfigGroup& display)
 {
     m_showZonesOnAllMonitors =
         display.readBool(QStringLiteral("ShowOnAllMonitors"), ConfigDefaults::showOnAllMonitors());
@@ -89,7 +89,7 @@ void Settings::loadDisplayConfig(ConfigGroup& display)
         display, "OverlayDisplayMode", ConfigDefaults::overlayDisplayMode(), 0, 1, "overlay display mode"));
 }
 
-void Settings::loadAppearanceConfig(ConfigGroup& appearance)
+void Settings::loadAppearanceConfig(QSettingsConfigGroup& appearance)
 {
     m_useSystemColors = appearance.readBool(QStringLiteral("UseSystemColors"), ConfigDefaults::useSystemColors());
     m_highlightColor = readValidatedColor(appearance, "HighlightColor", ConfigDefaults::highlightColor(), "highlight");
@@ -127,7 +127,7 @@ void Settings::loadAppearanceConfig(ConfigGroup& appearance)
         appearance.readBool(QStringLiteral("LabelFontStrikeout"), ConfigDefaults::labelFontStrikeout());
 }
 
-void Settings::loadZoneGeometryConfig(ConfigGroup& zones)
+void Settings::loadZoneGeometryConfig(QSettingsConfigGroup& zones)
 {
     m_zonePadding =
         readValidatedInt(zones, "Padding", ConfigDefaults::zonePadding(), 0, Defaults::MaxGap, "zone padding");
@@ -152,7 +152,7 @@ void Settings::loadZoneGeometryConfig(ConfigGroup& zones)
                          "minimum zone display size");
 }
 
-void Settings::loadBehaviorConfig(IConfigBackend* backend)
+void Settings::loadBehaviorConfig(QSettingsConfigBackend* backend)
 {
     {
         auto behavior = backend->group(QStringLiteral("Behavior"));
@@ -230,7 +230,7 @@ void Settings::loadBehaviorConfig(IConfigBackend* backend)
     }
 }
 
-void Settings::loadZoneSelectorConfig(ConfigGroup& zoneSelector)
+void Settings::loadZoneSelectorConfig(QSettingsConfigGroup& zoneSelector)
 {
     m_zoneSelectorEnabled = zoneSelector.readBool(QStringLiteral("Enabled"), ConfigDefaults::zoneSelectorEnabled());
     m_zoneSelectorTriggerDistance = readValidatedInt(zoneSelector, "TriggerDistance", ConfigDefaults::triggerDistance(),
@@ -259,7 +259,7 @@ void Settings::loadZoneSelectorConfig(ConfigGroup& zoneSelector)
         readValidatedInt(zoneSelector, "MaxRows", ConfigDefaults::maxRows(), 1, 10, "zone selector max rows");
 }
 
-void Settings::loadShortcutConfig(ConfigGroup& globalShortcuts)
+void Settings::loadShortcutConfig(QSettingsConfigGroup& globalShortcuts)
 {
     m_openEditorShortcut =
         globalShortcuts.readString(QStringLiteral("OpenEditorShortcut"), ConfigDefaults::openEditorShortcut());
@@ -331,7 +331,7 @@ void Settings::loadShortcutConfig(ConfigGroup& globalShortcuts)
                                                             ConfigDefaults::toggleLayoutLockShortcut());
 }
 
-void Settings::loadAutotilingConfig(IConfigBackend* backend)
+void Settings::loadAutotilingConfig(QSettingsConfigBackend* backend)
 {
     auto autotiling = backend->group(QStringLiteral("Autotiling"));
     m_autotileEnabled = autotiling->readBool(QStringLiteral("AutotileEnabled"), ConfigDefaults::autotileEnabled());
@@ -475,7 +475,7 @@ void Settings::loadAutotilingConfig(IConfigBackend* backend)
     }
 }
 
-void Settings::loadEditorConfig(ConfigGroup& editor)
+void Settings::loadEditorConfig(QSettingsConfigGroup& editor)
 {
     m_editorDuplicateShortcut = editor.readString(QStringLiteral("EditorDuplicateShortcut"), QStringLiteral("Ctrl+D"));
     m_editorSplitHorizontalShortcut =
@@ -516,7 +516,7 @@ void Settings::loadEditorConfig(ConfigGroup& editor)
 
 // ── save() helpers ───────────────────────────────────────────────────────────
 
-void Settings::saveEditorConfig(ConfigGroup& editor)
+void Settings::saveEditorConfig(QSettingsConfigGroup& editor)
 {
     editor.writeString(QStringLiteral("EditorDuplicateShortcut"), m_editorDuplicateShortcut);
     editor.writeString(QStringLiteral("EditorSplitHorizontalShortcut"), m_editorSplitHorizontalShortcut);
@@ -531,11 +531,11 @@ void Settings::saveEditorConfig(ConfigGroup& editor)
     editor.writeInt(QStringLiteral("FillOnDropModifier"), m_fillOnDropModifier);
 }
 
-void Settings::saveActivationConfig(ConfigGroup& activation)
+void Settings::saveActivationConfig(QSettingsConfigGroup& activation)
 {
     activation.writeBool(QStringLiteral("ShiftDrag"), m_shiftDragToActivate); // Deprecated, kept for compatibility
     saveTriggerList(activation, QStringLiteral("DragActivationTriggers"), m_dragActivationTriggers);
-    // Note: cannot delete individual entries with ConfigGroup interface.
+    // Note: cannot delete individual entries with QSettingsConfigGroup interface.
     // Write empty strings to clear obsolete keys.
     activation.writeString(QStringLiteral("DragActivationModifier"), QString());
     activation.writeString(QStringLiteral("DragActivationMouseButton"), QString());
@@ -550,7 +550,7 @@ void Settings::saveActivationConfig(ConfigGroup& activation)
     activation.writeBool(QStringLiteral("SnappingEnabled"), m_snappingEnabled);
 }
 
-void Settings::saveDisplayConfig(ConfigGroup& display)
+void Settings::saveDisplayConfig(QSettingsConfigGroup& display)
 {
     display.writeBool(QStringLiteral("ShowOnAllMonitors"), m_showZonesOnAllMonitors);
     display.writeString(QStringLiteral("DisabledMonitors"), m_disabledMonitors.join(QLatin1Char(',')));
@@ -562,7 +562,7 @@ void Settings::saveDisplayConfig(ConfigGroup& display)
     display.writeInt(QStringLiteral("OverlayDisplayMode"), static_cast<int>(m_overlayDisplayMode));
 }
 
-void Settings::saveAppearanceConfig(ConfigGroup& appearance)
+void Settings::saveAppearanceConfig(QSettingsConfigGroup& appearance)
 {
     appearance.writeBool(QStringLiteral("UseSystemColors"), m_useSystemColors);
     appearance.writeColor(QStringLiteral("HighlightColor"), m_highlightColor);
@@ -582,7 +582,7 @@ void Settings::saveAppearanceConfig(ConfigGroup& appearance)
     appearance.writeBool(QStringLiteral("LabelFontStrikeout"), m_labelFontStrikeout);
 }
 
-void Settings::saveZoneGeometryConfig(ConfigGroup& zones)
+void Settings::saveZoneGeometryConfig(QSettingsConfigGroup& zones)
 {
     zones.writeInt(QStringLiteral("Padding"), m_zonePadding);
     zones.writeInt(QStringLiteral("OuterGap"), m_outerGap);
@@ -597,7 +597,7 @@ void Settings::saveZoneGeometryConfig(ConfigGroup& zones)
     zones.writeInt(QStringLiteral("MinimumZoneDisplaySizePx"), m_minimumZoneDisplaySizePx);
 }
 
-void Settings::saveBehaviorConfig(IConfigBackend* backend)
+void Settings::saveBehaviorConfig(QSettingsConfigBackend* backend)
 {
     {
         auto behavior = backend->group(QStringLiteral("Behavior"));
@@ -626,7 +626,7 @@ void Settings::saveBehaviorConfig(IConfigBackend* backend)
     }
 }
 
-void Settings::saveZoneSelectorConfig(ConfigGroup& zoneSelector)
+void Settings::saveZoneSelectorConfig(QSettingsConfigGroup& zoneSelector)
 {
     zoneSelector.writeBool(QStringLiteral("Enabled"), m_zoneSelectorEnabled);
     zoneSelector.writeInt(QStringLiteral("TriggerDistance"), m_zoneSelectorTriggerDistance);
@@ -640,7 +640,7 @@ void Settings::saveZoneSelectorConfig(ConfigGroup& zoneSelector)
     zoneSelector.writeInt(QStringLiteral("MaxRows"), m_zoneSelectorMaxRows);
 }
 
-void Settings::saveShortcutConfig(ConfigGroup& globalShortcuts)
+void Settings::saveShortcutConfig(QSettingsConfigGroup& globalShortcuts)
 {
     globalShortcuts.writeString(QStringLiteral("OpenEditorShortcut"), m_openEditorShortcut);
     globalShortcuts.writeString(QStringLiteral("OpenSettingsShortcut"), m_openSettingsShortcut);
@@ -678,7 +678,7 @@ void Settings::saveShortcutConfig(ConfigGroup& globalShortcuts)
     globalShortcuts.writeString(QStringLiteral("ToggleLayoutLockShortcut"), m_toggleLayoutLockShortcut);
 }
 
-void Settings::saveAutotilingConfig(IConfigBackend* backend)
+void Settings::saveAutotilingConfig(QSettingsConfigBackend* backend)
 {
     {
         auto autotiling = backend->group(QStringLiteral("Autotiling"));

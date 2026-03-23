@@ -12,7 +12,6 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
-#include "../../config/configbackend.h"
 #include "../../config/configbackend_qsettings.h"
 #include <QTimer>
 
@@ -51,7 +50,7 @@ static QHash<QString, QStringList> parseZoneListMap(const QString& json)
 
 void WindowTrackingAdaptor::saveState()
 {
-    auto backend = PlasmaZones::createDefaultConfigBackend();
+    auto backend = PlasmaZones::QSettingsConfigBackend::createDefault();
     auto tracking = backend->group(QStringLiteral("WindowTracking"));
 
     // Save active layout ID so we can restore it after daemon restart.
@@ -190,7 +189,7 @@ void WindowTrackingAdaptor::saveStateOnShutdown()
 
 void WindowTrackingAdaptor::loadState()
 {
-    auto backend = PlasmaZones::createDefaultConfigBackend();
+    auto backend = PlasmaZones::QSettingsConfigBackend::createDefault();
     auto tracking = backend->group(QStringLiteral("WindowTracking"));
 
     // Build pending restore queues from:

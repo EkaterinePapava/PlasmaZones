@@ -26,7 +26,7 @@ namespace PlasmaZones {
 
 Settings::Settings(QObject* parent)
     : ISettings(parent)
-    , m_configBackend(createDefaultConfigBackend())
+    , m_configBackend(QSettingsConfigBackend::createDefault())
 {
     load();
 }
@@ -46,7 +46,7 @@ QString Settings::normalizeUuidString(const QString& uuidStr)
     return uuid.toString();
 }
 
-int Settings::readValidatedInt(ConfigGroup& group, const char* key, int defaultValue, int min, int max,
+int Settings::readValidatedInt(QSettingsConfigGroup& group, const char* key, int defaultValue, int min, int max,
                                const char* settingName)
 {
     int value = group.readInt(QString::fromLatin1(key), defaultValue);
@@ -58,7 +58,7 @@ int Settings::readValidatedInt(ConfigGroup& group, const char* key, int defaultV
     return value;
 }
 
-QColor Settings::readValidatedColor(ConfigGroup& group, const char* key, const QColor& defaultValue,
+QColor Settings::readValidatedColor(QSettingsConfigGroup& group, const char* key, const QColor& defaultValue,
                                     const char* settingName)
 {
     QColor color = group.readColor(QString::fromLatin1(key), defaultValue);
@@ -69,7 +69,7 @@ QColor Settings::readValidatedColor(ConfigGroup& group, const char* key, const Q
     return color;
 }
 
-void Settings::loadIndexedShortcuts(ConfigGroup& group, const QString& keyPattern, QString (&shortcuts)[9],
+void Settings::loadIndexedShortcuts(QSettingsConfigGroup& group, const QString& keyPattern, QString (&shortcuts)[9],
                                     const QString (&defaults)[9])
 {
     for (int i = 0; i < 9; ++i) {
@@ -108,7 +108,7 @@ std::optional<QVariantList> Settings::parseTriggerListJson(const QString& json)
     return result; // May be empty (valid [] means no triggers)
 }
 
-QVariantList Settings::loadTriggerList(ConfigGroup& group, const QString& key, int legacyModifier,
+QVariantList Settings::loadTriggerList(QSettingsConfigGroup& group, const QString& key, int legacyModifier,
                                        int legacyMouseButton)
 {
     QString json = group.readString(key);
@@ -124,7 +124,7 @@ QVariantList Settings::loadTriggerList(ConfigGroup& group, const QString& key, i
     return {trigger};
 }
 
-void Settings::saveTriggerList(ConfigGroup& group, const QString& key, const QVariantList& triggers)
+void Settings::saveTriggerList(QSettingsConfigGroup& group, const QString& key, const QVariantList& triggers)
 {
     QJsonArray arr;
     for (const QVariant& t : triggers) {

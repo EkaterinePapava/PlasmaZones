@@ -6,56 +6,84 @@
 
 #pragma once
 
-#include "configbackend.h"
+#include "plasmazones_export.h"
+#include <QColor>
 #include <QSettings>
+#include <QString>
+#include <QStringList>
 #include <memory>
 
 namespace PlasmaZones {
 
-class QSettingsConfigGroup : public ConfigGroup
+/// A view into a single config group (e.g., [Activation], [Display]).
+///
+/// Returned by QSettingsConfigBackend::group() as a unique_ptr.  Only one
+/// QSettingsConfigGroup may be active per backend at a time — destroy it
+/// (let the unique_ptr go out of scope) before creating another.
+/// Not copyable or movable.
+class PLASMAZONES_EXPORT QSettingsConfigGroup
 {
 public:
     QSettingsConfigGroup(QSettings* settings, const QString& groupName);
-    ~QSettingsConfigGroup() override;
+    ~QSettingsConfigGroup();
 
-    QString readString(const QString& key, const QString& defaultValue = {}) const override;
-    int readInt(const QString& key, int defaultValue = 0) const override;
-    bool readBool(const QString& key, bool defaultValue = false) const override;
-    double readDouble(const QString& key, double defaultValue = 0.0) const override;
-    QColor readColor(const QString& key, const QColor& defaultValue = {}) const override;
+    QSettingsConfigGroup(const QSettingsConfigGroup&) = delete;
+    QSettingsConfigGroup& operator=(const QSettingsConfigGroup&) = delete;
+    QSettingsConfigGroup(QSettingsConfigGroup&&) = delete;
+    QSettingsConfigGroup& operator=(QSettingsConfigGroup&&) = delete;
 
-    void writeString(const QString& key, const QString& value) override;
-    void writeInt(const QString& key, int value) override;
-    void writeBool(const QString& key, bool value) override;
-    void writeDouble(const QString& key, double value) override;
-    void writeColor(const QString& key, const QColor& value) override;
+    // Typed reads with defaults
+    QString readString(const QString& key, const QString& defaultValue = {}) const;
+    int readInt(const QString& key, int defaultValue = 0) const;
+    bool readBool(const QString& key, bool defaultValue = false) const;
+    double readDouble(const QString& key, double defaultValue = 0.0) const;
+    QColor readColor(const QString& key, const QColor& defaultValue = {}) const;
 
-    bool hasKey(const QString& key) const override;
-    void deleteKey(const QString& key) override;
+    // Typed writes
+    void writeString(const QString& key, const QString& value);
+    void writeInt(const QString& key, int value);
+    void writeBool(const QString& key, bool value);
+    void writeDouble(const QString& key, double value);
+    void writeColor(const QString& key, const QColor& value);
+
+    // Key management
+    bool hasKey(const QString& key) const;
+    void deleteKey(const QString& key);
 
 private:
     QSettings* m_settings; // not owned
     QString m_group;
 };
 
-class QSettingsConfigBackend : public IConfigBackend
+/// Top-level config backend.  Owns the connection to the config store
+/// and provides group access, sync, and enumeration.
+class PLASMAZONES_EXPORT QSettingsConfigBackend
 {
 public:
     explicit QSettingsConfigBackend(const QString& filePath);
-    ~QSettingsConfigBackend() override = default;
+    ~QSettingsConfigBackend() = default;
 
-    std::unique_ptr<ConfigGroup> group(const QString& name) override;
-    void reparseConfiguration() override;
-    void sync() override;
-    void deleteGroup(const QString& name) override;
-    QStringList groupList() const override;
+    /// Get a group view.  Caller owns the returned pointer.
+    std::unique_ptr<QSettingsConfigGroup> group(const QString& name);
+
+    /// Re-read config from disk (discard in-memory changes).
+    void reparseConfiguration();
+
+    /// Flush pending writes to disk.
+    void sync();
+
+    /// Delete an entire group and its keys.
+    void deleteGroup(const QString& name);
+
+    /// List all top-level group names.
+    QStringList groupList() const;
+
+    /// Create the default config backend for the standard plasmazonesrc file.
+    static std::unique_ptr<QSettingsConfigBackend> createDefault();
 
 private:
     QString m_filePath;
     std::unique_ptr<QSettings> m_settings;
 };
-
-/// Create the default config backend for the standard plasmazonesrc file.
-PLASMAZONES_EXPORT std::unique_ptr<IConfigBackend> createDefaultConfigBackend();
 
 } // namespace PlasmaZones

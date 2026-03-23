@@ -214,7 +214,7 @@ QSettingsConfigBackend::QSettingsConfigBackend(const QString& filePath)
 {
 }
 
-std::unique_ptr<ConfigGroup> QSettingsConfigBackend::group(const QString& name)
+std::unique_ptr<QSettingsConfigGroup> QSettingsConfigBackend::group(const QString& name)
 {
     return std::make_unique<QSettingsConfigGroup>(m_settings.get(), name);
 }
@@ -248,9 +248,9 @@ QStringList QSettingsConfigBackend::groupList() const
     return m_settings->childGroups();
 }
 
-// ── Factory ──────────────────────────────────────────────────────────────────
+// ── Static factory ───────────────────────────────────────────────────────────
 
-std::unique_ptr<IConfigBackend> createDefaultConfigBackend()
+std::unique_ptr<QSettingsConfigBackend> QSettingsConfigBackend::createDefault()
 {
     QString configDir = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
     if (configDir.isEmpty()) {
