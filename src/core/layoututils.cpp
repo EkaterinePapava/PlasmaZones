@@ -137,6 +137,15 @@ QVariantMap layoutToVariantMap(Layout* layout, ZoneFields zoneFields)
     map[Category] = static_cast<int>(LayoutCategory::Manual);
     map[AutoAssign] = layout->autoAssign();
 
+    // Include reference aspect ratio for fixed-geometry layouts so previews
+    // render at the correct proportions even when aspectRatioClass is "any"
+    if (layout->hasFixedGeometryZones()) {
+        QRectF refGeo = layout->lastRecalcGeometry();
+        if (refGeo.height() > 0) {
+            map[QLatin1String("referenceAspectRatio")] = refGeo.width() / refGeo.height();
+        }
+    }
+
     return map;
 }
 
@@ -154,6 +163,11 @@ static UnifiedLayoutEntry entryFromLayout(Layout* layout)
     entry.zones = zonesToVariantList(layout, ZoneField::Minimal);
     entry.autoAssign = layout->autoAssign();
     entry.aspectRatioClass = static_cast<int>(layout->aspectRatioClass());
+    if (layout->hasFixedGeometryZones()) {
+        QRectF refGeo = layout->lastRecalcGeometry();
+        if (refGeo.height() > 0)
+            entry.referenceAspectRatio = refGeo.width() / refGeo.height();
+    }
     return entry;
 }
 
@@ -318,6 +332,9 @@ QVariantMap toVariantMap(const UnifiedLayoutEntry& entry)
     map[IsSystem] = false;
     map[AspectRatioClassKey] = ScreenClassification::toString(static_cast<AspectRatioClass>(entry.aspectRatioClass));
     map[QLatin1String("recommended")] = entry.recommended;
+    if (entry.referenceAspectRatio > 0.0) {
+        map[QLatin1String("referenceAspectRatio")] = entry.referenceAspectRatio;
+    }
 
     return map;
 }

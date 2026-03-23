@@ -59,6 +59,7 @@ struct PLASMAZONES_EXPORT UnifiedLayoutEntry
     bool autoAssign = false; ///< Auto-assign: new windows fill first empty zone
     bool isAutotile = false; ///< True if this entry represents an autotile algorithm
     int aspectRatioClass = 0; ///< AspectRatioClass enum value (0=Any, 1=Standard, etc.)
+    qreal referenceAspectRatio = 0.0; ///< For fixed-geometry layouts: the screen AR zones were designed for
     bool recommended = true; ///< True if layout matches the current screen's aspect ratio
 
     /**

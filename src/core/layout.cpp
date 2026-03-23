@@ -249,6 +249,15 @@ void Layout::setUsePerSideOuterGap(bool enabled)
     }
 }
 
+bool Layout::hasFixedGeometryZones() const
+{
+    for (Zone* zone : m_zones) {
+        if (zone && zone->isFixedGeometry())
+            return true;
+    }
+    return false;
+}
+
 // Aspect ratio classification setters
 void Layout::setAspectRatioClass(PlasmaZones::AspectRatioClass cls)
 {

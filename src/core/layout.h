@@ -362,6 +362,9 @@ public:
     }
     void setUseFullScreenGeometry(bool enabled);
 
+    /// Returns true if any zone uses fixed (pixel) geometry mode
+    bool hasFixedGeometryZones() const;
+
     // Optional load order for "default" layout when defaultLayoutId is not set (lower = first)
     int defaultOrder() const
     {

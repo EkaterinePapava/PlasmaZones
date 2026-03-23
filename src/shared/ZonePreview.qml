@@ -74,7 +74,8 @@ Item {
             const ih = Math.min(ay + ah, by + bh) - iy;
             if (iw <= 0 || ih <= 0)
                 return false;
- // No overlap at all
+
+            // No overlap at all
             const overlapArea = iw * ih;
             const smallerArea = Math.min(aw * ah, bw * bh);
             // If overlap is less than 50% of the smaller zone, not stacked
@@ -127,13 +128,14 @@ Item {
 
             required property var modelData
             required property int index
-            // Parse relative geometry
+            // Parse relative geometry — clamp to [0, 1] to handle fixed-geometry
+            // layouts whose reference screen differs from current (zones can exceed 1.0)
             property var relGeo: modelData.relativeGeometry || {
             }
-            property real relX: relGeo.x || 0
-            property real relY: relGeo.y || 0
-            property real relWidth: relGeo.width || 0.25
-            property real relHeight: relGeo.height || 1
+            property real relX: Math.max(0, Math.min(relGeo.x || 0, 1))
+            property real relY: Math.max(0, Math.min(relGeo.y || 0, 1))
+            property real relWidth: Math.min(relGeo.width || 0.25, 1 - relX)
+            property real relHeight: Math.min(relGeo.height || 1, 1 - relY)
             // Check if this zone is selected (by index, highlightAllZones, or by zone ID)
             property bool isZoneSelected: {
                 // Highlight all zones when any is selected (highlightAllZones mode)

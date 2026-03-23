@@ -46,7 +46,10 @@ Rectangle {
         case "portrait":
             return 9 / 16;
         default:
-            return fallbackAspectRatio;
+            // For "any" layouts with fixed-geometry zones, use the reference
+            // aspect ratio from the screen the zones were designed for
+            var refAR = root.layout ? (root.layout.referenceAspectRatio || 0) : 0;
+            return refAR > 0 ? refAR : fallbackAspectRatio;
         }
     }
     // Calculate dimensions based on the layout's aspect ratio.
