@@ -66,6 +66,116 @@ constexpr qreal FocusMainRatio = 0.6;
 }
 
 /**
+ * @brief Screen aspect ratio classification
+ *
+ * Used to tag layouts with their intended monitor type and to classify
+ * physical screens at runtime for smart layout filtering/recommendations.
+ */
+enum class AspectRatioClass {
+    Any = 0, ///< Suitable for all aspect ratios (default)
+    Standard = 1, ///< ~16:10 to ~16:9 (1.5 - 1.9)
+    Ultrawide = 2, ///< ~21:9 (1.9 - 2.8)
+    SuperUltrawide = 3, ///< ~32:9 (2.8+)
+    Portrait = 4 ///< Rotated/vertical monitors (< 1.0)
+};
+
+/**
+ * @brief Screen classification thresholds and utilities
+ */
+namespace ScreenClassification {
+// Aspect ratio boundary thresholds (width / height)
+constexpr qreal PortraitMax = 1.0; // AR < 1.0 → portrait
+constexpr qreal StandardMin = 1.0; // AR >= 1.0 and < UltrawideMin → standard
+constexpr qreal UltrawideMin = 1.9; // AR >= 1.9 and < SuperUltrawideMin → ultrawide
+constexpr qreal SuperUltrawideMin = 2.8; // AR >= 2.8 → super-ultrawide
+
+inline AspectRatioClass classify(qreal aspectRatio)
+{
+    if (aspectRatio < PortraitMax)
+        return AspectRatioClass::Portrait;
+    if (aspectRatio < UltrawideMin)
+        return AspectRatioClass::Standard;
+    if (aspectRatio < SuperUltrawideMin)
+        return AspectRatioClass::Ultrawide;
+    return AspectRatioClass::SuperUltrawide;
+}
+
+inline AspectRatioClass classify(int width, int height)
+{
+    if (height <= 0 || width <= 0)
+        return AspectRatioClass::Any;
+    return classify(static_cast<qreal>(width) / height);
+}
+
+inline QString toString(AspectRatioClass cls)
+{
+    switch (cls) {
+    case AspectRatioClass::Any:
+        return QStringLiteral("any");
+    case AspectRatioClass::Standard:
+        return QStringLiteral("standard");
+    case AspectRatioClass::Ultrawide:
+        return QStringLiteral("ultrawide");
+    case AspectRatioClass::SuperUltrawide:
+        return QStringLiteral("super-ultrawide");
+    case AspectRatioClass::Portrait:
+        return QStringLiteral("portrait");
+    }
+    return QStringLiteral("any");
+}
+
+inline AspectRatioClass fromString(const QString& str)
+{
+    if (str == QLatin1String("standard"))
+        return AspectRatioClass::Standard;
+    if (str == QLatin1String("ultrawide"))
+        return AspectRatioClass::Ultrawide;
+    if (str == QLatin1String("super-ultrawide"))
+        return AspectRatioClass::SuperUltrawide;
+    if (str == QLatin1String("portrait"))
+        return AspectRatioClass::Portrait;
+    return AspectRatioClass::Any;
+}
+
+/**
+ * @brief Get the representative aspect ratio for a class
+ * @param cls The aspect ratio class
+ * @param fallback Value to return for AspectRatioClass::Any (default 16:9)
+ * @return Representative aspect ratio (width/height)
+ */
+inline qreal aspectRatioForClass(AspectRatioClass cls, qreal fallback = 16.0 / 9.0)
+{
+    switch (cls) {
+    case AspectRatioClass::Standard:
+        return 16.0 / 9.0;
+    case AspectRatioClass::Ultrawide:
+        return 21.0 / 9.0;
+    case AspectRatioClass::SuperUltrawide:
+        return 32.0 / 9.0;
+    case AspectRatioClass::Portrait:
+        return 9.0 / 16.0;
+    case AspectRatioClass::Any:
+    default:
+        return fallback;
+    }
+}
+
+/**
+ * @brief Check if a layout's aspect ratio class matches the given screen class
+ *
+ * A layout with AspectRatioClass::Any matches all screens.
+ * Otherwise, exact match is required unless the layout specifies
+ * explicit min/max aspect ratio bounds (which take precedence).
+ */
+inline bool matches(AspectRatioClass layoutClass, AspectRatioClass screenClass)
+{
+    if (layoutClass == AspectRatioClass::Any)
+        return true;
+    return layoutClass == screenClass;
+}
+}
+
+/**
  * @brief Auto-tiling algorithm defaults
  */
 namespace AutotileDefaults {
@@ -203,6 +313,11 @@ inline constexpr QLatin1String PhysicalSize{"physicalSize"};
 inline constexpr QLatin1String Depth{"depth"};
 inline constexpr QLatin1String DevicePixelRatio{"devicePixelRatio"};
 inline constexpr QLatin1String RefreshRate{"refreshRate"};
+
+// Aspect ratio classification keys
+inline constexpr QLatin1String AspectRatioClassKey{"aspectRatioClass"};
+inline constexpr QLatin1String MinAspectRatio{"minAspectRatio"};
+inline constexpr QLatin1String MaxAspectRatio{"maxAspectRatio"};
 
 // App rules keys
 inline constexpr QLatin1String AppRules{"appRules"};

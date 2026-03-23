@@ -9,8 +9,10 @@ import org.plasmazones.common as QFZCommon
 
 /**
  * Thumbnail preview of a layout showing zone geometries
- * Maintains monitor aspect ratio for accurate zone preview rendering
- * Uses shared ZonePreview component for consistent rendering across the application
+ * Renders at the layout's intended aspect ratio (16:9, 21:9, 32:9, 9:16)
+ * so previews accurately represent how zones will look on the target monitor type.
+ * Falls back to the primary screen's aspect ratio for user-created layouts.
+ * Uses shared ZonePreview component for consistent rendering across the application.
  */
 Rectangle {
     id: root
@@ -28,15 +30,32 @@ Rectangle {
     readonly property real borderOpacity: 0.9 // Increased for better border visibility
     readonly property int normalBorderWidth: Math.round(Kirigami.Units.devicePixelRatio)
     readonly property int selectedBorderWidth: Math.round(Kirigami.Units.devicePixelRatio * 2.5) // Thicker when selected
-    // Get primary screen aspect ratio for accurate preview
+    // Aspect ratio: use the layout's intended ratio so previews show correct proportions.
+    // Falls back to primary screen ratio for user-created layouts (aspectRatioClass "any" or absent).
     readonly property var primaryScreen: Screen.primaryScreen
-    readonly property real screenAspectRatio: primaryScreen ? (primaryScreen.width / primaryScreen.height) : (16 / 9) // Default to 16:9 if no screen
-    // Calculate dimensions based on aspect ratio.
-    // Use a base height and calculate width to match screen ratio.
+    readonly property real fallbackAspectRatio: primaryScreen ? (primaryScreen.width / primaryScreen.height) : (16 / 9)
+    readonly property real layoutAspectRatio: {
+        var cls = root.layout ? (root.layout.aspectRatioClass || "any") : "any";
+        switch (cls) {
+        case "standard":
+            return 16 / 9;
+        case "ultrawide":
+            return 21 / 9;
+        case "super-ultrawide":
+            return 32 / 9;
+        case "portrait":
+            return 9 / 16;
+        default:
+            return fallbackAspectRatio;
+        }
+    }
+    // Calculate dimensions based on the layout's aspect ratio.
+    // Portrait layouts use a base width (narrower) instead of base height.
+    readonly property bool isPortraitLayout: layoutAspectRatio < 1
     property real baseHeight: Kirigami.Units.gridUnit * 9
-    readonly property real calculatedWidth: baseHeight * screenAspectRatio
-    property real minThumbnailWidth: Kirigami.Units.gridUnit * 10 // 80px minimum
-    property real maxThumbnailWidth: Kirigami.Units.gridUnit * 20 // 160px maximum
+    readonly property real calculatedWidth: isPortraitLayout ? baseHeight * layoutAspectRatio : baseHeight * layoutAspectRatio
+    property real minThumbnailWidth: Kirigami.Units.gridUnit * 5 // Narrower min for portrait
+    property real maxThumbnailWidth: Kirigami.Units.gridUnit * 26 // Wider max for super-ultrawide
 
     // Use calculated width but ensure minimum size for usability
     implicitWidth: Math.max(minThumbnailWidth, Math.min(calculatedWidth, maxThumbnailWidth))

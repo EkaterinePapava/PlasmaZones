@@ -47,10 +47,12 @@ void centerLayerWindowOnScreen(QQuickWindow* window, const QRect& screenGeom, in
 }
 
 // Calculate OSD size and center window
-void sizeAndCenterOsd(QQuickWindow* window, const QRect& screenGeom, qreal aspectRatio)
+void sizeAndCenterOsd(QQuickWindow* window, const QRect& screenGeom, qreal previewAspectRatio)
 {
     constexpr int osdWidth = 280;
-    const int osdHeight = static_cast<int>(200 / aspectRatio) + 80;
+    // Clamp AR to sane range to prevent absurd OSD sizes
+    const qreal safeAR = qBound(0.5, previewAspectRatio, 4.0);
+    const int osdHeight = static_cast<int>(200 / safeAR) + 80;
     window->setWidth(osdWidth);
     window->setHeight(osdHeight);
     centerLayerWindowOnScreen(window, screenGeom, osdWidth, osdHeight);
@@ -120,12 +122,16 @@ void OverlayService::showLayoutOsd(Layout* layout, const QString& screenId)
     writeQmlProperty(window, QStringLiteral("layoutId"), layout->id().toString());
     writeQmlProperty(window, QStringLiteral("layoutName"), layout->name());
     writeQmlProperty(window, QStringLiteral("screenAspectRatio"), aspectRatio);
+    writeQmlProperty(window, QStringLiteral("aspectRatioClass"),
+                     ScreenClassification::toString(layout->aspectRatioClass()));
     writeQmlProperty(window, QStringLiteral("category"), static_cast<int>(LayoutCategory::Manual));
     writeQmlProperty(window, QStringLiteral("autoAssign"), layout->autoAssign());
     writeQmlProperty(window, QStringLiteral("zones"), LayoutUtils::zonesToVariantList(layout, ZoneField::Full));
     writeFontProperties(window, m_settings);
 
-    sizeAndCenterOsd(window, screenGeom, aspectRatio);
+    // Size OSD using layout's intended AR for correct preview proportions
+    qreal layoutAR = ScreenClassification::aspectRatioForClass(layout->aspectRatioClass(), aspectRatio);
+    sizeAndCenterOsd(window, screenGeom, layoutAR);
     QMetaObject::invokeMethod(window, "show");
     qCInfo(lcOverlay) << "Layout OSD: layout=" << layout->name() << "screen=" << screenId;
 }
@@ -147,6 +153,8 @@ void OverlayService::showLockedLayoutOsd(Layout* layout, const QString& screenId
     writeQmlProperty(window, QStringLiteral("layoutId"), layout->id().toString());
     writeQmlProperty(window, QStringLiteral("layoutName"), layout->name());
     writeQmlProperty(window, QStringLiteral("screenAspectRatio"), aspectRatio);
+    writeQmlProperty(window, QStringLiteral("aspectRatioClass"),
+                     ScreenClassification::toString(layout->aspectRatioClass()));
     writeQmlProperty(window, QStringLiteral("category"), static_cast<int>(LayoutCategory::Manual));
     writeQmlProperty(window, QStringLiteral("autoAssign"), layout->autoAssign());
     writeQmlProperty(window, QStringLiteral("zones"),
@@ -154,7 +162,8 @@ void OverlayService::showLockedLayoutOsd(Layout* layout, const QString& screenId
                                                : LayoutUtils::zonesToVariantList(layout, ZoneField::Full));
     writeFontProperties(window, m_settings);
 
-    sizeAndCenterOsd(window, screenGeom, aspectRatio);
+    qreal layoutAR = ScreenClassification::aspectRatioForClass(layout->aspectRatioClass(), aspectRatio);
+    sizeAndCenterOsd(window, screenGeom, layoutAR);
     QMetaObject::invokeMethod(window, "show");
     qCInfo(lcOverlay) << "Locked OSD: layout=" << layout->name() << "screen=" << screenId;
 }
@@ -177,12 +186,26 @@ void OverlayService::showLayoutOsd(const QString& id, const QString& name, const
     writeQmlProperty(window, QStringLiteral("layoutId"), id);
     writeQmlProperty(window, QStringLiteral("layoutName"), name);
     writeQmlProperty(window, QStringLiteral("screenAspectRatio"), aspectRatio);
+    // Resolve aspectRatioClass from Layout* if available
+    qreal layoutAR = aspectRatio;
+    {
+        QString arClass = QStringLiteral("any");
+        auto uuidOpt = Utils::parseUuid(id);
+        if (uuidOpt && m_layoutManager) {
+            Layout* layout = m_layoutManager->layoutById(*uuidOpt);
+            if (layout) {
+                arClass = ScreenClassification::toString(layout->aspectRatioClass());
+                layoutAR = ScreenClassification::aspectRatioForClass(layout->aspectRatioClass(), aspectRatio);
+            }
+        }
+        writeQmlProperty(window, QStringLiteral("aspectRatioClass"), arClass);
+    }
     writeQmlProperty(window, QStringLiteral("category"), category);
     writeQmlProperty(window, QStringLiteral("autoAssign"), autoAssign);
     writeQmlProperty(window, QStringLiteral("zones"), zones);
     writeFontProperties(window, m_settings);
 
-    sizeAndCenterOsd(window, screenGeom, aspectRatio);
+    sizeAndCenterOsd(window, screenGeom, layoutAR);
     QMetaObject::invokeMethod(window, "show");
     qCInfo(lcOverlay) << "Layout OSD: name=" << name << "category=" << category << "screen=" << screenId;
 }

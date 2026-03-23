@@ -170,6 +170,8 @@ void Settings::loadBehaviorConfig(QSettingsConfigBackend* backend)
         m_restoreWindowsToZonesOnLogin = behavior->readBool(QStringLiteral("RestoreWindowsToZonesOnLogin"),
                                                             ConfigDefaults::restoreWindowsToZonesOnLogin());
         m_defaultLayoutId = normalizeUuidString(behavior->readString(QStringLiteral("DefaultLayoutId")));
+        m_filterLayoutsByAspectRatio = behavior->readBool(QStringLiteral("FilterLayoutsByAspectRatio"),
+                                                          ConfigDefaults::filterLayoutsByAspectRatio());
     }
 
     {
@@ -609,6 +611,7 @@ void Settings::saveBehaviorConfig(QSettingsConfigBackend* backend)
         behavior->writeString(QStringLiteral("SnapAssistEnabled"), QString()); // Clear obsolete location
         behavior->writeString(QStringLiteral("SnapAssistTriggers"), QString()); // Clear obsolete location
         behavior->writeString(QStringLiteral("DefaultLayoutId"), m_defaultLayoutId);
+        behavior->writeBool(QStringLiteral("FilterLayoutsByAspectRatio"), m_filterLayoutsByAspectRatio);
     }
     {
         auto activation = backend->group(QStringLiteral("Activation"));

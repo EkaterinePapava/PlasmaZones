@@ -40,6 +40,31 @@ inline QScreen* findScreenByName(const QString& connectorName)
 PLASMAZONES_EXPORT QScreen* findScreenByIdOrName(const QString& identifier);
 
 /**
+ * @brief Get the aspect ratio of a screen
+ * @param screen QScreen pointer (returns 0.0 if null or degenerate geometry)
+ * @return width/height ratio, or 0.0 if unavailable
+ */
+inline qreal screenAspectRatio(QScreen* screen)
+{
+    if (!screen)
+        return 0.0;
+    const QRect geom = screen->geometry();
+    if (geom.height() <= 0)
+        return 0.0;
+    return static_cast<qreal>(geom.width()) / geom.height();
+}
+
+/**
+ * @brief Get the aspect ratio of a screen by name/ID
+ * @param screenNameOrId Screen connector name or EDID-based ID
+ * @return width/height ratio, or 0.0 if screen not found
+ */
+inline qreal screenAspectRatio(const QString& screenNameOrId)
+{
+    return screenAspectRatio(findScreenByIdOrName(screenNameOrId));
+}
+
+/**
  * @brief Get the primary screen
  * @return Pointer to primary QScreen
  */

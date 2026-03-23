@@ -118,6 +118,10 @@ public:
     // Default layout (used when no explicit assignment exists)
     Q_PROPERTY(QString defaultLayoutId READ defaultLayoutId WRITE setDefaultLayoutId NOTIFY defaultLayoutIdChanged)
 
+    // Layout filtering
+    Q_PROPERTY(bool filterLayoutsByAspectRatio READ filterLayoutsByAspectRatio WRITE setFilterLayoutsByAspectRatio
+                   NOTIFY filterLayoutsByAspectRatioChanged)
+
     // Exclusions
     Q_PROPERTY(QStringList excludedApplications READ excludedApplications WRITE setExcludedApplications NOTIFY
                    excludedApplicationsChanged)
@@ -677,6 +681,12 @@ public:
         return m_defaultLayoutId;
     }
     void setDefaultLayoutId(const QString& layoutId) override;
+
+    bool filterLayoutsByAspectRatio() const override
+    {
+        return m_filterLayoutsByAspectRatio;
+    }
+    void setFilterLayoutsByAspectRatio(bool filter) override;
 
     QStringList excludedApplications() const override
     {
@@ -1424,6 +1434,7 @@ Q_SIGNALS:
     void editorSnapOverrideModifierChanged();
     void fillOnDropEnabledChanged();
     void fillOnDropModifierChanged();
+    void filterLayoutsByAspectRatioChanged();
 
 private:
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -1587,6 +1598,9 @@ private:
 
     // Default layout (used when no explicit assignment exists)
     QString m_defaultLayoutId;
+
+    // Layout filtering
+    bool m_filterLayoutsByAspectRatio = true;
 
     // Exclusions
     QStringList m_excludedApplications;

@@ -370,6 +370,23 @@ void EditorController::setUseFullScreenGeometryDirect(bool enabled)
     }
 }
 
+int EditorController::aspectRatioClass() const
+{
+    return m_aspectRatioClass;
+}
+
+void EditorController::setAspectRatioClass(int cls)
+{
+    if (cls < 0 || cls > 4) {
+        return;
+    }
+    if (m_aspectRatioClass != cls) {
+        m_aspectRatioClass = cls;
+        markUnsaved();
+        Q_EMIT aspectRatioClassChanged();
+    }
+}
+
 QSize EditorController::targetScreenSize() const
 {
     // Get the target screen size for fixed geometry coordinate conversion

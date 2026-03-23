@@ -123,6 +123,12 @@ class PLASMAZONES_EXPORT Layout : public QObject
     Q_PROPERTY(bool useFullScreenGeometry READ useFullScreenGeometry WRITE setUseFullScreenGeometry NOTIFY
                    useFullScreenGeometryChanged)
 
+    // Aspect ratio classification
+    Q_PROPERTY(
+        int aspectRatioClass READ aspectRatioClassInt WRITE setAspectRatioClassInt NOTIFY aspectRatioClassChanged)
+    Q_PROPERTY(qreal minAspectRatio READ minAspectRatio WRITE setMinAspectRatio NOTIFY aspectRatioClassChanged)
+    Q_PROPERTY(qreal maxAspectRatio READ maxAspectRatio WRITE setMaxAspectRatio NOTIFY aspectRatioClassChanged)
+
     // Visibility filtering
     Q_PROPERTY(
         bool hiddenFromSelector READ hiddenFromSelector WRITE setHiddenFromSelector NOTIFY hiddenFromSelectorChanged)
@@ -281,6 +287,35 @@ public:
     }
     void setShaderParams(const QVariantMap& params);
 
+    // Aspect ratio classification
+    PlasmaZones::AspectRatioClass aspectRatioClass() const
+    {
+        return m_aspectRatioClass;
+    }
+    void setAspectRatioClass(PlasmaZones::AspectRatioClass cls);
+    int aspectRatioClassInt() const
+    {
+        return static_cast<int>(m_aspectRatioClass);
+    }
+    void setAspectRatioClassInt(int cls);
+    qreal minAspectRatio() const
+    {
+        return m_minAspectRatio;
+    }
+    void setMinAspectRatio(qreal ratio);
+    qreal maxAspectRatio() const
+    {
+        return m_maxAspectRatio;
+    }
+    void setMaxAspectRatio(qreal ratio);
+
+    /**
+     * @brief Check if this layout is suitable for a screen with the given aspect ratio
+     *
+     * Uses explicit min/max bounds if set, otherwise falls back to class matching.
+     */
+    bool matchesAspectRatio(qreal screenAspectRatio) const;
+
     // Visibility filtering
     bool hiddenFromSelector() const
     {
@@ -408,6 +443,7 @@ Q_SIGNALS:
     void sourcePathChanged();
     void shaderIdChanged();
     void shaderParamsChanged();
+    void aspectRatioClassChanged();
     void hiddenFromSelectorChanged();
     void allowedScreensChanged();
     void allowedDesktopsChanged();
@@ -453,6 +489,11 @@ private:
     // Shader support
     QString m_shaderId; // Shader effect ID (empty = no shader)
     QVariantMap m_shaderParams; // Shader-specific parameters
+
+    // Aspect ratio classification
+    PlasmaZones::AspectRatioClass m_aspectRatioClass = PlasmaZones::AspectRatioClass::Any;
+    qreal m_minAspectRatio = 0.0; // 0 = not set (use class matching)
+    qreal m_maxAspectRatio = 0.0; // 0 = not set (use class matching)
 
     // Visibility filtering
     bool m_hiddenFromSelector = false;

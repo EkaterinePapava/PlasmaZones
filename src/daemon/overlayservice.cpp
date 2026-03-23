@@ -439,8 +439,9 @@ QVariantList OverlayService::buildLayoutsList(const QString& screenId) const
             }
         }
     }
-    const auto entries = LayoutUtils::buildUnifiedLayoutList(m_layoutManager, screenId, m_currentVirtualDesktop,
-                                                             m_currentActivity, includeManual, includeAutotile);
+    const auto entries = LayoutUtils::buildUnifiedLayoutList(
+        m_layoutManager, screenId, m_currentVirtualDesktop, m_currentActivity, includeManual, includeAutotile,
+        Utils::screenAspectRatio(screenId), m_settings && m_settings->filterLayoutsByAspectRatio());
     return LayoutUtils::toVariantList(entries);
 }
 
@@ -462,9 +463,10 @@ void OverlayService::setExcludedScreens(const QSet<QString>& screenIds)
 
 int OverlayService::visibleLayoutCount(const QString& screenId) const
 {
-    const auto entries =
-        LayoutUtils::buildUnifiedLayoutList(m_layoutManager, screenId, m_currentVirtualDesktop, m_currentActivity,
-                                            m_includeManualLayouts, m_includeAutotileLayouts);
+    const auto entries = LayoutUtils::buildUnifiedLayoutList(
+        m_layoutManager, screenId, m_currentVirtualDesktop, m_currentActivity, m_includeManualLayouts,
+        m_includeAutotileLayouts, Utils::screenAspectRatio(screenId),
+        m_settings && m_settings->filterLayoutsByAspectRatio());
     return entries.size();
 }
 

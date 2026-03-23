@@ -30,6 +30,23 @@ Window {
     // Screen info for aspect ratio (bounded to prevent layout issues)
     property real screenAspectRatio: 16 / 9
     readonly property real safeAspectRatio: Math.max(0.5, Math.min(4, screenAspectRatio))
+    // Layout's intended aspect ratio class (set from C++)
+    property string aspectRatioClass: "any"
+    // Resolved preview AR: use layout's class if set, fall back to screen's AR
+    readonly property real previewAspectRatio: {
+        switch (aspectRatioClass) {
+        case "standard":
+            return 16 / 9;
+        case "ultrawide":
+            return 21 / 9;
+        case "super-ultrawide":
+            return 32 / 9;
+        case "portrait":
+            return 9 / 16;
+        default:
+            return safeAspectRatio;
+        }
+    }
     // Timing
     property int displayDuration: 1500
     // ms before auto-hide
@@ -191,7 +208,7 @@ Window {
                 anchors.topMargin: Kirigami.Units.gridUnit * 1.5
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: Kirigami.Units.gridUnit * 11
-                height: Math.round(Kirigami.Units.gridUnit * 11 / root.safeAspectRatio)
+                height: Math.round(Kirigami.Units.gridUnit * 11 / root.previewAspectRatio)
 
                 // Background for preview area
                 Rectangle {

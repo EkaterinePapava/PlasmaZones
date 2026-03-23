@@ -535,6 +535,13 @@ public:
     void setSnapAssistTriggers(const QVariantList&) override
     {
     }
+    bool filterLayoutsByAspectRatio() const override
+    {
+        return true;
+    }
+    void setFilterLayoutsByAspectRatio(bool) override
+    {
+    }
 
     // Animation settings (ISettings)
     bool animationsEnabled() const override

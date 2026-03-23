@@ -173,6 +173,8 @@ ComboBox {
     }
 
     function _doRebuild() {
+        // Defer until popup closes
+
         _rebuildScheduled = false;
         let items = _buildItems();
         if (_modelMatchesItems(items)) {
@@ -397,6 +399,11 @@ ComboBox {
                         visible: hasLayout && modelData.category >= 0
                         category: modelData.category
                         autoAssign: modelData.layout && modelData.layout.autoAssign === true
+                    }
+
+                    // Aspect ratio badge
+                    QFZCommon.AspectRatioBadge {
+                        aspectRatioClass: (modelData.layout && modelData.layout.aspectRatioClass) || "any"
                     }
 
                 }

@@ -151,6 +151,7 @@ Q_SIGNALS:
     void snapAssistEnabledChanged();
     void snapAssistTriggersChanged();
     void defaultLayoutIdChanged();
+    void filterLayoutsByAspectRatioChanged();
     void excludedApplicationsChanged();
     void excludedWindowClassesChanged();
     void excludeTransientWindowsChanged();

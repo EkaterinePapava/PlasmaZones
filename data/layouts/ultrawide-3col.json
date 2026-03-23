@@ -1,26 +1,26 @@
 {
-    "id": "{678892d8-b63a-41a9-81b9-78caa95878e7}",
-    "name": "Columns (3)",
-    "description": "Three equal vertical columns",
-    "type": 1,
+    "id": "{e1a72c3f-8d4b-4f9e-b6a1-3c5d7e9f0a2b}",
+    "name": "Ultrawide 3-Column",
+    "description": "Three balanced columns optimized for 21:9 monitors",
+    "type": 5,
     "isBuiltIn": true,
     "showZoneNumbers": true,
-    "aspectRatioClass": "standard",
+    "aspectRatioClass": "ultrawide",
     "zones": [
         {
-            "id": "{2bb43b1d-3506-40b7-8f2b-e0fe59c0e90e}",
+            "id": "{a1b2c3d4-1111-4444-aaaa-111111111111}",
             "name": "Left",
             "zoneNumber": 1,
             "relativeGeometry": { "x": 0, "y": 0, "width": 0.333333, "height": 1.0 }
         },
         {
-            "id": "{93b382be-8b48-496b-b53c-88bef2c46787}",
+            "id": "{a1b2c3d4-2222-4444-aaaa-222222222222}",
             "name": "Center",
             "zoneNumber": 2,
             "relativeGeometry": { "x": 0.333333, "y": 0, "width": 0.333334, "height": 1.0 }
         },
         {
-            "id": "{b14ed13c-17cd-4da2-ba0a-8dae3b61dba2}",
+            "id": "{a1b2c3d4-3333-4444-aaaa-333333333333}",
             "name": "Right",
             "zoneNumber": 3,
             "relativeGeometry": { "x": 0.666667, "y": 0, "width": 0.333333, "height": 1.0 }

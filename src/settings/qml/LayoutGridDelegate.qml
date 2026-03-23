@@ -252,7 +252,7 @@ Item {
 
             }
 
-            // Info row with category badge
+            // Info row with category and aspect ratio badges
             RowLayout {
                 Layout.alignment: Qt.AlignHCenter
                 spacing: Kirigami.Units.smallSpacing
@@ -261,6 +261,10 @@ Item {
                     visible: root.modelData.category !== undefined
                     category: root.modelData.category !== undefined ? root.modelData.category : 0
                     autoAssign: root.modelData.autoAssign === true
+                }
+
+                QFZCommon.AspectRatioBadge {
+                    aspectRatioClass: root.modelData.aspectRatioClass || "any"
                 }
 
                 Label {
