@@ -338,16 +338,6 @@ ColumnLayout {
                     target: settingsController
                 }
 
-                // Background
-                Rectangle {
-                    anchors.fill: parent
-                    z: -1
-                    color: Kirigami.Theme.backgroundColor
-                    border.color: Kirigami.Theme.disabledTextColor
-                    border.width: 1
-                    radius: Kirigami.Units.smallSpacing
-                }
-
                 // Empty state
                 Kirigami.PlaceholderMessage {
                     anchors.centerIn: parent
