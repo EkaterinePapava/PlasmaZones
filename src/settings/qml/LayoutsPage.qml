@@ -192,46 +192,49 @@ ColumnLayout {
                     onTriggered: settingsController.setLayoutAutoAssign(layoutContextMenu.layoutId, !(layoutContextMenu.layout && layoutContextMenu.layout.autoAssign === true))
                 }
 
-                Menu {
-                    title: i18n("Aspect Ratio")
-                    icon.name: "transform-crop"
+                // -- Aspect Ratio (flat, no nested Menu to avoid Qt6 submenu crash) --
+                MenuSeparator {
                     visible: !layoutContextMenu.isAutotile
+                }
 
-                    MenuItem {
-                        text: root.aspectRatioLabels["any"]
-                        checkable: true
-                        checked: layoutContextMenu.layout && (layoutContextMenu.layout.aspectRatioClass || "any") === "any"
-                        onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 0)
-                    }
+                MenuItem {
+                    text: "    " + root.aspectRatioLabels["any"]
+                    checkable: true
+                    visible: !layoutContextMenu.isAutotile
+                    checked: layoutContextMenu.layout && (layoutContextMenu.layout.aspectRatioClass || "any") === "any"
+                    onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 0)
+                }
 
-                    MenuItem {
-                        text: root.aspectRatioLabels["standard"]
-                        checkable: true
-                        checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "standard"
-                        onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 1)
-                    }
+                MenuItem {
+                    text: "    " + root.aspectRatioLabels["standard"]
+                    checkable: true
+                    visible: !layoutContextMenu.isAutotile
+                    checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "standard"
+                    onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 1)
+                }
 
-                    MenuItem {
-                        text: root.aspectRatioLabels["ultrawide"]
-                        checkable: true
-                        checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "ultrawide"
-                        onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 2)
-                    }
+                MenuItem {
+                    text: "    " + root.aspectRatioLabels["ultrawide"]
+                    checkable: true
+                    visible: !layoutContextMenu.isAutotile
+                    checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "ultrawide"
+                    onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 2)
+                }
 
-                    MenuItem {
-                        text: root.aspectRatioLabels["super-ultrawide"]
-                        checkable: true
-                        checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "super-ultrawide"
-                        onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 3)
-                    }
+                MenuItem {
+                    text: "    " + root.aspectRatioLabels["super-ultrawide"]
+                    checkable: true
+                    visible: !layoutContextMenu.isAutotile
+                    checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "super-ultrawide"
+                    onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 3)
+                }
 
-                    MenuItem {
-                        text: root.aspectRatioLabels["portrait"]
-                        checkable: true
-                        checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "portrait"
-                        onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 4)
-                    }
-
+                MenuItem {
+                    text: "    " + root.aspectRatioLabels["portrait"]
+                    checkable: true
+                    visible: !layoutContextMenu.isAutotile
+                    checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "portrait"
+                    onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 4)
                 }
 
                 // -- Manage --
