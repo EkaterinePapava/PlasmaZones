@@ -63,6 +63,9 @@ public Q_SLOTS:
     // Auto-assign
     void setLayoutAutoAssign(const QString& layoutId, bool enabled);
 
+    // Aspect ratio classification
+    void setLayoutAspectRatioClass(const QString& layoutId, int aspectRatioClass);
+
     // Editor support
     bool updateLayout(const QString& layoutJson);
     QString createLayoutFromJson(const QString& layoutJson);

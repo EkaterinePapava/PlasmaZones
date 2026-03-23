@@ -326,6 +326,20 @@ void LayoutAdaptor::setLayoutAutoAssign(const QString& layoutId, bool enabled)
     Q_EMIT layoutListChanged();
 }
 
+void LayoutAdaptor::setLayoutAspectRatioClass(const QString& layoutId, int aspectRatioClass)
+{
+    auto* layout = getValidatedLayout(layoutId, QStringLiteral("set layout aspect ratio"));
+    if (!layout) {
+        return;
+    }
+
+    layout->setAspectRatioClassInt(aspectRatioClass);
+
+    qCInfo(lcDbusLayout) << "Set layout" << layoutId << "aspectRatioClass:" << aspectRatioClass;
+    Q_EMIT layoutChanged(QString::fromUtf8(QJsonDocument(layout->toJson()).toJson()));
+    Q_EMIT layoutListChanged();
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Layout Management
 // ═══════════════════════════════════════════════════════════════════════════════

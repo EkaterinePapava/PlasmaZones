@@ -436,6 +436,15 @@ void SettingsController::setLayoutAutoAssign(const QString& layoutId, bool enabl
     scheduleLayoutLoad();
 }
 
+void SettingsController::setLayoutAspectRatio(const QString& layoutId, int aspectRatioClass)
+{
+    if (layoutId.isEmpty())
+        return;
+    DaemonDBus::callDaemon(QString(DBus::Interface::LayoutManager), QStringLiteral("setLayoutAspectRatioClass"),
+                           {layoutId, aspectRatioClass});
+    scheduleLayoutLoad();
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Assignment helpers (D-Bus to daemon LayoutManager)
 // ═══════════════════════════════════════════════════════════════════════════════

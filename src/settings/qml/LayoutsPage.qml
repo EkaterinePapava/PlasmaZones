@@ -184,6 +184,48 @@ ColumnLayout {
                     onTriggered: settingsController.setLayoutAutoAssign(layoutContextMenu.layoutId, !(layoutContextMenu.layout && layoutContextMenu.layout.autoAssign === true))
                 }
 
+                Menu {
+                    title: i18n("Aspect Ratio")
+                    icon.name: "transform-crop"
+                    visible: !layoutContextMenu.isAutotile
+
+                    MenuItem {
+                        text: i18n("Any")
+                        checkable: true
+                        checked: layoutContextMenu.layout && (layoutContextMenu.layout.aspectRatioClass || "any") === "any"
+                        onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 0)
+                    }
+
+                    MenuItem {
+                        text: i18n("Standard (16:9)")
+                        checkable: true
+                        checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "standard"
+                        onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 1)
+                    }
+
+                    MenuItem {
+                        text: i18n("Ultrawide (21:9)")
+                        checkable: true
+                        checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "ultrawide"
+                        onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 2)
+                    }
+
+                    MenuItem {
+                        text: i18n("Super-Ultrawide (32:9)")
+                        checkable: true
+                        checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "super-ultrawide"
+                        onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 3)
+                    }
+
+                    MenuItem {
+                        text: i18n("Portrait (9:16)")
+                        checkable: true
+                        checked: layoutContextMenu.layout && layoutContextMenu.layout.aspectRatioClass === "portrait"
+                        onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 4)
+                    }
+
+                }
+
                 // -- Manage --
                 MenuSeparator {
                     visible: root.viewMode === 0 && !layoutContextMenu.isAutotile

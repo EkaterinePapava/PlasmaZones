@@ -177,6 +177,7 @@ public:
     Q_INVOKABLE int importFromKZonesFile(const QString& filePath);
     Q_INVOKABLE void setLayoutHidden(const QString& layoutId, bool hidden);
     Q_INVOKABLE void setLayoutAutoAssign(const QString& layoutId, bool enabled);
+    Q_INVOKABLE void setLayoutAspectRatio(const QString& layoutId, int aspectRatioClass);
 
     // Screen helpers
     Q_INVOKABLE bool isMonitorDisabled(const QString& screenName) const;
