@@ -96,6 +96,10 @@ set(plasmazones_core_SRCS
     dbus/settingsadaptor.h
     dbus/shaderadaptor.cpp
     dbus/shaderadaptor.h
+    dbus/compositorbridgeadaptor.cpp
+    dbus/compositorbridgeadaptor.h
+    dbus/controladaptor.cpp
+    dbus/controladaptor.h
     dbus/overlayadaptor.cpp
     dbus/overlayadaptor.h
     dbus/zonedetectionadaptor.cpp
