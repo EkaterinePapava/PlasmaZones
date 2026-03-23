@@ -478,6 +478,8 @@ All configurable in **System Settings → Shortcuts → PlasmaZones** (KDE) or i
 | Action | Default Shortcut |
 |--------|------------------|
 | Open editor | `Meta+Shift+E` |
+| Open settings | `Meta+Shift+P` |
+| Toggle layout lock | `Meta+Ctrl+L` |
 
 </details>
 
