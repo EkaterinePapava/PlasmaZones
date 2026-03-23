@@ -47,11 +47,18 @@ Item {
 
     }
 
+    // HoverHandler for hover state — immune to scale transform geometry changes
+    // that cause MouseArea.containsMouse to flicker at card boundaries
+    HoverHandler {
+        id: cardHoverHandler
+
+        onHoveredChanged: root.isHovered = hovered
+    }
+
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        hoverEnabled: true
-        onContainsMouseChanged: root.isHovered = containsMouse
+        hoverEnabled: false
         onClicked: (mouse) => {
             if (mouse.button === Qt.RightButton) {
                 root.selected(root.index);
