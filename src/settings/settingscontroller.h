@@ -331,6 +331,7 @@ Q_SIGNALS:
     void needsSaveChanged();
     void daemonRunningChanged();
     void layoutsChanged();
+    void layoutAdded(const QString& layoutId);
     void screensChanged();
 
     // Virtual desktop / activity / assignment signals
@@ -392,6 +393,7 @@ private:
     // Layout state
     QVariantList m_layouts;
     QTimer m_layoutLoadTimer;
+    QString m_pendingSelectLayoutId;
 
     // Virtual desktop / activity state
     int m_virtualDesktopCount = 1;

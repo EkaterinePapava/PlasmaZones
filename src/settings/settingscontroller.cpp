@@ -291,6 +291,13 @@ void SettingsController::loadLayoutsAsync()
 
         m_layouts = newLayouts;
         Q_EMIT layoutsChanged();
+
+        // Emit pending select after model is populated
+        if (!m_pendingSelectLayoutId.isEmpty()) {
+            QString id = m_pendingSelectLayoutId;
+            m_pendingSelectLayoutId.clear();
+            Q_EMIT layoutAdded(id);
+        }
     });
 }
 
@@ -303,6 +310,7 @@ void SettingsController::createNewLayout()
         QString newLayoutId = reply.arguments().first().toString();
         if (!newLayoutId.isEmpty()) {
             editLayout(newLayoutId);
+            m_pendingSelectLayoutId = newLayoutId;
         }
     }
     scheduleLayoutLoad();
@@ -320,7 +328,14 @@ void SettingsController::deleteLayout(const QString& layoutId)
 
 void SettingsController::duplicateLayout(const QString& layoutId)
 {
-    DaemonDBus::callDaemon(QString(DBus::Interface::LayoutManager), QStringLiteral("duplicateLayout"), {layoutId});
+    QDBusMessage reply =
+        DaemonDBus::callDaemon(QString(DBus::Interface::LayoutManager), QStringLiteral("duplicateLayout"), {layoutId});
+    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+        QString newId = reply.arguments().first().toString();
+        if (!newId.isEmpty()) {
+            m_pendingSelectLayoutId = newId;
+        }
+    }
     scheduleLayoutLoad();
 }
 
@@ -364,7 +379,7 @@ void SettingsController::importLayout(const QString& filePath)
     if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
         QString newLayoutId = reply.arguments().first().toString();
         if (!newLayoutId.isEmpty()) {
-            editLayout(newLayoutId);
+            m_pendingSelectLayoutId = newLayoutId;
         }
     }
     scheduleLayoutLoad();

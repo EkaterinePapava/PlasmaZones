@@ -323,6 +323,13 @@ ColumnLayout {
                         layoutGrid.rebuildModel();
                     }
 
+                    function onLayoutAdded(layoutId) {
+                        // Select and scroll to the new layout after the model rebuilds
+                        Qt.callLater(() => {
+                            layoutGrid.selectLayoutById(layoutId);
+                        });
+                    }
+
                     target: settingsController
                 }
 
