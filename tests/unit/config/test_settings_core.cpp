@@ -36,7 +36,7 @@ private Q_SLOTS:
     // =========================================================================
 
     /**
-     * reset() must delete the "Updates" KConfig group so that the dismissed
+     * reset() must delete the "Updates" config group so that the dismissed
      * update version is cleared. Regression: if Updates group survives reset,
      * the user can never see update notifications again.
      */
@@ -108,17 +108,9 @@ private Q_SLOTS:
      * This validates the full round-trip for a representative subset of settings
      * across all config groups.
      *
-     * KSharedConfig::openConfig("plasmazonesrc") caches the config object by
-     * name (per-thread singleton). When multiple test slots each create a fresh
-     * IsolatedConfigGuard, the cached KSharedConfig still points to the file
-     * path established by the FIRST test slot that opened it -- even though
-     * subsequent guards change XDG_CONFIG_HOME to different temp dirs. This
-     * means save()/load() operate on the stale path, making the round-trip
-     * appear to fail (load reads defaults from a non-existent file).
-     *
-     * To work around this, we verify the round-trip by reading the on-disk
-     * config file directly with a path-based KConfig (bypassing the shared
-     * cache), which faithfully reflects what save() wrote.
+     * QSettingsConfigBackend::createDefault() reads from
+     * $XDG_CONFIG_HOME/plasmazonesrc. The IsolatedConfigGuard redirects
+     * XDG_CONFIG_HOME to a temp directory, so each test gets a fresh file.
      */
     void testSave_load_roundtrip_allGroups()
     {

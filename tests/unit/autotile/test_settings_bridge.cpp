@@ -10,10 +10,9 @@
 #include "autotile/AlgorithmRegistry.h"
 #include "autotile/TilingState.h"
 #include "core/constants.h"
+#include "config/configbackend_qsettings.h"
 #include "../helpers/IsolatedConfigGuard.h"
 
-#include <KSharedConfig>
-#include <KConfigGroup>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -26,7 +25,7 @@ using PlasmaZones::TestHelpers::IsolatedConfigGuard;
  *
  * SettingsBridge requires a Settings object for full syncFromSettings/connectToSettings
  * testing. These tests exercise the session persistence (saveState/loadState) path
- * which uses KConfig directly, and test behavior of the engine through the
+ * which uses QSettingsConfigBackend, and test behavior of the engine through the
  * SettingsBridge indirectly.
  *
  * Tests cover:
@@ -55,12 +54,6 @@ private Q_SLOTS:
     {
         // Redirect config to a temp directory so tests never write to real ~/.config/plasmazonesrc
         m_configGuard = std::make_unique<IsolatedConfigGuard>();
-
-        // Clean up the autotile state config group before each test to avoid
-        // cross-test contamination via the shared plasmazonesrc file
-        auto config = KSharedConfig::openConfig(QStringLiteral("plasmazonesrc"));
-        config->deleteGroup(QStringLiteral("AutoTileState"));
-        config->sync();
     }
 
     void cleanup()
@@ -198,12 +191,15 @@ private Q_SLOTS:
 
     void testSettingsBridge_loadState_invalidJson()
     {
-        // Write corrupt JSON to the config
-        auto config = KSharedConfig::openConfig(QStringLiteral("plasmazonesrc"));
-        KConfigGroup group = config->group(QStringLiteral("AutoTileState"));
-        group.writeEntry(QStringLiteral("algorithm"), QStringLiteral("master-stack"));
-        group.writeEntry(QStringLiteral("screenStates"), QStringLiteral("{{{invalid json!@#}}}"));
-        config->sync();
+        // Write corrupt JSON to the config via QSettingsConfigBackend
+        {
+            auto backend = QSettingsConfigBackend::createDefault();
+            auto group = backend->group(QStringLiteral("AutoTileState"));
+            group->writeString(QStringLiteral("algorithm"), QStringLiteral("master-stack"));
+            group->writeString(QStringLiteral("screenStates"), QStringLiteral("{{{invalid json!@#}}}"));
+            group.reset();
+            backend->sync();
+        }
 
         // Should not crash — corrupt JSON is gracefully handled
         AutotileEngine engine(nullptr, nullptr, nullptr);
@@ -218,12 +214,15 @@ private Q_SLOTS:
 
     void testSettingsBridge_loadState_unknownAlgorithmIgnored()
     {
-        // Write an unknown algorithm to the config
-        auto config = KSharedConfig::openConfig(QStringLiteral("plasmazonesrc"));
-        KConfigGroup group = config->group(QStringLiteral("AutoTileState"));
-        group.writeEntry(QStringLiteral("algorithm"), QStringLiteral("nonexistent-algo-xyz"));
-        group.writeEntry(QStringLiteral("screenStates"), QStringLiteral("[]"));
-        config->sync();
+        // Write an unknown algorithm to the config via QSettingsConfigBackend
+        {
+            auto backend = QSettingsConfigBackend::createDefault();
+            auto group = backend->group(QStringLiteral("AutoTileState"));
+            group->writeString(QStringLiteral("algorithm"), QStringLiteral("nonexistent-algo-xyz"));
+            group->writeString(QStringLiteral("screenStates"), QStringLiteral("[]"));
+            group.reset();
+            backend->sync();
+        }
 
         AutotileEngine engine(nullptr, nullptr, nullptr);
         const QString originalAlgo = engine.algorithm();

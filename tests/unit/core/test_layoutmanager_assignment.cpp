@@ -313,10 +313,10 @@ private Q_SLOTS:
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // P6: KConfig round-trip
+    // P6: Config round-trip
     // ═══════════════════════════════════════════════════════════════════════════
 
-    void testKConfigRoundTrip_saveAndLoad_preservesAllFields()
+    void testConfigRoundTrip_saveAndLoad_preservesAllFields()
     {
         QScopedPointer<LayoutManager> mgr(createManager());
 
@@ -346,7 +346,7 @@ private Q_SLOTS:
         // Save
         mgr->saveAssignments();
 
-        // Create a new manager and load — same KSharedConfig singleton sees the data
+        // Create a new manager and load — same config file sees the data
         QScopedPointer<LayoutManager> mgr2(new LayoutManager(nullptr));
         mgr2->addLayout(createTestLayout(QStringLiteral("LayoutA")));
         mgr2->addLayout(createTestLayout(QStringLiteral("LayoutB")));
@@ -435,7 +435,7 @@ private Q_SLOTS:
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // P6: Migration from old [ModeTracking] KConfig group
+    // P6: Migration from old [ModeTracking] config group
     // ═══════════════════════════════════════════════════════════════════════════
 
     void testMigration_modeTrackingGroup_fillsMissingFields()

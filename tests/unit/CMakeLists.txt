@@ -3,20 +3,10 @@
 #
 # PlasmaZones Unit Tests
 
-# KConfig is needed by IsolatedConfigGuard (KSharedConfig) and settings tests (KConfigSkeleton)
-find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS Config ConfigWidgets)
-
-# KConfigXT generated sources (needed by settings tests that use PlasmaZonesConfig directly)
-kconfig_add_kcfg_files(test_kcfg_SRCS
-    ${CMAKE_SOURCE_DIR}/src/config/plasmazones.kcfgc
-    GENERATE_MOC
-)
-
-# Helper macro for simple tests (Qt6::Test + Qt6::Core + KF6::ConfigCore + plasmazones_core)
-# KF6::ConfigCore is needed by IsolatedConfigGuard.h (KSharedConfig) used by many tests
+# Helper macro for simple tests (Qt6::Test + Qt6::Core + plasmazones_core)
 macro(pz_add_test _name _src)
     add_executable(${_name} ${_src})
-    target_link_libraries(${_name} PRIVATE Qt6::Test Qt6::Core KF6::ConfigCore plasmazones_core)
+    target_link_libraries(${_name} PRIVATE Qt6::Test Qt6::Core plasmazones_core)
     add_test(NAME ${_name} COMMAND ${_name})
 endmacro()
 
@@ -41,26 +31,26 @@ pz_add_test(test_session_persistence_layout core/test_session_persistence_layout
 # core/ — Window Tracking Service Tests (lifecycle, session, queries)
 # ═══════════════════════════════════════════════════════════════════════════════
 add_executable(test_wts_lifecycle core/test_wts_lifecycle.cpp)
-target_link_libraries(test_wts_lifecycle PRIVATE Qt6::Test Qt6::Core Qt6::DBus KF6::ConfigCore plasmazones_core)
+target_link_libraries(test_wts_lifecycle PRIVATE Qt6::Test Qt6::Core Qt6::DBus plasmazones_core)
 add_test(NAME test_wts_lifecycle COMMAND test_wts_lifecycle)
 
 add_executable(test_wts_session core/test_wts_session.cpp)
-target_link_libraries(test_wts_session PRIVATE Qt6::Test Qt6::Core Qt6::DBus KF6::ConfigCore plasmazones_core)
+target_link_libraries(test_wts_session PRIVATE Qt6::Test Qt6::Core Qt6::DBus plasmazones_core)
 add_test(NAME test_wts_session COMMAND test_wts_session)
 
 add_executable(test_wts_queries core/test_wts_queries.cpp)
-target_link_libraries(test_wts_queries PRIVATE Qt6::Test Qt6::Core Qt6::DBus KF6::ConfigCore plasmazones_core)
+target_link_libraries(test_wts_queries PRIVATE Qt6::Test Qt6::Core Qt6::DBus plasmazones_core)
 add_test(NAME test_wts_queries COMMAND test_wts_queries)
 
 add_executable(test_wts_clearfloat core/test_wts_clearfloat.cpp)
-target_link_libraries(test_wts_clearfloat PRIVATE Qt6::Test Qt6::Core Qt6::DBus KF6::ConfigCore plasmazones_core)
+target_link_libraries(test_wts_clearfloat PRIVATE Qt6::Test Qt6::Core Qt6::DBus plasmazones_core)
 add_test(NAME test_wts_clearfloat COMMAND test_wts_clearfloat)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # core/ — SnapEngine Tests
 # ═══════════════════════════════════════════════════════════════════════════════
 add_executable(test_snap_engine core/test_snap_engine.cpp)
-target_link_libraries(test_snap_engine PRIVATE Qt6::Test Qt6::Core Qt6::DBus KF6::ConfigCore plasmazones_core)
+target_link_libraries(test_snap_engine PRIVATE Qt6::Test Qt6::Core Qt6::DBus plasmazones_core)
 add_test(NAME test_snap_engine COMMAND test_snap_engine)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -113,22 +103,22 @@ pz_add_test(test_geometry_utils_bsp core/test_geometry_utils_bsp.cpp)
 pz_add_test(test_geometry_utils_serialization core/test_geometry_utils_serialization.cpp)
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# config/ — Settings Tests (core, validation, per-screen) — need kcfg + KF6::ConfigCore
+# config/ — Settings Tests (core, validation, per-screen)
 # ═══════════════════════════════════════════════════════════════════════════════
-add_executable(test_settings_core config/test_settings_core.cpp ${test_kcfg_SRCS})
-target_link_libraries(test_settings_core PRIVATE Qt6::Test Qt6::Core KF6::ConfigCore KF6::ConfigGui plasmazones_core)
+add_executable(test_settings_core config/test_settings_core.cpp)
+target_link_libraries(test_settings_core PRIVATE Qt6::Test Qt6::Core plasmazones_core)
 add_test(NAME test_settings_core COMMAND test_settings_core)
 
-add_executable(test_settings_validation config/test_settings_validation.cpp ${test_kcfg_SRCS})
-target_link_libraries(test_settings_validation PRIVATE Qt6::Test Qt6::Core KF6::ConfigCore KF6::ConfigGui plasmazones_core)
+add_executable(test_settings_validation config/test_settings_validation.cpp)
+target_link_libraries(test_settings_validation PRIVATE Qt6::Test Qt6::Core plasmazones_core)
 add_test(NAME test_settings_validation COMMAND test_settings_validation)
 
-add_executable(test_settings_perscreen config/test_settings_perscreen.cpp ${test_kcfg_SRCS})
-target_link_libraries(test_settings_perscreen PRIVATE Qt6::Test Qt6::Core KF6::ConfigCore KF6::ConfigGui plasmazones_core)
+add_executable(test_settings_perscreen config/test_settings_perscreen.cpp)
+target_link_libraries(test_settings_perscreen PRIVATE Qt6::Test Qt6::Core plasmazones_core)
 add_test(NAME test_settings_perscreen COMMAND test_settings_perscreen)
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# config/ — ConfigDefaults Tests (standalone, no KConfigXT dependency)
+# config/ — ConfigDefaults Tests (standalone, no external dependency)
 # ═══════════════════════════════════════════════════════════════════════════════
 add_executable(test_configdefaults config/test_configdefaults.cpp)
 target_link_libraries(test_configdefaults PRIVATE Qt6::Test Qt6::Core plasmazones_core)
@@ -153,7 +143,7 @@ pz_add_test(test_layoutmanager_assignment core/test_layoutmanager_assignment.cpp
 pz_add_test(test_zone_detection_layout core/test_zone_detection_layout.cpp)
 
 add_executable(test_zone_detection_service core/test_zone_detection_service.cpp)
-target_link_libraries(test_zone_detection_service PRIVATE Qt6::Test Qt6::Core Qt6::DBus KF6::ConfigCore plasmazones_core)
+target_link_libraries(test_zone_detection_service PRIVATE Qt6::Test Qt6::Core Qt6::DBus plasmazones_core)
 add_test(NAME test_zone_detection_service COMMAND test_zone_detection_service)
 
 # ═══════════════════════════════════════════════════════════════════════════════

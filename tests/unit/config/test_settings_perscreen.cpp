@@ -15,7 +15,6 @@
 #include <QTest>
 #include <QSignalSpy>
 #include <QVariantMap>
-#include <KSharedConfig>
 
 #include "../../../src/config/settings.h"
 #include "../../../src/config/configdefaults.h"
