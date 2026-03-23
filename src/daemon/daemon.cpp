@@ -30,6 +30,9 @@
 #include "../config/settings.h"
 #include "../dbus/layoutadaptor.h"
 #include "../dbus/settingsadaptor.h"
+#include "../dbus/shaderadaptor.h"
+#include "../dbus/compositorbridgeadaptor.h"
+#include "../dbus/controladaptor.h"
 #include "../dbus/overlayadaptor.h"
 #include "../dbus/zonedetectionadaptor.h"
 #include "../dbus/windowtrackingadaptor.h"
@@ -285,6 +288,12 @@ bool Daemon::init()
     connect(m_settings.get(), &Settings::defaultLayoutIdChanged, m_layoutAdaptor, &LayoutAdaptor::invalidateCache);
     m_settingsAdaptor = new SettingsAdaptor(m_settings.get(), this);
 
+    // Shader adaptor - shader discovery, compilation lifecycle, file monitoring
+    new ShaderAdaptor(ShaderRegistry::instance(), this);
+
+    // Compositor bridge adaptor - compositor-agnostic window control protocol
+    new CompositorBridgeAdaptor(this);
+
     // Overlay adaptor - overlay visibility and highlighting
     m_overlayAdaptor =
         new OverlayAdaptor(m_overlayService.get(), m_zoneDetector.get(), m_layoutManager.get(), m_settings.get(), this);
@@ -353,6 +362,9 @@ bool Daemon::init()
     // connects signals in its constructor (unified pattern for both engines)
     m_snapAdaptor = new SnapAdaptor(m_snapEngine.get(), m_windowTrackingAdaptor, this);
     m_autotileAdaptor = new AutotileAdaptor(m_autotileEngine.get(), this);
+
+    // Control adaptor - high-level convenience API for third-party integrations
+    new ControlAdaptor(m_windowTrackingAdaptor, m_layoutAdaptor, m_layoutManager.get(), m_autotileEngine.get(), this);
 
     // Handle KCM assignment change resnap/OSD. This runs AFTER the KCM's batch
     // save completes (all setAssignmentEntry + notifyReload finished), so all

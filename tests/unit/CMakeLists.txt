@@ -176,6 +176,21 @@ target_link_libraries(test_overlay_helpers PRIVATE Qt6::Test Qt6::Core Qt6::Quic
 add_test(NAME test_overlay_helpers COMMAND test_overlay_helpers)
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# dbus/ — D-Bus API Tests (convenience, schema, compositor bridge)
+# ═══════════════════════════════════════════════════════════════════════════════
+add_executable(test_wta_convenience dbus/test_wta_convenience.cpp)
+target_link_libraries(test_wta_convenience PRIVATE Qt6::Test Qt6::Core Qt6::DBus plasmazones_core)
+add_test(NAME test_wta_convenience COMMAND test_wta_convenience)
+
+add_executable(test_settings_schema dbus/test_settings_schema.cpp)
+target_link_libraries(test_settings_schema PRIVATE Qt6::Test Qt6::Core Qt6::DBus plasmazones_core)
+add_test(NAME test_settings_schema COMMAND test_settings_schema)
+
+add_executable(test_compositor_bridge dbus/test_compositor_bridge.cpp)
+target_link_libraries(test_compositor_bridge PRIVATE Qt6::Test Qt6::Core Qt6::DBus plasmazones_core)
+add_test(NAME test_compositor_bridge COMMAND test_compositor_bridge)
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Headless environment support
 # Set QT_QPA_PLATFORM=offscreen so tests run in CI containers without a display
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -202,5 +217,6 @@ set(_all_tests
     test_zone_detection_layout test_zone_detection_service
     test_per_screen_config test_navigation_controller test_settings_bridge
     test_zone_shader_item test_overlay_helpers
+    test_wta_convenience test_settings_schema test_compositor_bridge
 )
 set_tests_properties(${_all_tests} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
