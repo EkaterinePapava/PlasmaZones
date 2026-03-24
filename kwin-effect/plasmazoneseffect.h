@@ -13,7 +13,7 @@
 #include <QVector>
 #include <QSet>
 #include <QTimer>
-#include <QDBusInterface>
+#include <QDBusPendingCall>
 #include <QHash>
 #include <QPointer>
 #include <QRect>
@@ -54,7 +54,7 @@ struct ParsedTrigger
  * then communicates with the PlasmaZones daemon via D-Bus.
  *
  * Unlike JavaScript effects, C++ effects have full access to:
- * - Qt D-Bus API (QDBusInterface)
+ * - Qt D-Bus API (QDBusMessage + async calls, no QDBusInterface)
  * - Keyboard modifier state via QGuiApplication
  * - Window move/resize state via isUserMove()
  */
@@ -155,18 +155,29 @@ private:
     void callDragStopped(KWin::EffectWindow* window, const QString& windowId);
     void callCancelSnap();
     void callResolveWindowRestore(KWin::EffectWindow* window, std::function<void()> onComplete = nullptr);
-    void ensureWindowTrackingInterface();
     void connectNavigationSignals();
     void syncFloatingWindowsFromDaemon();
 
     /**
-     * @brief Ensure WindowTracking D-Bus interface is ready for use
+     * @brief Check if daemon is registered and ready for D-Bus calls
      * @param methodName Name of the calling method (for debug logging)
-     * @return true if interface is valid and ready, false otherwise
-     * Consolidates interface validation pattern
+     * @return true if daemon is registered and ready
      */
-    bool ensureWindowTrackingReady(const char* methodName);
-    bool ensureOverlayInterface(const char* methodName);
+    bool isDaemonReady(const char* methodName) const;
+
+    /**
+     * @brief Create an async D-Bus method call and return the pending result.
+     *
+     * Uses QDBusMessage::createMethodCall (no QDBusInterface) to avoid
+     * synchronous D-Bus introspection that blocks the compositor thread.
+     *
+     * @param interface  D-Bus interface name
+     * @param method     D-Bus method name
+     * @param args       Method arguments
+     * @return QDBusPendingCall for attaching a watcher
+     */
+    QDBusPendingCall asyncMethodCall(const QString& interface, const QString& method,
+                                     const QVariantList& args = {});
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // Helper Methods
@@ -263,11 +274,9 @@ private:
     void repaintSnapRegions(KWin::EffectWindow* window, const QRectF& oldFrame, const QRect& newGeo);
 
     // Async D-Bus helper for 5-arg snap replies (x, y, w, h, shouldSnap).
-    // iface must remain valid for the duration of the async call (caller guarantees
-    // ownership via unique_ptr member; the reference is only used to initiate the call,
-    // not captured in the async lambda).
+    // Uses QDBusMessage::createMethodCall (no QDBusInterface) to avoid synchronous introspection.
     // onSnapSuccess: optional callback when snap is applied, receives (windowId, screenId)
-    void tryAsyncSnapCall(QDBusAbstractInterface& iface, const QString& method, const QList<QVariant>& args,
+    void tryAsyncSnapCall(const QString& interface, const QString& method, const QList<QVariant>& args,
                           QPointer<KWin::EffectWindow> window, const QString& windowId, bool storePreSnap,
                           std::function<void()> fallback,
                           std::function<void(const QString&, const QString&)> onSnapSuccess = nullptr,
@@ -298,11 +307,6 @@ public Q_SLOTS:
     // These methods are used by NavigationHandler, WindowAnimator, and DragTracker
     // ═══════════════════════════════════════════════════════════════════════════════
 public:
-    // D-Bus interface access for helpers
-    QDBusInterface* windowTrackingInterface() const
-    {
-        return m_windowTrackingInterface.get();
-    }
 
     // Animation sequence mode: 0=all at once, 1=one by one in zone order (for batch snaps)
     int cachedAnimationSequenceMode() const
@@ -377,13 +381,9 @@ private:
     Qt::MouseButtons m_currentMouseButtons = Qt::NoButton;
     bool m_keyboardGrabbed = false;
 
-    // D-Bus interfaces (lazy initialization)
-    // Note: WindowDrag interface uses QDBusMessage::createMethodCall directly
-    // (no QDBusInterface) to avoid synchronous D-Bus introspection that could
-    // block the compositor thread during startup. See callDragMoved() etc.
-    std::unique_ptr<QDBusInterface> m_windowTrackingInterface; // WindowTracking interface
-    std::unique_ptr<QDBusInterface> m_overlayInterface; // Overlay interface (Snap Assist)
-    std::unique_ptr<QDBusInterface> m_settingsInterface; // Settings interface
+    // D-Bus communication uses QDBusMessage::createMethodCall exclusively
+    // (no QDBusInterface) to avoid synchronous D-Bus introspection that blocks
+    // the compositor thread. See asyncMethodCall() and fireAndForgetDBusCall().
 
     // Screen change debouncing and reapply handled by ScreenChangeHandler
 

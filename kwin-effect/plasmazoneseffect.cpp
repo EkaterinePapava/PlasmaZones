@@ -12,7 +12,6 @@
 #include <QDBusMessage>
 #include <QDBusPendingCall>
 #include <QDBusPendingCallWatcher>
-#include <QDBusReply>
 #include <QDBusServiceWatcher>
 #include <QDir>
 #include <QFile>
@@ -54,48 +53,8 @@ Q_LOGGING_CATEGORY(lcEffect, "plasmazones.effect", QtInfoMsg)
 // NavigateDirectivePrefix moved to navigationhandler.cpp to avoid redefinition
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Template helpers
+// D-Bus helpers (all async — no QDBusInterface to avoid synchronous introspection)
 // ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * @brief Template to ensure a D-Bus interface is initialized and valid
- * @tparam InterfacePtr unique_ptr<QDBusInterface> type
- * @param interface Reference to the interface pointer to ensure
- * @param interfaceName D-Bus interface name (e.g., DBus::Interface::WindowDrag)
- * @param logName Human-readable name for logging
- *
- * Replaces the duplicate ensure*Interface() methods with a single template.
- *
- * IMPORTANT: QDBusInterface's constructor performs synchronous D-Bus introspection,
- * blocking the calling thread until the target service responds. To prevent compositor
- * hangs during login, the serviceRegistered flag is kept false until the daemon emits
- * its daemonReady D-Bus signal (end of Daemon::start()), confirming it can process
- * messages. This ensures all calls during the startup window bail out here, avoiding
- * synchronous introspection while the daemon is still initializing.
- */
-template<typename InterfacePtr>
-static void ensureInterface(InterfacePtr& interface, const QString& interfaceName, const char* logName,
-                            bool serviceRegistered)
-{
-    if (interface && interface->isValid()) {
-        return;
-    }
-
-    // Fast pre-check: use the cached service registration state (updated via
-    // QDBusServiceWatcher signals) instead of calling isServiceRegistered() which
-    // is a synchronous D-Bus call that blocks the compositor thread.
-    if (!serviceRegistered) {
-        qCDebug(lcEffect) << logName << "interface: service not registered, skipping";
-        return;
-    }
-
-    interface = std::make_unique<QDBusInterface>(DBus::ServiceName, DBus::ObjectPath, interfaceName,
-                                                 QDBusConnection::sessionBus());
-
-    if (!interface->isValid()) {
-        qCWarning(lcEffect) << "Cannot connect to" << logName << "interface -" << interface->lastError().message();
-    }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Helper Method Implementations
@@ -162,7 +121,7 @@ void PlasmaZonesEffect::ensurePreSnapGeometryStored(KWin::EffectWindow* w, const
         return;
     }
 
-    if (!ensureWindowTrackingReady("ensure pre-snap geometry")) {
+    if (!isDaemonReady("ensure pre-snap geometry")) {
         return;
     }
 
@@ -170,7 +129,8 @@ void PlasmaZonesEffect::ensurePreSnapGeometryStored(KWin::EffectWindow* w, const
     QString capturedWindowId = windowId;
     QRectF capturedGeom = preCapturedGeometry;
 
-    QDBusPendingCall pendingCall = m_windowTrackingInterface->asyncCall(QStringLiteral("hasPreTileGeometry"), windowId);
+    QDBusPendingCall pendingCall = asyncMethodCall(DBus::Interface::WindowTracking,
+                                                   QStringLiteral("hasPreTileGeometry"), {windowId});
     auto* watcher = new QDBusPendingCallWatcher(pendingCall, this);
 
     connect(watcher, &QDBusPendingCallWatcher::finished, this,
@@ -180,16 +140,17 @@ void PlasmaZonesEffect::ensurePreSnapGeometryStored(KWin::EffectWindow* w, const
                 QDBusPendingReply<bool> reply = *watcher;
                 bool hasGeometry = reply.isValid() && reply.value();
 
-                if (!hasGeometry && m_windowTrackingInterface && m_windowTrackingInterface->isValid()) {
+                if (!hasGeometry && m_daemonServiceRegistered) {
                     // Use pre-captured geometry if provided, otherwise read from window
                     QRectF geom =
                         capturedGeom.isValid() ? capturedGeom : (safeWindow ? safeWindow->frameGeometry() : QRectF());
                     if (geom.width() > 0 && geom.height() > 0) {
                         QString screenId = safeWindow ? getWindowScreenId(safeWindow) : QString();
-                        m_windowTrackingInterface->asyncCall(QStringLiteral("storePreTileGeometry"), capturedWindowId,
-                                                             static_cast<int>(geom.x()), static_cast<int>(geom.y()),
-                                                             static_cast<int>(geom.width()),
-                                                             static_cast<int>(geom.height()), screenId, false);
+                        fireAndForgetDBusCall(
+                            DBus::Interface::WindowTracking, QStringLiteral("storePreTileGeometry"),
+                            {capturedWindowId, static_cast<int>(geom.x()), static_cast<int>(geom.y()),
+                             static_cast<int>(geom.width()), static_cast<int>(geom.height()), screenId, false},
+                            QStringLiteral("storePreTileGeometry"));
                         qCInfo(lcEffect) << "Stored pre-tile geometry for window" << capturedWindowId;
                     }
                 }
@@ -444,23 +405,9 @@ PlasmaZonesEffect::PlasmaZonesEffect()
 
         // DO NOT set m_daemonServiceRegistered = true here.
         // The daemon registers its D-Bus service name in init(), BEFORE start()
-        // runs heavy initialization and BEFORE the event loop begins. If we set
-        // the flag now, window lifecycle events (slotWindowAdded → updateWindowStickyState,
-        // slotWindowActivated, slotMouseChanged, etc.) would call ensureInterface()
-        // which creates QDBusInterface synchronously — its constructor performs D-Bus
-        // introspection that blocks until the daemon responds. Since the daemon can't
-        // process messages yet, KWin freezes until D-Bus timeout (~25s).
-        //
-        // Instead, keep m_daemonServiceRegistered false until the daemon's own
-        // daemonReady signal fires (end of Daemon::start()), confirming it can
-        // handle D-Bus requests. slotDaemonReady() sets the flag and re-pushes state.
-
-        // Reset stale D-Bus interfaces from the previous daemon instance.
-        // Since m_daemonServiceRegistered remains false, ensureInterface() will
-        // skip recreation, preventing synchronous introspection during startup.
-        m_windowTrackingInterface.reset();
-        m_overlayInterface.reset();
-        m_settingsInterface.reset();
+        // runs heavy initialization and BEFORE the event loop begins. Keep the
+        // flag false until the daemon's own daemonReady signal fires (end of
+        // Daemon::start()), confirming it can handle D-Bus requests.
 
         // Reconnect daemonReady signal — Qt may cache the old daemon's unique bus
         // name in match rules, so refresh for the new daemon instance.
@@ -842,8 +789,9 @@ void PlasmaZonesEffect::slotMouseChanged(const QPointF& pos, const QPointF& oldp
         connectorName = output->name();
         if (connectorName != m_lastCursorOutput) {
             m_lastCursorOutput = connectorName;
-            if (ensureWindowTrackingReady("report cursor screen")) {
-                m_windowTrackingInterface->asyncCall(QStringLiteral("cursorScreenChanged"), outputScreenId(output));
+            if (m_daemonServiceRegistered) {
+                fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("cursorScreenChanged"),
+                                      {outputScreenId(output)});
             }
         }
     }
@@ -900,17 +848,8 @@ void PlasmaZonesEffect::slotDaemonReady()
     m_daemonServiceRegistered = true;
     qCInfo(lcEffect) << "daemon ready: re-pushing state";
 
-    // CRITICAL: Do NOT call ensureWindowTrackingReady() or any method that
-    // creates QDBusInterface here. The daemonReady signal is emitted at the
-    // end of Daemon::start(), BEFORE app.exec() starts the event loop
-    // (main.cpp:94 vs 102). QDBusInterface's constructor performs synchronous
-    // D-Bus Introspect — if the daemon can't process messages yet, KWin
-    // blocks for ~25s (D-Bus timeout), freezing the compositor on login.
-    //
-    // Instead, use QDBusMessage::createMethodCall + asyncCall for all
-    // immediate state pushes. QDBusInterface will be created lazily on the
-    // first user-initiated action (window drag, activation, etc.), by which
-    // time the daemon's event loop is guaranteed to be running.
+    // All D-Bus calls use QDBusMessage::createMethodCall + asyncCall (no QDBusInterface)
+    // to avoid synchronous D-Bus introspection that blocks the compositor thread.
 
     // Push KWin's output-order primary screen to the daemon so getPrimaryScreen()
     // reflects KDE Display Settings rather than QGuiApplication::primaryScreen().
@@ -1266,30 +1205,24 @@ bool PlasmaZonesEffect::hasOtherWindowOfClassWithDifferentPid(KWin::EffectWindow
     return false;
 }
 
-void PlasmaZonesEffect::ensureWindowTrackingInterface()
+bool PlasmaZonesEffect::isDaemonReady(const char* methodName) const
 {
-    ensureInterface(m_windowTrackingInterface, DBus::Interface::WindowTracking, "WindowTracking",
-                    m_daemonServiceRegistered);
-}
-
-bool PlasmaZonesEffect::ensureWindowTrackingReady(const char* methodName)
-{
-    ensureWindowTrackingInterface();
-    if (!m_windowTrackingInterface || !m_windowTrackingInterface->isValid()) {
-        qCDebug(lcEffect) << "Cannot" << methodName << "- WindowTracking interface not available";
+    if (!m_daemonServiceRegistered) {
+        qCDebug(lcEffect) << "Cannot" << methodName << "- daemon not ready";
         return false;
     }
     return true;
 }
 
-bool PlasmaZonesEffect::ensureOverlayInterface(const char* methodName)
+QDBusPendingCall PlasmaZonesEffect::asyncMethodCall(const QString& interface, const QString& method,
+                                                    const QVariantList& args)
 {
-    ensureInterface(m_overlayInterface, DBus::Interface::Overlay, "Overlay", m_daemonServiceRegistered);
-    if (!m_overlayInterface || !m_overlayInterface->isValid()) {
-        qCDebug(lcEffect) << "Cannot" << methodName << "- Overlay interface not available";
-        return false;
+    QDBusMessage msg =
+        QDBusMessage::createMethodCall(DBus::ServiceName, DBus::ObjectPath, interface, method);
+    for (const QVariant& arg : args) {
+        msg << arg;
     }
-    return true;
+    return QDBusConnection::sessionBus().asyncCall(msg);
 }
 
 void PlasmaZonesEffect::syncFloatingWindowsFromDaemon()
@@ -1736,11 +1669,11 @@ void PlasmaZonesEffect::emitNavigationFeedback(bool success, const QString& acti
                                                const QString& screenId)
 {
     // Call D-Bus method on daemon to report navigation feedback (can't emit signals on another service's interface)
-    if (!ensureWindowTrackingReady("report navigation feedback")) {
+    if (!isDaemonReady("report navigation feedback")) {
         return;
     }
-    m_windowTrackingInterface->asyncCall(QStringLiteral("reportNavigationFeedback"), success, action, reason,
-                                         sourceZoneId, targetZoneId, screenId);
+    fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("reportNavigationFeedback"),
+                          {success, action, reason, sourceZoneId, targetZoneId, screenId});
 }
 
 void PlasmaZonesEffect::slotActivateWindowRequested(const QString& windowId)
@@ -1811,10 +1744,11 @@ void PlasmaZonesEffect::slotMoveSpecificWindowToZoneRequested(const QString& win
         screenId = getWindowScreenId(targetWindow);
     }
 
-    if (ensureWindowTrackingReady("snap assist windowSnapped")) {
-        m_windowTrackingInterface->asyncCall(QStringLiteral("windowSnapped"), getWindowId(targetWindow), zoneId,
-                                             screenId);
-        m_windowTrackingInterface->asyncCall(QStringLiteral("recordSnapIntent"), getWindowId(targetWindow), true);
+    if (isDaemonReady("snap assist windowSnapped")) {
+        fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowSnapped"),
+                              {getWindowId(targetWindow), zoneId, screenId});
+        fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("recordSnapIntent"),
+                              {getWindowId(targetWindow), true});
 
         // Snap Assist continuation: only for manual-mode screens.
         // Autotile screens manage their own window placement; showing snap assist
@@ -2036,12 +1970,12 @@ void PlasmaZonesEffect::slotSnapAllWindowsRequested(const QString& screenId)
 {
     qCInfo(lcEffect) << "Snap all windows requested for screen:" << screenId;
 
-    if (!ensureWindowTrackingReady("snap all windows")) {
+    if (!isDaemonReady("snap all windows")) {
         return;
     }
 
     // Async fetch all snapped windows to filter already-snapped ones locally
-    QDBusPendingCall snapCall = m_windowTrackingInterface->asyncCall(QStringLiteral("getSnappedWindows"));
+    QDBusPendingCall snapCall = asyncMethodCall(DBus::Interface::WindowTracking, QStringLiteral("getSnappedWindows"));
     auto* snapWatcher = new QDBusPendingCallWatcher(snapCall, this);
 
     connect(snapWatcher, &QDBusPendingCallWatcher::finished, this, [this, screenId](QDBusPendingCallWatcher* sw) {
@@ -2107,13 +2041,14 @@ void PlasmaZonesEffect::slotSnapAllWindowsRequested(const QString& screenId)
             return;
         }
 
-        if (!ensureWindowTrackingReady("snap all windows calculation")) {
+        if (!isDaemonReady("snap all windows calculation")) {
             return;
         }
 
         // Ask daemon to calculate zone assignments
-        QDBusPendingCall calcCall = m_windowTrackingInterface->asyncCall(QStringLiteral("calculateSnapAllWindows"),
-                                                                         unsnappedWindowIds, screenId);
+        QDBusPendingCall calcCall = asyncMethodCall(DBus::Interface::WindowTracking,
+                                                    QStringLiteral("calculateSnapAllWindows"),
+                                                    {QVariant::fromValue(unsnappedWindowIds), screenId});
         auto* calcWatcher = new QDBusPendingCallWatcher(calcCall, this);
 
         connect(calcWatcher, &QDBusPendingCallWatcher::finished, this, [this, screenId](QDBusPendingCallWatcher* cw) {
@@ -2134,7 +2069,7 @@ void PlasmaZonesEffect::slotSnapAllWindowsRequested(const QString& screenId)
             // Confirm snap assignments with daemon. calculateSnapAllWindows returns
             // serialized RotationEntry format ({windowId, targetZoneId, ...}), but
             // windowsSnappedBatch expects {windowId, zoneId, screenId}. Transform:
-            if (ensureWindowTrackingReady("snap-all confirmation")) {
+            if (isDaemonReady("snap-all confirmation")) {
                 QJsonDocument snapDoc = QJsonDocument::fromJson(snapData.toUtf8());
                 QJsonArray batchArr;
                 for (const QJsonValue& val : snapDoc.array()) {
@@ -2148,7 +2083,8 @@ void PlasmaZonesEffect::slotSnapAllWindowsRequested(const QString& screenId)
                 }
                 if (!batchArr.isEmpty()) {
                     QString batchJson = QString::fromUtf8(QJsonDocument(batchArr).toJson(QJsonDocument::Compact));
-                    m_windowTrackingInterface->asyncCall(QStringLiteral("windowsSnappedBatch"), batchJson);
+                    fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowsSnappedBatch"),
+                                          {batchJson});
                 }
             }
         });
@@ -2168,13 +2104,12 @@ void PlasmaZonesEffect::slotPendingRestoresAvailable()
 
     qCInfo(lcEffect) << "Pending restores: retrying restoration for all visible windows";
 
-    if (!ensureWindowTrackingReady("pending restores")) {
+    if (!isDaemonReady("pending restores")) {
         return;
     }
 
     // Use ASYNC batch call to get all tracked windows at once
-    // This avoids N sync D-Bus calls (one per window) that could freeze compositor during startup
-    QDBusPendingCall pendingCall = m_windowTrackingInterface->asyncCall(QStringLiteral("getSnappedWindows"));
+    QDBusPendingCall pendingCall = asyncMethodCall(DBus::Interface::WindowTracking, QStringLiteral("getSnappedWindows"));
     auto* watcher = new QDBusPendingCallWatcher(pendingCall, this);
 
     connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* w) {
@@ -2321,11 +2256,11 @@ void PlasmaZonesEffect::slotRunningWindowsRequested()
     qCDebug(lcEffect) << "Providing" << windowArray.size() << "running windows to daemon";
 
     // Send result back to daemon via D-Bus
-    ensureInterface(m_settingsInterface, DBus::Interface::Settings, "Settings", m_daemonServiceRegistered);
-    if (m_settingsInterface && m_settingsInterface->isValid()) {
-        m_settingsInterface->asyncCall(QStringLiteral("provideRunningWindows"), jsonString);
+    if (m_daemonServiceRegistered) {
+        fireAndForgetDBusCall(DBus::Interface::Settings, QStringLiteral("provideRunningWindows"), {jsonString},
+                              QStringLiteral("provideRunningWindows"));
     } else {
-        qCWarning(lcEffect) << "provideRunningWindows: Settings interface not available";
+        qCWarning(lcEffect) << "provideRunningWindows: daemon not ready";
     }
 }
 
@@ -2345,7 +2280,7 @@ void PlasmaZonesEffect::callResolveWindowRestore(KWin::EffectWindow* window, std
         return;
     }
 
-    if (!ensureWindowTrackingReady("resolve window restore")) {
+    if (!isDaemonReady("resolve window restore")) {
         if (onComplete)
             onComplete();
         return;
@@ -2364,8 +2299,9 @@ void PlasmaZonesEffect::callResolveWindowRestore(KWin::EffectWindow* window, std
     // daemon restart or from KWin session restore), so its current frameGeometry is the
     // zone geometry — NOT the free-floating geometry. Storing it as pre-tile would cause
     // float toggle to restore to the zone geometry instead of the original free-floating position.
-    tryAsyncSnapCall(*m_windowTrackingInterface, QStringLiteral("resolveWindowRestore"), {windowId, screenId, sticky},
-                     safeWindow, windowId, false, nullptr, nullptr, /*skipAnimation=*/true, onComplete);
+    tryAsyncSnapCall(DBus::Interface::WindowTracking, QStringLiteral("resolveWindowRestore"),
+                     {windowId, screenId, sticky}, safeWindow, windowId, false, nullptr, nullptr,
+                     /*skipAnimation=*/true, onComplete);
 }
 
 void PlasmaZonesEffect::callDragStarted(const QString& windowId, const QRectF& geometry)
@@ -2522,12 +2458,12 @@ void PlasmaZonesEffect::callDragStopped(KWin::EffectWindow* window, const QStrin
                 // Use daemon-provided releaseScreenId (cursor position), not window's current
                 // screen - after cross-screen drag the window may still report the old screen.
                 if (!shouldSnap && safeWindow && !releaseScreenId.isEmpty()
-                    && ensureWindowTrackingReady("auto-fill on drop")) {
+                    && isDaemonReady("auto-fill on drop")) {
                     bool sticky = isWindowSticky(safeWindow);
                     auto onSnapSuccess = [this](const QString&, const QString& snappedScreenId) {
                         m_snapAssistHandler->showContinuationIfNeeded(snappedScreenId);
                     };
-                    tryAsyncSnapCall(*m_windowTrackingInterface, QStringLiteral("snapToEmptyZone"),
+                    tryAsyncSnapCall(DBus::Interface::WindowTracking, QStringLiteral("snapToEmptyZone"),
                                      {windowId, releaseScreenId, sticky}, safeWindow, windowId, true, nullptr,
                                      onSnapSuccess);
                 }
@@ -2550,13 +2486,13 @@ void PlasmaZonesEffect::callCancelSnap()
     QDBusConnection::sessionBus().asyncCall(msg);
 }
 
-void PlasmaZonesEffect::tryAsyncSnapCall(QDBusAbstractInterface& iface, const QString& method,
+void PlasmaZonesEffect::tryAsyncSnapCall(const QString& interface, const QString& method,
                                          const QList<QVariant>& args, QPointer<KWin::EffectWindow> window,
                                          const QString& windowId, bool storePreSnap, std::function<void()> fallback,
                                          std::function<void(const QString&, const QString&)> onSnapSuccess,
                                          bool skipAnimation, std::function<void()> onComplete)
 {
-    QDBusPendingCall call = iface.asyncCallWithArgumentList(method, args);
+    QDBusPendingCall call = asyncMethodCall(interface, method, args);
     auto* watcher = new QDBusPendingCallWatcher(call, this);
     connect(watcher, &QDBusPendingCallWatcher::finished, this,
             [this, window, windowId, storePreSnap, method, fallback, onSnapSuccess, args, skipAnimation,
@@ -2786,12 +2722,12 @@ void PlasmaZonesEffect::notifyWindowClosed(KWin::EffectWindow* w)
 
     const QString windowId = getWindowId(w);
 
-    if (!ensureWindowTrackingReady("notify windowClosed")) {
+    if (!isDaemonReady("notify windowClosed")) {
         return;
     }
 
     qCInfo(lcEffect) << "Notifying daemon: windowClosed" << windowId;
-    m_windowTrackingInterface->asyncCall(QStringLiteral("windowClosed"), windowId);
+    fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowClosed"), {windowId});
 }
 
 void PlasmaZonesEffect::notifyWindowActivated(KWin::EffectWindow* w)
@@ -2800,7 +2736,7 @@ void PlasmaZonesEffect::notifyWindowActivated(KWin::EffectWindow* w)
         return;
     }
 
-    if (!ensureWindowTrackingReady("notify windowActivated")) {
+    if (!isDaemonReady("notify windowActivated")) {
         return;
     }
 
@@ -2808,7 +2744,7 @@ void PlasmaZonesEffect::notifyWindowActivated(KWin::EffectWindow* w)
     QString screenId = getWindowScreenId(w);
 
     qCDebug(lcEffect) << "Notifying daemon: windowActivated" << windowId << "on screen" << screenId;
-    m_windowTrackingInterface->asyncCall(QStringLiteral("windowActivated"), windowId, screenId);
+    fireAndForgetDBusCall(DBus::Interface::WindowTracking, QStringLiteral("windowActivated"), {windowId, screenId});
 
     // Notify autotile engine of focus change so m_windowToScreen is updated
     if (m_autotileHandler->isAutotileScreen(screenId)) {

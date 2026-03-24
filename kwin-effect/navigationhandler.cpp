@@ -3,8 +3,8 @@
 
 #include "navigationhandler.h"
 #include "plasmazoneseffect.h"
+#include "dbus_constants.h"
 
-#include <QDBusInterface>
 #include <QDBusPendingCall>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
@@ -48,12 +48,12 @@ void NavigationHandler::setWindowFloating(const QString& windowId, bool floating
 
 void NavigationHandler::syncFloatingWindowsFromDaemon()
 {
-    auto* iface = m_effect->windowTrackingInterface();
-    if (!iface || !iface->isValid()) {
+    if (!m_effect->isDaemonReady("sync floating windows")) {
         return;
     }
 
-    QDBusPendingCall pendingCall = iface->asyncCall(QStringLiteral("getFloatingWindows"));
+    QDBusPendingCall pendingCall = m_effect->asyncMethodCall(
+        PlasmaZones::DBus::Interface::WindowTracking, QStringLiteral("getFloatingWindows"));
     auto* watcher = new QDBusPendingCallWatcher(pendingCall, this);
 
     connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* w) {
@@ -82,12 +82,12 @@ void NavigationHandler::syncFloatingStateForWindow(const QString& windowId)
         return;
     }
 
-    auto* iface = m_effect->windowTrackingInterface();
-    if (!iface || !iface->isValid()) {
+    if (!m_effect->isDaemonReady("sync floating state")) {
         return;
     }
 
-    QDBusPendingCall pendingCall = iface->asyncCall(QStringLiteral("queryWindowFloating"), windowId);
+    QDBusPendingCall pendingCall = m_effect->asyncMethodCall(
+        PlasmaZones::DBus::Interface::WindowTracking, QStringLiteral("queryWindowFloating"), {windowId});
     auto* watcher = new QDBusPendingCallWatcher(pendingCall, this);
 
     connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, windowId](QDBusPendingCallWatcher* w) {

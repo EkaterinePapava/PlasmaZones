@@ -7,7 +7,6 @@
 #include <QSet>
 #include <QString>
 
-class QDBusInterface;
 class QDBusPendingCallWatcher;
 
 namespace PlasmaZones {
