@@ -110,7 +110,7 @@ jobs:
             qt6-qtdeclarative-devel qt6-qttools-devel qt6-qtshadertools-devel \
             kwin-devel wayland-devel libepoxy-devel libdrm-devel \
             kf6-kconfig-devel kf6-kconfigwidgets-devel \
-            \
+            kf6-kirigami-devel \
             kf6-kcmutils-devel \
             kf6-kglobalaccel-devel \
             layer-shell-qt-devel plasma-activities-devel
@@ -160,6 +160,7 @@ jobs:
       - name: Install prerequisites
         run: |
           zypper -n --gpg-auto-import-keys refresh --force
+          zypper -n dist-upgrade --no-confirm
           zypper -n install git rpm-build rpmdevtools
 
       - name: Checkout
@@ -175,7 +176,7 @@ jobs:
             'cmake(Qt6Widgets)' 'cmake(Qt6Concurrent)' \
             'cmake(Qt6ShaderTools)' 'cmake(Qt6ShaderToolsPrivate)' \
             'cmake(KF6Config)' 'cmake(KF6ConfigWidgets)' \
-            \
+            'cmake(KF6Kirigami)' \
             'cmake(KF6KCMUtils)' \
             'cmake(KF6GlobalAccel)' \
             kwin6-devel 'cmake(LayerShellQt)' 'cmake(PlasmaActivities)' \
