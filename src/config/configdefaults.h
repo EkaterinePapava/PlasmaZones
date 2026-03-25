@@ -10,6 +10,8 @@
 #include <QVariantMap>
 #include <QtCore/qnamespace.h>
 
+#include "../core/constants.h"
+
 namespace PlasmaZones {
 
 /**
@@ -54,6 +56,7 @@ public:
     {
         return false;
     }
+    static constexpr int mouseButtonMax() { return 128; }
     static bool snappingEnabled()
     {
         return true;
@@ -98,10 +101,14 @@ public:
     {
         return true;
     }
+    static constexpr int osdStyleMin() { return 0; }
+    static constexpr int osdStyleMax() { return 2; }
     static int osdStyle()
     {
         return 2;
     }
+    static constexpr int overlayDisplayModeMin() { return 0; }
+    static constexpr int overlayDisplayModeMax() { return 1; }
     static int overlayDisplayMode()
     {
         return 0;
@@ -139,18 +146,26 @@ public:
     {
         return 0.5;
     }
+    static constexpr qreal activeOpacityMin() { return 0.0; }
+    static constexpr qreal activeOpacityMax() { return 1.0; }
     static double inactiveOpacity()
     {
         return 0.3;
     }
+    static constexpr qreal inactiveOpacityMin() { return 0.0; }
+    static constexpr qreal inactiveOpacityMax() { return 1.0; }
     static int borderWidth()
     {
         return 2;
     }
+    static constexpr int borderWidthMin() { return 0; }
+    static constexpr int borderWidthMax() { return 10; }
     static int borderRadius()
     {
         return 8;
     }
+    static constexpr int borderRadiusMin() { return 0; }
+    static constexpr int borderRadiusMax() { return 50; }
     static bool enableBlur()
     {
         return true;
@@ -163,10 +178,14 @@ public:
     {
         return 1.0;
     }
+    static constexpr qreal labelFontSizeScaleMin() { return 0.25; }
+    static constexpr qreal labelFontSizeScaleMax() { return 3.0; }
     static int labelFontWeight()
     {
         return 700;
     }
+    static constexpr int labelFontWeightMin() { return 100; }
+    static constexpr int labelFontWeightMax() { return 900; }
     static bool labelFontItalic()
     {
         return false;
@@ -188,10 +207,14 @@ public:
     {
         return 8;
     }
+    static constexpr int zonePaddingMin() { return 0; }
+    static constexpr int zonePaddingMax() { return 50; }
     static int outerGap()
     {
         return 8;
     }
+    static constexpr int outerGapMin() { return 0; }
+    static constexpr int outerGapMax() { return 50; }
     static bool usePerSideOuterGap()
     {
         return false;
@@ -200,22 +223,32 @@ public:
     {
         return 8;
     }
+    static constexpr int outerGapTopMin() { return 0; }
+    static constexpr int outerGapTopMax() { return 50; }
     static int outerGapBottom()
     {
         return 8;
     }
+    static constexpr int outerGapBottomMin() { return 0; }
+    static constexpr int outerGapBottomMax() { return 50; }
     static int outerGapLeft()
     {
         return 8;
     }
+    static constexpr int outerGapLeftMin() { return 0; }
+    static constexpr int outerGapLeftMax() { return 50; }
     static int outerGapRight()
     {
         return 8;
     }
+    static constexpr int outerGapRightMin() { return 0; }
+    static constexpr int outerGapRightMax() { return 50; }
     static int adjacentThreshold()
     {
         return 20;
     }
+    static constexpr int adjacentThresholdMin() { return 5; }
+    static constexpr int adjacentThresholdMax() { return 500; }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Performance Settings
@@ -225,14 +258,20 @@ public:
     {
         return 50;
     }
+    static constexpr int pollIntervalMsMin() { return 10; }
+    static constexpr int pollIntervalMsMax() { return 1000; }
     static int minimumZoneSizePx()
     {
         return 100;
     }
+    static constexpr int minimumZoneSizePxMin() { return 50; }
+    static constexpr int minimumZoneSizePxMax() { return 500; }
     static int minimumZoneDisplaySizePx()
     {
         return 10;
     }
+    static constexpr int minimumZoneDisplaySizePxMin() { return 1; }
+    static constexpr int minimumZoneDisplaySizePxMax() { return 50; }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Window Behavior Settings
@@ -291,10 +330,14 @@ public:
     {
         return 200;
     }
+    static constexpr int minimumWindowWidthMin() { return 0; }
+    static constexpr int minimumWindowWidthMax() { return 2000; }
     static int minimumWindowHeight()
     {
         return 150;
     }
+    static constexpr int minimumWindowHeightMin() { return 0; }
+    static constexpr int minimumWindowHeightMax() { return 2000; }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Zone Selector Settings
@@ -308,6 +351,8 @@ public:
     {
         return 50;
     }
+    static constexpr int triggerDistanceMin() { return 10; }
+    static constexpr int triggerDistanceMax() { return 200; }
     static int position()
     {
         return 1;
@@ -324,14 +369,20 @@ public:
     {
         return 4;
     }
+    static constexpr int maxRowsMin() { return 1; }
+    static constexpr int maxRowsMax() { return 10; }
     static int previewWidth()
     {
         return 180;
     }
+    static constexpr int previewWidthMin() { return 80; }
+    static constexpr int previewWidthMax() { return 400; }
     static int previewHeight()
     {
         return 101;
     }
+    static constexpr int previewHeightMin() { return 60; }
+    static constexpr int previewHeightMax() { return 300; }
     static bool previewLockAspect()
     {
         return true;
@@ -340,6 +391,8 @@ public:
     {
         return 5;
     }
+    static constexpr int gridColumnsMin() { return 1; }
+    static constexpr int gridColumnsMax() { return 10; }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Shader Settings
@@ -353,6 +406,8 @@ public:
     {
         return 60;
     }
+    static constexpr int shaderFrameRateMin() { return 30; }
+    static constexpr int shaderFrameRateMax() { return 144; }
     static bool enableAudioVisualizer()
     {
         return false;
@@ -361,6 +416,8 @@ public:
     {
         return 64;
     }
+    static constexpr int audioSpectrumBarCountMin() { return 16; }
+    static constexpr int audioSpectrumBarCountMax() { return 256; }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Autotile Settings
@@ -378,26 +435,38 @@ public:
     {
         return 0.5;
     }
+    static constexpr qreal autotileSplitRatioMin() { return AutotileDefaults::MinSplitRatio; }
+    static constexpr qreal autotileSplitRatioMax() { return AutotileDefaults::MaxSplitRatio; }
     static int autotileMasterCount()
     {
         return 1;
     }
+    static constexpr int autotileMasterCountMin() { return AutotileDefaults::MinMasterCount; }
+    static constexpr int autotileMasterCountMax() { return AutotileDefaults::MaxMasterCount; }
     static double autotileCenteredMasterSplitRatio()
     {
         return 0.5;
     }
+    static constexpr qreal autotileCenteredMasterSplitRatioMin() { return AutotileDefaults::MinSplitRatio; }
+    static constexpr qreal autotileCenteredMasterSplitRatioMax() { return AutotileDefaults::MaxSplitRatio; }
     static int autotileCenteredMasterMasterCount()
     {
         return 1;
     }
+    static constexpr int autotileCenteredMasterMasterCountMin() { return AutotileDefaults::MinMasterCount; }
+    static constexpr int autotileCenteredMasterMasterCountMax() { return AutotileDefaults::MaxMasterCount; }
     static int autotileInnerGap()
     {
         return 8;
     }
+    static constexpr int autotileInnerGapMin() { return AutotileDefaults::MinGap; }
+    static constexpr int autotileInnerGapMax() { return AutotileDefaults::MaxGap; }
     static int autotileOuterGap()
     {
         return 8;
     }
+    static constexpr int autotileOuterGapMin() { return AutotileDefaults::MinGap; }
+    static constexpr int autotileOuterGapMax() { return AutotileDefaults::MaxGap; }
     static bool autotileUsePerSideOuterGap()
     {
         return false;
@@ -406,18 +475,26 @@ public:
     {
         return 8;
     }
+    static constexpr int autotileOuterGapTopMin() { return AutotileDefaults::MinGap; }
+    static constexpr int autotileOuterGapTopMax() { return AutotileDefaults::MaxGap; }
     static int autotileOuterGapBottom()
     {
         return 8;
     }
+    static constexpr int autotileOuterGapBottomMin() { return AutotileDefaults::MinGap; }
+    static constexpr int autotileOuterGapBottomMax() { return AutotileDefaults::MaxGap; }
     static int autotileOuterGapLeft()
     {
         return 8;
     }
+    static constexpr int autotileOuterGapLeftMin() { return AutotileDefaults::MinGap; }
+    static constexpr int autotileOuterGapLeftMax() { return AutotileDefaults::MaxGap; }
     static int autotileOuterGapRight()
     {
         return 8;
     }
+    static constexpr int autotileOuterGapRightMin() { return AutotileDefaults::MinGap; }
+    static constexpr int autotileOuterGapRightMax() { return AutotileDefaults::MaxGap; }
     static bool autotileFocusNewWindows()
     {
         return true;
@@ -430,10 +507,14 @@ public:
     {
         return 0;
     }
+    static constexpr int autotileInsertPositionMin() { return 0; }
+    static constexpr int autotileInsertPositionMax() { return 2; }
     static int autotileMaxWindows()
     {
         return 5;
     }
+    static constexpr int autotileMaxWindowsMin() { return AutotileDefaults::MinMaxWindows; }
+    static constexpr int autotileMaxWindowsMax() { return AutotileDefaults::MaxMaxWindows; }
     static bool animationsEnabled()
     {
         return true;
@@ -442,14 +523,20 @@ public:
     {
         return 300;
     }
+    static constexpr int animationDurationMin() { return 50; }
+    static constexpr int animationDurationMax() { return 500; }
     static int animationSequenceMode()
     {
         return 1;
     }
+    static constexpr int animationSequenceModeMin() { return 0; }
+    static constexpr int animationSequenceModeMax() { return 1; }
     static int animationStaggerInterval()
     {
         return 50;
     }
+    static constexpr int animationStaggerIntervalMin() { return AutotileDefaults::MinAnimationStaggerIntervalMs; }
+    static constexpr int animationStaggerIntervalMax() { return AutotileDefaults::MaxAnimationStaggerIntervalMs; }
     static QString animationEasingCurve()
     {
         return QStringLiteral("0.33,1.00,0.68,1.00");
@@ -458,6 +545,8 @@ public:
     {
         return 0;
     }
+    static constexpr int animationMinDistanceMin() { return 0; }
+    static constexpr int animationMinDistanceMax() { return 200; }
     static bool autotileFocusFollowsMouse()
     {
         return false;
@@ -478,10 +567,14 @@ public:
     {
         return 2;
     }
+    static constexpr int autotileBorderWidthMin() { return 0; }
+    static constexpr int autotileBorderWidthMax() { return 10; }
     static int autotileBorderRadius()
     {
         return 0;
     }
+    static constexpr int autotileBorderRadiusMin() { return 0; }
+    static constexpr int autotileBorderRadiusMax() { return 20; }
     static QColor autotileBorderColor()
     {
         // #800078D4
@@ -499,6 +592,51 @@ public:
     static QStringList lockedScreens()
     {
         return {};
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Editor Settings
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    static QString editorDuplicateShortcut()
+    {
+        return QStringLiteral("Ctrl+D");
+    }
+    static QString editorSplitHorizontalShortcut()
+    {
+        return QStringLiteral("Ctrl+Shift+H");
+    }
+    static QString editorSplitVerticalShortcut()
+    {
+        return QStringLiteral("Ctrl+Alt+V");
+    }
+    static QString editorFillShortcut()
+    {
+        return QStringLiteral("Ctrl+Shift+F");
+    }
+    static bool editorGridSnappingEnabled()
+    {
+        return true;
+    }
+    static bool editorEdgeSnappingEnabled()
+    {
+        return true;
+    }
+    static double editorSnapInterval()
+    {
+        return 0.1;
+    }
+    static int editorSnapOverrideModifier()
+    {
+        return static_cast<int>(Qt::ShiftModifier);
+    }
+    static bool fillOnDropEnabled()
+    {
+        return true;
+    }
+    static int fillOnDropModifier()
+    {
+        return static_cast<int>(Qt::ControlModifier);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

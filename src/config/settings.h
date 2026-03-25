@@ -5,6 +5,7 @@
 
 #include "../core/interfaces.h"
 #include "../core/constants.h"
+#include "configdefaults.h"
 #include "configbackend_qsettings.h"
 #include <memory>
 #include <optional>
@@ -1555,14 +1556,14 @@ private:
 
     // Appearance
     bool m_useSystemColors = true;
-    QColor m_highlightColor = Defaults::HighlightColor;
-    QColor m_inactiveColor = Defaults::InactiveColor;
-    QColor m_borderColor = Defaults::BorderColor;
-    QColor m_labelFontColor = Defaults::LabelFontColor;
-    qreal m_activeOpacity = Defaults::Opacity;
-    qreal m_inactiveOpacity = Defaults::InactiveOpacity;
-    int m_borderWidth = Defaults::BorderWidth;
-    int m_borderRadius = Defaults::BorderRadius;
+    QColor m_highlightColor = ConfigDefaults::highlightColor();
+    QColor m_inactiveColor = ConfigDefaults::inactiveColor();
+    QColor m_borderColor = ConfigDefaults::borderColor();
+    QColor m_labelFontColor = ConfigDefaults::labelFontColor();
+    qreal m_activeOpacity = ConfigDefaults::activeOpacity();
+    qreal m_inactiveOpacity = ConfigDefaults::inactiveOpacity();
+    int m_borderWidth = ConfigDefaults::borderWidth();
+    int m_borderRadius = ConfigDefaults::borderRadius();
     bool m_enableBlur = true;
     QString m_labelFontFamily;
     qreal m_labelFontSizeScale = 1.0;
@@ -1572,19 +1573,19 @@ private:
     bool m_labelFontStrikeout = false;
 
     // Zone settings
-    int m_zonePadding = Defaults::ZonePadding;
-    int m_outerGap = Defaults::OuterGap;
+    int m_zonePadding = ConfigDefaults::zonePadding();
+    int m_outerGap = ConfigDefaults::outerGap();
     bool m_usePerSideOuterGap = false;
-    int m_outerGapTop = Defaults::OuterGap;
-    int m_outerGapBottom = Defaults::OuterGap;
-    int m_outerGapLeft = Defaults::OuterGap;
-    int m_outerGapRight = Defaults::OuterGap;
-    int m_adjacentThreshold = Defaults::AdjacentThreshold;
+    int m_outerGapTop = ConfigDefaults::outerGapTop();
+    int m_outerGapBottom = ConfigDefaults::outerGapBottom();
+    int m_outerGapLeft = ConfigDefaults::outerGapLeft();
+    int m_outerGapRight = ConfigDefaults::outerGapRight();
+    int m_adjacentThreshold = ConfigDefaults::adjacentThreshold();
 
     // Performance and behavior
-    int m_pollIntervalMs = Defaults::PollIntervalMs;
-    int m_minimumZoneSizePx = Defaults::MinimumZoneSizePx;
-    int m_minimumZoneDisplaySizePx = Defaults::MinimumZoneDisplaySizePx;
+    int m_pollIntervalMs = ConfigDefaults::pollIntervalMs();
+    int m_minimumZoneSizePx = ConfigDefaults::minimumZoneSizePx();
+    int m_minimumZoneDisplaySizePx = ConfigDefaults::minimumZoneDisplaySizePx();
 
     // Window behavior
     bool m_keepWindowsInZonesOnResolutionChange = true;
