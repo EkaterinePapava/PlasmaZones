@@ -7,15 +7,36 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [2.3.17] - 2026-03-22
+## [2.4.0] - 2026-03-25
 
 ### Added
-- **Arch Drift branded shader**: Terminal rain columns, isometric chevron grid, traveling data packets, and CRT scan lines — designed around the spirit of Arch Linux (minimalism, precision, the CLI). Logo interior features roiling cloud flow, lightning flashes, rain streaks, animated energy contour waves, summit beacon, and traveling edge pulses. 95-vertex SDF polygon from the official Crystal SVG. All 32 parameter slots wired. Optimized with merged polygon+edge loop and AABB early-outs.
-- **EndeavourOS Drift branded shader**: Constellation network background with 24 dots on Lissajous orbits connected by proximity lines, warm gradient wash, and tri-sail SDF logo (58 vertices total) from the official SVG. Logo interior uses tri-sail interference — each sail's noise flows at 120-degree offsets, creating color interference bands in overlap regions. Bass shockwave rings, treble flash bursts, and per-sail color shifting on mids.
+- **KZones layout import** ([PR #244]): Import zone layouts from KZones configuration files.
+- **Aspect ratio layouts** ([PR #242]): Auto-detect monitor aspect ratio, editor selector for ratio-specific layouts, and filter setting for the layout grid.
+- **Portable Wayland build** ([PR #231]): `USE_KDE_FRAMEWORKS=ON/OFF` CMake option. Pluggable backends for config (`IConfigBackend`), shortcuts (`IShortcutBackend`), wallpaper (`IWallpaperProvider`), and i18n (Qt Linguist). Runs on non-KDE Wayland compositors.
+- **Standalone settings app** ([PR #238]): `plasmazones-settings` with KCM-style sidebar drill-down, subpages, visual monitor selector, search, keyboard shortcuts overlay, unsaved-changes indicator, and DPI-aware animations. Meta+Shift+P shortcut to launch.
+- **D-Bus API audit** ([PR #246]): New `CompositorBridge`, `Control`, and `Shader` interfaces. Convenience methods and full API specification. Unit tests for all new methods.
+- **Arch Drift branded shader**: Terminal rain columns, isometric chevron grid, traveling data packets, and CRT scan lines. 95-vertex SDF polygon from the official Crystal SVG.
+- **EndeavourOS Drift branded shader**: Constellation network background with 24 dots on Lissajous orbits, warm gradient wash, and tri-sail SDF logo (58 vertices total).
+- **Wind currents + sails shader**: Replaced constellation network with flowing wind current effect.
+
+### Changed
+- **KWin effect reduced to thin interface layer** ([PR #245]): Effect code is now a minimal bridge between KWin and the daemon over D-Bus. All tiling/snapping logic lives in the daemon.
+- **Removed unused `LayoutType` enum**: Cleaned up `Layout` model — the `type` field was never used.
+- **Dropped `IConfigBackend` interface indirection**: `QSettingsConfigBackend` used directly after KConfig removal stabilized.
+- **Removed KConfig dependency from test suite**: Tests use the standalone config backend.
+- **Removed daemon toggle from KCM**: Moved `DaemonController` to `src/common`.
 
 ### Fixed
-- **Layout card icon hover flicker** ([#235]): Status icons (favorite, lock, filter) inside layout cards spammed `mouse grabber ambiguous` warnings on hover. The `HoverHandler` inside each small `Kirigami.Icon` competed with the parent `MouseArea` for hover delivery. Replaced with `MouseArea { hoverEnabled; acceptedButtons: NoButton }` which respects the parent-child containment hierarchy. Added `ToolTip.delay` to match the ToolButton tooltip pattern.
-- **Shader file watcher dropped after cmake install**: `cmake --install` replaces entire shader subdirectories with new inodes, silently dropping both directory and file inotify watches. `reWatchShaderFiles()` now re-adds the top-level shader directory and each subdirectory if they lost their watch.
+- **Synchronous D-Bus calls freeze compositor**: Eliminated blocking D-Bus calls in the KWin effect that caused compositor hangs.
+- **Qt6 SIGSEGV in context menu**: Moved context menu outside `Loader` to avoid crash.
+- **Qt6 crash in aspect ratio submenu**: Flattened submenu to avoid nested popup crash.
+- **Tooltip flickering on layout cards in Flow layout** ([#235]): Fixed hover handler conflicts.
+- **Zone previews clamped for fixed-geometry layouts**: Preview rendering no longer overflows card bounds.
+- **Edge threshold max increased**: From 100px to 500px.
+- **Settings live lock sync and screenId resolution**: OSD lock state now syncs immediately.
+- **EndeavourOS Drift GLSL type errors**: Fixed vec2/float mismatches and wired dead parameters.
+- **Shader file watcher dropped after cmake install**: Re-watches directories after inode replacement.
+- **Layout card icon hover flicker** ([#235]): Replaced `HoverHandler` with `MouseArea` to fix grab conflicts.
 
 ## [2.3.16] - 2026-03-21
 
@@ -928,7 +949,8 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.16...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.16...v2.4.0
 [2.3.16]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.15...v2.3.16
 [2.3.15]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.14...v2.3.15
 [2.3.14]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.13...v2.3.14
