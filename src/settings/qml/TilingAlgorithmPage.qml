@@ -18,14 +18,18 @@ Flickable {
     readonly property alias hasOverrides: psHelper.hasOverrides
     readonly property string effectiveAlgorithm: settingValue("Algorithm", appSettings.autotileAlgorithm)
 
-    // Data-driven algorithm capabilities (from combo model)
-    readonly property var currentAlgoData: {
-        const model = algorithmCombo ? algorithmCombo.model : null;
-        const idx = algorithmCombo ? algorithmCombo.currentIndex : -1;
-        return (model && idx >= 0 && idx < model.length) ? model[idx] : null;
+    // Data-driven algorithm capabilities (lookup from availableAlgorithms by ID)
+    readonly property var algoCapabilities: {
+        const algos = settingsController.availableAlgorithms();
+        const algoId = root.effectiveAlgorithm;
+        for (let i = 0; i < algos.length; i++) {
+            if (algos[i].id === algoId)
+                return algos[i];
+        }
+        return null;
     }
-    readonly property bool algoSupportsSplitRatio: currentAlgoData ? (currentAlgoData.supportsSplitRatio === true) : false
-    readonly property bool algoSupportsMasterCount: currentAlgoData ? (currentAlgoData.supportsMasterCount === true) : false
+    readonly property bool algoSupportsSplitRatio: algoCapabilities ? (algoCapabilities.supportsSplitRatio === true) : false
+    readonly property bool algoSupportsMasterCount: algoCapabilities ? (algoCapabilities.supportsMasterCount === true) : false
 
     function settingValue(key, globalValue) {
         return psHelper.settingValue(key, globalValue);
@@ -255,11 +259,7 @@ Flickable {
                                 windowCount: previewWindowSlider.slider.value
                                 splitRatio: root.settingValue("SplitRatio", appSettings.autotileSplitRatio) || 0.6
                                 masterCount: root.settingValue("MasterCount", appSettings.autotileMasterCount) || 1
-                                overlapping: {
-                                    const model = algorithmCombo.model;
-                                    const idx = algorithmCombo.currentIndex;
-                                    return (model && idx >= 0 && idx < model.length) ? (model[idx].overlapping === true) : false;
-                                }
+                                overlapping: root.algoCapabilities ? (root.algoCapabilities.overlapping === true) : false
                             }
 
                         }
@@ -278,60 +278,36 @@ Flickable {
 
                 }
 
-                // Algorithm selection - centered
+                // Algorithm selection - uses LayoutComboBox with preview thumbnails
                 ColumnLayout {
                     Layout.alignment: Qt.AlignHCenter
                     spacing: Kirigami.Units.smallSpacing
                     Layout.maximumWidth: Math.min(Kirigami.Units.gridUnit * 25, parent.width)
 
-                    WideComboBox {
+                    LayoutComboBox {
                         id: algorithmCombo
 
                         Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
                         Accessible.name: i18n("Tiling algorithm")
-                        textRole: "name"
-                        valueRole: "id"
-                        model: settingsController.availableAlgorithms()
-                        Component.onCompleted: currentIndex = Math.max(0, indexOfValue(root.effectiveAlgorithm))
+                        appSettings: settingsController
+                        showPreview: true
+                        layoutFilter: 1 // Autotile algorithms only
+                        noneText: i18n("Default")
+                        currentLayoutId: "autotile:" + root.effectiveAlgorithm
                         onActivated: {
-                            root.writeSetting("Algorithm", currentValue, function(v) {
+                            // Extract algorithm ID from autotile: prefixed value
+                            let selectedId = algorithmCombo.currentValue;
+                            if (selectedId === "") {
+                                // "Default" selected — use default algorithm
+                                selectedId = settingsController.autotileAlgorithm;
+                            } else if (selectedId.startsWith("autotile:")) {
+                                selectedId = selectedId.substring(9);
+                            }
+                            root.writeSetting("Algorithm", selectedId, function(v) {
                                 appSettings.autotileAlgorithm = v;
                             });
-                            // Max windows still needs to be reset here for KCM-side preview
-                            let algoData = model[currentIndex];
-                            if (algoData && algoData.defaultMaxWindows !== undefined)
-                                root.writeSetting("MaxWindows", algoData.defaultMaxWindows, function(v) {
-                                appSettings.autotileMaxWindows = v;
-                            });
                         }
-                        ToolTip.visible: hovered
-                        ToolTip.text: i18n("Select how windows are automatically arranged on screen")
-
-                        // Re-sync when the effective algorithm changes externally
-                        Connections {
-                            function onEffectiveAlgorithmChanged() {
-                                algorithmCombo.currentIndex = Math.max(0, algorithmCombo.indexOfValue(root.effectiveAlgorithm));
-                            }
-
-                            target: root
-                        }
-
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignHCenter
-                        text: {
-                            const model = algorithmCombo.model;
-                            const idx = algorithmCombo.currentIndex;
-                            if (model && idx >= 0 && idx < model.length)
-                                return model[idx].description || "";
-
-                            return "";
-                        }
-                        wrapMode: Text.WordWrap
-                        opacity: 0.7
                     }
 
                 }
