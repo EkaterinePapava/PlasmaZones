@@ -434,14 +434,14 @@ SETTINGS_SETTER_CLAMPED_QREAL(AutotileSplitRatio, m_autotileSplitRatio, autotile
                               ConfigDefaults::autotileSplitRatioMin(), ConfigDefaults::autotileSplitRatioMax())
 SETTINGS_SETTER_CLAMPED(AutotileMasterCount, m_autotileMasterCount, autotileMasterCountChanged,
                         ConfigDefaults::autotileMasterCountMin(), ConfigDefaults::autotileMasterCountMax())
-SETTINGS_SETTER_CLAMPED_QREAL(AutotileCenteredMasterSplitRatio, m_autotileCenteredMasterSplitRatio,
-                              autotileCenteredMasterSplitRatioChanged,
-                              ConfigDefaults::autotileCenteredMasterSplitRatioMin(),
-                              ConfigDefaults::autotileCenteredMasterSplitRatioMax())
-SETTINGS_SETTER_CLAMPED(AutotileCenteredMasterMasterCount, m_autotileCenteredMasterMasterCount,
-                        autotileCenteredMasterMasterCountChanged,
-                        ConfigDefaults::autotileCenteredMasterMasterCountMin(),
-                        ConfigDefaults::autotileCenteredMasterMasterCountMax())
+void Settings::setAutotilePerAlgorithmSettings(const QVariantMap& settings)
+{
+    if (m_autotilePerAlgorithmSettings != settings) {
+        m_autotilePerAlgorithmSettings = settings;
+        Q_EMIT autotilePerAlgorithmSettingsChanged();
+        Q_EMIT settingsChanged();
+    }
+}
 SETTINGS_SETTER_CLAMPED(AutotileInnerGap, m_autotileInnerGap, autotileInnerGapChanged,
                         ConfigDefaults::autotileInnerGapMin(), ConfigDefaults::autotileInnerGapMax())
 SETTINGS_SETTER_CLAMPED(AutotileOuterGap, m_autotileOuterGap, autotileOuterGapChanged,

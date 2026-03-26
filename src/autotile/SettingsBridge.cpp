@@ -66,7 +66,6 @@ void SettingsBridge::syncFromSettings(Settings* settings)
     } while (0)
 
     SYNC_FIELD(masterCount, autotileMasterCount);
-    SYNC_FIELD(centeredMasterMasterCount, autotileCenteredMasterMasterCount);
     SYNC_FIELD(innerGap, autotileInnerGap);
     SYNC_FIELD(outerGap, autotileOuterGap);
     SYNC_FIELD(usePerSideOuterGap, autotileUsePerSideOuterGap);
@@ -87,11 +86,18 @@ void SettingsBridge::syncFromSettings(Settings* settings)
             configChanged = true;
         }
     }
-    // centeredMasterSplitRatio: same fuzzy comparison
+    // Sync per-algorithm settings map from Settings
     {
-        const qreal newRatio = settings->autotileCenteredMasterSplitRatio();
-        if (!qFuzzyCompare(1.0 + cfg->centeredMasterSplitRatio, 1.0 + newRatio)) {
-            cfg->centeredMasterSplitRatio = newRatio;
+        const QVariantMap perAlgoMap = settings->autotilePerAlgorithmSettings();
+        QHash<QString, QPair<qreal, int>> newSaved;
+        for (auto it = perAlgoMap.constBegin(); it != perAlgoMap.constEnd(); ++it) {
+            const QVariantMap entry = it.value().toMap();
+            qreal ratio = entry.value(QStringLiteral("splitRatio")).toDouble();
+            int count = entry.value(QStringLiteral("masterCount")).toInt();
+            newSaved[it.key()] = {ratio, count};
+        }
+        if (cfg->savedAlgorithmSettings != newSaved) {
+            cfg->savedAlgorithmSettings = newSaved;
             configChanged = true;
         }
     }
@@ -114,13 +120,13 @@ void SettingsBridge::syncFromSettings(Settings* settings)
         configChanged = true;
     }
 
-    // When the active algorithm is centered-master and setAlgorithm() early-returned
-    // (no algorithm change), the generic SYNC_FIELD above wrote cfg->splitRatio from
-    // the shared autotileSplitRatio (master-stack's value). Correct that by applying
-    // the centered-master-specific values, which were already synced above.
-    if (m_engine->m_algorithmId == QLatin1String("centered-master")) {
-        cfg->splitRatio = cfg->centeredMasterSplitRatio;
-        cfg->masterCount = cfg->centeredMasterMasterCount;
+    // When the active algorithm is in the saved map and setAlgorithm() early-returned
+    // (no algorithm change), restore the saved values for the active algorithm so
+    // the generic SYNC_FIELD splitRatio doesn't clobber the per-algorithm value.
+    auto savedIt = cfg->savedAlgorithmSettings.constFind(m_engine->m_algorithmId);
+    if (savedIt != cfg->savedAlgorithmSettings.constEnd()) {
+        cfg->splitRatio = savedIt->first;
+        cfg->masterCount = savedIt->second;
     }
 
     // Propagate split ratio and master count to screens WITHOUT per-screen overrides.
@@ -136,12 +142,17 @@ void SettingsBridge::syncFromSettings(Settings* settings)
     }
 
     // Update AlgorithmRegistry so preview generation uses the configured values.
-    // Use the settings getters for generic params (not cfg-> fields which may have
-    // been overwritten by the centered-master correction above). The centered-master
-    // fields in cfg are always the original values from their dedicated settings.
+    // Look up centered-master's saved values for its dedicated preview params.
+    int cmMasterCount = -1;
+    qreal cmSplitRatio = -1.0;
+    auto cmIt = cfg->savedAlgorithmSettings.constFind(QStringLiteral("centered-master"));
+    if (cmIt != cfg->savedAlgorithmSettings.constEnd()) {
+        cmSplitRatio = cmIt->first;
+        cmMasterCount = cmIt->second;
+    }
     AlgorithmRegistry::setConfiguredPreviewParams({m_engine->m_algorithmId, cfg->maxWindows,
                                                    settings->autotileMasterCount(), settings->autotileSplitRatio(),
-                                                   cfg->centeredMasterMasterCount, cfg->centeredMasterSplitRatio});
+                                                   cmMasterCount, cmSplitRatio});
 
     if (configChanged && m_engine->isEnabled()) {
         // Cancel any pending debounced retile — we are doing a full resync
@@ -233,28 +244,6 @@ void SettingsBridge::connectToSettings(Settings* settings)
         scheduleSettingsRetile();
     });
 
-    QObject::connect(settings, &Settings::autotileCenteredMasterSplitRatioChanged, m_engine, [this]() {
-        if (!m_settings)
-            return;
-        m_engine->config()->centeredMasterSplitRatio = m_settings->autotileCenteredMasterSplitRatio();
-        if (m_engine->m_algorithmId == QLatin1String("centered-master")) {
-            m_engine->config()->splitRatio = m_engine->config()->centeredMasterSplitRatio;
-            m_engine->propagateGlobalSplitRatio();
-            scheduleSettingsRetile();
-        }
-    });
-
-    QObject::connect(settings, &Settings::autotileCenteredMasterMasterCountChanged, m_engine, [this]() {
-        if (!m_settings)
-            return;
-        m_engine->config()->centeredMasterMasterCount = m_settings->autotileCenteredMasterMasterCount();
-        if (m_engine->m_algorithmId == QLatin1String("centered-master")) {
-            m_engine->config()->masterCount = m_engine->config()->centeredMasterMasterCount;
-            m_engine->propagateGlobalMasterCount();
-            scheduleSettingsRetile();
-        }
-    });
-
     CONNECT_SETTING_RETILE(autotileInnerGapChanged, innerGap, autotileInnerGap);
     CONNECT_SETTING_RETILE(autotileOuterGapChanged, outerGap, autotileOuterGap);
     CONNECT_SETTING_RETILE(autotileUsePerSideOuterGapChanged, usePerSideOuterGap, autotileUsePerSideOuterGap);
@@ -313,9 +302,16 @@ void SettingsBridge::syncAlgorithmToSettings(const QString& algoId, qreal splitR
     m_settings->setAutotileAlgorithm(algoId);
     m_settings->setAutotileSplitRatio(splitRatio);
     m_settings->setAutotileMasterCount(m_engine->config()->masterCount);
-    // Persist centered-master per-algorithm values so they survive save/reload
-    m_settings->setAutotileCenteredMasterSplitRatio(m_engine->config()->centeredMasterSplitRatio);
-    m_settings->setAutotileCenteredMasterMasterCount(m_engine->config()->centeredMasterMasterCount);
+    // Sync per-algorithm map so saved settings survive save/reload
+    QVariantMap perAlgoMap;
+    for (auto it = m_engine->config()->savedAlgorithmSettings.constBegin();
+         it != m_engine->config()->savedAlgorithmSettings.constEnd(); ++it) {
+        QVariantMap entry;
+        entry[QStringLiteral("splitRatio")] = it.value().first;
+        entry[QStringLiteral("masterCount")] = it.value().second;
+        perAlgoMap[it.key()] = entry;
+    }
+    m_settings->setAutotilePerAlgorithmSettings(perAlgoMap);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

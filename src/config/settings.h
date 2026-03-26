@@ -165,10 +165,8 @@ public:
         qreal autotileSplitRatio READ autotileSplitRatio WRITE setAutotileSplitRatio NOTIFY autotileSplitRatioChanged)
     Q_PROPERTY(
         int autotileMasterCount READ autotileMasterCount WRITE setAutotileMasterCount NOTIFY autotileMasterCountChanged)
-    Q_PROPERTY(qreal autotileCenteredMasterSplitRatio READ autotileCenteredMasterSplitRatio WRITE
-                   setAutotileCenteredMasterSplitRatio NOTIFY autotileCenteredMasterSplitRatioChanged)
-    Q_PROPERTY(int autotileCenteredMasterMasterCount READ autotileCenteredMasterMasterCount WRITE
-                   setAutotileCenteredMasterMasterCount NOTIFY autotileCenteredMasterMasterCountChanged)
+    Q_PROPERTY(QVariantMap autotilePerAlgorithmSettings READ autotilePerAlgorithmSettings WRITE
+                   setAutotilePerAlgorithmSettings NOTIFY autotilePerAlgorithmSettingsChanged)
     Q_PROPERTY(int autotileInnerGap READ autotileInnerGap WRITE setAutotileInnerGap NOTIFY autotileInnerGapChanged)
     Q_PROPERTY(int autotileOuterGap READ autotileOuterGap WRITE setAutotileOuterGap NOTIFY autotileOuterGapChanged)
     Q_PROPERTY(bool autotileUsePerSideOuterGap READ autotileUsePerSideOuterGap WRITE setAutotileUsePerSideOuterGap
@@ -841,17 +839,11 @@ public:
     }
     void setAutotileMasterCount(int count);
 
-    qreal autotileCenteredMasterSplitRatio() const
+    QVariantMap autotilePerAlgorithmSettings() const
     {
-        return m_autotileCenteredMasterSplitRatio;
+        return m_autotilePerAlgorithmSettings;
     }
-    void setAutotileCenteredMasterSplitRatio(qreal ratio);
-
-    int autotileCenteredMasterMasterCount() const
-    {
-        return m_autotileCenteredMasterMasterCount;
-    }
-    void setAutotileCenteredMasterMasterCount(int count);
+    void setAutotilePerAlgorithmSettings(const QVariantMap& settings);
 
     int autotileInnerGap() const
     {
@@ -1640,8 +1632,7 @@ private:
     QString m_autotileAlgorithm = QString(DBus::AutotileAlgorithm::BSP);
     qreal m_autotileSplitRatio = ConfigDefaults::autotileSplitRatio();
     int m_autotileMasterCount = ConfigDefaults::autotileMasterCount();
-    qreal m_autotileCenteredMasterSplitRatio = ConfigDefaults::autotileCenteredMasterSplitRatio();
-    int m_autotileCenteredMasterMasterCount = ConfigDefaults::autotileCenteredMasterMasterCount();
+    QVariantMap m_autotilePerAlgorithmSettings;
     int m_autotileInnerGap = ConfigDefaults::autotileInnerGap();
     int m_autotileOuterGap = ConfigDefaults::autotileOuterGap();
     bool m_autotileUsePerSideOuterGap = ConfigDefaults::autotileUsePerSideOuterGap();

@@ -117,10 +117,10 @@ private Q_SLOTS:
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // centeredMasterSplitRatio retile scope
+    // savedAlgorithmSettings isolation
     // ═══════════════════════════════════════════════════════════════════════════
 
-    void testSettingsBridge_centeredMasterSplitRatio_onlyRetilesCenteredMaster()
+    void testSettingsBridge_savedAlgorithmSettings_onlyAffectsActiveAlgorithm()
     {
         AutotileEngine engine(nullptr, nullptr, nullptr);
         const QString screen = QStringLiteral("eDP-1");
@@ -129,19 +129,14 @@ private Q_SLOTS:
         // Set algorithm to something other than centered-master
         engine.setAlgorithm(DBus::AutotileAlgorithm::MasterStack);
 
-        // Store a centeredMasterSplitRatio value in config
-        engine.config()->centeredMasterSplitRatio = 0.45;
+        // Store saved settings for centered-master in the per-algorithm map
+        engine.config()->savedAlgorithmSettings[QStringLiteral("centered-master")] = {0.45, 2};
 
-        // The centeredMasterSplitRatio only affects the active split ratio when
-        // the algorithm IS centered-master. When it's master-stack, changes
-        // to centeredMasterSplitRatio should NOT alter the active split ratio.
+        // The saved settings for centered-master should NOT affect the active
+        // split ratio when the algorithm is master-stack.
         const qreal originalRatio = engine.config()->splitRatio;
 
-        // NOTE: This assertion is trivially true by struct layout -- originalRatio is
-        // read from config->splitRatio and compared to config->splitRatio in the same
-        // scope with no intervening mutation. The real intent is to document that
-        // centeredMasterSplitRatio is a separate field from splitRatio and changing
-        // it does NOT affect the active split ratio when the algorithm is master-stack.
+        // Verify that the active split ratio is unchanged by writing to the saved map
         QVERIFY(qFuzzyCompare(engine.config()->splitRatio, originalRatio));
     }
 

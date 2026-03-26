@@ -80,8 +80,8 @@ private Q_SLOTS:
     {
         AutotileEngine engine(nullptr, nullptr, nullptr);
 
-        engine.config()->centeredMasterSplitRatio = 0.45;
-        engine.config()->centeredMasterMasterCount = 2;
+        // Pre-populate saved settings for centered-master
+        engine.config()->savedAlgorithmSettings[QStringLiteral("centered-master")] = {0.45, 2};
 
         engine.setAlgorithm(DBus::AutotileAlgorithm::MasterStack);
 

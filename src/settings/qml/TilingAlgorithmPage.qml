@@ -253,8 +253,8 @@ Flickable {
                                 showLabel: false
                                 algorithmId: root.effectiveAlgorithm
                                 windowCount: previewWindowSlider.slider.value
-                                splitRatio: root.effectiveAlgorithm === "centered-master" ? (root.settingValue("SplitRatio", appSettings.autotileCenteredMasterSplitRatio) || 0.5) : (root.settingValue("SplitRatio", appSettings.autotileSplitRatio) || 0.6)
-                                masterCount: root.effectiveAlgorithm === "centered-master" ? (root.settingValue("MasterCount", appSettings.autotileCenteredMasterMasterCount) || 1) : (root.settingValue("MasterCount", appSettings.autotileMasterCount) || 1)
+                                splitRatio: root.settingValue("SplitRatio", appSettings.autotileSplitRatio) || 0.6
+                                masterCount: root.settingValue("MasterCount", appSettings.autotileMasterCount) || 1
                                 overlapping: {
                                     const model = algorithmCombo.model;
                                     const idx = algorithmCombo.currentIndex;
@@ -297,17 +297,12 @@ Flickable {
                             root.writeSetting("Algorithm", currentValue, function(v) {
                                 appSettings.autotileAlgorithm = v;
                             });
-                            // Reset max windows and split ratio to the new algorithm's defaults
+                            // Max windows still needs to be reset here for KCM-side preview
                             let algoData = model[currentIndex];
                             if (algoData && algoData.defaultMaxWindows !== undefined)
                                 root.writeSetting("MaxWindows", algoData.defaultMaxWindows, function(v) {
                                 appSettings.autotileMaxWindows = v;
                             });
-                            if (algoData && algoData.defaultSplitRatio !== undefined && algoData.supportsSplitRatio)
-                                root.writeSetting("SplitRatio", algoData.defaultSplitRatio, function(v) {
-                                appSettings.autotileSplitRatio = v;
-                            });
-
                         }
                         ToolTip.visible: hovered
                         ToolTip.text: i18n("Select how windows are automatically arranged on screen")
@@ -411,12 +406,7 @@ Flickable {
                             return Math.round(v * 100) + "%";
                         }
                         onMoved: (value) => {
-                            if (root.effectiveAlgorithm === "centered-master")
-                                root.writeSetting("SplitRatio", value, function(v) {
-                                appSettings.autotileCenteredMasterSplitRatio = v;
-                            });
-                            else
-                                root.writeSetting("SplitRatio", value, function(v) {
+                            root.writeSetting("SplitRatio", value, function(v) {
                                 appSettings.autotileSplitRatio = v;
                             });
                         }
@@ -425,7 +415,7 @@ Flickable {
                     Binding {
                         target: splitRatioSlider.slider
                         property: "value"
-                        value: root.effectiveAlgorithm === "centered-master" ? root.settingValue("SplitRatio", appSettings.autotileCenteredMasterSplitRatio) : root.settingValue("SplitRatio", appSettings.autotileSplitRatio)
+                        value: root.settingValue("SplitRatio", appSettings.autotileSplitRatio)
                         when: !splitRatioSlider.slider.pressed
                         restoreMode: Binding.RestoreNone
                     }
@@ -437,7 +427,7 @@ Flickable {
                         visible: root.algoSupportsMasterCount
 
                         Label {
-                            text: root.effectiveAlgorithm === "centered-master" ? i18n("Center count:") : i18n("Master count:")
+                            text: i18n("Master count:")
                         }
 
                         SpinBox {
@@ -446,21 +436,16 @@ Flickable {
                             from: settingsController.autotileMasterCountMin
                             to: 5
                             onValueModified: {
-                                if (root.effectiveAlgorithm === "centered-master")
-                                    root.writeSetting("MasterCount", value, function(v) {
-                                    appSettings.autotileCenteredMasterMasterCount = v;
-                                });
-                                else
-                                    root.writeSetting("MasterCount", value, function(v) {
+                                root.writeSetting("MasterCount", value, function(v) {
                                     appSettings.autotileMasterCount = v;
                                 });
                             }
-                            Accessible.name: root.effectiveAlgorithm === "centered-master" ? i18n("Center count") : i18n("Master count")
+                            Accessible.name: i18n("Master count")
                             ToolTip.visible: hovered
-                            ToolTip.text: root.effectiveAlgorithm === "centered-master" ? i18n("Number of windows in the center area") : i18n("Number of windows in the master area")
+                            ToolTip.text: i18n("Number of windows in the master area")
 
                             Binding on value {
-                                value: root.effectiveAlgorithm === "centered-master" ? root.settingValue("MasterCount", appSettings.autotileCenteredMasterMasterCount) : root.settingValue("MasterCount", appSettings.autotileMasterCount)
+                                value: root.settingValue("MasterCount", appSettings.autotileMasterCount)
                                 when: !masterCountSpinBox.activeFocus
                                 restoreMode: Binding.RestoreNone
                             }

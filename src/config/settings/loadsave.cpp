@@ -8,6 +8,9 @@
 #include "../../core/utils.h"
 #include "../../autotile/AlgorithmRegistry.h"
 
+#include <QJsonDocument>
+#include <QJsonObject>
+
 namespace PlasmaZones {
 
 // ── load() helpers ───────────────────────────────────────────────────────────
@@ -375,19 +378,32 @@ void Settings::loadAutotilingConfig(QSettingsConfigBackend* backend)
     }
     m_autotileMasterCount = masterCount;
 
-    qreal cmSplitRatio = autotiling->readDouble(QStringLiteral("AutotileCenteredMasterSplitRatio"),
-                                                ConfigDefaults::autotileCenteredMasterSplitRatio());
-    if (cmSplitRatio < ConfigDefaults::autotileCenteredMasterSplitRatioMin() || cmSplitRatio > ConfigDefaults::autotileCenteredMasterSplitRatioMax()) {
-        cmSplitRatio = qBound(ConfigDefaults::autotileCenteredMasterSplitRatioMin(), cmSplitRatio, ConfigDefaults::autotileCenteredMasterSplitRatioMax());
+    // Load per-algorithm settings map (with backwards compat for centered-master fields)
+    const QString perAlgoStr = autotiling->readString(QStringLiteral("AutotilePerAlgorithmSettings"), QStringLiteral(""));
+    if (!perAlgoStr.isEmpty()) {
+        QJsonObject perAlgoJson = QJsonDocument::fromJson(perAlgoStr.toUtf8()).object();
+        QVariantMap perAlgoMap;
+        for (auto it = perAlgoJson.constBegin(); it != perAlgoJson.constEnd(); ++it) {
+            QJsonObject entry = it.value().toObject();
+            QVariantMap entryMap;
+            entryMap[QStringLiteral("splitRatio")] = entry[QLatin1String("splitRatio")].toDouble();
+            entryMap[QStringLiteral("masterCount")] = entry[QLatin1String("masterCount")].toInt();
+            perAlgoMap[it.key()] = entryMap;
+        }
+        m_autotilePerAlgorithmSettings = perAlgoMap;
+    } else {
+        // Backwards compat: migrate centered-master fields
+        const qreal cmRatio = autotiling->readDouble(QStringLiteral("AutotileCenteredMasterSplitRatio"),
+                                                     ConfigDefaults::autotileCenteredMasterSplitRatio());
+        const int cmCount = autotiling->readInt(QStringLiteral("AutotileCenteredMasterMasterCount"),
+                                                ConfigDefaults::autotileCenteredMasterMasterCount());
+        if (!qFuzzyCompare(cmRatio, 0.5) || cmCount != 1) {
+            QVariantMap entry;
+            entry[QStringLiteral("splitRatio")] = cmRatio;
+            entry[QStringLiteral("masterCount")] = cmCount;
+            m_autotilePerAlgorithmSettings[QStringLiteral("centered-master")] = entry;
+        }
     }
-    m_autotileCenteredMasterSplitRatio = cmSplitRatio;
-
-    int cmMasterCount = autotiling->readInt(QStringLiteral("AutotileCenteredMasterMasterCount"),
-                                            ConfigDefaults::autotileCenteredMasterMasterCount());
-    if (cmMasterCount < ConfigDefaults::autotileCenteredMasterMasterCountMin() || cmMasterCount > ConfigDefaults::autotileCenteredMasterMasterCountMax()) {
-        cmMasterCount = qBound(ConfigDefaults::autotileCenteredMasterMasterCountMin(), cmMasterCount, ConfigDefaults::autotileCenteredMasterMasterCountMax());
-    }
-    m_autotileCenteredMasterMasterCount = cmMasterCount;
 
     m_autotileInnerGap = readValidatedInt(*autotiling, "AutotileInnerGap", ConfigDefaults::autotileInnerGap(),
                                           ConfigDefaults::autotileInnerGapMin(), ConfigDefaults::autotileInnerGapMax(), "autotile inner gap");
@@ -715,8 +731,20 @@ void Settings::saveAutotilingConfig(QSettingsConfigBackend* backend)
         autotiling->writeString(QStringLiteral("AutotileAlgorithm"), m_autotileAlgorithm);
         autotiling->writeDouble(QStringLiteral("AutotileSplitRatio"), m_autotileSplitRatio);
         autotiling->writeInt(QStringLiteral("AutotileMasterCount"), m_autotileMasterCount);
-        autotiling->writeDouble(QStringLiteral("AutotileCenteredMasterSplitRatio"), m_autotileCenteredMasterSplitRatio);
-        autotiling->writeInt(QStringLiteral("AutotileCenteredMasterMasterCount"), m_autotileCenteredMasterMasterCount);
+        // Save per-algorithm settings map
+        {
+            QJsonObject perAlgo;
+            for (auto it = m_autotilePerAlgorithmSettings.constBegin(); it != m_autotilePerAlgorithmSettings.constEnd(); ++it) {
+                const QVariantMap entry = it.value().toMap();
+                QJsonObject entryJson;
+                entryJson[QLatin1String("splitRatio")] = entry.value(QStringLiteral("splitRatio")).toDouble();
+                entryJson[QLatin1String("masterCount")] = entry.value(QStringLiteral("masterCount")).toInt();
+                perAlgo[it.key()] = entryJson;
+            }
+            if (!perAlgo.isEmpty())
+                autotiling->writeString(QStringLiteral("AutotilePerAlgorithmSettings"),
+                                        QString::fromUtf8(QJsonDocument(perAlgo).toJson(QJsonDocument::Compact)));
+        }
         autotiling->writeInt(QStringLiteral("AutotileInnerGap"), m_autotileInnerGap);
         autotiling->writeInt(QStringLiteral("AutotileOuterGap"), m_autotileOuterGap);
         autotiling->writeBool(QStringLiteral("AutotileUsePerSideOuterGap"), m_autotileUsePerSideOuterGap);

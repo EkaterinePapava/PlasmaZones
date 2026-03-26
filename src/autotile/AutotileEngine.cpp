@@ -325,34 +325,25 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
         return;
     }
 
-    // Save current split ratio and master count back to per-algorithm fields
-    // when switching AWAY from centered-master, so values are remembered.
-    if (m_algorithmId == QLatin1String("centered-master")) {
-        m_config->centeredMasterSplitRatio = m_config->splitRatio;
-        m_config->centeredMasterMasterCount = m_config->masterCount;
-    }
-
-    // Always reset split ratio to the new algorithm's default when switching.
-    // Different algorithms interpret the same ratio value differently:
-    //   MasterStack 0.6 = 60% master width
-    //   BSP 0.5 = balanced 50/50 first split
-    //   Columns: ignores ratio entirely
-    // Preserving a ratio across algorithm switches produces wrong geometries
-    // (e.g., Firefox too wide when switching from MasterStack 0.6 to BSP).
     TilingAlgorithm* oldAlgo = registry->algorithm(m_algorithmId);
     TilingAlgorithm* newAlgo = registry->algorithm(newId);
     const int oldMaxWindows = m_config->maxWindows;
+
+    // Save current algorithm's ratio + master count before switching.
+    // Only save after the first setAlgorithm() call has completed, to avoid
+    // persisting uninitialised struct defaults from the constructor.
+    if (m_algorithmEverSet && oldAlgo) {
+        m_config->savedAlgorithmSettings[m_algorithmId] = {m_config->splitRatio, m_config->masterCount};
+    }
+
+    // Restore new algorithm's saved settings, or use defaults
+    auto savedIt = m_config->savedAlgorithmSettings.constFind(newId);
     if (oldAlgo && newAlgo) {
-        // When switching TO centered-master, use the dedicated per-algorithm values.
-        // For other algorithms, reset to their default split ratio.
-        if (newId == QLatin1String("centered-master")) {
-            m_config->splitRatio = m_config->centeredMasterSplitRatio;
-            m_config->masterCount = m_config->centeredMasterMasterCount;
+        if (savedIt != m_config->savedAlgorithmSettings.constEnd()) {
+            m_config->splitRatio = savedIt->first;
+            m_config->masterCount = savedIt->second;
         } else {
-            const qreal newDefault = newAlgo->defaultSplitRatio();
-            if (!qFuzzyCompare(1.0 + m_config->splitRatio, 1.0 + newDefault)) {
-                m_config->splitRatio = newDefault;
-            }
+            m_config->splitRatio = newAlgo->defaultSplitRatio();
         }
         propagateGlobalSplitRatio();
         propagateGlobalMasterCount();
@@ -363,10 +354,10 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
         resetMaxWindowsForAlgorithmSwitch(oldAlgo, newAlgo);
     } else if (newAlgo) {
         // oldAlgo is nullptr (first-ever call or corrupted m_algorithmId).
-        // Initialize config from the new algorithm's defaults.
-        if (newId == QLatin1String("centered-master")) {
-            m_config->splitRatio = m_config->centeredMasterSplitRatio;
-            m_config->masterCount = m_config->centeredMasterMasterCount;
+        // Initialize config from the new algorithm's defaults or saved settings.
+        if (savedIt != m_config->savedAlgorithmSettings.constEnd()) {
+            m_config->splitRatio = savedIt->first;
+            m_config->masterCount = savedIt->second;
         } else {
             m_config->splitRatio = newAlgo->defaultSplitRatio();
         }
@@ -383,6 +374,7 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
 
     m_algorithmId = newId;
     m_config->algorithmId = newId;
+    m_algorithmEverSet = true;
     Q_EMIT algorithmChanged(m_algorithmId);
 
     // Backfill windows when the new algorithm's maxWindows is higher.

@@ -5,7 +5,9 @@
 
 #include "plasmazones_export.h"
 #include <QColor>
+#include <QHash>
 #include <QJsonObject>
+#include <QPair>
 #include <QString>
 
 namespace PlasmaZones {
@@ -57,22 +59,10 @@ struct PLASMAZONES_EXPORT AutotileConfig
      */
     int masterCount = 1;
 
-    /**
-     * @brief Per-algorithm split ratio for centered-master
-     *
-     * Semantically different from splitRatio (center column width vs master area width).
-     * Range: 0.1 to 0.9
-     * Default: 0.5
-     */
-    qreal centeredMasterSplitRatio = 0.5;
-
-    /**
-     * @brief Per-algorithm master count for centered-master
-     *
-     * Range: 1 to 5
-     * Default: 1
-     */
-    int centeredMasterMasterCount = 1;
+    /// Per-algorithm saved settings (split ratio + master count).
+    /// Saved when switching away from an algorithm, restored when switching back.
+    /// Key: algorithm ID (e.g. "master-stack", "centered-master", "script:deck")
+    QHash<QString, QPair<qreal, int>> savedAlgorithmSettings;
 
     // ═══════════════════════════════════════════════════════════════════════
     // Gap Settings
