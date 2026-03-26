@@ -178,6 +178,16 @@ public:
     virtual bool isScripted() const noexcept;
 
     /**
+     * @brief Whether this algorithm maintains persistent state across retiles
+     *
+     * Memory algorithms (like DwindleMemory) remember per-split ratios and
+     * tree structure. The UI shows an indicator for memory-enabled algorithms.
+     *
+     * @return true if the algorithm uses a persistent SplitTree (default: false)
+     */
+    virtual bool supportsMemory() const noexcept;
+
+    /**
      * @brief Whether this scripted algorithm was loaded from a user directory
      *
      * System-installed scripts (shipped with PlasmaZones) return false.

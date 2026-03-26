@@ -59,6 +59,11 @@ bool TilingAlgorithm::isUserScript() const noexcept
     return false;
 }
 
+bool TilingAlgorithm::supportsMemory() const noexcept
+{
+    return false;
+}
+
 QVector<int> TilingAlgorithm::distributeEvenly(int total, int count)
 {
     QVector<int> sizes;

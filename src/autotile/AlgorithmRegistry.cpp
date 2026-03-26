@@ -354,6 +354,9 @@ QVariantMap AlgorithmRegistry::algorithmToVariantMap(TilingAlgorithm* algorithm,
     map[QLatin1String("zones")] = generatePreviewZones(algorithm);
     map[QLatin1String("category")] = static_cast<int>(LayoutCategory::Autotile);
     map[QLatin1String("overlapping")] = algorithm->producesOverlappingZones();
+    if (algorithm->supportsMemory()) {
+        map[QLatin1String("memory")] = true;
+    }
 
     // Section grouping for LayoutsPage
     const auto section = sectionForAlgorithm(algorithm);

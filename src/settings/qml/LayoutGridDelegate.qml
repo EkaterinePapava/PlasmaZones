@@ -270,6 +270,24 @@ Item {
                     autoAssign: root.modelData.autoAssign === true
                 }
 
+                // Memory indicator for algorithms that persist split state
+                Kirigami.Icon {
+                    visible: root.modelData.memory === true
+                    source: "document-save-symbolic"
+                    implicitWidth: Kirigami.Units.iconSizes.small
+                    implicitHeight: Kirigami.Units.iconSizes.small
+                    color: Kirigami.Theme.positiveTextColor
+                    opacity: 0.7
+                    ToolTip.visible: memoryHover.hovered
+                    ToolTip.text: i18n("Remembers split positions across window changes")
+                    ToolTip.delay: 500
+
+                    HoverHandler {
+                        id: memoryHover
+                    }
+
+                }
+
                 QFZCommon.AspectRatioBadge {
                     aspectRatioClass: root.modelData.aspectRatioClass || "any"
                 }

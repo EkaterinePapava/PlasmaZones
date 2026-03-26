@@ -51,6 +51,10 @@ public:
     {
         return 5;
     }
+    bool supportsMemory() const noexcept override
+    {
+        return true;
+    }
 
 private:
     QVector<QRect> calculateStatelessFallback(const TilingParams& params, const QRect& area) const;
