@@ -430,6 +430,13 @@ QJsonObject toJson(const UnifiedLayoutEntry& entry)
         json[QLatin1String("sectionOrder")] = entry.sectionOrder;
     }
 
+    if (entry.overlapping) {
+        json[QLatin1String("overlapping")] = true;
+    }
+    if (entry.memory) {
+        json[QLatin1String("memory")] = true;
+    }
+
     // hiddenFromSelector is added by callers that have access to the Layout*
 
     // Convert zones to JSON array
