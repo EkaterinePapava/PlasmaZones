@@ -741,9 +741,12 @@ void Settings::saveAutotilingConfig(QSettingsConfigBackend* backend)
                 entryJson[QLatin1String("masterCount")] = entry.value(QStringLiteral("masterCount")).toInt();
                 perAlgo[it.key()] = entryJson;
             }
-            if (!perAlgo.isEmpty())
+            if (!perAlgo.isEmpty()) {
                 autotiling->writeString(QStringLiteral("AutotilePerAlgorithmSettings"),
                                         QString::fromUtf8(QJsonDocument(perAlgo).toJson(QJsonDocument::Compact)));
+            } else {
+                autotiling->deleteKey(QStringLiteral("AutotilePerAlgorithmSettings"));
+            }
         }
         autotiling->writeInt(QStringLiteral("AutotileInnerGap"), m_autotileInnerGap);
         autotiling->writeInt(QStringLiteral("AutotileOuterGap"), m_autotileOuterGap);

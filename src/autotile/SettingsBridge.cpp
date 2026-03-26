@@ -92,8 +92,10 @@ void SettingsBridge::syncFromSettings(Settings* settings)
         QHash<QString, QPair<qreal, int>> newSaved;
         for (auto it = perAlgoMap.constBegin(); it != perAlgoMap.constEnd(); ++it) {
             const QVariantMap entry = it.value().toMap();
-            qreal ratio = entry.value(QStringLiteral("splitRatio")).toDouble();
-            int count = entry.value(QStringLiteral("masterCount")).toInt();
+            qreal ratio = std::clamp(entry.value(QStringLiteral("splitRatio")).toDouble(),
+                                      AutotileDefaults::MinSplitRatio, AutotileDefaults::MaxSplitRatio);
+            int count = std::clamp(entry.value(QStringLiteral("masterCount")).toInt(),
+                                    AutotileDefaults::MinMasterCount, AutotileDefaults::MaxMasterCount);
             newSaved[it.key()] = {ratio, count};
         }
         if (cfg->savedAlgorithmSettings != newSaved) {
@@ -151,7 +153,7 @@ void SettingsBridge::syncFromSettings(Settings* settings)
         cmMasterCount = cmIt->second;
     }
     AlgorithmRegistry::setConfiguredPreviewParams({m_engine->m_algorithmId, cfg->maxWindows,
-                                                   settings->autotileMasterCount(), settings->autotileSplitRatio(),
+                                                   cfg->masterCount, cfg->splitRatio,
                                                    cmMasterCount, cmSplitRatio});
 
     if (configChanged && m_engine->isEnabled()) {
@@ -242,6 +244,22 @@ void SettingsBridge::connectToSettings(Settings* settings)
         m_engine->config()->masterCount = m_settings->autotileMasterCount();
         m_engine->propagateGlobalMasterCount();
         scheduleSettingsRetile();
+    });
+
+    QObject::connect(settings, &Settings::autotilePerAlgorithmSettingsChanged, m_engine, [this]() {
+        if (!m_settings)
+            return;
+        const QVariantMap perAlgoMap = m_settings->autotilePerAlgorithmSettings();
+        QHash<QString, QPair<qreal, int>> newSaved;
+        for (auto it = perAlgoMap.constBegin(); it != perAlgoMap.constEnd(); ++it) {
+            const QVariantMap entry = it.value().toMap();
+            qreal ratio = std::clamp(entry.value(QStringLiteral("splitRatio")).toDouble(),
+                                      AutotileDefaults::MinSplitRatio, AutotileDefaults::MaxSplitRatio);
+            int count = std::clamp(entry.value(QStringLiteral("masterCount")).toInt(),
+                                    AutotileDefaults::MinMasterCount, AutotileDefaults::MaxMasterCount);
+            newSaved[it.key()] = {ratio, count};
+        }
+        m_engine->config()->savedAlgorithmSettings = newSaved;
     });
 
     CONNECT_SETTING_RETILE(autotileInnerGapChanged, innerGap, autotileInnerGap);

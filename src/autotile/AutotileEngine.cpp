@@ -344,6 +344,7 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
             m_config->masterCount = savedIt->second;
         } else {
             m_config->splitRatio = newAlgo->defaultSplitRatio();
+            m_config->masterCount = 1; // Reset to default when no saved settings
         }
         propagateGlobalSplitRatio();
         propagateGlobalMasterCount();
@@ -360,6 +361,7 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
             m_config->masterCount = savedIt->second;
         } else {
             m_config->splitRatio = newAlgo->defaultSplitRatio();
+            m_config->masterCount = 1; // Reset to default when no saved settings
         }
         m_config->maxWindows = newAlgo->defaultMaxWindows();
         propagateGlobalSplitRatio();

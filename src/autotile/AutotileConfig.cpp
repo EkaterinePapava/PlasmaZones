@@ -112,7 +112,7 @@ AutotileConfig AutotileConfig::fromJson(const QJsonObject& json)
             int count = std::clamp(entry[QLatin1String("masterCount")].toInt(1), MinMasterCount, MaxMasterCount);
             config.savedAlgorithmSettings[it.key()] = {ratio, count};
         }
-    } else if (!json.contains(QLatin1String("PerAlgorithmSettings"))) {
+    } else {
         // Backwards compat: migrate centered-master fields
         if (json.contains(QStringLiteral("centeredMasterSplitRatio"))
             || json.contains(QStringLiteral("centeredMasterMasterCount"))) {
