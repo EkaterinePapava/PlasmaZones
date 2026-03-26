@@ -10,6 +10,7 @@
 #include "../autotile/AlgorithmRegistry.h"
 #include "../autotile/TilingAlgorithm.h"
 #include "../autotile/TilingState.h"
+#include "../autotile/algorithms/ScriptedAlgorithmLoader.h"
 
 #include "../config/configdefaults.h"
 
@@ -37,6 +38,10 @@ SettingsController::SettingsController(QObject* parent)
     : QObject(parent)
     , m_screenHelper(&m_settings, this)
 {
+    // Load scripted algorithms so they appear in the algorithm dropdown
+    auto* scriptLoader = new ScriptedAlgorithmLoader(this);
+    scriptLoader->scanAndRegister();
+
     // Listen for external settings changes from the daemon
     QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
                                           QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
