@@ -41,6 +41,12 @@ Flickable {
     readonly property bool algoSupportsSplitRatio: algoCapabilities ? (algoCapabilities.supportsSplitRatio === true) : false
     readonly property bool algoSupportsMasterCount: algoCapabilities ? (algoCapabilities.supportsMasterCount === true) : false
 
+    function savedAlgoSetting(key, fallback) {
+        var perAlgo = appSettings.autotilePerAlgorithmSettings;
+        var entry = perAlgo ? perAlgo[root.selectedAlgorithm] : null;
+        return (entry && entry[key] !== undefined) ? entry[key] : fallback;
+    }
+
     function settingValue(key, globalValue) {
         return psHelper.settingValue(key, globalValue);
     }
@@ -272,20 +278,10 @@ Flickable {
                                     // When user is dragging the slider, use live value
                                     if (splitRatioSlider.slider.pressed)
                                         return splitRatioSlider.slider.value;
-                                    // Look up per-algorithm saved ratio, fall back to algorithm default
-                                    var perAlgo = appSettings.autotilePerAlgorithmSettings;
-                                    var algoId = root.selectedAlgorithm;
-                                    if (perAlgo && perAlgo[algoId] && perAlgo[algoId].splitRatio !== undefined)
-                                        return perAlgo[algoId].splitRatio;
-                                    return root.algoCapabilities ? root.algoCapabilities.defaultSplitRatio : 0.6;
+                                    return root.savedAlgoSetting("splitRatio",
+                                        root.algoCapabilities ? root.algoCapabilities.defaultSplitRatio : 0.6);
                                 }
-                                masterCount: {
-                                    var perAlgo = appSettings.autotilePerAlgorithmSettings;
-                                    var algoId = root.selectedAlgorithm;
-                                    if (perAlgo && perAlgo[algoId] && perAlgo[algoId].masterCount !== undefined)
-                                        return perAlgo[algoId].masterCount;
-                                    return 1;
-                                }
+                                masterCount: root.savedAlgoSetting("masterCount", 1)
                                 zoneNumberDisplay: root.algoCapabilities ? (root.algoCapabilities.zoneNumberDisplay || "all") : "all"
                             }
 
@@ -418,14 +414,8 @@ Flickable {
                     Binding {
                         target: splitRatioSlider.slider
                         property: "value"
-                        value: {
-                            // Per-algorithm saved ratio, falling back to algorithm default
-                            var perAlgo = appSettings.autotilePerAlgorithmSettings;
-                            var algoId = root.selectedAlgorithm;
-                            if (perAlgo && perAlgo[algoId] && perAlgo[algoId].splitRatio !== undefined)
-                                return perAlgo[algoId].splitRatio;
-                            return root.algoCapabilities ? root.algoCapabilities.defaultSplitRatio : 0.6;
-                        }
+                        value: root.savedAlgoSetting("splitRatio",
+                            root.algoCapabilities ? root.algoCapabilities.defaultSplitRatio : 0.6)
                         when: !splitRatioSlider.slider.pressed
                         restoreMode: Binding.RestoreNone
                     }
@@ -455,13 +445,7 @@ Flickable {
                             ToolTip.text: i18n("Number of windows in the master area")
 
                             Binding on value {
-                                value: {
-                                    var perAlgo = appSettings.autotilePerAlgorithmSettings;
-                                    var algoId = root.selectedAlgorithm;
-                                    if (perAlgo && perAlgo[algoId] && perAlgo[algoId].masterCount !== undefined)
-                                        return perAlgo[algoId].masterCount;
-                                    return 1;
-                                }
+                                value: root.savedAlgoSetting("masterCount", 1)
                                 when: !masterCountSpinBox.activeFocus
                                 restoreMode: Binding.RestoreNone
                             }

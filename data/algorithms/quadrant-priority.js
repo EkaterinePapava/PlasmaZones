@@ -48,7 +48,7 @@ function calculateZones(params) {
         zones.push({
             x: area.x + masterW + gap,
             y: area.y,
-            width: area.x + area.width - (area.x + masterW + gap),
+            width: Math.max(1, area.x + area.width - (area.x + masterW + gap)),
             height: area.height
         });
         return zones;
@@ -60,7 +60,7 @@ function calculateZones(params) {
 
     // Right column: from top to master bottom edge (or full height if no bottom row)
     var rightX = area.x + masterW + gap;
-    var rightW = area.x + area.width - rightX;
+    var rightW = Math.max(1, area.x + area.width - rightX);
     var rightH = bottomCount > 0 ? masterH : area.height;
     var rightTotalGaps = (rightCount - 1) * gap;
     var rightTileH = Math.round((rightH - rightTotalGaps) / rightCount);
@@ -82,7 +82,7 @@ function calculateZones(params) {
     // Bottom row: below master, full width
     if (bottomCount > 0) {
         var bottomY = area.y + masterH + gap;
-        var bottomH = area.y + area.height - bottomY;
+        var bottomH = Math.max(1, area.y + area.height - bottomY);
         var bottomTotalGaps = (bottomCount - 1) * gap;
         var bottomTileW = Math.round((area.width - bottomTotalGaps) / bottomCount);
 

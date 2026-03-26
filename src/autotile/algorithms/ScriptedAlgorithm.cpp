@@ -271,12 +271,12 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
     // avoiding a dangling-reference if the caller's stack unwinds early.
     auto finished = std::make_shared<std::atomic<bool>>(false);
     auto* engine = m_engine;
-    auto watchdog = std::thread([engine, finished]() {
+    std::thread([engine, finished]() {
         QThread::msleep(100);
         if (!finished->load(std::memory_order_acquire)) {
             engine->setInterrupted(true);
         }
-    });
+    }).detach();
 
     // Call the JS calculateZones function
     const QJSValue result = m_calculateZonesFn.call({jsParams});
@@ -284,8 +284,6 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
     // Signal the watchdog and reset interrupted state
     finished->store(true, std::memory_order_release);
     m_engine->setInterrupted(false);
-    if (watchdog.joinable())
-        watchdog.join();
 
     if (result.isError()) {
         qCWarning(lcAutotile) << "ScriptedAlgorithm: calculateZones() error script=" << m_scriptId
