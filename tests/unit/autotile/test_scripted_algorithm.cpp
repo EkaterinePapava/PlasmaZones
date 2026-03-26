@@ -488,16 +488,16 @@ private Q_SLOTS:
         }
     }
 
-    void testExampleAlgo_goldenRatio()
+    void testExampleAlgo_zen()
     {
-        QString path = exampleAlgoPath(QStringLiteral("golden-ratio.js"));
+        QString path = exampleAlgoPath(QStringLiteral("zen.js"));
         if (path.isEmpty()) {
-            QSKIP("golden-ratio.js not found in source tree");
+            QSKIP("zen.js not found in source tree");
         }
 
         ScriptedAlgorithm algo(path);
         QVERIFY(algo.isValid());
-        QCOMPARE(algo.name(), QStringLiteral("Golden Ratio"));
+        QCOMPARE(algo.name(), QStringLiteral("Zen"));
 
         TilingState state(QStringLiteral("test"));
 
