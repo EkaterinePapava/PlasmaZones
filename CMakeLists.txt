@@ -92,6 +92,7 @@ find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS
     DBus
     Widgets
     ShaderTools
+    Svg
 )
 # GuiPrivate (QRhi) and ShaderToolsPrivate (QShaderBaker) required for daemon zone overlay
 find_package(Qt6GuiPrivate CONFIG REQUIRED)
