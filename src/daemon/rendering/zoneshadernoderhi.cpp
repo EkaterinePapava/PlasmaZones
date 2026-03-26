@@ -120,6 +120,11 @@ ZoneShaderNodeRhi::~ZoneShaderNodeRhi()
     releaseRhiResources();
 }
 
+void ZoneShaderNodeRhi::invalidateItem()
+{
+    m_itemValid.store(false, std::memory_order_release);
+}
+
 QSGRenderNode::StateFlags ZoneShaderNodeRhi::changedStates() const
 {
     return QSGRenderNode::ViewportState | QSGRenderNode::ScissorState;
@@ -133,7 +138,7 @@ QSGRenderNode::RenderingFlags ZoneShaderNodeRhi::flags() const
 
 QRectF ZoneShaderNodeRhi::rect() const
 {
-    if (m_item) {
+    if (m_itemValid.load(std::memory_order_acquire) && m_item) {
         return QRectF(0, 0, m_item->width(), m_item->height());
     }
     return QRectF();
@@ -145,7 +150,7 @@ QRectF ZoneShaderNodeRhi::rect() const
 
 void ZoneShaderNodeRhi::prepare()
 {
-    if (!m_item || !m_item->window()) {
+    if (!m_itemValid.load(std::memory_order_acquire) || !m_item || !m_item->window()) {
         return;
     }
     QRhi* rhi = m_item->window()->rhi();
@@ -311,6 +316,9 @@ void ZoneShaderNodeRhi::prepare()
 void ZoneShaderNodeRhi::render(const RenderState* state)
 {
     Q_UNUSED(state)
+    if (!m_itemValid.load(std::memory_order_acquire)) {
+        return;
+    }
     const bool multiBufferMode = m_bufferPaths.size() > 1;
     const bool bufferReady = multiBufferMode ? m_multiBufferShadersReady : m_bufferShaderReady;
     // Multi-buffer: create buffer targets and pipelines before the image pass SRB, so
@@ -425,7 +433,7 @@ void ZoneShaderNodeRhi::render(const RenderState* state)
     int vpY = 0;
     int vpW = outputSize.width();
     int vpH = outputSize.height();
-    if (m_item && m_item->window() && m_item->width() > 0 && m_item->height() > 0) {
+    if (m_itemValid.load(std::memory_order_acquire) && m_item && m_item->window() && m_item->width() > 0 && m_item->height() > 0) {
         QQuickWindow* win = m_item->window();
         const qreal dpr = win->devicePixelRatio();
         const int itemPxW = qRound(m_item->width() * dpr);
