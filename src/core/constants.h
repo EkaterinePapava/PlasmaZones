@@ -418,6 +418,7 @@ inline constexpr QLatin1String BSP{"bsp"};
 inline constexpr QLatin1String Columns{"columns"};
 inline constexpr QLatin1String Rows{"rows"};
 inline constexpr QLatin1String Dwindle{"dwindle"};
+inline constexpr QLatin1String DwindleMemory{"dwindle-memory"};
 inline constexpr QLatin1String Spiral{"spiral"};
 inline constexpr QLatin1String Monocle{"monocle"};
 inline constexpr QLatin1String ThreeColumn{"three-column"};

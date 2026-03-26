@@ -131,6 +131,8 @@ set(plasmazones_core_SRCS
     autotile/TilingAlgorithm.h
     autotile/TilingState.cpp
     autotile/TilingState.h
+    autotile/SplitTree.cpp
+    autotile/SplitTree.h
     autotile/AlgorithmRegistry.cpp
     autotile/AlgorithmRegistry.h
     autotile/AutotileConfig.cpp
@@ -155,6 +157,8 @@ set(plasmazones_core_SRCS
     autotile/algorithms/BSPAlgorithm.h
     autotile/algorithms/DwindleAlgorithm.cpp
     autotile/algorithms/DwindleAlgorithm.h
+    autotile/algorithms/DwindleMemoryAlgorithm.cpp
+    autotile/algorithms/DwindleMemoryAlgorithm.h
     autotile/algorithms/SpiralAlgorithm.cpp
     autotile/algorithms/SpiralAlgorithm.h
     autotile/algorithms/ThreeColumnAlgorithm.cpp

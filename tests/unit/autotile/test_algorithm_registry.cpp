@@ -188,7 +188,8 @@ private Q_SLOTS:
         QVERIFY(available.contains(DBus::AutotileAlgorithm::Cascade));
         QVERIFY(available.contains(DBus::AutotileAlgorithm::Stair));
         QVERIFY(available.contains(DBus::AutotileAlgorithm::Spread));
-        QCOMPARE(available.size(), 14);
+        QVERIFY(available.contains(DBus::AutotileAlgorithm::DwindleMemory));
+        QCOMPARE(available.size(), 15);
     }
 
     // =========================================================================
@@ -253,7 +254,7 @@ private Q_SLOTS:
         auto* registry = AlgorithmRegistry::instance();
         auto all = registry->allAlgorithms();
 
-        QCOMPARE(all.size(), 14);
+        QCOMPARE(all.size(), 15);
 
         for (auto* algo : all) {
             QVERIFY(algo != nullptr);

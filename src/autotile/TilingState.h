@@ -12,7 +12,11 @@
 #include <QStringList>
 #include <QVector>
 
+#include <memory>
+
 namespace PlasmaZones {
+
+class SplitTree;
 
 /**
  * @brief Tracks tiling state for a single screen
@@ -45,7 +49,7 @@ public:
      * @param parent Parent QObject
      */
     explicit TilingState(const QString& screenId, QObject* parent = nullptr);
-    ~TilingState() override = default;
+    ~TilingState() override;
 
     // Prevent copying (QObject rule)
     TilingState(const TilingState&) = delete;
@@ -343,6 +347,29 @@ public:
      */
     QVector<QRect> calculatedZones() const;
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // Split Tree (persistent BSP tree for memory-based algorithms)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * @brief Get the persistent split tree (may be null)
+     *
+     * Used by DwindleMemoryAlgorithm to read the tree structure.
+     * Returns nullptr if no split tree has been created for this state.
+     */
+    SplitTree* splitTree() const;
+
+    /**
+     * @brief Set or replace the split tree
+     * @param tree Ownership transferred to TilingState
+     */
+    void setSplitTree(std::unique_ptr<SplitTree> tree);
+
+    /**
+     * @brief Clear the split tree (e.g., on algorithm switch)
+     */
+    void clearSplitTree();
+
 Q_SIGNALS:
     /**
      * @brief Emitted when window count changes (add/remove)
@@ -389,6 +416,7 @@ private:
     int m_masterCount = 1;
     qreal m_splitRatio = 0.6;
     QVector<QRect> m_calculatedZones;
+    std::unique_ptr<SplitTree> m_splitTree;
 
     // Helper to emit stateChanged after other signals
     void notifyStateChanged();

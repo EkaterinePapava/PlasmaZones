@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "TilingState.h"
+#include "SplitTree.h"
 #include "core/constants.h"
+#include "core/logging.h"
 #include <QJsonArray>
 #include <QtMath>
 #include <algorithm>
@@ -18,6 +20,8 @@ TilingState::TilingState(const QString& screenId, QObject* parent)
     , m_screenId(screenId)
 {
 }
+
+TilingState::~TilingState() = default;
 
 QString TilingState::screenId() const
 {
@@ -67,10 +71,20 @@ bool TilingState::addWindow(const QString& windowId, int position)
         return false; // Already tracked or invalid
     }
 
-    if (position < 0 || position >= m_windowOrder.size()) {
+    const bool appendToEnd = (position < 0 || position >= m_windowOrder.size());
+
+    if (appendToEnd) {
         m_windowOrder.append(windowId);
     } else {
         m_windowOrder.insert(position, windowId);
+    }
+
+    if (m_splitTree) {
+        if (appendToEnd) {
+            m_splitTree->insertAtEnd(windowId);
+        } else {
+            m_splitTree->insertAtPosition(windowId, position);
+        }
     }
 
     Q_EMIT windowCountChanged();
@@ -83,6 +97,10 @@ bool TilingState::removeWindow(const QString& windowId)
     const int index = m_windowOrder.indexOf(windowId);
     if (index < 0) {
         return false;
+    }
+
+    if (m_splitTree) {
+        m_splitTree->remove(windowId);
     }
 
     m_windowOrder.removeAt(index);
@@ -116,6 +134,11 @@ bool TilingState::moveWindow(int fromIndex, int toIndex)
     }
 
     m_windowOrder.move(fromIndex, toIndex);
+
+    if (m_splitTree) {
+        m_splitTree.reset();  // Move doesn't map to a tree operation; rebuild on next insert
+    }
+
     Q_EMIT windowOrderChanged();
     notifyStateChanged();
     return true;
@@ -133,7 +156,16 @@ bool TilingState::swapWindows(int index1, int index2)
         return true; // No-op is still success
     }
 
+    // Capture IDs BEFORE the swap so we pass the original (pre-swap) values to the tree
+    const QString id1 = m_windowOrder.at(index1);
+    const QString id2 = m_windowOrder.at(index2);
+
     m_windowOrder.swapItemsAt(index1, index2);
+
+    if (m_splitTree) {
+        m_splitTree->swap(id1, id2);
+    }
+
     Q_EMIT windowOrderChanged();
     notifyStateChanged();
     return true;
@@ -256,6 +288,11 @@ bool TilingState::promoteToMaster(const QString& windowId)
 
     // Move to front
     m_windowOrder.move(index, 0);
+
+    if (m_splitTree) {
+        m_splitTree.reset();  // Move doesn't map to a tree operation; rebuild on next insert
+    }
+
     Q_EMIT windowOrderChanged();
     notifyStateChanged();
     return true;
@@ -372,6 +409,10 @@ bool TilingState::rotateWindows(bool clockwise)
         }
     }
 
+    if (m_splitTree) {
+        m_splitTree.reset(); // Rotation reorders leaves; tree will be recreated via lazy init
+    }
+
     Q_EMIT windowOrderChanged();
     notifyStateChanged();
     return true;
@@ -433,6 +474,20 @@ void TilingState::setFloating(const QString& windowId, bool floating)
         m_floatingWindows.insert(windowId);
     } else {
         m_floatingWindows.remove(windowId);
+    }
+
+    if (m_splitTree) {
+        if (floating) {
+            m_splitTree->remove(windowId);
+        } else {
+            // Re-insert at the window's position in the tiled order
+            int tiledIdx = tiledWindowIndex(windowId);
+            if (tiledIdx >= 0) {
+                m_splitTree->insertAtPosition(windowId, tiledIdx);
+            } else {
+                m_splitTree->insertAtEnd(windowId);
+            }
+        }
     }
 
     Q_EMIT floatingChanged(windowId, floating);
@@ -512,6 +567,11 @@ QJsonObject TilingState::toJson() const
     json[FocusedWindow] = m_focusedWindow;
     json[MasterCount] = m_masterCount;
     json[SplitRatio] = m_splitRatio;
+
+    if (m_splitTree && !m_splitTree->isEmpty()) {
+        json[QStringLiteral("splitTree")] = m_splitTree->toJson();
+    }
+
     return json;
 }
 
@@ -556,6 +616,15 @@ TilingState* TilingState::fromJson(const QJsonObject& json, QObject* parent)
     // Split ratio with clamping
     state->m_splitRatio = std::clamp(json[SplitRatio].toDouble(DefaultSplitRatio), MinSplitRatio, MaxSplitRatio);
 
+    if (json.contains(QStringLiteral("splitTree"))) {
+        state->m_splitTree = SplitTree::fromJson(json[QStringLiteral("splitTree")].toObject());
+        // Validate leaf count matches window order
+        if (state->m_splitTree && state->m_splitTree->leafCount() != state->m_windowOrder.size()) {
+            qCWarning(lcAutotile) << "SplitTree leaf count mismatch, discarding tree";
+            state->m_splitTree.reset();
+        }
+    }
+
     return state;
 }
 
@@ -563,7 +632,8 @@ void TilingState::clear()
 {
     // Track if we need to emit signals
     const bool hadData = !m_windowOrder.isEmpty() || !m_floatingWindows.isEmpty() || !m_focusedWindow.isEmpty()
-        || m_masterCount != DefaultMasterCount || !qFuzzyCompare(1.0 + m_splitRatio, 1.0 + DefaultSplitRatio);
+        || m_masterCount != DefaultMasterCount || !qFuzzyCompare(1.0 + m_splitRatio, 1.0 + DefaultSplitRatio)
+        || m_splitTree;
 
     if (!hadData) {
         return; // Already at defaults, nothing to do
@@ -575,6 +645,7 @@ void TilingState::clear()
     m_focusedWindow.clear();
     m_masterCount = DefaultMasterCount;
     m_splitRatio = DefaultSplitRatio;
+    m_splitTree.reset();
 
     // Emit a single batch of signals
     Q_EMIT windowCountChanged();
@@ -601,6 +672,25 @@ void TilingState::setCalculatedZones(const QVector<QRect>& zones)
 QVector<QRect> TilingState::calculatedZones() const
 {
     return m_calculatedZones;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Split Tree
+// ═══════════════════════════════════════════════════════════════════════════════
+
+SplitTree* TilingState::splitTree() const
+{
+    return m_splitTree.get();
+}
+
+void TilingState::setSplitTree(std::unique_ptr<SplitTree> tree)
+{
+    m_splitTree = std::move(tree);
+}
+
+void TilingState::clearSplitTree()
+{
+    m_splitTree.reset();
 }
 
 } // namespace PlasmaZones

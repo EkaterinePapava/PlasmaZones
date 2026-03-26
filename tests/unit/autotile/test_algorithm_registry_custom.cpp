@@ -217,21 +217,22 @@ private Q_SLOTS:
         auto* registry = AlgorithmRegistry::instance();
         auto available = registry->availableAlgorithms();
 
-        QCOMPARE(available.size(), 14);
+        QCOMPARE(available.size(), 15);
         QCOMPARE(available[0], DBus::AutotileAlgorithm::BSP);
         QCOMPARE(available[1], DBus::AutotileAlgorithm::CenteredMaster);
         QCOMPARE(available[2], DBus::AutotileAlgorithm::Columns);
         QCOMPARE(available[3], DBus::AutotileAlgorithm::Dwindle);
-        QCOMPARE(available[4], DBus::AutotileAlgorithm::Grid);
-        QCOMPARE(available[5], DBus::AutotileAlgorithm::MasterStack);
-        QCOMPARE(available[6], DBus::AutotileAlgorithm::Monocle);
-        QCOMPARE(available[7], DBus::AutotileAlgorithm::Rows);
-        QCOMPARE(available[8], DBus::AutotileAlgorithm::Spiral);
-        QCOMPARE(available[9], DBus::AutotileAlgorithm::ThreeColumn);
-        QCOMPARE(available[10], DBus::AutotileAlgorithm::Wide);
-        QCOMPARE(available[11], DBus::AutotileAlgorithm::Cascade);
-        QCOMPARE(available[12], DBus::AutotileAlgorithm::Stair);
-        QCOMPARE(available[13], DBus::AutotileAlgorithm::Spread);
+        QCOMPARE(available[4], DBus::AutotileAlgorithm::DwindleMemory);
+        QCOMPARE(available[5], DBus::AutotileAlgorithm::Grid);
+        QCOMPARE(available[6], DBus::AutotileAlgorithm::MasterStack);
+        QCOMPARE(available[7], DBus::AutotileAlgorithm::Monocle);
+        QCOMPARE(available[8], DBus::AutotileAlgorithm::Rows);
+        QCOMPARE(available[9], DBus::AutotileAlgorithm::Spiral);
+        QCOMPARE(available[10], DBus::AutotileAlgorithm::ThreeColumn);
+        QCOMPARE(available[11], DBus::AutotileAlgorithm::Wide);
+        QCOMPARE(available[12], DBus::AutotileAlgorithm::Cascade);
+        QCOMPARE(available[13], DBus::AutotileAlgorithm::Stair);
+        QCOMPARE(available[14], DBus::AutotileAlgorithm::Spread);
     }
 
     void testOrder_matchesAllAlgorithms()
