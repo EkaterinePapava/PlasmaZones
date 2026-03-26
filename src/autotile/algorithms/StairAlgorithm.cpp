@@ -29,11 +29,6 @@ QString StairAlgorithm::description() const
     return PzI18n::tr("Stepped staircase arrangement");
 }
 
-QString StairAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("go-down-skip");
-}
-
 QVector<QRect> StairAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

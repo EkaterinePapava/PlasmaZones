@@ -399,7 +399,6 @@ private Q_SLOTS:
         DwindleMemoryAlgorithm algo;
         QVERIFY(!algo.name().isEmpty());
         QVERIFY(!algo.description().isEmpty());
-        QVERIFY(!algo.icon().isEmpty());
         QVERIFY(algo.supportsSplitRatio());
     }
 };

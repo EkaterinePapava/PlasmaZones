@@ -32,11 +32,6 @@ QString SpiralAlgorithm::description() const
     return PzI18n::tr("Windows spiral inward from the edges");
 }
 
-QString SpiralAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("shape-spiral");
-}
-
 QVector<QRect> SpiralAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

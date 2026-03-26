@@ -29,11 +29,6 @@ QString RowsAlgorithm::description() const
     return PzI18n::tr("Equal-height horizontal rows");
 }
 
-QString RowsAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-split-top-bottom");
-}
-
 QVector<QRect> RowsAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

@@ -3,7 +3,6 @@
 
 // @name Golden Ratio
 // @description Recursive splits using the golden ratio; each window gets 61.8% of the remaining space
-// @icon view-split-left-right
 // @producesOverlappingZones false
 // @supportsMasterCount false
 // @supportsSplitRatio false

@@ -3,7 +3,6 @@
 
 // @name Paper
 // @description Equal-width overlapping pages like a document viewer; splitRatio controls page width
-// @icon view-pages-symbolic
 // @producesOverlappingZones true
 // @supportsMasterCount false
 // @supportsSplitRatio true

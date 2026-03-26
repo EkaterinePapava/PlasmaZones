@@ -30,11 +30,6 @@ QString DwindleMemoryAlgorithm::description() const
     return PzI18n::tr("Remembers split positions — resize one split without affecting others");
 }
 
-QString DwindleMemoryAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-grid-symbolic");
-}
-
 QVector<QRect> DwindleMemoryAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

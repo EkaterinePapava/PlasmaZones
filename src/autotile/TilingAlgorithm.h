@@ -43,7 +43,7 @@ struct TilingParams
  * the provided screen geometry. This matches KWin's setFrameGeometry() API.
  *
  * Subclasses must implement:
- * - name(), description(), icon() for UI display
+ * - name(), description() for UI display
  * - calculateZones() for the actual algorithm
  *
  * Optionally override capability methods to indicate support for:
@@ -60,8 +60,7 @@ class PLASMAZONES_EXPORT TilingAlgorithm : public QObject
 
     Q_PROPERTY(QString name READ name CONSTANT)
     Q_PROPERTY(QString description READ description CONSTANT)
-    Q_PROPERTY(QString icon READ icon CONSTANT)
-    Q_PROPERTY(bool supportsMasterCount READ supportsMasterCount CONSTANT)
+Q_PROPERTY(bool supportsMasterCount READ supportsMasterCount CONSTANT)
     Q_PROPERTY(bool supportsSplitRatio READ supportsSplitRatio CONSTANT)
 
 public:
@@ -83,12 +82,6 @@ public:
      * @return Description suitable for tooltips/help text
      */
     virtual QString description() const = 0;
-
-    /**
-     * @brief Icon name for UI display
-     * @return KDE icon name (e.g., "view-grid-symbolic")
-     */
-    virtual QString icon() const noexcept = 0;
 
     /**
      * @brief Calculate zone geometries for N windows

@@ -33,11 +33,6 @@ QString CenteredMasterAlgorithm::description() const
     return PzI18n::tr("Master windows centered with stacks on both sides");
 }
 
-QString CenteredMasterAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-split-left-right");
-}
-
 QVector<QRect> CenteredMasterAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

@@ -24,7 +24,7 @@ struct SplitNode;
  *
  * Script metadata is parsed from leading comment lines using `// @key value`
  * syntax. Supported metadata keys:
- * - @name, @description, @icon
+ * - @name, @description
  * - @supportsMasterCount, @supportsSplitRatio, @producesOverlappingZones (bool)
  * - @defaultSplitRatio (qreal)
  * - @defaultMaxWindows, @minimumWindows, @masterZoneIndex (int)
@@ -76,7 +76,6 @@ public:
     // TilingAlgorithm interface
     QString name() const override;
     QString description() const override;
-    QString icon() const noexcept override;
     QVector<QRect> calculateZones(const TilingParams& params) const override;
     int masterZoneIndex() const noexcept override;
     bool supportsMasterCount() const noexcept override;
@@ -126,7 +125,6 @@ private:
     // Parsed metadata (from // @key value comments)
     QString m_name;
     QString m_description;
-    QString m_icon;
     bool m_supportsMasterCount = false;
     bool m_supportsSplitRatio = false;
     bool m_producesOverlappingZones = false;

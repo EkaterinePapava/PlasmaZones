@@ -32,11 +32,6 @@ QString WideAlgorithm::description() const
     return PzI18n::tr("Master area on top, remaining windows stacked below");
 }
 
-QString WideAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-split-top-bottom");
-}
-
 QVector<QRect> WideAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

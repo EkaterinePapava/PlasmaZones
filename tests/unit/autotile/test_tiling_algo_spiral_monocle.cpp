@@ -40,7 +40,6 @@ private Q_SLOTS:
     {
         SpiralAlgorithm algo;
         QCOMPARE(algo.name(), QStringLiteral("Spiral"));
-        QVERIFY(!algo.icon().isEmpty());
         QVERIFY(!algo.supportsMasterCount());
         QVERIFY(algo.supportsSplitRatio());
         QCOMPARE(algo.masterZoneIndex(), -1);
@@ -169,7 +168,6 @@ private Q_SLOTS:
     {
         MonocleAlgorithm algo;
         QCOMPARE(algo.name(), QStringLiteral("Monocle"));
-        QVERIFY(!algo.icon().isEmpty());
         QVERIFY(!algo.supportsMasterCount());
         QVERIFY(!algo.supportsSplitRatio());
         QCOMPARE(algo.masterZoneIndex(), -1);
@@ -278,7 +276,6 @@ private Q_SLOTS:
     {
         RowsAlgorithm algo;
         QCOMPARE(algo.name(), QStringLiteral("Rows"));
-        QVERIFY(!algo.icon().isEmpty());
         QVERIFY(!algo.supportsMasterCount());
         QVERIFY(!algo.supportsSplitRatio());
         QCOMPARE(algo.masterZoneIndex(), -1);

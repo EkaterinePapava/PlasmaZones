@@ -29,11 +29,6 @@ QString SpreadAlgorithm::description() const
     return PzI18n::tr("Windows spread evenly across the screen");
 }
 
-QString SpreadAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("distribute-horizontal");
-}
-
 QVector<QRect> SpreadAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

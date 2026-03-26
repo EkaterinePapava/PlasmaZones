@@ -3,7 +3,6 @@
 
 // @name Deck
 // @description Focused window fills most of the screen; remaining windows peek from the right edge like a hand of cards
-// @icon view-right-new
 // @producesOverlappingZones true
 // @supportsMasterCount false
 // @supportsSplitRatio true

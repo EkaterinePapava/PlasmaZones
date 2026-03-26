@@ -29,11 +29,6 @@ QString GridAlgorithm::description() const
     return PzI18n::tr("Equal-sized grid layout");
 }
 
-QString GridAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-grid");
-}
-
 QVector<QRect> GridAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

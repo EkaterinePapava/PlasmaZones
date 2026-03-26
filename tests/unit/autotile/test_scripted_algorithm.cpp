@@ -66,7 +66,6 @@ private:
         return QStringLiteral(
             "// @name Test Layout\n"
             "// @description A test tiling layout\n"
-            "// @icon view-grid-symbolic\n"
             "// @supportsMasterCount true\n"
             "// @supportsSplitRatio true\n"
             "// @defaultSplitRatio 0.65\n"
@@ -93,7 +92,6 @@ private:
         return QStringLiteral(
             "// @name Minimal\n"
             "// @description A minimal layout\n"
-            "// @icon view-list\n"
             "function calculateZones(params) {\n"
             "    if (params.windowCount <= 0) return [];\n"
             "    var area = params.area;\n"
@@ -114,7 +112,6 @@ private:
         return QStringLiteral(
             "// @name Simple Columns\n"
             "// @description Equal width columns\n"
-            "// @icon view-split-left-right\n"
             "function calculateZones(params) {\n"
             "    var count = params.windowCount;\n"
             "    if (count <= 0) return [];\n"
@@ -146,7 +143,6 @@ private Q_SLOTS:
         QVERIFY(algo.isValid());
         QCOMPARE(algo.name(), QStringLiteral("Test Layout"));
         QCOMPARE(algo.description(), QStringLiteral("A test tiling layout"));
-        QCOMPARE(algo.icon(), QStringLiteral("view-grid-symbolic"));
         QVERIFY(algo.supportsMasterCount());
         QVERIFY(algo.supportsSplitRatio());
         QCOMPARE(algo.defaultSplitRatio(), 0.65);
@@ -163,7 +159,6 @@ private Q_SLOTS:
         QVERIFY(dir.isValid());
         QString script = QStringLiteral(
             "// @description No name layout\n"
-            "// @icon view-list\n"
             "function calculateZones(params) { return []; }\n");
         QString path = writeTempScript(dir, QStringLiteral("no-name.js"), script);
 
@@ -179,28 +174,12 @@ private Q_SLOTS:
         QVERIFY(dir.isValid());
         QString script = QStringLiteral(
             "// @name No Description\n"
-            "// @icon view-list\n"
             "function calculateZones(params) { return []; }\n");
         QString path = writeTempScript(dir, QStringLiteral("no-desc.js"), script);
 
         ScriptedAlgorithm algo(path);
         QVERIFY(algo.isValid());
         QVERIFY(!algo.description().isEmpty()); // Falls back to default string
-    }
-
-    void testMetadata_missingIconUsesDefault()
-    {
-        QTemporaryDir dir;
-        QVERIFY(dir.isValid());
-        QString script = QStringLiteral(
-            "// @name No Icon\n"
-            "// @description Layout without icon\n"
-            "function calculateZones(params) { return []; }\n");
-        QString path = writeTempScript(dir, QStringLiteral("no-icon.js"), script);
-
-        ScriptedAlgorithm algo(path);
-        QVERIFY(algo.isValid());
-        QVERIFY(!algo.icon().isEmpty());
     }
 
     void testMetadata_defaultValues()
@@ -242,7 +221,6 @@ private Q_SLOTS:
         QString script = QStringLiteral(
             "// @name Missing Func\n"
             "// @description No calculateZones function\n"
-            "// @icon view-list\n"
             "var x = 42;\n");
         QString path = writeTempScript(dir, QStringLiteral("no-func.js"), script);
 
@@ -257,7 +235,6 @@ private Q_SLOTS:
         QString script = QStringLiteral(
             "// @name Broken\n"
             "// @description Has syntax error\n"
-            "// @icon view-list\n"
             "function calculateZones(params) {{{\n"
             "    return [;\n"
             "}\n");
@@ -347,7 +324,6 @@ private Q_SLOTS:
         QString script = QStringLiteral(
             "// @name Param Echo\n"
             "// @description Echoes params as zone dimensions\n"
-            "// @icon view-list\n"
             "function calculateZones(params) {\n"
             "    return [{\n"
             "        x: params.windowCount,\n"
@@ -382,7 +358,6 @@ private Q_SLOTS:
         QString script = QStringLiteral(
             "// @name Bad Return\n"
             "// @description Returns wrong type\n"
-            "// @icon view-list\n"
             "function calculateZones(params) {\n"
             "    return 'not an array';\n"
             "}\n");
@@ -405,7 +380,6 @@ private Q_SLOTS:
         QString script = QStringLiteral(
             "// @name Area Echo\n"
             "// @description Echoes area as zone\n"
-            "// @icon view-list\n"
             "function calculateZones(params) {\n"
             "    return [params.area];\n"
             "}\n");

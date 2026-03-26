@@ -29,11 +29,6 @@ QString CascadeAlgorithm::description() const
     return PzI18n::tr("Overlapping windows in a diagonal cascade");
 }
 
-QString CascadeAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-file-columns");
-}
-
 QVector<QRect> CascadeAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

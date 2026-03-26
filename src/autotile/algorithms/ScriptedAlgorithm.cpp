@@ -175,8 +175,6 @@ void ScriptedAlgorithm::parseMetadata(const QString& source)
             m_name = value;
         } else if (key == QLatin1String("description")) {
             m_description = value;
-        } else if (key == QLatin1String("icon")) {
-            m_icon = value;
         } else if (key == QLatin1String("supportsMasterCount")) {
             m_supportsMasterCount = (value == QLatin1String("true"));
         } else if (key == QLatin1String("supportsSplitRatio")) {
@@ -365,14 +363,6 @@ QString ScriptedAlgorithm::description() const
         return m_description;
     }
     return QStringLiteral("User-provided scripted tiling algorithm");
-}
-
-QString ScriptedAlgorithm::icon() const noexcept
-{
-    if (!m_icon.isEmpty()) {
-        return m_icon;
-    }
-    return QStringLiteral("text-x-script");
 }
 
 int ScriptedAlgorithm::masterZoneIndex() const noexcept

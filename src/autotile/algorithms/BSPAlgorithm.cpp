@@ -32,11 +32,6 @@ QString BSPAlgorithm::description() const
     return PzI18n::tr("Balanced recursive splitting into equal regions");
 }
 
-QString BSPAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-grid-symbolic");
-}
-
 QVector<QRect> BSPAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

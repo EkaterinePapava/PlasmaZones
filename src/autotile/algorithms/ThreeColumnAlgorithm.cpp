@@ -32,11 +32,6 @@ QString ThreeColumnAlgorithm::description() const
     return PzI18n::tr("Master window centered with columns on each side");
 }
 
-QString ThreeColumnAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-column-three");
-}
-
 QVector<QRect> ThreeColumnAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

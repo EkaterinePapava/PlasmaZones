@@ -3,7 +3,6 @@
 
 // @name Tatami
 // @description Japanese tatami mat pattern where no four corners ever meet at the same point
-// @icon view-grid-symbolic
 // @producesOverlappingZones false
 // @supportsMasterCount false
 // @supportsSplitRatio false

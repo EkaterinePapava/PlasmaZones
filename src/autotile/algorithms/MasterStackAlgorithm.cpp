@@ -32,11 +32,6 @@ QString MasterStackAlgorithm::description() const
     return PzI18n::tr("Large master area with stacked secondary windows");
 }
 
-QString MasterStackAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-left-close");
-}
-
 int MasterStackAlgorithm::masterZoneIndex() const noexcept
 {
     return 0; // First zone is always master

@@ -298,7 +298,6 @@ QString AutotileAdaptor::algorithmInfo(const QString& algorithmId)
     info[QLatin1String("id")] = algorithmId; // Validated by successful lookup above
     info[QLatin1String("name")] = algo->name();
     info[QLatin1String("description")] = algo->description();
-    info[QLatin1String("icon")] = algo->icon();
     info[QLatin1String("supportsMasterCount")] = algo->supportsMasterCount();
     info[QLatin1String("supportsSplitRatio")] = algo->supportsSplitRatio();
 

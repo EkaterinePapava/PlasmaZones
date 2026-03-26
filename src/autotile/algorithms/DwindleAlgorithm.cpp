@@ -32,11 +32,6 @@ QString DwindleAlgorithm::description() const
     return PzI18n::tr("Each new window gets a smaller split, alternating direction");
 }
 
-QString DwindleAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-grid-symbolic");
-}
-
 QVector<QRect> DwindleAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;

@@ -31,11 +31,6 @@ public:
     {
         return QStringLiteral("Test algorithm for unit tests");
     }
-    QString icon() const noexcept override
-    {
-        return QStringLiteral("test-icon");
-    }
-
     QVector<QRect> calculateZones(const TilingParams& params) const override
     {
         QVector<QRect> zones;
