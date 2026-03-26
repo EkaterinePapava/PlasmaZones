@@ -3,7 +3,6 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 
@@ -237,10 +236,8 @@ Item {
                 return lastSlash >= 0 ? currentPath.substring(lastSlash + 1) : currentPath;
             }
             onClicked: {
-                if (paramDelegate.resolvedDialogRoot)
-                    paramDelegate.resolvedDialogRoot.hideShaderPreview();
-
-                imageFileDialog.open();
+                if (paramDelegate.resolvedDialogRoot && paramDelegate.paramData)
+                    paramDelegate.resolvedDialogRoot.openImageDialog(paramDelegate.paramData.id);
             }
         }
 
@@ -318,28 +315,6 @@ Item {
             }
         }
 
-    }
-
-    FileDialog {
-        id: imageFileDialog
-
-        title: i18nc("@title:window", "Choose Image")
-        nameFilters: [i18nc("@item:inlistbox", "Image files (*.png *.jpg *.jpeg *.bmp *.webp *.svg *.svgz)"), i18nc("@item:inlistbox", "All files (*)")]
-        fileMode: FileDialog.OpenFile
-        onAccepted: {
-            if (paramDelegate.paramData && paramDelegate.resolvedDialogRoot) {
-                var path = decodeURIComponent(selectedFile.toString().replace(/^file:\/\/+/, "/"));
-                paramDelegate.resolvedDialogRoot.setPendingParam(paramDelegate.paramData.id, path);
-            }
-            if (paramDelegate.resolvedDialogRoot)
-                paramDelegate.resolvedDialogRoot.restoreShaderPreview();
-
-        }
-        onRejected: function() {
-            if (paramDelegate.resolvedDialogRoot)
-                paramDelegate.resolvedDialogRoot.restoreShaderPreview();
-
-        }
     }
 
 }

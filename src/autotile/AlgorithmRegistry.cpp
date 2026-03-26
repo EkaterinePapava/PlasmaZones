@@ -353,7 +353,7 @@ QVariantMap AlgorithmRegistry::algorithmToVariantMap(TilingAlgorithm* algorithm,
     map[QLatin1String("zoneCount")] = effectiveMaxWindows(algorithm);
     map[QLatin1String("zones")] = generatePreviewZones(algorithm);
     map[QLatin1String("category")] = static_cast<int>(LayoutCategory::Autotile);
-    map[QLatin1String("overlapping")] = algorithm->producesOverlappingZones();
+    map[QLatin1String("zoneNumberDisplay")] = algorithm->zoneNumberDisplay();
     if (algorithm->supportsMemory()) {
         map[QLatin1String("memory")] = true;
     }

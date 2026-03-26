@@ -168,6 +168,16 @@ public:
     virtual bool producesOverlappingZones() const noexcept;
 
     /**
+     * @brief How zone numbers should be displayed in previews
+     *
+     * Controls which zones show their number label in layout cards and previews.
+     * Values: "all" (default), "last", "first", "firstAndLast", "none"
+     *
+     * @return Display mode string
+     */
+    virtual QString zoneNumberDisplay() const noexcept;
+
+    /**
      * @brief Whether this algorithm is a user-provided scripted algorithm
      *
      * Scripted algorithms are loaded from JavaScript files at runtime.

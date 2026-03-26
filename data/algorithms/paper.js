@@ -4,6 +4,7 @@
 // @name Paper
 // @description Equal-width overlapping pages like a document viewer; splitRatio controls page width
 // @producesOverlappingZones true
+// @zoneNumberDisplay last
 // @supportsMasterCount false
 // @supportsSplitRatio true
 // @defaultSplitRatio 0.8

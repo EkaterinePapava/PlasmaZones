@@ -286,7 +286,7 @@ Flickable {
                                         return perAlgo[algoId].masterCount;
                                     return 1;
                                 }
-                                overlapping: root.algoCapabilities ? (root.algoCapabilities.overlapping === true) : false
+                                zoneNumberDisplay: root.algoCapabilities ? (root.algoCapabilities.zoneNumberDisplay || "all") : "all"
                             }
 
                         }

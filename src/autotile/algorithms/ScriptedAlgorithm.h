@@ -26,6 +26,7 @@ struct SplitNode;
  * syntax. Supported metadata keys:
  * - @name, @description
  * - @supportsMasterCount, @supportsSplitRatio, @producesOverlappingZones (bool)
+ * - @zoneNumberDisplay (string: "all", "last", "first", "firstAndLast", "none")
  * - @defaultSplitRatio (qreal)
  * - @defaultMaxWindows, @minimumWindows, @masterZoneIndex (int)
  *
@@ -84,6 +85,7 @@ public:
     int minimumWindows() const noexcept override;
     int defaultMaxWindows() const noexcept override;
     bool producesOverlappingZones() const noexcept override;
+    QString zoneNumberDisplay() const noexcept override;
     bool isScripted() const noexcept override;
     bool isUserScript() const noexcept override;
 
@@ -128,6 +130,7 @@ private:
     bool m_supportsMasterCount = false;
     bool m_supportsSplitRatio = false;
     bool m_producesOverlappingZones = false;
+    QString m_zoneNumberDisplay;
     qreal m_defaultSplitRatio = 0.0; // 0 = use base class default
     int m_defaultMaxWindows = 0; // 0 = use base class default
     int m_minimumWindows = 0; // 0 = use base class default

@@ -185,6 +185,10 @@ Kirigami.Dialog {
 
     }
 
+    function restoreShaderPreview() {
+        Qt.callLater(root.updateLocalShaderPreview);
+    }
+
     // Build local preview config from shader info + translated params + zones
     function updateLocalShaderPreview() {
         if (!previewAllowed) {
@@ -460,6 +464,16 @@ Kirigami.Dialog {
         shaderColorDialog.paramId = paramId;
         shaderColorDialog.paramName = paramName;
         shaderColorDialog.open();
+    }
+
+    // Helper for ParameterDelegate to open image file dialog
+    // Owned by the dialog root (not the delegate) to avoid use-after-free
+    // when the Repeater destroys delegates while the native FileDialog wrapper
+    // is still alive — the platform dialog destructor races with QQmlData cleanup.
+    function openImageDialog(paramId) {
+        shaderImageDialog.paramId = paramId;
+        root.hideShaderPreview();
+        shaderImageDialog.open();
     }
 
     function firstEffectId() {
@@ -1291,6 +1305,29 @@ Kirigami.Dialog {
             if (paramId)
                 root.setPendingParam(paramId, selectedColor.toString());
 
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SHARED IMAGE FILE DIALOG (owned by dialog root, not by delegate)
+    // ═══════════════════════════════════════════════════════════════════════
+    FileDialog {
+        id: shaderImageDialog
+
+        property string paramId: ""
+
+        title: i18nc("@title:window", "Choose Image")
+        nameFilters: [i18nc("@item:inlistbox", "Image files (*.png *.jpg *.jpeg *.bmp *.webp *.svg *.svgz)"), i18nc("@item:inlistbox", "All files (*)")]
+        fileMode: FileDialog.OpenFile
+        onAccepted: {
+            if (paramId) {
+                var path = decodeURIComponent(selectedFile.toString().replace(/^file:\/\/+/, "/"));
+                root.setPendingParam(paramId, path);
+            }
+            root.restoreShaderPreview();
+        }
+        onRejected: {
+            root.restoreShaderPreview();
         }
     }
 

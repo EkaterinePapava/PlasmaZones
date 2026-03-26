@@ -223,7 +223,7 @@ static void appendAutotileEntries(QVector<UnifiedLayoutEntry>& list)
         entry.previewZones = AlgorithmRegistry::generatePreviewZones(algo);
         entry.zones = entry.previewZones;
         entry.zoneCount = AlgorithmRegistry::effectiveMaxWindows(algo);
-        entry.overlapping = algo->producesOverlappingZones();
+        entry.zoneNumberDisplay = algo->zoneNumberDisplay();
         entry.memory = algo->supportsMemory();
 
         // Section grouping (shared helper avoids DRY violation with algorithmToVariantMap)
@@ -372,8 +372,8 @@ QVariantMap toVariantMap(const UnifiedLayoutEntry& entry)
     map[IsSystem] = false;
     map[AspectRatioClassKey] = ScreenClassification::toString(static_cast<AspectRatioClass>(entry.aspectRatioClass));
     map[QLatin1String("recommended")] = entry.recommended;
-    if (entry.overlapping) {
-        map[QLatin1String("overlapping")] = true;
+    if (!entry.zoneNumberDisplay.isEmpty()) {
+        map[QLatin1String("zoneNumberDisplay")] = entry.zoneNumberDisplay;
     }
     if (entry.memory) {
         map[QLatin1String("memory")] = true;
@@ -430,8 +430,8 @@ QJsonObject toJson(const UnifiedLayoutEntry& entry)
         json[QLatin1String("sectionOrder")] = entry.sectionOrder;
     }
 
-    if (entry.overlapping) {
-        json[QLatin1String("overlapping")] = true;
+    if (!entry.zoneNumberDisplay.isEmpty()) {
+        json[QLatin1String("zoneNumberDisplay")] = entry.zoneNumberDisplay;
     }
     if (entry.memory) {
         json[QLatin1String("memory")] = true;

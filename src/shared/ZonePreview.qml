@@ -50,8 +50,8 @@ Item {
     property int minZoneSize: 8
     /// Whether to show zone numbers
     property bool showZoneNumbers: true
-    /// Override to force only-show-last-zone-number behavior (e.g. for cascade)
-    property bool onlyShowLastZoneNumber: false
+    /// How to display zone numbers: "all", "first", "last", "firstAndLast", "none"
+    property string zoneNumberDisplay: "all"
     /// Auto-detect stacked/overlapping layout (monocle, cascade, etc.)
     /// When true, only the last zone's number label is shown.
     readonly property bool isStackedLayout: {
@@ -212,7 +212,20 @@ Item {
                 font.family: root.fontFamily
                 color: root.labelFontColor
                 opacity: (root.isActive || root.isHovered || zoneRect.isZoneSelected || zoneRect.isZoneHovered) ? 0.9 : 0.6
-                visible: root.showZoneNumbers && (!(root.isStackedLayout || root.onlyShowLastZoneNumber) || index === root.zones.length - 1) && parent.width >= 16 && parent.height >= 16
+                visible: {
+                    if (!root.showZoneNumbers) return false;
+                    if (parent.width < 16 || parent.height < 16) return false;
+                    var display = root.zoneNumberDisplay;
+                    // Auto-detect stacked layouts (monocle-style) if no explicit override
+                    if (display === "all" && root.isStackedLayout) display = "last";
+                    switch (display) {
+                    case "none": return false;
+                    case "first": return index === 0;
+                    case "last": return index === root.zones.length - 1;
+                    case "firstAndLast": return index === 0 || index === root.zones.length - 1;
+                    default: return true; // "all"
+                    }
+                }
 
                 Behavior on opacity {
                     NumberAnimation {

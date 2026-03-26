@@ -205,6 +205,12 @@ void ScriptedAlgorithm::parseMetadata(const QString& source)
             if (ok) {
                 m_masterZoneIndex = qMax(-1, v);
             }
+        } else if (key == QLatin1String("zoneNumberDisplay")) {
+            if (value == QLatin1String("all") || value == QLatin1String("last")
+                || value == QLatin1String("first") || value == QLatin1String("firstAndLast")
+                || value == QLatin1String("none")) {
+                m_zoneNumberDisplay = value;
+            }
         }
     }
 }
@@ -444,6 +450,14 @@ bool ScriptedAlgorithm::producesOverlappingZones() const noexcept
             return result.toBool();
     }
     return m_producesOverlappingZones;
+}
+
+QString ScriptedAlgorithm::zoneNumberDisplay() const noexcept
+{
+    if (!m_zoneNumberDisplay.isEmpty()) {
+        return m_zoneNumberDisplay;
+    }
+    return TilingAlgorithm::zoneNumberDisplay();
 }
 
 bool ScriptedAlgorithm::isScripted() const noexcept

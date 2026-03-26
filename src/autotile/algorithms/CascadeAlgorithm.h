@@ -68,6 +68,7 @@ public:
     {
         return true;
     }
+    QString zoneNumberDisplay() const noexcept override { return QStringLiteral("last"); }
 };
 
 } // namespace PlasmaZones
