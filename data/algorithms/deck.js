@@ -9,6 +9,7 @@
 // @defaultSplitRatio 0.75
 // @defaultMaxWindows 5
 // @minimumWindows 1
+// @zoneNumberDisplay firstAndLast
 
 /**
  * Deck layout: one focused window with background windows peeking
