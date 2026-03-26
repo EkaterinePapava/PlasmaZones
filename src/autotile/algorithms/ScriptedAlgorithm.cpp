@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "ScriptedAlgorithm.h"
+#include "../SplitTree.h"
 #include "../TilingState.h"
 #include "core/constants.h"
 #include "core/logging.h"
@@ -70,7 +71,52 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
 
     parseMetadata(source);
 
-    // Evaluate the script in the engine
+    // Inject built-in helper: applyTreeGeometry(node, rect, gap)
+    // Scripts can use this to get memory-aware tiling with one line:
+    //   if (params.tree) return applyTreeGeometry(params.tree, params.area, params.innerGap);
+    static const QString treeHelper = QStringLiteral(
+        "function applyTreeGeometry(node, rect, gap) {"
+        "  if (!node) return [];"
+        "  if (node.windowId !== undefined && node.windowId !== '') {"
+        "    return [{x: rect.x, y: rect.y, width: rect.width, height: rect.height}];"
+        "  }"
+        "  if (!node.first || !node.second) {"
+        "    return [{x: rect.x, y: rect.y, width: rect.width, height: rect.height}];"
+        "  }"
+        "  var ratio = Math.max(0.1, Math.min(0.9, node.ratio || 0.5));"
+        "  var zones = [];"
+        "  if (node.horizontal) {"
+        "    var content = rect.height - gap;"
+        "    if (content <= 0) {"
+        "      zones = zones.concat(applyTreeGeometry(node.first, rect, 0));"
+        "      zones = zones.concat(applyTreeGeometry(node.second, rect, 0));"
+        "    } else {"
+        "      var h1 = Math.round(content * ratio);"
+        "      var h2 = content - h1;"
+        "      zones = zones.concat(applyTreeGeometry(node.first,"
+        "        {x: rect.x, y: rect.y, width: rect.width, height: h1}, gap));"
+        "      zones = zones.concat(applyTreeGeometry(node.second,"
+        "        {x: rect.x, y: rect.y + h1 + gap, width: rect.width, height: h2}, gap));"
+        "    }"
+        "  } else {"
+        "    var content = rect.width - gap;"
+        "    if (content <= 0) {"
+        "      zones = zones.concat(applyTreeGeometry(node.first, rect, 0));"
+        "      zones = zones.concat(applyTreeGeometry(node.second, rect, 0));"
+        "    } else {"
+        "      var w1 = Math.round(content * ratio);"
+        "      var w2 = content - w1;"
+        "      zones = zones.concat(applyTreeGeometry(node.first,"
+        "        {x: rect.x, y: rect.y, width: w1, height: rect.height}, gap));"
+        "      zones = zones.concat(applyTreeGeometry(node.second,"
+        "        {x: rect.x + w1 + gap, y: rect.y, width: w2, height: rect.height}, gap));"
+        "    }"
+        "  }"
+        "  return zones;"
+        "}");
+    m_engine->evaluate(treeHelper, QStringLiteral("builtin:applyTreeGeometry"));
+
+    // Evaluate the user script
     const QJSValue result = m_engine->evaluate(source, filePath);
     if (result.isError()) {
         qCWarning(lcAutotile) << "ScriptedAlgorithm: evaluation error file=" << filePath
@@ -196,6 +242,11 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
         jsParams.setProperty(QStringLiteral("splitRatio"), DefaultSplitRatio);
     }
 
+    // Split tree (read-only deep copy for memory-aware scripts)
+    if (params.state && params.state->splitTree() && !params.state->splitTree()->isEmpty()) {
+        jsParams.setProperty(QStringLiteral("tree"), splitNodeToJSValue(params.state->splitTree()->root()));
+    }
+
     // minSizes array
     QJSValue jsMinSizes = m_engine->newArray(static_cast<uint>(params.minSizes.size()));
     for (int i = 0; i < params.minSizes.size(); ++i) {
@@ -268,6 +319,26 @@ QVector<QRect> ScriptedAlgorithm::jsArrayToRects(const QJSValue& result) const
     }
 
     return rects;
+}
+
+QJSValue ScriptedAlgorithm::splitNodeToJSValue(const SplitNode* node) const
+{
+    if (!node || !m_engine) {
+        return QJSValue(QJSValue::UndefinedValue);
+    }
+
+    QJSValue jsNode = m_engine->newObject();
+
+    if (node->isLeaf()) {
+        jsNode.setProperty(QStringLiteral("windowId"), node->windowId);
+    } else {
+        jsNode.setProperty(QStringLiteral("ratio"), node->splitRatio);
+        jsNode.setProperty(QStringLiteral("horizontal"), node->splitHorizontal);
+        jsNode.setProperty(QStringLiteral("first"), splitNodeToJSValue(node->first.get()));
+        jsNode.setProperty(QStringLiteral("second"), splitNodeToJSValue(node->second.get()));
+    }
+
+    return jsNode;
 }
 
 // --- Virtual method overrides ---

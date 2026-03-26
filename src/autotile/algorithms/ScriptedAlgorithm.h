@@ -10,6 +10,8 @@ class QJSEngine;
 
 namespace PlasmaZones {
 
+struct SplitNode;
+
 // Note: ScriptedAlgorithm is NOT thread-safe despite the base class const contract.
 // All calls must occur on the main thread. QJSEngine is inherently single-threaded.
 
@@ -106,6 +108,13 @@ private:
      * @return Vector of validated QRects
      */
     QVector<QRect> jsArrayToRects(const QJSValue& result) const;
+
+    /**
+     * @brief Convert a SplitNode tree to a QJSValue object for script consumption
+     * @param node Root of the subtree to convert (may be nullptr)
+     * @return Read-only JS object representing the tree
+     */
+    QJSValue splitNodeToJSValue(const SplitNode* node) const;
 
     mutable QJSEngine* m_engine = nullptr;
     mutable QJSValue m_calculateZonesFn;
