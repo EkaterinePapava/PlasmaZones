@@ -8,6 +8,7 @@
 #include "../../core/geometryutils.h"
 #include "../../core/layoutmanager.h"
 #include "../../core/layout.h"
+#include "../../core/utils.h"
 
 #include <QGuiApplication>
 #include <QJsonArray>
@@ -252,6 +253,23 @@ void WindowTrackingAdaptor::snapToZoneByNumber(int zoneNumber, const QString& sc
         Q_EMIT navigationFeedback(false, QStringLiteral("snap"), QStringLiteral("no_window"), QString(), QString(),
                                   screenId.isEmpty() ? m_lastActiveScreenId : screenId);
         return;
+    }
+
+    // Exclusion check: excluded apps should not be snapped even via keyboard shortcuts
+    if (m_settings) {
+        const QString appId = Utils::extractAppId(m_lastActiveWindowId);
+        for (const QString& excluded : m_settings->excludedApplications()) {
+            if (Utils::appIdMatches(appId, excluded)) {
+                qCInfo(lcDbusWindow) << "snapToZoneByNumber:" << m_lastActiveWindowId << "excluded by app rule:" << excluded;
+                return;
+            }
+        }
+        for (const QString& excluded : m_settings->excludedWindowClasses()) {
+            if (Utils::appIdMatches(appId, excluded)) {
+                qCInfo(lcDbusWindow) << "snapToZoneByNumber:" << m_lastActiveWindowId << "excluded by class rule:" << excluded;
+                return;
+            }
+        }
     }
 
     QString effectiveScreen = screenId.isEmpty() ? resolveNavScreen(this, m_lastActiveWindowId, m_service) : screenId;
