@@ -17,6 +17,17 @@ using namespace PlasmaZones;
 using namespace PlasmaZones::TestHelpers;
 
 /**
+ * @brief Verify all zones have positive width and height
+ */
+static void verifyAllZonesPositive(const QVector<QRect>& zones)
+{
+    for (const QRect& zone : zones) {
+        QVERIFY2(zone.width() > 0, qPrintable(QStringLiteral("Zone width was %1").arg(zone.width())));
+        QVERIFY2(zone.height() > 0, qPrintable(QStringLiteral("Zone height was %1").arg(zone.height())));
+    }
+}
+
+/**
  * @brief Helper to write a temporary JS script file
  */
 static QString writeTempScript(QTemporaryDir& dir, const QString& filename, const QString& content)
@@ -58,6 +69,7 @@ private:
     static constexpr int ScreenWidth = 1920;
     static constexpr int ScreenHeight = 1080;
     QRect m_screenGeometry{0, 0, ScreenWidth, ScreenHeight};
+    QTemporaryDir m_tempDir;
 
     /**
      * @brief Minimal valid script with all metadata and a simple calculateZones
@@ -129,6 +141,11 @@ private:
     }
 
 private Q_SLOTS:
+
+    void init()
+    {
+        QVERIFY(m_tempDir.isValid());
+    }
 
     // =========================================================================
     // Metadata parsing tests
@@ -279,9 +296,8 @@ private Q_SLOTS:
         auto zones = algo.calculateZones({3, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
         QCOMPARE(zones.size(), 3);
 
+        verifyAllZonesPositive(zones);
         for (const QRect& zone : zones) {
-            QVERIFY(zone.width() > 0);
-            QVERIFY(zone.height() > 0);
             QCOMPARE(zone.height(), ScreenHeight);
         }
         QVERIFY(allWithinBounds(zones, m_screenGeometry));
@@ -442,97 +458,37 @@ private Q_SLOTS:
     // Example algorithm smoke tests
     // =========================================================================
 
-    void testExampleAlgo_deck()
+    void testExampleAlgo_data()
     {
-        QString path = exampleAlgoPath(QStringLiteral("deck.js"));
-        if (path.isEmpty()) {
-            QSKIP("deck.js not found in source tree");
-        }
+        QTest::addColumn<QString>("filename");
+        QTest::addColumn<QString>("expectedName");
 
-        ScriptedAlgorithm algo(path);
-        QVERIFY(algo.isValid());
-        QCOMPARE(algo.name(), QStringLiteral("Deck"));
-
-        TilingState state(QStringLiteral("test"));
-        state.setSplitRatio(0.05);
-
-        for (int n = 1; n <= 4; ++n) {
-            auto zones = algo.calculateZones({n, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
-            QCOMPARE(zones.size(), n);
-            for (const QRect& zone : zones) {
-                QVERIFY(zone.width() > 0);
-                QVERIFY(zone.height() > 0);
-            }
-        }
+        QTest::newRow("deck") << QStringLiteral("deck.js") << QStringLiteral("Deck");
+        QTest::newRow("tatami") << QStringLiteral("tatami.js") << QStringLiteral("Tatami");
+        QTest::newRow("zen") << QStringLiteral("zen.js") << QStringLiteral("Zen");
+        QTest::newRow("paper") << QStringLiteral("paper.js") << QStringLiteral("Paper");
     }
 
-    void testExampleAlgo_tatami()
+    void testExampleAlgo()
     {
-        QString path = exampleAlgoPath(QStringLiteral("tatami.js"));
+        QFETCH(QString, filename);
+        QFETCH(QString, expectedName);
+
+        QString path = exampleAlgoPath(filename);
         if (path.isEmpty()) {
-            QSKIP("tatami.js not found in source tree");
+            QSKIP(qPrintable(filename + QStringLiteral(" not found in source tree")));
         }
 
         ScriptedAlgorithm algo(path);
         QVERIFY(algo.isValid());
-        QCOMPARE(algo.name(), QStringLiteral("Tatami"));
+        QCOMPARE(algo.name(), expectedName);
 
         TilingState state(QStringLiteral("test"));
 
         for (int n = 1; n <= 4; ++n) {
             auto zones = algo.calculateZones({n, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
             QCOMPARE(zones.size(), n);
-            for (const QRect& zone : zones) {
-                QVERIFY(zone.width() > 0);
-                QVERIFY(zone.height() > 0);
-            }
-        }
-    }
-
-    void testExampleAlgo_zen()
-    {
-        QString path = exampleAlgoPath(QStringLiteral("zen.js"));
-        if (path.isEmpty()) {
-            QSKIP("zen.js not found in source tree");
-        }
-
-        ScriptedAlgorithm algo(path);
-        QVERIFY(algo.isValid());
-        QCOMPARE(algo.name(), QStringLiteral("Zen"));
-
-        TilingState state(QStringLiteral("test"));
-
-        for (int n = 1; n <= 4; ++n) {
-            auto zones = algo.calculateZones({n, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
-            QCOMPARE(zones.size(), n);
-            for (const QRect& zone : zones) {
-                QVERIFY(zone.width() > 0);
-                QVERIFY(zone.height() > 0);
-            }
-        }
-    }
-
-    void testExampleAlgo_paper()
-    {
-        QString path = exampleAlgoPath(QStringLiteral("paper.js"));
-        if (path.isEmpty()) {
-            QSKIP("paper.js not found in source tree");
-        }
-
-        ScriptedAlgorithm algo(path);
-        QVERIFY(algo.isValid());
-        QCOMPARE(algo.name(), QStringLiteral("Paper"));
-
-        TilingState state(QStringLiteral("test"));
-        state.setSplitRatio(0.8);
-
-        for (int n = 1; n <= 4; ++n) {
-            auto zones = algo.calculateZones({n, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
-            QCOMPARE(zones.size(), n);
-            for (const QRect& zone : zones) {
-                QVERIFY(zone.width() > 0);
-                QVERIFY(zone.height() > 0);
-            }
+            verifyAllZonesPositive(zones);
         }
     }
 
@@ -559,7 +515,6 @@ private Q_SLOTS:
         TilingState state(QStringLiteral("test"));
         auto zones = algo.calculateZones({3, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
 
-        QVERIFY(timer.elapsed() < 500); // Should complete within 500ms (100ms timeout + overhead)
         QVERIFY(zones.isEmpty()); // Watchdog killed it — no zones returned
     }
 

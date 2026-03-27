@@ -270,15 +270,16 @@ int AlgorithmRegistry::configuredMaxWindows()
 
 int AlgorithmRegistry::effectiveMaxWindows(TilingAlgorithm* algorithm)
 {
+    const auto& params = instance()->m_previewParams;
     if (!algorithm) {
-        return instance()->m_previewParams.maxWindows;
+        return params.maxWindows;
     }
     // Use the user-configured maxWindows only for the active algorithm.
     // Other algorithms use their own default so each preview is representative.
-    if (instance()->m_previewParams.maxWindows > 0 && !instance()->m_previewParams.algorithmId.isEmpty()) {
+    if (params.maxWindows > 0 && !params.algorithmId.isEmpty()) {
         auto* inst = instance();
-        if (inst && inst->algorithm(instance()->m_previewParams.algorithmId) == algorithm) {
-            return instance()->m_previewParams.maxWindows;
+        if (inst && inst->algorithm(params.algorithmId) == algorithm) {
+            return params.maxWindows;
         }
     }
     return algorithm->defaultMaxWindows();
@@ -300,21 +301,21 @@ QVariantList AlgorithmRegistry::generatePreviewZones(TilingAlgorithm* algorithm,
     // other algorithms check savedAlgorithmSettings for per-algorithm overrides,
     // and fall back to their own defaults.
     auto* inst = instance();
-    const bool isActive = inst && !instance()->m_previewParams.algorithmId.isEmpty()
-        && inst->algorithm(instance()->m_previewParams.algorithmId) == algorithm;
+    const auto& params = inst->m_previewParams;
+    const bool isActive = inst && !params.algorithmId.isEmpty() && inst->algorithm(params.algorithmId) == algorithm;
 
     int masterCount = 1;
     qreal splitRatio = algorithm->defaultSplitRatio();
     if (isActive) {
-        if (instance()->m_previewParams.masterCount > 0)
-            masterCount = instance()->m_previewParams.masterCount;
-        if (instance()->m_previewParams.splitRatio > 0)
-            splitRatio = instance()->m_previewParams.splitRatio;
+        if (params.masterCount > 0)
+            masterCount = params.masterCount;
+        if (params.splitRatio > 0)
+            splitRatio = params.splitRatio;
     } else if (inst) {
         // Look up per-algorithm saved settings from the generalized map
         const QString algoId = inst->findAlgorithmId(algorithm);
-        const auto it = instance()->m_previewParams.savedAlgorithmSettings.constFind(algoId);
-        if (it != instance()->m_previewParams.savedAlgorithmSettings.constEnd()) {
+        const auto it = params.savedAlgorithmSettings.constFind(algoId);
+        if (it != params.savedAlgorithmSettings.constEnd()) {
             const QVariantMap& saved = it.value();
             const int savedMasterCount = saved.value(PerAlgoKeys::MasterCount, -1).toInt();
             const qreal savedSplitRatio = saved.value(PerAlgoKeys::SplitRatio, -1.0).toDouble();

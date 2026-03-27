@@ -4,15 +4,11 @@
 #include "TilingState.h"
 #include "SplitTree.h"
 #include "core/constants.h"
-#include "core/logging.h"
-#include <QJsonArray>
 #include <QtMath>
 #include <algorithm>
 
 namespace PlasmaZones {
 
-// Use shared JSON keys from constants.h
-using namespace AutotileJsonKeys;
 using namespace AutotileDefaults;
 
 TilingState::TilingState(const QString& screenId, QObject* parent)
@@ -28,9 +24,7 @@ QString TilingState::screenId() const
     return m_screenId;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Window Order Management
-// ═══════════════════════════════════════════════════════════════════════════════
+// ── Window Order Management ──────────────────────────────────────────────────
 
 int TilingState::windowCount() const
 {
@@ -40,11 +34,10 @@ int TilingState::windowCount() const
 int TilingState::tiledWindowCount() const
 {
     int count = 0;
-    for (const QString& id : m_windowOrder) {
-        if (!m_floatingWindows.contains(id)) {
-            ++count;
-        }
-    }
+    forEachTiledWindow([&count](const QString& /*id*/, int /*idx*/) {
+        ++count;
+        return true;
+    });
     return count;
 }
 
@@ -57,11 +50,10 @@ QStringList TilingState::tiledWindows() const
 {
     QStringList tiled;
     tiled.reserve(m_windowOrder.size());
-    for (const QString& id : m_windowOrder) {
-        if (!m_floatingWindows.contains(id)) {
-            tiled.append(id);
-        }
-    }
+    forEachTiledWindow([&tiled](const QString& id, int /*idx*/) {
+        tiled.append(id);
+        return true;
+    });
     return tiled;
 }
 
@@ -97,13 +89,10 @@ bool TilingState::removeWindow(const QString& windowId)
         return false;
     }
 
-    // Remove from list first, then from tree, before emitting signals
     m_windowOrder.removeAt(index);
-
     syncTreeRemove(windowId);
 
-    // F7 fix: Emit floatingChanged when removing a floating window so listeners
-    // (e.g., the daemon's windowFloatingChanged handler) can propagate the state change
+    // Emit floatingChanged so listeners can clean up floating-specific state
     bool wasFloating = m_floatingWindows.remove(windowId);
     if (wasFloating) {
         Q_EMIT floatingChanged(windowId, false);
@@ -121,10 +110,7 @@ bool TilingState::removeWindow(const QString& windowId)
 
 bool TilingState::moveWindow(int fromIndex, int toIndex)
 {
-    if (fromIndex < 0 || fromIndex >= m_windowOrder.size()) {
-        return false;
-    }
-    if (toIndex < 0 || toIndex >= m_windowOrder.size()) {
+    if (fromIndex < 0 || fromIndex >= m_windowOrder.size() || toIndex < 0 || toIndex >= m_windowOrder.size()) {
         return false;
     }
     if (fromIndex == toIndex) {
@@ -142,17 +128,13 @@ bool TilingState::moveWindow(int fromIndex, int toIndex)
 
 bool TilingState::swapWindows(int index1, int index2)
 {
-    if (index1 < 0 || index1 >= m_windowOrder.size()) {
-        return false;
-    }
-    if (index2 < 0 || index2 >= m_windowOrder.size()) {
+    if (index1 < 0 || index1 >= m_windowOrder.size() || index2 < 0 || index2 >= m_windowOrder.size()) {
         return false;
     }
     if (index1 == index2) {
         return true; // No-op is still success
     }
 
-    // Capture IDs BEFORE the swap so we pass the original (pre-swap) values to the tree
     const QString id1 = m_windowOrder.at(index1);
     const QString id2 = m_windowOrder.at(index2);
 
@@ -167,17 +149,7 @@ bool TilingState::swapWindows(int index1, int index2)
 
 bool TilingState::swapWindowsById(const QString& windowId1, const QString& windowId2)
 {
-    const int index1 = m_windowOrder.indexOf(windowId1);
-    const int index2 = m_windowOrder.indexOf(windowId2);
-
-    if (index1 < 0 || index2 < 0) {
-        return false;
-    }
-    if (index1 == index2) {
-        return true; // Same window, no-op success
-    }
-
-    return swapWindows(index1, index2);
+    return swapWindows(m_windowOrder.indexOf(windowId1), m_windowOrder.indexOf(windowId2));
 }
 
 int TilingState::windowIndex(const QString& windowId) const
@@ -190,9 +162,7 @@ bool TilingState::containsWindow(const QString& windowId) const
     return m_windowOrder.contains(windowId);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Master Management
-// ═══════════════════════════════════════════════════════════════════════════════
+// ── Master Management ────────────────────────────────────────────────────────
 
 int TilingState::masterCount() const
 {
@@ -201,10 +171,7 @@ int TilingState::masterCount() const
 
 void TilingState::setMasterCount(int count)
 {
-    // Clamp to absolute limits only — do NOT clamp against tiledWindowCount().
-    // Algorithms already clamp operationally (e.g., MasterStack: min(masterCount, windowCount)).
-    // Clamping here against window count would lose the user's preference when windows
-    // are removed and later re-added.
+    // Clamp to absolute limits only — algorithms clamp operationally against window count
     count = std::clamp(count, MinMasterCount, MaxMasterCount);
 
     if (m_masterCount != count) {
@@ -220,51 +187,39 @@ bool TilingState::isMaster(const QString& windowId) const
         return false;
     }
 
-    // Get tiled index
-    int tiledIndex = 0;
-    for (const QString& id : m_windowOrder) {
-        if (m_floatingWindows.contains(id)) {
-            continue;
-        }
+    bool result = false;
+    forEachTiledWindow([&](const QString& id, int tiledIndex) {
         if (id == windowId) {
-            return tiledIndex < m_masterCount;
+            result = tiledIndex < m_masterCount;
+            return false; // stop
         }
-        ++tiledIndex;
-    }
-    return false;
+        return true;
+    });
+    return result;
 }
 
 QStringList TilingState::masterWindows() const
 {
     QStringList masters;
-    int tiledIndex = 0;
-    for (const QString& id : m_windowOrder) {
-        if (m_floatingWindows.contains(id)) {
-            continue;
-        }
+    forEachTiledWindow([&](const QString& id, int tiledIndex) {
         if (tiledIndex < m_masterCount) {
             masters.append(id);
-            ++tiledIndex;
-        } else {
-            break;
+            return true;
         }
-    }
+        return false; // past master area, stop
+    });
     return masters;
 }
 
 QStringList TilingState::stackWindows() const
 {
     QStringList stack;
-    int tiledIndex = 0;
-    for (const QString& id : m_windowOrder) {
-        if (m_floatingWindows.contains(id)) {
-            continue;
-        }
+    forEachTiledWindow([&](const QString& id, int tiledIndex) {
         if (tiledIndex >= m_masterCount) {
             stack.append(id);
         }
-        ++tiledIndex;
-    }
+        return true;
+    });
     return stack;
 }
 
@@ -301,8 +256,7 @@ bool TilingState::insertAfterFocused(const QString& windowId)
         return false; // Already tracked or invalid
     }
 
-    // Find position after focused window
-    int insertPos = -1; // Default to end
+    int insertPos = -1;
     if (!m_focusedWindow.isEmpty()) {
         const int focusedIndex = m_windowOrder.indexOf(m_focusedWindow);
         if (focusedIndex >= 0) {
@@ -331,17 +285,15 @@ int TilingState::windowPosition(const QString& windowId) const
 
 int TilingState::tiledWindowIndex(const QString& windowId) const
 {
-    int tiledIdx = 0;
-    for (const auto& id : m_windowOrder) {
-        if (m_floatingWindows.contains(id)) {
-            continue;
-        }
+    int result = -1;
+    forEachTiledWindow([&](const QString& id, int tiledIndex) {
         if (id == windowId) {
-            return tiledIdx;
+            result = tiledIndex;
+            return false; // stop
         }
-        ++tiledIdx;
-    }
-    return -1;
+        return true;
+    });
+    return result;
 }
 
 bool TilingState::moveToTiledPosition(const QString& windowId, int tiledPosition)
@@ -374,27 +326,18 @@ bool TilingState::moveToTiledPosition(const QString& windowId, int tiledPosition
 
 bool TilingState::rotateWindows(bool clockwise)
 {
-    // Get only tiled (non-floating) windows for rotation
     QStringList tiled = tiledWindows();
     if (tiled.size() < 2) {
-        return false; // Nothing to rotate with 0 or 1 tiled window
+        return false;
     }
 
-    // Rotate the tiled windows list
     if (clockwise) {
-        // Clockwise: move last element to front
-        // [A, B, C] -> [C, A, B]
-        QString last = tiled.takeLast();
-        tiled.prepend(last);
+        tiled.prepend(tiled.takeLast()); // [A,B,C] -> [C,A,B]
     } else {
-        // Counter-clockwise: move first element to end
-        // [A, B, C] -> [B, C, A]
-        QString first = tiled.takeFirst();
-        tiled.append(first);
+        tiled.append(tiled.takeFirst()); // [A,B,C] -> [B,C,A]
     }
 
-    // Rebuild the full window order: keep floating windows at their positions,
-    // replace tiled windows with rotated order
+    // Replace tiled slots in m_windowOrder, preserving floating positions
     int tiledIndex = 0;
     for (int i = 0; i < m_windowOrder.size() && tiledIndex < tiled.size(); ++i) {
         if (!m_floatingWindows.contains(m_windowOrder[i])) {
@@ -409,9 +352,7 @@ bool TilingState::rotateWindows(bool clockwise)
     return true;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Split Ratio
-// ═══════════════════════════════════════════════════════════════════════════════
+// ── Split Ratio ──────────────────────────────────────────────────────────────
 
 qreal TilingState::splitRatio() const
 {
@@ -423,7 +364,6 @@ void TilingState::setSplitRatio(qreal ratio)
     // Clamp to valid range using constants
     ratio = std::clamp(ratio, MinSplitRatio, MaxSplitRatio);
 
-    // Use qFuzzyCompare properly (add 1.0 for values near zero)
     if (!qFuzzyCompare(1.0 + m_splitRatio, 1.0 + ratio)) {
         m_splitRatio = ratio;
         Q_EMIT splitRatioChanged();
@@ -441,9 +381,7 @@ void TilingState::decreaseSplitRatio(qreal delta)
     setSplitRatio(m_splitRatio - delta);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Per-Window Floating State
-// ═══════════════════════════════════════════════════════════════════════════════
+// ── Per-Window Floating State ─────────────────────────────────────────────────
 
 bool TilingState::isFloating(const QString& windowId) const
 {
@@ -461,13 +399,10 @@ void TilingState::setFloating(const QString& windowId, bool floating)
         return;
     }
 
-    // Compute tiled index BEFORE modifying the floating set, so that
-    // tiledWindowIndex() sees the correct floating/tiled classification.
+    // Compute tiled index BEFORE modifying the floating set
     int tiledIdxBeforeChange = -1;
     if (!floating) {
-        // Window is being unfloated — compute where it will land in tiled order.
-        // Count how many non-floating windows precede this one in m_windowOrder
-        // to determine its tiled position without temporarily mutating the set.
+        // Unfloating: count non-floating predecessors to find tiled position
         const int orderIdx = m_windowOrder.indexOf(windowId);
         if (orderIdx >= 0) {
             int tiledPos = 0;
@@ -499,14 +434,10 @@ void TilingState::setFloating(const QString& windowId, bool floating)
 
 bool TilingState::toggleFloating(const QString& windowId)
 {
-    // Check if window is tracked first
     if (!m_windowOrder.contains(windowId)) {
-        return isFloating(windowId); // Return current state (false for untracked)
+        return false; // Untracked window
     }
-
-    const bool newState = !isFloating(windowId);
-    setFloating(windowId, newState);
-    // Return actual state after operation (in case setFloating had any issues)
+    setFloating(windowId, !isFloating(windowId));
     return isFloating(windowId);
 }
 
@@ -515,9 +446,7 @@ QStringList TilingState::floatingWindows() const
     return QStringList(m_floatingWindows.begin(), m_floatingWindows.end());
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Focus Tracking
-// ═══════════════════════════════════════════════════════════════════════════════
+// ── Focus Tracking ───────────────────────────────────────────────────────────
 
 QString TilingState::focusedWindow() const
 {
@@ -526,7 +455,6 @@ QString TilingState::focusedWindow() const
 
 void TilingState::setFocusedWindow(const QString& windowId)
 {
-    // Allow setting empty (no focus) or a tracked window
     if (!windowId.isEmpty() && !m_windowOrder.contains(windowId)) {
         return;
     }
@@ -543,160 +471,7 @@ int TilingState::focusedTiledIndex() const
         return -1;
     }
 
-    int tiledIndex = 0;
-    for (const QString& id : m_windowOrder) {
-        if (m_floatingWindows.contains(id)) {
-            continue;
-        }
-        if (id == m_focusedWindow) {
-            return tiledIndex;
-        }
-        ++tiledIndex;
-    }
-    return -1;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Serialization
-// ═══════════════════════════════════════════════════════════════════════════════
-
-QJsonObject TilingState::toJson() const
-{
-    QJsonObject json;
-    json[ScreenName] = m_screenId;
-    json[WindowOrder] = QJsonArray::fromStringList(m_windowOrder);
-    json[FloatingWindows] = QJsonArray::fromStringList(floatingWindows());
-    json[FocusedWindow] = m_focusedWindow;
-    json[MasterCount] = m_masterCount;
-    json[SplitRatio] = m_splitRatio;
-
-    if (m_splitTree && !m_splitTree->isEmpty()) {
-        json[AutotileJsonKeys::SplitTreeKey] = m_splitTree->toJson();
-    }
-
-    return json;
-}
-
-TilingState* TilingState::fromJson(const QJsonObject& json, QObject* parent)
-{
-    const QString screenId = json[ScreenName].toString();
-    if (screenId.isEmpty()) {
-        return nullptr;
-    }
-
-    auto* state = new TilingState(screenId, parent);
-
-    // Window order (deduplicate to guard against corrupt JSON)
-    const QJsonArray orderArray = json[WindowOrder].toArray();
-    QSet<QString> seenIds;
-    seenIds.reserve(orderArray.size());
-    for (const QJsonValue& val : orderArray) {
-        const QString id = val.toString();
-        if (!id.isEmpty() && !seenIds.contains(id)) {
-            state->m_windowOrder.append(id);
-            seenIds.insert(id);
-        }
-    }
-
-    // Floating windows (validate they exist in window order)
-    const QJsonArray floatingArray = json[FloatingWindows].toArray();
-    for (const QJsonValue& val : floatingArray) {
-        const QString id = val.toString();
-        if (!id.isEmpty() && state->m_windowOrder.contains(id)) {
-            state->m_floatingWindows.insert(id);
-        }
-    }
-
-    // Focused window (validate it exists in window order)
-    const QString focusedId = json[FocusedWindow].toString();
-    if (state->m_windowOrder.contains(focusedId)) {
-        state->m_focusedWindow = focusedId;
-    }
-    // else: leave empty (invalid focused window in JSON)
-
-    // Master count — clamp to absolute limits only (not against current window count).
-    // Algorithms clamp operationally when they calculate zones.
-    state->m_masterCount = std::clamp(json[MasterCount].toInt(DefaultMasterCount), MinMasterCount, MaxMasterCount);
-
-    // Split ratio with clamping
-    state->m_splitRatio = std::clamp(json[SplitRatio].toDouble(DefaultSplitRatio), MinSplitRatio, MaxSplitRatio);
-
-    if (json.contains(AutotileJsonKeys::SplitTreeKey)) {
-        state->m_splitTree = SplitTree::fromJson(json[AutotileJsonKeys::SplitTreeKey].toObject());
-        if (state->m_splitTree) {
-            // Validate leaf count matches tiled (non-floating) window count.
-            // The split tree only contains tiled windows — floating windows are
-            // removed from the tree — so we must compare against tiledWindowCount().
-            if (state->m_splitTree->leafCount() != state->tiledWindowCount()) {
-                qCWarning(lcAutotile) << "SplitTree leaf count mismatch, discarding tree";
-                state->m_splitTree.reset();
-            } else {
-                // Validate all leaf IDs are present in window order (guards against
-                // stale IDs from a replaced window with the same count)
-                const QStringList leafIds = state->m_splitTree->leafOrder();
-                const QSet<QString> windowSet(state->m_windowOrder.constBegin(), state->m_windowOrder.constEnd());
-                bool allMatch = true;
-                for (const QString& leafId : leafIds) {
-                    if (!windowSet.contains(leafId)) {
-                        allMatch = false;
-                        break;
-                    }
-                }
-                if (!allMatch) {
-                    qCWarning(lcAutotile) << "SplitTree leaf IDs don't match window order, discarding tree";
-                    state->m_splitTree.reset();
-                }
-            }
-            // EC-7: Check for duplicate windowIds in leaf order
-            if (state->m_splitTree) {
-                const QStringList leafIds2 = state->m_splitTree->leafOrder();
-                QSet<QString> dupCheck;
-                dupCheck.reserve(leafIds2.size());
-                bool hasDuplicates = false;
-                for (const QString& lid : leafIds2) {
-                    if (dupCheck.contains(lid)) {
-                        hasDuplicates = true;
-                        break;
-                    }
-                    dupCheck.insert(lid);
-                }
-                if (hasDuplicates) {
-                    qCWarning(lcAutotile) << "SplitTree contains duplicate windowIds, discarding tree";
-                    state->m_splitTree.reset();
-                }
-            }
-        }
-    }
-
-    return state;
-}
-
-void TilingState::clear()
-{
-    // Track if we need to emit signals
-    const bool hadData = !m_windowOrder.isEmpty() || !m_floatingWindows.isEmpty() || !m_focusedWindow.isEmpty()
-        || m_masterCount != DefaultMasterCount || !qFuzzyCompare(1.0 + m_splitRatio, 1.0 + DefaultSplitRatio)
-        || m_splitTree;
-
-    if (!hadData) {
-        return; // Already at defaults, nothing to do
-    }
-
-    // Reset all state
-    m_windowOrder.clear();
-    m_floatingWindows.clear();
-    m_focusedWindow.clear();
-    m_masterCount = DefaultMasterCount;
-    m_splitRatio = DefaultSplitRatio;
-    m_splitTree.reset();
-
-    // Emit a single batch of signals
-    Q_EMIT windowCountChanged();
-    Q_EMIT windowOrderChanged();
-    Q_EMIT focusedWindowChanged();
-    Q_EMIT masterCountChanged();
-    Q_EMIT splitRatioChanged();
-    notifyStateChanged();
+    return tiledWindowIndex(m_focusedWindow);
 }
 
 void TilingState::notifyStateChanged()
@@ -704,89 +479,19 @@ void TilingState::notifyStateChanged()
     Q_EMIT stateChanged();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Calculated Zone Storage
-// ═══════════════════════════════════════════════════════════════════════════════
+// ── forEachTiledWindow — DRY helper for tiled-window iteration (M6) ──────────
 
-void TilingState::setCalculatedZones(const QVector<QRect>& zones)
+void TilingState::forEachTiledWindow(const std::function<bool(const QString& windowId, int tiledIndex)>& func) const
 {
-    m_calculatedZones = zones;
-}
-
-QVector<QRect> TilingState::calculatedZones() const
-{
-    return m_calculatedZones;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Split Tree
-// ═══════════════════════════════════════════════════════════════════════════════
-
-SplitTree* TilingState::splitTree() const
-{
-    return m_splitTree.get();
-}
-
-void TilingState::setSplitTree(std::unique_ptr<SplitTree> tree)
-{
-    m_splitTree = std::move(tree);
-}
-
-void TilingState::clearSplitTree()
-{
-    m_splitTree.reset();
-}
-
-void TilingState::rebuildSplitTree()
-{
-    if (!m_splitTree) {
-        return; // No tree to rebuild
-    }
-
-    m_splitTree->rebuildFromOrder(tiledWindows(), m_splitRatio);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Tree Synchronization Helpers
-// ═══════════════════════════════════════════════════════════════════════════════
-
-void TilingState::syncTreeInsert(const QString& windowId, int position)
-{
-    if (!m_splitTree) {
-        return;
-    }
-    if (position < 0) {
-        m_splitTree->insertAtEnd(windowId, m_splitRatio);
-    } else {
-        m_splitTree->insertAtPosition(windowId, position, m_splitRatio);
-    }
-}
-
-void TilingState::syncTreeRemove(const QString& windowId)
-{
-    if (!m_splitTree) {
-        return;
-    }
-    m_splitTree->remove(windowId);
-}
-
-void TilingState::syncTreeSwap(const QString& idA, const QString& idB)
-{
-    if (!m_splitTree) {
-        return;
-    }
-    m_splitTree->swap(idA, idB);
-}
-
-void TilingState::syncTreeLazyCreate()
-{
-    if (m_splitTree || tiledWindowCount() < 2) {
-        return;
-    }
-    m_splitTree = std::make_unique<SplitTree>();
-    const auto tiled = tiledWindows();
-    for (const auto& id : tiled) {
-        m_splitTree->insertAtEnd(id, m_splitRatio);
+    int tiledIndex = 0;
+    for (const QString& id : m_windowOrder) {
+        if (m_floatingWindows.contains(id)) {
+            continue;
+        }
+        if (!func(id, tiledIndex)) {
+            return;
+        }
+        ++tiledIndex;
     }
 }
 

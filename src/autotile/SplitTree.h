@@ -78,23 +78,23 @@ public:
      * @brief Get the root node of the tree
      * @return Root node, or nullptr if tree is empty
      */
-    SplitNode* root() const;
+    SplitNode* root() const noexcept;
 
     /**
      * @brief Check if the tree has no nodes
      */
-    bool isEmpty() const;
+    bool isEmpty() const noexcept;
 
     /**
      * @brief Count the number of leaf nodes (windows)
      */
-    int leafCount() const;
+    int leafCount() const noexcept;
 
     /**
-     * @brief Get the maximum depth of the tree
-     * @return Depth (0 for empty tree, 1 for single leaf)
+     * @brief Get the maximum height of the tree
+     * @return Height (0 for empty tree, 1 for single leaf)
      */
-    int treeDepth() const;
+    int treeHeight() const;
 
     /// Maximum runtime tree depth for insert operations
     static constexpr int MaxRuntimeTreeDepth = 50;
@@ -224,13 +224,16 @@ private:
     std::unique_ptr<SplitNode> m_root;
 
     SplitNode* findLeaf(SplitNode* node, const QString& windowId) const;
+    const SplitNode* findLeaf(const SplitNode* node, const QString& windowId) const;
     SplitNode* leafAtIndex(SplitNode* node, int targetIndex, int& currentIndex) const;
+    const SplitNode* leafAtIndex(const SplitNode* node, int targetIndex, int& currentIndex) const;
     SplitNode* rightmostLeaf(SplitNode* node) const;
+    const SplitNode* rightmostLeaf(const SplitNode* node) const;
     void collectLeafOrder(const SplitNode* node, QStringList& order) const;
     int countLeaves(const SplitNode* node) const;
     void applyGeometryRecursive(const SplitNode* node, const QRect& rect, int innerGap, QVector<QRect>& zones) const;
 
-    static int nodeDepth(const SplitNode* node);
+    static int subtreeHeight(const SplitNode* node);
     static void splitLeaf(SplitNode* leaf, const QString& newId, qreal ratio);
 
     static void collectInternalNodeParams(const SplitNode* node, QVector<qreal>& ratios, QVector<bool>& directions);

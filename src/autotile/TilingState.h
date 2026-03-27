@@ -12,6 +12,7 @@
 #include <QStringList>
 #include <QVector>
 
+#include <functional>
 #include <memory>
 
 namespace PlasmaZones {
@@ -320,6 +321,8 @@ public:
      * @param json Serialized state
      * @param parent Parent QObject
      * @return New TilingState or nullptr on error
+     *
+     * Ownership: caller takes ownership (Qt parent set if provided)
      */
     static TilingState* fromJson(const QJsonObject& json, QObject* parent = nullptr);
 
@@ -434,6 +437,13 @@ private:
 
     // Helper to emit stateChanged after other signals
     void notifyStateChanged();
+
+    /**
+     * @brief Iterate over tiled (non-floating) windows in order
+     * @param func Called with (windowId, tiledIndex) for each tiled window.
+     *             Return false to stop iteration early.
+     */
+    void forEachTiledWindow(const std::function<bool(const QString& windowId, int tiledIndex)>& func) const;
 
     // ── Tree synchronization helpers (SRP/DRY: single place for null-check + op) ──
     void syncTreeInsert(const QString& windowId, int position = -1);

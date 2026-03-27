@@ -157,8 +157,10 @@ private Q_SLOTS:
         QCOMPARE(tree.leafOrder(), (QStringList{QStringLiteral("win1"), QStringLiteral("win3")}));
 
         // After removing win2, its parent node is collapsed (sibling promoted).
-        // The ratio between win1 and win3's ancestor should be the root's ratio,
-        // which was set before win2's subtree was created and should be preserved.
+        // The root should still exist with a valid ratio.
+        QVERIFY(tree.root() != nullptr);
+        QVERIFY(tree.root()->splitRatio > 0.0);
+        QVERIFY(tree.root()->splitRatio < 1.0);
     }
 
     void testRemoveLastWindow()
@@ -291,6 +293,10 @@ private Q_SLOTS:
 
         QCOMPARE(restored->leafCount(), tree.leafCount());
         QCOMPARE(restored->leafOrder(), tree.leafOrder());
+
+        // Verify structural properties are preserved
+        QCOMPARE(restored->root()->splitHorizontal, tree.root()->splitHorizontal);
+        QVERIFY(qFuzzyCompare(restored->root()->splitRatio, tree.root()->splitRatio));
 
         // Verify geometry output matches (proves ratios are preserved)
         auto zonesOriginal = tree.applyGeometry(m_screenGeometry, 0);
@@ -479,11 +485,9 @@ private Q_SLOTS:
 
         auto tree = SplitTree::fromJson(wrapper);
         // QJsonValue::toString() on int returns empty string (not "42"),
-        // so the leaf is rejected due to empty windowId — tree has no leaves
-        // Should handle gracefully — not crash
-        if (tree) {
-            QCOMPARE(tree->leafCount(), 0);
-        }
+        // so the leaf is rejected due to empty windowId — tree has no leaves.
+        // The tree may be null or empty depending on implementation.
+        QVERIFY(!tree || tree->leafCount() == 0);
 
         // An internal node with wrong ratio type
         QJsonObject firstLeaf;
@@ -502,11 +506,10 @@ private Q_SLOTS:
         wrapper2[QStringLiteral("root")] = internal;
 
         auto tree2 = SplitTree::fromJson(wrapper2);
-        // toDouble() on a string returns 0.0, which gets clamped to MinSplitRatio
-        // Should handle gracefully — not crash
-        if (tree2) {
-            QCOMPARE(tree2->leafCount(), 2);
-        }
+        // toDouble() on a string returns 0.0, which gets clamped to MinSplitRatio.
+        // The tree should still parse successfully with 2 leaves.
+        QVERIFY(tree2 != nullptr);
+        QCOMPARE(tree2->leafCount(), 2);
     }
 
     void testFromJson_negativeRatio()
@@ -585,6 +588,23 @@ private Q_SLOTS:
         QCOMPARE(tree.leafCount(), 3); // Should be unchanged
         QCOMPARE(tree.leafOrder(),
                  (QStringList{QStringLiteral("win1"), QStringLiteral("win2"), QStringLiteral("win3")}));
+    }
+
+    void testRebuildFromOrderPreservesRatios()
+    {
+        SplitTree tree;
+        tree.insertAtEnd(QStringLiteral("win1"), 0.5);
+        tree.insertAtEnd(QStringLiteral("win2"), 0.5);
+        tree.insertAtEnd(QStringLiteral("win3"), 0.5);
+        // Customize a ratio
+        tree.resizeSplit(QStringLiteral("win2"), 0.3);
+        qreal originalRatio = tree.root()->splitRatio;
+
+        // Rebuild with same order
+        tree.rebuildFromOrder({QStringLiteral("win1"), QStringLiteral("win2"), QStringLiteral("win3")}, 0.5);
+
+        // Ratio should be preserved
+        QVERIFY(qFuzzyCompare(tree.root()->splitRatio, originalRatio));
     }
 
     void testResizeSplit_boundaryValues()

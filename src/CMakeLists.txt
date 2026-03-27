@@ -130,8 +130,10 @@ set(plasmazones_core_SRCS
     autotile/TilingAlgorithm.cpp
     autotile/TilingAlgorithm.h
     autotile/TilingState.cpp
+    autotile/TilingStateSerialization.cpp
     autotile/TilingState.h
     autotile/SplitTree.cpp
+    autotile/SplitTreeSerializer.cpp
     autotile/SplitTree.h
     autotile/AlgorithmRegistry.cpp
     autotile/AlgorithmRegistry.h
@@ -179,6 +181,8 @@ set(plasmazones_core_SRCS
     autotile/algorithms/SpreadAlgorithm.h
     autotile/algorithms/ScriptedAlgorithm.cpp
     autotile/algorithms/ScriptedAlgorithm.h
+    autotile/algorithms/ScriptedAlgorithmHelpers.cpp
+    autotile/algorithms/ScriptedAlgorithmHelpers.h
     autotile/algorithms/ScriptedAlgorithmLoader.cpp
     autotile/algorithms/ScriptedAlgorithmLoader.h
     snap/SnapEngine.cpp
@@ -204,6 +208,7 @@ generate_export_header(plasmazones_core
 target_link_libraries(plasmazones_core
     PUBLIC
         Qt6::Core
+        # Qt6::Qml is PUBLIC because ScriptedAlgorithm.h exposes QJSEngine/QJSValue types
         Qt6::Qml
         Qt6::Quick
         Qt6::Gui

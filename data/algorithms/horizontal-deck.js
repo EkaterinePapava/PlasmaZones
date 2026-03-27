@@ -26,9 +26,9 @@
 function calculateZones(params) {
     // Overlapping layout — innerGap intentionally ignored (zones overlap by design)
     const count = params.windowCount;
+    if (count <= 0) return [];
     const area = params.area;
     const focusedFraction = params.splitRatio;
 
-    // KEEP IN SYNC with deck.js
     return deckLayout(area, count, focusedFraction, true);
 }

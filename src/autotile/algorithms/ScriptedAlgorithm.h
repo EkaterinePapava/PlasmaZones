@@ -7,9 +7,11 @@
 #include <QJSValue>
 
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <thread>
 #include <type_traits>
 
 class QJSEngine;
@@ -22,17 +24,20 @@ struct SplitNode;
 // All calls must occur on the main thread. QJSEngine is inherently single-threaded.
 
 /**
- * @brief Consolidated watchdog thread state shared between the main thread and detached watchdog threads
+ * @brief Consolidated watchdog thread state shared between the main thread and the persistent watchdog thread
  *
  * All members are atomic or mutex-protected so that the destructor can safely
- * signal "engine is gone" to any in-flight watchdog thread.
+ * signal shutdown to the watchdog thread.
  */
 struct WatchdogContext
 {
-    std::atomic<bool> alive{true}; ///< Set to false in destructor to prevent use-after-free
-    std::mutex mutex; ///< Guards engine pointer access between watchdog and destructor
+    std::mutex mutex; ///< Guards engine pointer access and condition variable
+    std::condition_variable cv; ///< Used to wake the persistent watchdog thread
     std::atomic<uint64_t> generation{0}; ///< Generation counter to prevent stale watchdog interrupts
-    QJSEngine* engine = nullptr; ///< Stable engine pointer shared with watchdog threads
+    bool pending{false}; ///< True when a new watchdog check is requested
+    bool shutdown{false}; ///< True when the watchdog thread should exit
+    QJSEngine* engine = nullptr; ///< Stable engine pointer shared with watchdog thread
+    std::thread watchdogThread; ///< Persistent watchdog thread (joined on destruction)
 };
 
 namespace detail {
@@ -149,19 +154,6 @@ private:
      * @return true if the script loaded successfully
      */
     bool loadScript(const QString& filePath);
-
-    /**
-     * @brief Parse // @key value metadata comments from script source
-     * @param source Script source code
-     */
-    void parseMetadata(const QString& source);
-
-    /**
-     * @brief Convert a JS array of {x, y, width, height} objects to QRects
-     * @param result JS value (should be an array)
-     * @return Vector of validated QRects
-     */
-    QVector<QRect> jsArrayToRects(const QJSValue& result) const;
 
     /**
      * @brief Convert a SplitNode tree to a QJSValue object for script consumption

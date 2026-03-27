@@ -5,9 +5,6 @@
 #include "core/constants.h"
 #include "core/logging.h"
 
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QLatin1String>
 #include <QSet>
 
 #include <algorithm>
@@ -40,31 +37,31 @@ SplitTree::~SplitTree() = default;
 // Queries
 // =============================================================================
 
-SplitNode* SplitTree::root() const
+SplitNode* SplitTree::root() const noexcept
 {
     return m_root.get();
 }
 
-bool SplitTree::isEmpty() const
+bool SplitTree::isEmpty() const noexcept
 {
     return !m_root;
 }
 
-int SplitTree::leafCount() const
+int SplitTree::leafCount() const noexcept
 {
     return countLeaves(m_root.get());
 }
 
-int SplitTree::nodeDepth(const SplitNode* node)
+int SplitTree::subtreeHeight(const SplitNode* node)
 {
     if (!node)
         return 0;
-    return 1 + std::max(nodeDepth(node->first.get()), nodeDepth(node->second.get()));
+    return 1 + std::max(subtreeHeight(node->first.get()), subtreeHeight(node->second.get()));
 }
 
-int SplitTree::treeDepth() const
+int SplitTree::treeHeight() const
 {
-    return nodeDepth(m_root.get());
+    return subtreeHeight(m_root.get());
 }
 
 SplitNode* SplitTree::leafForWindow(const QString& windowId) const
@@ -92,6 +89,10 @@ QStringList SplitTree::leafOrder() const
  */
 void SplitTree::splitLeaf(SplitNode* leaf, const QString& newId, qreal ratio)
 {
+    Q_ASSERT(leaf);
+    if (!leaf)
+        return;
+
     // Choose split direction: alternate from parent, default to vertical (left/right)
     bool horizontal = false;
     if (leaf->parent) {
@@ -110,9 +111,7 @@ void SplitTree::splitLeaf(SplitNode* leaf, const QString& newId, qreal ratio)
     leaf->windowId.clear();
     leaf->splitHorizontal = horizontal;
     // Use provided ratio if valid, otherwise use default
-    leaf->splitRatio = (ratio > 0.0)
-        ? std::clamp(ratio, PlasmaZones::AutotileDefaults::MinSplitRatio, PlasmaZones::AutotileDefaults::MaxSplitRatio)
-        : PlasmaZones::AutotileDefaults::DefaultSplitRatio;
+    leaf->splitRatio = (ratio > 0.0) ? std::clamp(ratio, MinSplitRatio, MaxSplitRatio) : DefaultSplitRatio;
     leaf->first = std::move(firstChild);
     leaf->second = std::move(secondChild);
 }
@@ -131,7 +130,7 @@ SplitTree::InsertReady SplitTree::prepareInsert(const QString& windowId)
     }
 
     // E1: Only run O(n) depth traversal when the tree is large enough to matter
-    if (leafCount() > 15 && treeDepth() >= MaxRuntimeTreeDepth) {
+    if (leafCount() > 15 && treeHeight() >= MaxRuntimeTreeDepth) {
         qCWarning(lcAutotile) << "SplitTree: max depth reached, rejecting insert";
         return InsertReady::Rejected;
     }
@@ -437,96 +436,6 @@ int SplitTree::applyInternalNodeParams(SplitNode* node, const QVector<qreal>& ra
 }
 
 // =============================================================================
-// Serialization
-// =============================================================================
-
-QJsonObject SplitTree::toJson() const
-{
-    QJsonObject json;
-    if (m_root) {
-        json[QLatin1String("root")] = nodeToJson(m_root.get());
-    }
-    return json;
-}
-
-std::unique_ptr<SplitTree> SplitTree::fromJson(const QJsonObject& json)
-{
-    if (!json.contains(QLatin1String("root"))) {
-        return nullptr;
-    }
-
-    auto tree = std::make_unique<SplitTree>();
-    const QJsonObject rootObj = json[QLatin1String("root")].toObject();
-    int nodeCount = 0;
-    tree->m_root = nodeFromJson(rootObj, nullptr, 0, nodeCount);
-    if (!tree->m_root) {
-        return nullptr;
-    }
-    return tree;
-}
-
-QJsonObject SplitTree::nodeToJson(const SplitNode* node)
-{
-    QJsonObject json;
-    if (!node) {
-        return json;
-    }
-
-    if (node->isLeaf()) {
-        json[QLatin1String("windowId")] = node->windowId;
-    } else {
-        json[QLatin1String("ratio")] = node->splitRatio;
-        json[QLatin1String("horizontal")] = node->splitHorizontal;
-        json[QLatin1String("first")] = nodeToJson(node->first.get());
-        json[QLatin1String("second")] = nodeToJson(node->second.get());
-    }
-
-    return json;
-}
-
-std::unique_ptr<SplitNode> SplitTree::nodeFromJson(const QJsonObject& json, SplitNode* parent, int depth,
-                                                   int& nodeCount)
-{
-    if (json.isEmpty()) {
-        return nullptr;
-    }
-
-    if (depth > MaxDeserializationDepth) {
-        qCWarning(lcAutotile) << "SplitTree::fromJson: max depth exceeded, truncating";
-        return nullptr;
-    }
-
-    if (++nodeCount > MaxDeserializationNodes) {
-        qCWarning(lcAutotile) << "SplitTree::fromJson: max node count exceeded, truncating";
-        return nullptr;
-    }
-
-    auto node = std::make_unique<SplitNode>();
-    node->parent = parent;
-    node->splitRatio = std::clamp(json[QLatin1String("ratio")].toDouble(0.5), MinSplitRatio, MaxSplitRatio);
-    node->splitHorizontal = json[QLatin1String("horizontal")].toBool(false);
-
-    if (json.contains(QLatin1String("first")) && json.contains(QLatin1String("second"))) {
-        // Internal node
-        node->first = nodeFromJson(json[QLatin1String("first")].toObject(), node.get(), depth + 1, nodeCount);
-        node->second = nodeFromJson(json[QLatin1String("second")].toObject(), node.get(), depth + 1, nodeCount);
-        if (!node->first || !node->second) {
-            qCWarning(lcAutotile) << "SplitTree::fromJson: invalid internal node (missing child)";
-            return nullptr;
-        }
-    } else {
-        // Leaf node
-        node->windowId = json[QLatin1String("windowId")].toString();
-        if (node->windowId.isEmpty()) {
-            qCWarning(lcAutotile) << "SplitTree::fromJson: leaf with empty windowId, skipping";
-            return nullptr;
-        }
-    }
-
-    return node;
-}
-
-// =============================================================================
 // Private helpers
 // =============================================================================
 
@@ -538,6 +447,11 @@ SplitNode* SplitTree::findLeaf(SplitNode* node, const QString& windowId) const
 
     if (node->isLeaf()) {
         return (node->windowId == windowId) ? node : nullptr;
+    }
+
+    if (!node->first || !node->second) {
+        qCWarning(lcAutotile) << "Corrupt internal node: missing child";
+        return nullptr;
     }
 
     if (SplitNode* found = findLeaf(node->first.get(), windowId)) {
@@ -557,6 +471,11 @@ SplitNode* SplitTree::leafAtIndex(SplitNode* node, int targetIndex, int& current
             return node;
         }
         ++currentIndex;
+        return nullptr;
+    }
+
+    if (!node->first || !node->second) {
+        qCWarning(lcAutotile) << "Corrupt internal node: missing child";
         return nullptr;
     }
 
@@ -588,6 +507,11 @@ void SplitTree::collectLeafOrder(const SplitNode* node, QStringList& order) cons
         return;
     }
 
+    if (!node->first || !node->second) {
+        qCWarning(lcAutotile) << "Corrupt internal node: missing child";
+        return;
+    }
+
     collectLeafOrder(node->first.get(), order);
     collectLeafOrder(node->second.get(), order);
 }
@@ -608,4 +532,23 @@ int SplitTree::countLeaves(const SplitNode* node) const
     }
 
     return countLeaves(node->first.get()) + countLeaves(node->second.get());
+}
+
+// =============================================================================
+// Const overloads (delegate to non-const versions via const_cast)
+// =============================================================================
+
+const SplitNode* SplitTree::findLeaf(const SplitNode* node, const QString& windowId) const
+{
+    return findLeaf(const_cast<SplitNode*>(node), windowId);
+}
+
+const SplitNode* SplitTree::leafAtIndex(const SplitNode* node, int targetIndex, int& currentIndex) const
+{
+    return leafAtIndex(const_cast<SplitNode*>(node), targetIndex, currentIndex);
+}
+
+const SplitNode* SplitTree::rightmostLeaf(const SplitNode* node) const
+{
+    return rightmostLeaf(const_cast<SplitNode*>(node));
 }
