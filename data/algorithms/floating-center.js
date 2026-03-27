@@ -47,9 +47,9 @@ function calculateZones(params) {
     const centerX = area.x + marginX;
     const centerY = area.y + marginY;
 
-    // Degenerate case: gaps consume all margin space — panels would have
-    // negative dimensions.  Fall back to stacking all windows on the center.
-    if (marginX < gap && marginY < gap) {
+    // Degenerate case: gaps consume margin space on either axis — panels would
+    // have negative or zero dimensions.  Fall back to stacking all windows on the center.
+    if (marginX < gap || marginY < gap) {
         const center = { x: area.x, y: area.y, width: area.width, height: area.height };
         const zones = [center];
         for (let i = 1; i < count; i++) {

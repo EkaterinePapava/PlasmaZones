@@ -479,16 +479,13 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
     // generation and the watchdog only interrupts if the generation still matches.
     const uint64_t myGen = ++(m_watchdog->generation);
 
-    // C1: Only spawn watchdog if none is already sleeping (prevents ~60 threads/sec during resize)
+    // C1: Only spawn watchdog if none is already sleeping (prevents ~60 threads/sec during resize).
+    // If a stale watchdog is still sleeping, the generation counter ensures it becomes a no-op
+    // when it wakes — so it's safe to skip spawning a new one.
     auto ctx = m_watchdog; // shared_ptr copy — prevents use-after-free
     bool expected = false;
-    if (!ctx->active.compare_exchange_strong(expected, true)) {
-        // A stale watchdog may still be sleeping — force reset and retry
-        ctx->active.store(false);
-        expected = false;
-        ctx->active.compare_exchange_strong(expected, true);
-    }
-    {
+    const bool spawnWatchdog = ctx->active.compare_exchange_strong(expected, true);
+    if (spawnWatchdog) {
         std::thread([ctx, myGen]() {
             std::this_thread::sleep_for(std::chrono::milliseconds(ScriptWatchdogTimeoutMs));
             // Only interrupt if this is still the active generation

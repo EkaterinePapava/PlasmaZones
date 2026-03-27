@@ -401,6 +401,56 @@ private Q_SLOTS:
         QVERIFY(!algo.name().isEmpty());
         QVERIFY(!algo.description().isEmpty());
         QVERIFY(algo.supportsSplitRatio());
+        QVERIFY(algo.supportsMemory());
+    }
+
+    void testAlgo_prepareTilingState_createsTree()
+    {
+        DwindleMemoryAlgorithm algo;
+        TilingState state(QStringLiteral("test"));
+        state.addWindow(QStringLiteral("win1"));
+        state.addWindow(QStringLiteral("win2"));
+        state.addWindow(QStringLiteral("win3"));
+
+        // TilingState::addWindow triggers syncTreeLazyCreate, so tree exists
+        // after the 2nd window. Clear it to test prepareTilingState from scratch.
+        state.clearSplitTree();
+        QVERIFY(state.splitTree() == nullptr);
+
+        // prepareTilingState should create a tree with 3 leaves
+        algo.prepareTilingState(&state);
+        QVERIFY(state.splitTree() != nullptr);
+        QCOMPARE(state.splitTree()->leafCount(), 3);
+    }
+
+    void testAlgo_prepareTilingState_skipsIfTreeExists()
+    {
+        DwindleMemoryAlgorithm algo;
+        TilingState state(QStringLiteral("test"));
+        state.addWindow(QStringLiteral("win1"));
+        state.addWindow(QStringLiteral("win2"));
+
+        // Manually set a tree with custom ratio
+        auto tree = std::make_unique<SplitTree>();
+        tree->insertAtEnd(QStringLiteral("win1"), 0.7);
+        tree->insertAtEnd(QStringLiteral("win2"), 0.7);
+        state.setSplitTree(std::move(tree));
+
+        const auto* originalTree = state.splitTree();
+
+        // prepareTilingState should not replace existing tree
+        algo.prepareTilingState(&state);
+        QVERIFY(state.splitTree() == originalTree);
+    }
+
+    void testAlgo_prepareTilingState_skipsSingleWindow()
+    {
+        DwindleMemoryAlgorithm algo;
+        TilingState state(QStringLiteral("test"));
+        state.addWindow(QStringLiteral("win1"));
+
+        algo.prepareTilingState(&state);
+        QVERIFY(state.splitTree() == nullptr);
     }
 
     // =========================================================================

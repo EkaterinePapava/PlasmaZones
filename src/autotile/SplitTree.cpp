@@ -382,9 +382,13 @@ void SplitTree::rebuildFromOrder(const QStringList& tiledWindows, qreal defaultS
     QVector<bool> oldDirections;
     collectInternalNodeParams(m_root.get(), oldRatios, oldDirections);
 
-    // Build a fresh tree
+    // Build a fresh tree, skipping empty window IDs (guards against corrupt input)
     m_root.reset();
     for (const QString& windowId : tiledWindows) {
+        if (Q_UNLIKELY(windowId.isEmpty())) {
+            qCWarning(lcAutotile) << "rebuildFromOrder: skipping empty windowId";
+            continue;
+        }
         insertAtEnd(windowId, defaultSplitRatio);
     }
 

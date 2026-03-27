@@ -464,14 +464,19 @@ void TilingState::setFloating(const QString& windowId, bool floating)
     // tiledWindowIndex() sees the correct floating/tiled classification.
     int tiledIdxBeforeChange = -1;
     if (!floating) {
-        // Window is being unfloated — compute where it will land in tiled order
-        // after we remove it from the floating set. We temporarily remove it
-        // to get the correct index, then restore state.
-        // Safety: no signals emitted and no exceptions thrown between remove and re-insert,
-        // so the intermediate state is never observed externally.
-        m_floatingWindows.remove(windowId);
-        tiledIdxBeforeChange = tiledWindowIndex(windowId);
-        m_floatingWindows.insert(windowId); // restore — actual removal happens below
+        // Window is being unfloated — compute where it will land in tiled order.
+        // Count how many non-floating windows precede this one in m_windowOrder
+        // to determine its tiled position without temporarily mutating the set.
+        const int orderIdx = m_windowOrder.indexOf(windowId);
+        if (orderIdx >= 0) {
+            int tiledPos = 0;
+            for (int i = 0; i < orderIdx; ++i) {
+                if (!m_floatingWindows.contains(m_windowOrder.at(i))) {
+                    ++tiledPos;
+                }
+            }
+            tiledIdxBeforeChange = tiledPos;
+        }
     }
 
     if (floating) {

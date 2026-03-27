@@ -126,19 +126,23 @@ private Q_SLOTS:
         const QString screen = QStringLiteral("eDP-1");
         engine.setAutotileScreens({screen});
 
-        // Set algorithm to something other than centered-master
+        // Set algorithm to master-stack first
         engine.setAlgorithm(DBus::AutotileAlgorithm::MasterStack);
 
         // Store saved settings for centered-master in the per-algorithm map
         engine.config()->savedAlgorithmSettings[QStringLiteral("centered-master")] = {0.45, 2};
 
-        // The saved settings for centered-master should NOT affect the active
-        // split ratio when the algorithm is master-stack.
-        const qreal originalRatio = engine.config()->splitRatio;
+        // Capture the master-stack ratio before mutation
+        const qreal masterStackRatio = engine.config()->splitRatio;
 
-        // TODO: This assertion is trivially true — needs a real mutation test.
-        // Should verify that switching to CenteredMaster applies savedAlgorithmSettings.
-        QVERIFY(qFuzzyCompare(engine.config()->splitRatio, originalRatio));
+        // Mutate the saved centered-master ratio — should NOT affect the active ratio
+        engine.config()->savedAlgorithmSettings[QStringLiteral("centered-master")] = {0.35, 3};
+        QVERIFY(qFuzzyCompare(engine.config()->splitRatio, masterStackRatio));
+
+        // Now switch to centered-master — saved settings should be applied
+        engine.setAlgorithm(DBus::AutotileAlgorithm::CenteredMaster);
+        QVERIFY(qFuzzyCompare(engine.config()->splitRatio, 0.35));
+        QCOMPARE(engine.config()->masterCount, 3);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
