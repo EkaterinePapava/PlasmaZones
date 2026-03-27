@@ -71,6 +71,10 @@ public:
     {
         return 0.5;
     } // Center gets 50%
+    bool centerLayout() const noexcept override
+    {
+        return true;
+    }
 
     // Need at least 3 windows for true three-column layout
     int minimumWindows() const override

@@ -10,6 +10,7 @@
 // @defaultMaxWindows 5
 // @minimumWindows 1
 // @zoneNumberDisplay all
+// @supportsMemory false
 
 /**
  * Corner Master layout (see also quadrant-priority.js for a similar L-shape

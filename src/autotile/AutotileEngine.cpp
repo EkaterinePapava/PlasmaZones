@@ -340,14 +340,21 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
     // Look up saved settings AFTER the save above — insertion may rehash the
     // QHash, invalidating any iterator obtained before the insert.
     auto savedIt = m_config->savedAlgorithmSettings.constFind(newId);
-    if (oldAlgo && newAlgo) {
-        if (savedIt != m_config->savedAlgorithmSettings.constEnd()) {
-            m_config->splitRatio = savedIt->first;
-            m_config->masterCount = savedIt->second;
+
+    // Restore per-algorithm split ratio and master count from saved settings,
+    // falling back to the algorithm's defaults when no saved entry exists.
+    auto restorePerAlgoSettings = [this](TilingAlgorithm* algo, QHash<QString, QPair<qreal, int>>::const_iterator it) {
+        if (it != m_config->savedAlgorithmSettings.constEnd()) {
+            m_config->splitRatio = it->first;
+            m_config->masterCount = it->second;
         } else {
-            m_config->splitRatio = newAlgo->defaultSplitRatio();
+            m_config->splitRatio = algo->defaultSplitRatio();
             m_config->masterCount = AutotileDefaults::DefaultMasterCount;
         }
+    };
+
+    if (oldAlgo && newAlgo) {
+        restorePerAlgoSettings(newAlgo, savedIt);
         propagateGlobalSplitRatio();
         propagateGlobalMasterCount();
 
@@ -358,13 +365,7 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
     } else if (newAlgo) {
         // oldAlgo is nullptr (first-ever call or corrupted m_algorithmId).
         // Initialize config from the new algorithm's defaults or saved settings.
-        if (savedIt != m_config->savedAlgorithmSettings.constEnd()) {
-            m_config->splitRatio = savedIt->first;
-            m_config->masterCount = savedIt->second;
-        } else {
-            m_config->splitRatio = newAlgo->defaultSplitRatio();
-            m_config->masterCount = AutotileDefaults::DefaultMasterCount;
-        }
+        restorePerAlgoSettings(newAlgo, savedIt);
         m_config->maxWindows = newAlgo->defaultMaxWindows();
         propagateGlobalSplitRatio();
         propagateGlobalMasterCount();

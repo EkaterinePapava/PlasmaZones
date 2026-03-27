@@ -4,6 +4,7 @@
 #include "AutotileConfig.h"
 #include "AlgorithmRegistry.h"
 #include "core/constants.h"
+#include <QRegularExpression>
 #include <QtMath>
 
 namespace PlasmaZones {
@@ -41,12 +42,18 @@ AutotileConfig::InsertPosition stringToInsertPosition(const QString& str)
 
 QHash<QString, QPair<qreal, int>> AutotileConfig::perAlgoFromVariantMap(const QVariantMap& map)
 {
+    static const QRegularExpression validAlgoId(QStringLiteral("^[a-zA-Z0-9_:/-]+$"));
+    static constexpr int MaxEntries = 100;
+
     QHash<QString, QPair<qreal, int>> result;
-    for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
+    int count = 0;
+    for (auto it = map.constBegin(); it != map.constEnd() && count < MaxEntries; ++it, ++count) {
+        if (!validAlgoId.match(it.key()).hasMatch())
+            continue;
         const QVariantMap entry = it.value().toMap();
         qreal ratio = std::clamp(entry.value(PerAlgoKeys::SplitRatio).toDouble(), MinSplitRatio, MaxSplitRatio);
-        int count = std::clamp(entry.value(PerAlgoKeys::MasterCount).toInt(), MinMasterCount, MaxMasterCount);
-        result[it.key()] = {ratio, count};
+        int masterCount = std::clamp(entry.value(PerAlgoKeys::MasterCount).toInt(), MinMasterCount, MaxMasterCount);
+        result[it.key()] = {ratio, masterCount};
     }
     return result;
 }
@@ -88,14 +95,8 @@ QJsonObject AutotileConfig::toJson() const
     json[SplitRatio] = splitRatio;
     json[MasterCount] = masterCount;
     if (!savedAlgorithmSettings.isEmpty()) {
-        QJsonObject perAlgo;
-        for (auto it = savedAlgorithmSettings.constBegin(); it != savedAlgorithmSettings.constEnd(); ++it) {
-            QJsonObject entry;
-            entry[PerAlgoKeys::SplitRatio] = it.value().first;
-            entry[PerAlgoKeys::MasterCount] = it.value().second;
-            perAlgo[it.key()] = entry;
-        }
-        json[QLatin1String("PerAlgorithmSettings")] = perAlgo;
+        const auto varMap = perAlgoToVariantMap(savedAlgorithmSettings);
+        json[PerAlgorithmSettings] = QJsonObject::fromVariantMap(varMap);
     }
     json[InnerGap] = innerGap;
     json[OuterGap] = outerGap;
@@ -128,14 +129,14 @@ AutotileConfig AutotileConfig::fromJson(const QJsonObject& json)
         config.masterCount = json[MasterCount].toInt(config.masterCount);
         config.masterCount = std::clamp(config.masterCount, MinMasterCount, MaxMasterCount);
     }
-    if (json.contains(QLatin1String("PerAlgorithmSettings"))) {
-        const QJsonObject perAlgo = json[QLatin1String("PerAlgorithmSettings")].toObject();
-        for (auto it = perAlgo.constBegin(); it != perAlgo.constEnd(); ++it) {
-            const QJsonObject entry = it.value().toObject();
-            qreal ratio = std::clamp(entry[PerAlgoKeys::SplitRatio].toDouble(0.5), MinSplitRatio, MaxSplitRatio);
-            int count = std::clamp(entry[PerAlgoKeys::MasterCount].toInt(1), MinMasterCount, MaxMasterCount);
-            config.savedAlgorithmSettings[it.key()] = {ratio, count};
-        }
+    // Try new camelCase key first, fall back to legacy PascalCase for backwards compat
+    const QLatin1String legacyPerAlgoKey("PerAlgorithmSettings");
+    const bool hasNewKey = json.contains(PerAlgorithmSettings);
+    const bool hasLegacyKey = !hasNewKey && json.contains(legacyPerAlgoKey);
+    if (hasNewKey || hasLegacyKey) {
+        const QLatin1String& activeKey = hasNewKey ? PerAlgorithmSettings : legacyPerAlgoKey;
+        const QJsonObject perAlgo = json[activeKey].toObject();
+        config.savedAlgorithmSettings = perAlgoFromVariantMap(perAlgo.toVariantMap());
     } else {
         // Backwards compat: migrate centered-master fields
         if (json.contains(CenteredMasterSplitRatio) || json.contains(CenteredMasterMasterCount)) {

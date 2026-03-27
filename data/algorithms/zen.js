@@ -10,6 +10,7 @@
 // @defaultMaxWindows 4
 // @minimumWindows 1
 // @zoneNumberDisplay all
+// @supportsMemory false
 
 /**
  * Zen layout: all windows share the same width (splitRatio of screen) and

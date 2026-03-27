@@ -7,6 +7,7 @@
 #include "core/logging.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QRegularExpression>
 #include <QSet>
 #include <QStandardPaths>
 
@@ -138,7 +139,15 @@ void ScriptedAlgorithmLoader::loadFromDirectory(const QString& dir, bool isUserD
 
     for (const QString& file : files) {
         const QString fullPath = dirObj.filePath(file);
-        const QString scriptId = QStringLiteral("script:") + QFileInfo(file).completeBaseName();
+
+        // Validate filename against whitelist to prevent injection via crafted filenames
+        static const QRegularExpression validIdRe(QStringLiteral("^[a-zA-Z0-9_-]+$"));
+        const QString baseName = QFileInfo(file).completeBaseName();
+        if (!validIdRe.match(baseName).hasMatch()) {
+            qCWarning(lcAutotile) << "Skipping script with invalid filename:" << file;
+            continue;
+        }
+        const QString scriptId = QStringLiteral("script:") + baseName;
 
         // B4: Pass `this` as initial parent so the QObject is never unowned.
         // AlgorithmRegistry::registerAlgorithm() will reparent to the registry.

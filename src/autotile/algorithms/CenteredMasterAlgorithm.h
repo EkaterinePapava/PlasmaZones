@@ -68,6 +68,10 @@ public:
     {
         return 0.5;
     }
+    bool centerLayout() const noexcept override
+    {
+        return true;
+    }
     int defaultMaxWindows() const override
     {
         return 7;

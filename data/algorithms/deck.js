@@ -10,6 +10,7 @@
 // @defaultMaxWindows 5
 // @minimumWindows 1
 // @zoneNumberDisplay firstAndLast
+// @supportsMemory false
 
 /**
  * Deck layout: one focused window with background windows peeking

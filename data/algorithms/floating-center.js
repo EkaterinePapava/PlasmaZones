@@ -10,6 +10,7 @@
 // @defaultMaxWindows 6
 // @minimumWindows 1
 // @zoneNumberDisplay all
+// @supportsMemory false
 
 /**
  * Floating Center layout: one centered main window with remaining windows

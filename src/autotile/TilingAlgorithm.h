@@ -175,7 +175,18 @@ public:
      *
      * @return Display mode string
      */
-    virtual QString zoneNumberDisplay() const;
+    virtual QString zoneNumberDisplay() const noexcept;
+
+    /**
+     * @brief Whether this algorithm uses a center layout
+     *
+     * Center layout algorithms (e.g., ThreeColumn, CenteredMaster) have a
+     * center column whose width is controlled by the split ratio. The UI
+     * labels the ratio/count controls as "Center" instead of "Master".
+     *
+     * @return true if this is a center layout algorithm (default: false)
+     */
+    virtual bool centerLayout() const noexcept;
 
     /**
      * @brief Whether this algorithm is a user-provided scripted algorithm

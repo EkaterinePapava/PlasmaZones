@@ -68,7 +68,7 @@ public:
     {
         return true;
     }
-    QString zoneNumberDisplay() const override
+    QString zoneNumberDisplay() const noexcept override
     {
         return QStringLiteral("last");
     }

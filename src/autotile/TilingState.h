@@ -431,6 +431,12 @@ private:
 
     // Helper to emit stateChanged after other signals
     void notifyStateChanged();
+
+    // ── Tree synchronization helpers (SRP/DRY: single place for null-check + op) ──
+    void syncTreeInsert(const QString& windowId, int position = -1);
+    void syncTreeRemove(const QString& windowId);
+    void syncTreeSwap(const QString& idA, const QString& idB);
+    void syncTreeLazyCreate();
 };
 
 } // namespace PlasmaZones

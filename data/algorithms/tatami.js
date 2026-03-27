@@ -9,6 +9,7 @@
 // @defaultMaxWindows 6
 // @minimumWindows 1
 // @zoneNumberDisplay all
+// @supportsMemory false
 
 /**
  * Tatami layout: alternating horizontal and vertical rectangles

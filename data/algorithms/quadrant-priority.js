@@ -10,6 +10,7 @@
 // @defaultMaxWindows 5
 // @minimumWindows 1
 // @zoneNumberDisplay all
+// @supportsMemory false
 
 /**
  * Quadrant Priority layout: first window occupies a large top-left quadrant.

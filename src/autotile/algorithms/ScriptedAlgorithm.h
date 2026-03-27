@@ -77,6 +77,7 @@ T jsValueTo(const QJSValue& v)
  * syntax. Supported metadata keys:
  * - @name, @description
  * - @supportsMasterCount, @supportsSplitRatio, @producesOverlappingZones (bool)
+ * - @centerLayout (bool)
  * - @zoneNumberDisplay (string: "all", "last", "first", "firstAndLast", "none")
  * - @defaultSplitRatio (qreal)
  * - @defaultMaxWindows, @minimumWindows, @masterZoneIndex (int)
@@ -137,7 +138,8 @@ public:
     int defaultMaxWindows() const override;
     bool producesOverlappingZones() const override;
     bool supportsMemory() const noexcept override;
-    QString zoneNumberDisplay() const override;
+    QString zoneNumberDisplay() const noexcept override;
+    bool centerLayout() const noexcept override;
     bool isScripted() const noexcept override;
     bool isUserScript() const noexcept override;
 
@@ -205,6 +207,7 @@ private:
     bool m_supportsSplitRatio = false;
     bool m_supportsMemory = false;
     bool m_producesOverlappingZones = false;
+    bool m_centerLayout = false;
     QString m_zoneNumberDisplay;
     qreal m_defaultSplitRatio = 0.0; // 0 = use base class default
     int m_defaultMaxWindows = 0; // 0 = use base class default

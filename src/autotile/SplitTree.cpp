@@ -299,7 +299,10 @@ void SplitTree::applyGeometryRecursive(const SplitNode* node, const QRect& rect,
         return;
     }
 
-    Q_ASSERT(node->first && node->second);
+    if (!node->first || !node->second) {
+        qCWarning(lcAutotile) << "applyGeometryRecursive: corrupt internal node (missing child)";
+        return;
+    }
 
     const qreal ratio = std::clamp(node->splitRatio, MinSplitRatio, MaxSplitRatio);
 
@@ -584,7 +587,10 @@ int SplitTree::countLeaves(const SplitNode* node) const
         return 1;
     }
 
-    Q_ASSERT(node->first && node->second);
+    if (!node->first || !node->second) {
+        qCWarning(lcAutotile) << "countLeaves: corrupt internal node (missing child)";
+        return 0;
+    }
 
     return countLeaves(node->first.get()) + countLeaves(node->second.get());
 }

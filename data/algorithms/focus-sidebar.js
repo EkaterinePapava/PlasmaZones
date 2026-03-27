@@ -10,6 +10,7 @@
 // @defaultMaxWindows 5
 // @minimumWindows 1
 // @zoneNumberDisplay all
+// @supportsMemory false
 
 /**
  * Focus + Sidebar layout: one large main window on the left with a narrow
@@ -23,6 +24,10 @@ function calculateZones(params) {
     const count = params.windowCount;
     const area = params.area;
     const gap = params.innerGap || 0;
+
+    if (count <= 1) {
+        return [{ x: area.x, y: area.y, width: area.width, height: area.height }];
+    }
 
     const splitRatio = params.splitRatio;
     const mainWidth = Math.max(1, Math.round(area.width * splitRatio - gap / 2));

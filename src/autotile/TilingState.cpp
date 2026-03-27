@@ -80,18 +80,9 @@ bool TilingState::addWindow(const QString& windowId, int position)
     }
 
     if (m_splitTree) {
-        if (appendToEnd) {
-            m_splitTree->insertAtEnd(windowId, m_splitRatio);
-        } else {
-            m_splitTree->insertAtPosition(windowId, position, m_splitRatio);
-        }
-    } else if (tiledWindowCount() >= 2) {
-        // Lazily create tree when we reach 2 tiled windows
-        m_splitTree = std::make_unique<SplitTree>();
-        const auto tiled = tiledWindows();
-        for (const auto& id : tiled) {
-            m_splitTree->insertAtEnd(id, m_splitRatio);
-        }
+        syncTreeInsert(windowId, appendToEnd ? -1 : position);
+    } else {
+        syncTreeLazyCreate();
     }
 
     Q_EMIT windowCountChanged();
@@ -109,9 +100,7 @@ bool TilingState::removeWindow(const QString& windowId)
     // Remove from list first, then from tree, before emitting signals
     m_windowOrder.removeAt(index);
 
-    if (m_splitTree) {
-        m_splitTree->remove(windowId);
-    }
+    syncTreeRemove(windowId);
 
     // F7 fix: Emit floatingChanged when removing a floating window so listeners
     // (e.g., the daemon's windowFloatingChanged handler) can propagate the state change
@@ -169,9 +158,7 @@ bool TilingState::swapWindows(int index1, int index2)
 
     m_windowOrder.swapItemsAt(index1, index2);
 
-    if (m_splitTree) {
-        m_splitTree->swap(id1, id2);
-    }
+    syncTreeSwap(id1, id2);
 
     Q_EMIT windowOrderChanged();
     notifyStateChanged();
@@ -493,17 +480,10 @@ void TilingState::setFloating(const QString& windowId, bool floating)
         m_floatingWindows.remove(windowId);
     }
 
-    if (m_splitTree) {
-        if (floating) {
-            m_splitTree->remove(windowId);
-        } else {
-            // Re-insert at the window's pre-computed tiled position
-            if (tiledIdxBeforeChange >= 0) {
-                m_splitTree->insertAtPosition(windowId, tiledIdxBeforeChange, m_splitRatio);
-            } else {
-                m_splitTree->insertAtEnd(windowId, m_splitRatio);
-            }
-        }
+    if (floating) {
+        syncTreeRemove(windowId);
+    } else {
+        syncTreeInsert(windowId, tiledIdxBeforeChange);
     }
 
     Q_EMIT floatingChanged(windowId, floating);
@@ -757,6 +737,50 @@ void TilingState::rebuildSplitTree()
     }
 
     m_splitTree->rebuildFromOrder(tiledWindows(), m_splitRatio);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Tree Synchronization Helpers
+// ═══════════════════════════════════════════════════════════════════════════════
+
+void TilingState::syncTreeInsert(const QString& windowId, int position)
+{
+    if (!m_splitTree) {
+        return;
+    }
+    if (position < 0) {
+        m_splitTree->insertAtEnd(windowId, m_splitRatio);
+    } else {
+        m_splitTree->insertAtPosition(windowId, position, m_splitRatio);
+    }
+}
+
+void TilingState::syncTreeRemove(const QString& windowId)
+{
+    if (!m_splitTree) {
+        return;
+    }
+    m_splitTree->remove(windowId);
+}
+
+void TilingState::syncTreeSwap(const QString& idA, const QString& idB)
+{
+    if (!m_splitTree) {
+        return;
+    }
+    m_splitTree->swap(idA, idB);
+}
+
+void TilingState::syncTreeLazyCreate()
+{
+    if (m_splitTree || tiledWindowCount() < 2) {
+        return;
+    }
+    m_splitTree = std::make_unique<SplitTree>();
+    const auto tiled = tiledWindows();
+    for (const auto& id : tiled) {
+        m_splitTree->insertAtEnd(id, m_splitRatio);
+    }
 }
 
 } // namespace PlasmaZones

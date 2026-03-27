@@ -1660,6 +1660,7 @@ QVariantList SettingsController::availableAlgorithms() const
             algoMap[QStringLiteral("supportsMasterCount")] = algo->supportsMasterCount();
             algoMap[QStringLiteral("defaultSplitRatio")] = algo->defaultSplitRatio();
             algoMap[QStringLiteral("zoneNumberDisplay")] = algo->zoneNumberDisplay();
+            algoMap[QStringLiteral("centerLayout")] = algo->centerLayout();
             algorithms.append(algoMap);
         }
     }

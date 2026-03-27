@@ -21,6 +21,10 @@
 #include <mutex>
 #include <thread>
 
+namespace {
+constexpr int MaxZones = 256;
+}
+
 namespace PlasmaZones {
 
 using namespace AutotileDefaults;
@@ -38,6 +42,9 @@ T ScriptedAlgorithm::resolveJsOverride(const QJSValue& jsFn, T cachedValue, T me
         return cachedValue;
     }
     // B3: Guard against invalid script state in uncached fallback path
+    if (!m_cachedValuesLoaded && m_valid) {
+        Q_ASSERT(QThread::currentThread() == thread());
+    }
     if (m_valid && jsFn.isCallable()) {
         const QJSValue result = jsFn.call();
         if (!result.isError() && detail::jsValueHasType<T>(result))
@@ -371,6 +378,8 @@ void ScriptedAlgorithm::parseMetadata(const QString& source)
             m_producesOverlappingZones = (value == QLatin1String("true"));
         } else if (key == QLatin1String("supportsMemory")) {
             m_supportsMemory = (value == QLatin1String("true"));
+        } else if (key == QLatin1String("centerLayout")) {
+            m_centerLayout = (value == QLatin1String("true"));
         } else if (key == QLatin1String("defaultSplitRatio")) {
             bool ok = false;
             const qreal v = value.toDouble(&ok);
@@ -451,7 +460,6 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
 
     // minSizes array
     // B1: Cap the loop at MaxZones (256) to match the array allocation size
-    constexpr int MaxZones = 256;
     const int minSizesCap = std::min<int>(params.minSizes.size(), MaxZones);
     QJSValue jsMinSizes = m_engine->newArray(static_cast<uint>(minSizesCap));
     for (int i = 0; i < minSizesCap; ++i) {
@@ -474,7 +482,13 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
     // C1: Only spawn watchdog if none is already sleeping (prevents ~60 threads/sec during resize)
     auto ctx = m_watchdog; // shared_ptr copy — prevents use-after-free
     bool expected = false;
-    if (ctx->active.compare_exchange_strong(expected, true)) {
+    if (!ctx->active.compare_exchange_strong(expected, true)) {
+        // A stale watchdog may still be sleeping — force reset and retry
+        ctx->active.store(false);
+        expected = false;
+        ctx->active.compare_exchange_strong(expected, true);
+    }
+    {
         std::thread([ctx, myGen]() {
             std::this_thread::sleep_for(std::chrono::milliseconds(ScriptWatchdogTimeoutMs));
             // Only interrupt if this is still the active generation
@@ -500,7 +514,12 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
 
     // Advance generation so any in-flight watchdog becomes a no-op, and reset interrupted state
     ++(m_watchdog->generation);
-    m_engine->setInterrupted(false);
+    if (m_engine->isInterrupted()) {
+        m_engine->setInterrupted(false);
+        m_engine->collectGarbage();
+    } else {
+        m_engine->setInterrupted(false);
+    }
 
     if (result.isError()) {
         qCWarning(lcAutotile) << "ScriptedAlgorithm: calculateZones() error script=" << m_scriptId
@@ -536,7 +555,6 @@ QVector<QRect> ScriptedAlgorithm::jsArrayToRects(const QJSValue& result) const
 {
     QVector<QRect> rects;
     const int length = result.property(QStringLiteral("length")).toInt();
-    constexpr int MaxZones = 256;
     if (length <= 0 || length > MaxZones) {
         if (length > MaxZones)
             qCWarning(lcAutotile) << "ScriptedAlgorithm: zone count exceeds maximum" << MaxZones
@@ -663,12 +681,17 @@ bool ScriptedAlgorithm::supportsMemory() const noexcept
     return m_supportsMemory;
 }
 
-QString ScriptedAlgorithm::zoneNumberDisplay() const
+QString ScriptedAlgorithm::zoneNumberDisplay() const noexcept
 {
     if (!m_zoneNumberDisplay.isEmpty()) {
         return m_zoneNumberDisplay;
     }
     return TilingAlgorithm::zoneNumberDisplay();
+}
+
+bool ScriptedAlgorithm::centerLayout() const noexcept
+{
+    return m_centerLayout;
 }
 
 bool ScriptedAlgorithm::isScripted() const noexcept

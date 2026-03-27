@@ -49,9 +49,14 @@ bool TilingAlgorithm::producesOverlappingZones() const
     return false;
 }
 
-QString TilingAlgorithm::zoneNumberDisplay() const
+QString TilingAlgorithm::zoneNumberDisplay() const noexcept
 {
     return QStringLiteral("all");
+}
+
+bool TilingAlgorithm::centerLayout() const noexcept
+{
+    return false;
 }
 
 bool TilingAlgorithm::isScripted() const noexcept

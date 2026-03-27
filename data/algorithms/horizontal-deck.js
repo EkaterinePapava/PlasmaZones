@@ -10,6 +10,7 @@
 // @defaultMaxWindows 5
 // @minimumWindows 1
 // @zoneNumberDisplay firstAndLast
+// @supportsMemory false
 
 /**
  * Horizontal Deck layout: vertical version of Deck. The focused window takes

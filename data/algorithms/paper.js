@@ -10,6 +10,7 @@
 // @defaultMaxWindows 6
 // @minimumWindows 1
 // @zoneNumberDisplay last
+// @supportsMemory false
 
 /**
  * Paper layout: each window is an equal-width "page" (default 80%

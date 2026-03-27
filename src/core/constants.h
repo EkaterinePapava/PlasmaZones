@@ -362,6 +362,7 @@ inline constexpr QLatin1String MasterCount{"masterCount"};
 inline constexpr QLatin1String SplitRatio{"splitRatio"};
 
 // AutotileConfig keys
+inline constexpr QLatin1String PerAlgorithmSettings{"perAlgorithmSettings"};
 inline constexpr QLatin1String AlgorithmId{"algorithmId"};
 inline constexpr QLatin1String InnerGap{"innerGap"};
 inline constexpr QLatin1String OuterGap{"outerGap"};
