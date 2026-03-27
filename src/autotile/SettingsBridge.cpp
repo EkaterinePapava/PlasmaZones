@@ -18,6 +18,20 @@
 
 namespace PlasmaZones {
 
+namespace {
+/// DRY helper: populate PreviewParams::savedAlgorithmSettings from AutotileConfig
+void populatePreviewSavedSettings(AlgorithmRegistry::PreviewParams& params,
+                                  const QHash<QString, AlgorithmSettings>& savedSettings)
+{
+    for (auto it = savedSettings.constBegin(); it != savedSettings.constEnd(); ++it) {
+        params.savedAlgorithmSettings[it.key()] = QVariantMap{
+            {PerAlgoKeys::MasterCount, it.value().masterCount},
+            {PerAlgoKeys::SplitRatio, it.value().splitRatio},
+        };
+    }
+}
+} // anonymous namespace
+
 SettingsBridge::SettingsBridge(AutotileEngine* engine)
     : m_engine(engine)
 {
@@ -144,12 +158,7 @@ void SettingsBridge::syncFromSettings(Settings* settings)
     previewParams.maxWindows = cfg->maxWindows;
     previewParams.masterCount = cfg->masterCount;
     previewParams.splitRatio = cfg->splitRatio;
-    for (auto it = cfg->savedAlgorithmSettings.constBegin(); it != cfg->savedAlgorithmSettings.constEnd(); ++it) {
-        previewParams.savedAlgorithmSettings[it.key()] = QVariantMap{
-            {PerAlgoKeys::MasterCount, it.value().masterCount},
-            {PerAlgoKeys::SplitRatio, it.value().splitRatio},
-        };
-    }
+    populatePreviewSavedSettings(previewParams, cfg->savedAlgorithmSettings);
     AlgorithmRegistry::setConfiguredPreviewParams(previewParams);
 
     if (configChanged && m_engine->isEnabled()) {
@@ -263,12 +272,7 @@ void SettingsBridge::connectToSettings(Settings* settings)
         previewParams.maxWindows = m_engine->config()->maxWindows;
         previewParams.masterCount = m_engine->config()->masterCount;
         previewParams.splitRatio = m_engine->config()->splitRatio;
-        for (auto pIt = newSaved.constBegin(); pIt != newSaved.constEnd(); ++pIt) {
-            previewParams.savedAlgorithmSettings[pIt.key()] = QVariantMap{
-                {PerAlgoKeys::MasterCount, pIt.value().masterCount},
-                {PerAlgoKeys::SplitRatio, pIt.value().splitRatio},
-            };
-        }
+        populatePreviewSavedSettings(previewParams, newSaved);
         AlgorithmRegistry::setConfiguredPreviewParams(previewParams);
     });
 

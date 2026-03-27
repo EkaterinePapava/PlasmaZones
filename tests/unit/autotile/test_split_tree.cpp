@@ -587,12 +587,12 @@ private Q_SLOTS:
 
     void testFromJson_deeplyNested()
     {
-        // Build a tree deeper than MaxDeserializationDepth (30)
+        // Build a tree deeper than MaxDeserializationDepth (AutotileDefaults::MaxRuntimeTreeDepth = 50)
         QJsonObject leaf;
         leaf[QStringLiteral("windowId")] = QStringLiteral("win1");
 
         QJsonObject current = leaf;
-        for (int i = 0; i < 35; ++i) {
+        for (int i = 0; i < 55; ++i) {
             QJsonObject secondLeaf;
             secondLeaf[QStringLiteral("windowId")] = QStringLiteral("win%1").arg(i + 2);
 
@@ -608,7 +608,7 @@ private Q_SLOTS:
         wrapper[QStringLiteral("root")] = current;
 
         auto tree = SplitTree::fromJson(wrapper);
-        // nodeFromJson returns nullptr for children beyond depth 30,
+        // nodeFromJson returns nullptr for children beyond the max depth,
         // which causes parent internal nodes to also return nullptr.
         // The tree should be rejected (nullptr) — must not stack overflow.
         QVERIFY(tree == nullptr);

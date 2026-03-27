@@ -223,10 +223,13 @@ void TilingState::syncTreeInsert(const QString& windowId, int position)
         // Translate raw m_windowOrder index to tiled-only index: the split tree
         // contains only tiled (non-floating) windows, so we must skip floating
         // windows that precede `position` in m_windowOrder.
+        // NOTE: The newly inserted window is already at m_windowOrder[position],
+        // so we must exclude it from the count to avoid an off-by-one error.
         int tiledPos = 0;
         const int limit = qMin(position, m_windowOrder.size());
         for (int i = 0; i < limit; ++i) {
-            if (!m_floatingWindows.contains(m_windowOrder.at(i))) {
+            const QString& id = m_windowOrder.at(i);
+            if (id != windowId && !m_floatingWindows.contains(id)) {
                 ++tiledPos;
             }
         }

@@ -4,6 +4,7 @@
 #include "AutotileConfig.h"
 #include "AlgorithmRegistry.h"
 #include "core/constants.h"
+#include "core/logging.h"
 #include <QRegularExpression>
 #include <QtMath>
 
@@ -47,7 +48,12 @@ QHash<QString, AlgorithmSettings> AutotileConfig::perAlgoFromVariantMap(const QV
 
     QHash<QString, AlgorithmSettings> result;
     int count = 0;
-    for (auto it = map.constBegin(); it != map.constEnd() && count < MaxEntries; ++it, ++count) {
+    for (auto it = map.constBegin(); it != map.constEnd(); ++it, ++count) {
+        if (count >= MaxEntries) {
+            qCWarning(lcAutotile) << "perAlgoFromVariantMap: max entries reached (" << MaxEntries
+                                  << "), dropping remaining" << (map.size() - MaxEntries) << "entries";
+            break;
+        }
         if (!validAlgoId.match(it.key()).hasMatch())
             continue;
         const QVariantMap entry = it.value().toMap();

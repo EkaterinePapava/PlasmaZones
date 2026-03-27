@@ -221,9 +221,9 @@ private:
         Rejected
     };
     /// Maximum runtime tree depth for insert operations and recursion guards.
-    /// IMPORTANT: Must stay in sync with MaxDeserializationDepth — a tree built at
-    /// runtime must always be serializable without silent truncation.
-    static constexpr int MaxRuntimeTreeDepth = 30;
+    /// Uses the global constant from AutotileDefaults so that C++ SplitTree,
+    /// JS applyTreeGeometry, and serialization all agree on the depth limit.
+    static constexpr int MaxRuntimeTreeDepth = AutotileDefaults::MaxRuntimeTreeDepth;
 
     InsertReady prepareInsert(const QString& windowId);
 
@@ -254,7 +254,7 @@ private:
     static int applyInternalNodeParams(SplitNode* node, const QVector<qreal>& ratios, const QVector<bool>& directions,
                                        int index, int depth = 0);
 
-    static constexpr int MaxDeserializationDepth = 30;
+    static constexpr int MaxDeserializationDepth = AutotileDefaults::MaxRuntimeTreeDepth;
     static constexpr int MaxDeserializationNodes = 1024; ///< Limit total nodes to prevent memory exhaustion
 
     static QJsonObject nodeToJson(const SplitNode* node, int depth = 0);
