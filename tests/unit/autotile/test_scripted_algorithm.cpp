@@ -736,9 +736,13 @@ private Q_SLOTS:
     {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
-        // Script uses eval() — sandbox disables eval on the global object,
-        // but QJSEngine scope may still allow it. Verify the script either
-        // fails (empty zones) or at least does not crash.
+        // QJSEngine V4 handles direct eval() at the bytecode level, bypassing
+        // Object.defineProperty and IIFE scope shadowing. This is a known V4
+        // limitation (QTBUG-style). The sandbox disables eval on the global object
+        // and the IIFE wrapper shadows it, but V4 may still allow direct eval calls.
+        // The watchdog timer (100ms) is the primary defense against malicious eval use.
+        // This test documents the limitation: zones may or may not be empty depending
+        // on the Qt version's V4 engine behavior.
         QString script = QStringLiteral(
             "// @name Eval Test\n"
             "// @description Test\n"
@@ -753,18 +757,52 @@ private Q_SLOTS:
 
         TilingState state(QStringLiteral("test"));
         auto zones = algo.calculateZones({1, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
-        // If sandbox blocked eval, zones will be empty (catch branch).
-        // If QJSEngine allows eval despite sandbox, zones will have 1 entry.
-        // Either outcome is acceptable — the test verifies no crash.
+        // V4 known limitation: direct eval may bypass sandbox. Verify no crash
+        // and that the result is structurally valid (either blocked or allowed).
         QVERIFY(zones.isEmpty() || zones.size() == 1);
+        if (!zones.isEmpty()) {
+            QWARN("V4 limitation: eval() not blocked by sandbox — watchdog is primary defense");
+        }
+    }
+
+    void testSandboxEvalInfiniteLoopCaughtByWatchdog()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        // Even if V4 allows eval(), the watchdog MUST catch infinite loops.
+        // This is the real security guarantee: no script can hang the process.
+        // windowCount must be >= 2 to avoid the C++ single-window fast path.
+        QString script = QStringLiteral(
+            "// @name Eval Infinite Loop Test\n"
+            "// @description Test\n"
+            "function calculateZones(params) {\n"
+            "    eval(\"while(true){}\");\n"
+            "    return [{ x: 0, y: 0, width: 100, height: 100 }];\n"
+            "}\n");
+        QString path = writeTempScript(dir, QStringLiteral("eval-loop.js"), script);
+
+        ScriptedAlgorithm algo(path);
+        QVERIFY(algo.isValid());
+
+        TilingState state(QStringLiteral("test"));
+        QElapsedTimer timer;
+        timer.start();
+        auto zones = algo.calculateZones({2, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
+        // Two valid outcomes:
+        // 1. IIFE wrapper blocked eval → TypeError thrown instantly → zones empty (fast)
+        // 2. V4 bypassed IIFE → eval ran → watchdog interrupted → zones empty (~100ms)
+        // Both produce empty zones; the watchdog is tested separately in testCalculateZones_infiniteLoopWatchdog.
+        QVERIFY2(timer.elapsed() < 10000, "Watchdog failed to interrupt eval-based infinite loop");
+        QVERIFY2(zones.isEmpty(), "eval-based infinite loop should produce empty zones");
     }
 
     void testSandboxFunctionConstructorBlocked()
     {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
-        // Script tries Function constructor — sandbox locks it down,
-        // but QJSEngine scope may still allow it. Verify no crash.
+        // Same V4 limitation as eval — Function() may bypass global property lockdown.
+        // The sandbox disables Function globally and via IIFE wrapper, but V4 may
+        // still resolve the built-in. Watchdog is primary defense.
         QString script = QStringLiteral(
             "// @name Function Constructor Test\n"
             "// @description Test\n"
@@ -779,18 +817,20 @@ private Q_SLOTS:
 
         TilingState state(QStringLiteral("test"));
         auto zones = algo.calculateZones({1, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
-        // If sandbox blocked Function, zones will be empty (catch branch).
-        // If QJSEngine still allows it, zones will have 1 entry.
-        // Either outcome is acceptable — the test verifies no crash.
+        // V4 known limitation: Function() may bypass sandbox.
         QVERIFY(zones.isEmpty() || zones.size() == 1);
+        if (!zones.isEmpty()) {
+            QWARN("V4 limitation: Function() not blocked by sandbox — watchdog is primary defense");
+        }
     }
 
     void testSandboxConstructorConstructorBlocked()
     {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
-        // Script tries constructor chain escape — sandbox locks it down,
-        // but QJSEngine scope may still allow it. Verify no crash.
+        // Constructor chain escape: (function(){}).constructor.constructor('return this')()
+        // The sandbox locks down Function.prototype.constructor and freezes
+        // Function.prototype. V4 may still allow this via internal mechanisms.
         QString script = QStringLiteral(
             "// @name Constructor Chain Test\n"
             "// @description Test\n"
@@ -807,10 +847,11 @@ private Q_SLOTS:
 
         TilingState state(QStringLiteral("test"));
         auto zones = algo.calculateZones({1, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
-        // If sandbox blocked the constructor chain, zones will be empty (catch branch).
-        // If QJSEngine still allows it, zones will have 1 entry.
-        // Either outcome is acceptable — the test verifies no crash.
+        // V4 known limitation: constructor chain may bypass sandbox.
         QVERIFY(zones.isEmpty() || zones.size() == 1);
+        if (!zones.isEmpty()) {
+            QWARN("V4 limitation: constructor chain not blocked — watchdog is primary defense");
+        }
     }
 };
 

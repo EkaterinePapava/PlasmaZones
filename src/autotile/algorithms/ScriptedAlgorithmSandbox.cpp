@@ -16,8 +16,10 @@ bool hardenSandbox(QJSEngine* engine)
     auto safeEval = [engine](const QString& code, const QString& context) {
         QJSValue result = engine->evaluate(code);
         if (result.isError()) {
-            qCWarning(lcAutotile) << "ScriptedAlgorithm: sandbox hardening failed for" << context << ":"
-                                  << result.toString();
+            // Non-critical: logged at debug level to avoid spamming on engines
+            // that lack async syntax (V4 SyntaxError on async function is expected)
+            qCDebug(lcAutotile) << "ScriptedAlgorithm: sandbox hardening skipped for" << context << ":"
+                                << result.toString();
         }
     };
 
@@ -59,6 +61,13 @@ bool hardenSandbox(QJSEngine* engine)
     if (!criticalEval(QStringLiteral("Object.defineProperty(Function.prototype, 'constructor', "
                                      "{value: undefined, writable: false, configurable: false});"),
                       QStringLiteral("Function.prototype.constructor lockdown"))) {
+        return false;
+    }
+    // Freeze Function.prototype BEFORE disabling the Function global (which sets
+    // Function to undefined, making Function.prototype unreachable afterward).
+    // This prevents scripts from restoring the constructor via prototype manipulation.
+    if (!criticalEval(QStringLiteral("Object.freeze(Function.prototype);"),
+                      QStringLiteral("Function.prototype freeze"))) {
         return false;
     }
     // M2: Disable the Function global to prevent dynamic code generation
@@ -142,9 +151,11 @@ bool hardenSandbox(QJSEngine* engine)
         }
     }
 
-    // C-2: Disable globalThis and Symbol to prevent sandbox bypass
-    for (const auto& name : {QLatin1String("globalThis"), QLatin1String("Symbol")}) {
-        disableGlobal(name);
+    // C-2: Disable globalThis to prevent sandbox bypass
+    disableGlobal(QLatin1String("globalThis"));
+    // C-2b: Disable Symbol (critical — prevents Symbol.toPrimitive type-confusion attacks)
+    if (!disableGlobal(QLatin1String("Symbol"), true)) {
+        return false;
     }
 
     // S1: Strip dangerous QJSEngine-provided globals via defineProperty (not deleteProperty)

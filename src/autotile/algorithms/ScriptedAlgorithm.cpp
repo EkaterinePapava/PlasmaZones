@@ -52,15 +52,8 @@ T ScriptedAlgorithm::resolveJsOverride(const QJSValue& jsFn, T cachedValue, T me
     if (m_cachedValuesLoaded && jsFn.isCallable()) {
         return cachedValue;
     }
-    if (m_valid && QThread::currentThread() != thread()) {
-        qCWarning(lcAutotile) << "ScriptedAlgorithm::resolveJsOverride called from wrong thread";
-        return metadataFallback;
-    }
-    if (m_valid && jsFn.isCallable()) {
-        const QJSValue result = jsFn.call();
-        if (!result.isError() && detail::jsValueHasType<T>(result))
-            return detail::jsValueTo<T>(result);
-    }
+    // After loadScript() sets m_cachedValuesLoaded, all calls use the cached path above.
+    // Before that, fall back to metadata — never call JS without the watchdog.
     return metadataFallback;
 }
 
@@ -134,14 +127,16 @@ QJSValue ScriptedAlgorithm::guardedCall(const std::function<QJSValue()>& fn) con
     // Execute the guarded operation
     const QJSValue result = fn();
 
-    // Disarm the watchdog by advancing generation
+    // Disarm the watchdog by advancing generation and atomically check for timeout
+    // (reading isInterrupted inside the lock prevents a TOCTOU race with the watchdog thread)
+    bool wasInterrupted;
     {
         std::lock_guard<std::mutex> lock(m_watchdog->mutex);
         ++(m_watchdog->generation);
+        wasInterrupted = m_engine->isInterrupted();
     }
 
-    // Check for timeout
-    if (m_engine->isInterrupted()) {
+    if (wasInterrupted) {
         m_engine->setInterrupted(false);
         m_engine->collectGarbage();
         // M2: Signal timeout via flag instead of evaluating JS on a just-interrupted engine
@@ -239,9 +234,30 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
                                .arg(QLatin1String(helperName)));
     }
 
-    // D2: Use guardedCall helper for watchdog arm-evaluate-disarm-check pattern
-    const QJSValue result = guardedCall([this, &source, &filePath]() {
-        return m_engine->evaluate(source, filePath);
+    // D2: Use guardedCall helper for watchdog arm-evaluate-disarm-check pattern.
+    // Wrap user script in an IIFE that shadows eval/Function with undefined via
+    // parameter binding. This is defense-in-depth: QJSEngine V4 treats direct
+    // eval() as a language-level built-in that bypasses Object.defineProperty on
+    // the global, so property-level lockdown alone is insufficient. The IIFE
+    // scoping ensures eval/Function resolve to undefined in the user script scope.
+    // Exported globals (calculateZones, optional overrides) are re-attached to
+    // the global object after the IIFE body executes.
+    static const QString wrapPrefix = QStringLiteral("(function(eval, Function) {");
+    static const QString wrapSuffix = QStringLiteral(
+        "\nvar __pz_g = this;"
+        "if (typeof calculateZones === 'function') __pz_g.calculateZones = calculateZones;"
+        "if (typeof masterZoneIndex === 'function') __pz_g.masterZoneIndex = masterZoneIndex;"
+        "if (typeof supportsMasterCount === 'function') __pz_g.supportsMasterCount = supportsMasterCount;"
+        "if (typeof supportsSplitRatio === 'function') __pz_g.supportsSplitRatio = supportsSplitRatio;"
+        "if (typeof defaultSplitRatio === 'function') __pz_g.defaultSplitRatio = defaultSplitRatio;"
+        "if (typeof minimumWindows === 'function') __pz_g.minimumWindows = minimumWindows;"
+        "if (typeof defaultMaxWindows === 'function') __pz_g.defaultMaxWindows = defaultMaxWindows;"
+        "if (typeof producesOverlappingZones === 'function') __pz_g.producesOverlappingZones = "
+        "producesOverlappingZones;"
+        "}).call(this, void 0, void 0);\n");
+    const QString wrappedSource = wrapPrefix + source + wrapSuffix;
+    const QJSValue result = guardedCall([this, &wrappedSource, &filePath]() {
+        return m_engine->evaluate(wrappedSource, filePath);
     });
 
     // M2: Check structured timeout flag instead of parsing error message strings

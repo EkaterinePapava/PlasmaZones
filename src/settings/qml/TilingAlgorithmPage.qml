@@ -245,8 +245,6 @@ Flickable {
                     Layout.maximumWidth: Math.min(Kirigami.Units.gridUnit * 25, parent.width)
 
                     LayoutComboBox {
-                        // "Default" selected — use default algorithm
-
                         id: algorithmCombo
 
                         Layout.alignment: Qt.AlignHCenter

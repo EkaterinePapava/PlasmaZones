@@ -99,7 +99,7 @@ QString lShapeHelperJs()
         "  var bottomTotalGaps = (bottomCount - 1) * gap;"
         "  if ((rightCount > 0 && rightTotalGaps >= rH) || (bottomCount > 0 && bottomTotalGaps >= btmW)) {"
         "    for (var i = 1; i < count; i++) {"
-        "      zones.push({ x: area.x, y: area.y, width: masterW, height: masterH });"
+        "      zones.push({ x: area.x, y: area.y, width: area.width, height: area.height });"
         "    }"
         "    return zones;"
         "  }"
@@ -163,6 +163,7 @@ QString distributeEvenlyHelperJs()
     return QStringLiteral(
         "function distributeEvenly(start, total, count, gap) {"
         "  if (count <= 0) return [];"
+        "  if (total <= 0) { var r = []; for (var i = 0; i < count; i++) r.push({pos: start, size: 1}); return r; }"
         "  if (count === 1) return [{pos: start, size: total}];"
         "  var totalGaps = (count - 1) * gap;"
         "  var tileSize = Math.max(1, Math.round((total - totalGaps) / count));"

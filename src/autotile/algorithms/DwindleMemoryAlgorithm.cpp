@@ -85,8 +85,8 @@ QVector<QRect> DwindleMemoryAlgorithm::calculateZones(const TilingParams& params
     // and calling prepareTilingState() or rebuilding the tree so that subsequent
     // calls can use the persistent tree path. This method receives const state
     // and cannot mutate the tree itself.
-    qCWarning(lcAutotile) << "DwindleMemory: tree leaf count" << (tree ? tree->leafCount() : 0) << "!= window count"
-                          << windowCount << "- falling back to stateless dwindle";
+    qCDebug(lcAutotile) << "DwindleMemory: tree leaf count" << (tree ? tree->leafCount() : 0) << "!= window count"
+                        << windowCount << "- falling back to stateless dwindle";
     return calculateStatelessFallback(params);
 }
 
