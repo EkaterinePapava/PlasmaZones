@@ -288,6 +288,7 @@ Item {
                     implicitHeight: Kirigami.Units.iconSizes.small
                     color: Kirigami.Theme.positiveTextColor
                     opacity: 0.7
+                    Accessible.name: i18n("Persistent algorithm")
                     ToolTip.delay: Kirigami.Units.toolTipDelay
                     ToolTip.visible: memoryIconMA.containsMouse && visible
                     ToolTip.text: i18n("Remembers split positions across window changes")

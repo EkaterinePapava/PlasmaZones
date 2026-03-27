@@ -436,21 +436,28 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
     const QVector<QRect> zones = ScriptedHelpers::jsArrayToRects(result, m_scriptId, MaxZones);
     const QVector<QRect> clamped = ScriptedHelpers::clampZonesToArea(zones, area, m_scriptId);
 
-    // S2: Collect garbage every invocation to limit script memory accumulation
-    m_engine->collectGarbage();
+    // S2: Collect garbage periodically to limit script memory accumulation.
+    // Every-call GC is expensive during frequent retiles (e.g. window drag);
+    // every 8th call balances memory hygiene against jank.
+    if (++m_gcCounter % GcInterval == 0) {
+        m_engine->collectGarbage();
+    }
 
     return clamped;
 }
 
 QJSValue ScriptedAlgorithm::splitNodeToJSValue(const SplitNode* node, int depth) const
 {
-    if (!node || !m_engine) {
+    if (!node || !m_engine || depth > MaxTreeConversionDepth) {
         return QJSValue();
     }
 
     // m-7: Cache Object.freeze once at the top of the recursion instead of looking it up per node
     const QJSValue freezeFn =
         m_engine->globalObject().property(QStringLiteral("Object")).property(QStringLiteral("freeze"));
+    if (!freezeFn.isCallable()) {
+        qCWarning(lcAutotile) << "Object.freeze not callable — tree will be mutable to JS scripts";
+    }
     return splitNodeToJSValueImpl(node, freezeFn, depth);
 }
 

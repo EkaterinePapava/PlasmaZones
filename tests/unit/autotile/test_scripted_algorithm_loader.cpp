@@ -127,10 +127,13 @@ private Q_SLOTS:
 
         std::optional<ScriptedAlgorithmLoader> loader;
         loader.emplace();
+
+        QSignalSpy spy(&*loader, &ScriptedAlgorithmLoader::algorithmsChanged);
         loader->scanAndRegister();
 
         auto* registry = AlgorithmRegistry::instance();
         QVERIFY(registry->hasAlgorithm(QStringLiteral("script:gamma")));
+        QCOMPARE(spy.count(), 1);
 
         // Note: both XDG_DATA_DIRS and XDG_DATA_HOME point to the same directory in this
         // test, so the loader treats it as a user script. The testUserOverridesSystem test

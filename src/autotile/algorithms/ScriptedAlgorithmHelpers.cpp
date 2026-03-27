@@ -29,8 +29,9 @@ QString treeHelperJs()
                "  }"
                "  var ratio = Math.max(0.1, Math.min(0.9, node.ratio || 0.5));"
                "  var zones = [];"
+               "  var content;"
                "  if (node.horizontal) {"
-               "    var content = rect.height - gap;"
+               "    content = rect.height - gap;"
                "    if (content <= 0) {"
                "      zones = zones.concat(applyTreeGeometry(node.first, rect, 0, (_depth||0)+1));"
                "      zones = zones.concat(applyTreeGeometry(node.second, rect, 0, (_depth||0)+1));"
@@ -43,7 +44,7 @@ QString treeHelperJs()
                "        {x: rect.x, y: rect.y + h1 + gap, width: rect.width, height: h2}, gap, (_depth||0)+1));"
                "    }"
                "  } else {"
-               "    var content = rect.width - gap;"
+               "    content = rect.width - gap;"
                "    if (content <= 0) {"
                "      zones = zones.concat(applyTreeGeometry(node.first, rect, 0, (_depth||0)+1));"
                "      zones = zones.concat(applyTreeGeometry(node.second, rect, 0, (_depth||0)+1));"
@@ -66,8 +67,8 @@ QString lShapeHelperJs()
         "function lShapeLayout(area, count, gap, splitRatio, distribute, bottomWidth, rightHeight) {"
         "  splitRatio = Math.max(0.1, Math.min(0.9, splitRatio));"
         "  if (distribute === undefined) distribute = 'alternate';"
-        "  if (bottomWidth === undefined) bottomWidth = area.width * splitRatio;"
-        "  if (rightHeight === undefined) rightHeight = area.height;"
+        "  if (bottomWidth === undefined) bottomWidth = 'master';"
+        "  if (rightHeight === undefined) rightHeight = 'master';"
         "  var masterW = Math.max(1, Math.round(area.width * splitRatio - gap / 2));"
         "  var masterH = Math.max(1, Math.round(area.height * splitRatio - gap / 2));"
         "  var zones = [{ x: area.x, y: area.y, width: masterW, height: masterH }];"
@@ -167,6 +168,8 @@ QString distributeEvenlyHelperJs()
         "  if (total <= 0) { var r = []; for (var i = 0; i < count; i++) r.push({pos: start, size: 1}); return r; }"
         "  if (count === 1) return [{pos: start, size: total}];"
         "  var totalGaps = (count - 1) * gap;"
+        "  if (totalGaps >= total) { var r = []; for (var i = 0; i < count; i++) r.push({pos: start, size: total}); "
+        "return r; }"
         "  var tileSize = Math.max(1, Math.round((total - totalGaps) / count));"
         "  var result = [];"
         "  for (var i = 0; i < count; i++) {"
@@ -197,11 +200,18 @@ QVector<QRect> jsArrayToRects(const QJSValue& result, const QString& scriptId, i
             qCWarning(lcAutotile) << "Skipping non-object zone element at index" << i;
             continue;
         }
+        // Skip zones with missing width/height (e.g. script returned partial objects)
+        const QJSValue wProp = elem.property(QStringLiteral("width"));
+        const QJSValue hProp = elem.property(QStringLiteral("height"));
+        if (wProp.isUndefined() || hProp.isUndefined()) {
+            qCWarning(lcAutotile) << "Skipping zone with missing width/height at index" << i << "script=" << scriptId;
+            continue;
+        }
         // M10: Clamp x and y to non-negative to prevent off-screen zones
         const int x = std::max(0, elem.property(QStringLiteral("x")).toInt());
         const int y = std::max(0, elem.property(QStringLiteral("y")).toInt());
-        int w = elem.property(QStringLiteral("width")).toInt();
-        int h = elem.property(QStringLiteral("height")).toInt();
+        int w = wProp.toInt();
+        int h = hProp.toInt();
 
         // Validate: non-negative dimensions, clamp to at least 1
         w = std::max(1, w);
@@ -235,13 +245,14 @@ ScriptMetadata parseMetadata(const QString& source, const QString& filePath)
 {
     using namespace AutotileDefaults;
     static const QRegularExpression metaRe(QStringLiteral(R"(^\s*// @(\w+)\s+(.+)$)"));
+    static constexpr int MaxMetadataLines = 50;
 
     ScriptMetadata meta;
     int lineCount = 0;
     const auto lines = QStringView(source).split(QLatin1Char('\n'));
 
     for (const auto& lineView : lines) {
-        if (lineCount >= 50)
+        if (lineCount >= MaxMetadataLines)
             break;
         ++lineCount;
         const QString line = lineView.toString();

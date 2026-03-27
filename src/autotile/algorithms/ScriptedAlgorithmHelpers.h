@@ -19,9 +19,9 @@ struct ScriptMetadata
     QString name;
     QString description;
     QString zoneNumberDisplay;
-    qreal defaultSplitRatio = 0.0;
-    int defaultMaxWindows = 0;
-    int minimumWindows = 0;
+    qreal defaultSplitRatio = 0.0; ///< 0.0 = unset, falls back to algorithm default
+    int defaultMaxWindows = 0; ///< 0 = unset, falls back to algorithm default
+    int minimumWindows = 0; ///< 0 = unset, falls back to algorithm default
     int masterZoneIndex = -1;
     bool supportsMasterCount = false;
     bool supportsSplitRatio = false;
