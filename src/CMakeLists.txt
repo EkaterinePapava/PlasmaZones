@@ -253,9 +253,9 @@ if(PlasmaActivities_FOUND)
     endif()
 endif()
 
-# Link LayerShellQt (required for overlay and geometry sensor windows)
+# Link LayerShellQt (used internally by ScreenManager only)
 target_link_libraries(plasmazones_core
-    PUBLIC
+    PRIVATE
         LayerShellQt::Interface
 )
 
