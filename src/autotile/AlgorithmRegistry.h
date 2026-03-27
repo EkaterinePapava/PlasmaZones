@@ -4,7 +4,9 @@
 #pragma once
 
 #include "plasmazones_export.h"
+#include "core/constants.h"
 #include <QHash>
+#include <QLatin1String>
 #include <QList>
 #include <QObject>
 #include <QRect>
@@ -15,6 +17,18 @@
 #include <functional>
 
 namespace PlasmaZones {
+
+/**
+ * @brief Named constants for per-algorithm settings keys
+ *
+ * Used by AlgorithmRegistry, AutotileConfig, and Settings serialization
+ * to avoid key drift between serialization and deserialization sites.
+ * References AutotileJsonKeys from core/constants.h as the single source of truth.
+ */
+namespace PerAlgoKeys {
+inline constexpr auto SplitRatio = AutotileJsonKeys::SplitRatio;
+inline constexpr auto MasterCount = AutotileJsonKeys::MasterCount;
+} // namespace PerAlgoKeys
 
 class TilingAlgorithm;
 
@@ -63,6 +77,16 @@ public:
      * @return Pointer to the global AlgorithmRegistry instance
      */
     static AlgorithmRegistry* instance();
+
+    /**
+     * @brief Early cleanup of all registered algorithms
+     *
+     * Connected to QCoreApplication::aboutToQuit() so that algorithm objects
+     * (especially ScriptedAlgorithm instances with QJSEngine internals) are
+     * destroyed while Qt is still fully alive, avoiding crashes during static
+     * destruction when the singleton outlives QCoreApplication.
+     */
+    void cleanup();
 
     /**
      * @brief Register a tiling algorithm
@@ -171,8 +195,15 @@ public:
         int maxWindows = -1; ///< -1 = use algorithm default
         int masterCount = -1; ///< -1 = use default (1)
         qreal splitRatio = -1.0; ///< -1 = use algorithm default
-        int centeredMasterMasterCount = -1; ///< centered-master override
-        qreal centeredMasterSplitRatio = -1.0; ///< centered-master override
+
+        /**
+         * @brief Per-algorithm saved settings (masterCount, splitRatio)
+         *
+         * Generalised replacement for hard-coded centered-master fields.
+         * Key = algorithm ID, value = QVariantMap with "masterCount" (int)
+         * and "splitRatio" (qreal).
+         */
+        QHash<QString, QVariantMap> savedAlgorithmSettings;
 
         bool operator==(const PreviewParams& other) const;
         bool operator!=(const PreviewParams& other) const
@@ -215,6 +246,29 @@ public:
      * @return QVariantMap suitable for zone selector/OSD
      */
     static QVariantMap algorithmToVariantMap(TilingAlgorithm* algorithm, const QString& algorithmId);
+
+    /**
+     * @brief Section grouping metadata for a tiling algorithm
+     *
+     * Used by both algorithmToVariantMap() and layoututils appendAutotileEntries()
+     * to avoid duplicating the isScripted/isUserScript → section mapping.
+     */
+    struct SectionInfo
+    {
+        QString key;
+        QString label;
+        int order = 0;
+    };
+
+    /**
+     * @brief Get section grouping info for a tiling algorithm
+     *
+     * Returns one of three sections:
+     * - "built-in"   (order 0): Standard C++ algorithms and system-installed scripts
+     * - "persistent" (order 1): Memory-capable algorithms (e.g. DwindleMemory)
+     * - "custom"     (order 2): User-provided scripted algorithms
+     */
+    static SectionInfo sectionForAlgorithm(TilingAlgorithm* algorithm);
 
 Q_SIGNALS:
     /**
@@ -262,7 +316,7 @@ private:
     QHash<QString, TilingAlgorithm*> m_algorithms;
     QStringList m_registrationOrder; ///< Preserve order for UI
 
-    static PreviewParams s_previewParams; ///< User-configured tiling parameters for previews
+    PreviewParams m_previewParams; ///< User-configured tiling parameters for previews
 };
 
 /**

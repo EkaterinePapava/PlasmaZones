@@ -8,9 +8,12 @@
 #include "core/constants.h"
 #include "core/layout.h"
 #include "core/logging.h"
+#include "pz_i18n.h"
 
+#include <QCoreApplication>
 #include <QDebug>
 #include <QRect>
+#include <QThread>
 #include <algorithm>
 
 namespace {
@@ -20,14 +23,11 @@ constexpr int PreviewSize = 1000;
 
 namespace PlasmaZones {
 
-AlgorithmRegistry::PreviewParams AlgorithmRegistry::s_previewParams;
-
 bool AlgorithmRegistry::PreviewParams::operator==(const PreviewParams& other) const
 {
     return algorithmId == other.algorithmId && maxWindows == other.maxWindows && masterCount == other.masterCount
         && qFuzzyCompare(1.0 + splitRatio, 1.0 + other.splitRatio)
-        && centeredMasterMasterCount == other.centeredMasterMasterCount
-        && qFuzzyCompare(1.0 + centeredMasterSplitRatio, 1.0 + other.centeredMasterSplitRatio);
+        && savedAlgorithmSettings == other.savedAlgorithmSettings;
 }
 
 using namespace DBus::AutotileAlgorithm;
@@ -43,14 +43,40 @@ AlgorithmRegistry::AlgorithmRegistry(QObject* parent)
     : QObject(parent)
 {
     registerBuiltInAlgorithms();
+
+    // Connect cleanup to aboutToQuit — safe here because the constructor
+    // runs exactly once under the C++11 static-init guarantee.
+    if (QCoreApplication::instance()) {
+        QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, this,
+                         &AlgorithmRegistry::cleanup);
+    }
 }
 
 AlgorithmRegistry::~AlgorithmRegistry()
 {
-    // Clear the hash first. The TilingAlgorithm objects are QObject children
-    // of this registry, so they will be deleted by ~QObject() after this
-    // destructor completes. We clear the hash to prevent any accidental
-    // access to stale pointers during destruction.
+    // Ensure algorithms are destroyed before ~QObject() runs.
+    // Normally cleanup() has already been called via aboutToQuit(),
+    // but guard against the case where it was not (e.g. no QCoreApplication).
+    cleanup();
+}
+
+void AlgorithmRegistry::cleanup()
+{
+    if (m_algorithms.isEmpty()) {
+        return; // Already cleaned up (e.g., aboutToQuit already ran)
+    }
+
+    // Explicitly delete all algorithm children while Qt is still alive.
+    // This prevents crashes when the static singleton is destroyed after
+    // QCoreApplication during static destruction (ScriptedAlgorithm
+    // instances hold QJSEngine internals that require a live Qt runtime).
+    // Use direct delete instead of deleteLater() — this runs during shutdown
+    // where the event loop may not drain the deferred-delete queue before
+    // ~QObject() tries to destroy remaining children (double-free risk).
+    for (auto* algo : std::as_const(m_algorithms)) {
+        algo->setParent(nullptr);
+        delete algo;
+    }
     m_algorithms.clear();
     m_registrationOrder.clear();
 }
@@ -58,13 +84,16 @@ AlgorithmRegistry::~AlgorithmRegistry()
 AlgorithmRegistry* AlgorithmRegistry::instance()
 {
     // Meyer's singleton: C++11 guarantees thread-safe initialization
-    // of static local variables (§6.7 [stmt.dcl] p4)
+    // of static local variables (§6.7 [stmt.dcl] p4).
+    // The constructor connects cleanup() — no separate connection needed.
     static AlgorithmRegistry s_instance;
     return &s_instance;
 }
 
 void AlgorithmRegistry::registerAlgorithm(const QString& id, TilingAlgorithm* algorithm)
 {
+    Q_ASSERT(!QCoreApplication::instance() || QThread::currentThread() == QCoreApplication::instance()->thread());
+
     // Validate inputs - take ownership and delete on failure to prevent leaks
     if (id.isEmpty()) {
         delete algorithm;
@@ -85,6 +114,8 @@ void AlgorithmRegistry::registerAlgorithm(const QString& id, TilingAlgorithm* al
     }
 
     // Remove existing algorithm with same ID (replacement case)
+    // Preserve registration order position so replacements don't shift to the end
+    int oldIndex = m_registrationOrder.indexOf(id);
     auto* old = removeAlgorithmInternal(id);
     if (old && old != algorithm) {
         old->deleteLater();
@@ -93,7 +124,11 @@ void AlgorithmRegistry::registerAlgorithm(const QString& id, TilingAlgorithm* al
     // Take ownership
     algorithm->setParent(this);
     m_algorithms.insert(id, algorithm);
-    m_registrationOrder.append(id);
+    if (oldIndex >= 0) {
+        m_registrationOrder.insert(oldIndex, id);
+    } else {
+        m_registrationOrder.append(id);
+    }
 
     Q_EMIT algorithmRegistered(id);
 }
@@ -120,6 +155,8 @@ TilingAlgorithm* AlgorithmRegistry::removeAlgorithmInternal(const QString& id)
 
 bool AlgorithmRegistry::unregisterAlgorithm(const QString& id)
 {
+    Q_ASSERT(!QCoreApplication::instance() || QThread::currentThread() == QCoreApplication::instance()->thread());
+
     auto* algorithm = removeAlgorithmInternal(id);
     if (!algorithm) {
         return false;
@@ -233,8 +270,8 @@ QVariantList AlgorithmRegistry::zonesToRelativeGeometry(const QVector<QRect>& zo
             const qreal offset = i * MonoclePreviewOffset;
             relGeo[QLatin1String("x")] = offset;
             relGeo[QLatin1String("y")] = offset;
-            relGeo[QLatin1String("width")] = 1.0 - offset * 2;
-            relGeo[QLatin1String("height")] = 1.0 - offset * 2;
+            relGeo[QLatin1String("width")] = qMax(0.01, 1.0 - offset * 2);
+            relGeo[QLatin1String("height")] = qMax(0.01, 1.0 - offset * 2);
         } else {
             relGeo[QLatin1String("x")] = static_cast<qreal>(zones[i].x()) / previewRect.width();
             relGeo[QLatin1String("y")] = static_cast<qreal>(zones[i].y()) / previewRect.height();
@@ -251,30 +288,30 @@ QVariantList AlgorithmRegistry::zonesToRelativeGeometry(const QVector<QRect>& zo
 
 void AlgorithmRegistry::setConfiguredPreviewParams(const PreviewParams& params)
 {
-    s_previewParams = params;
+    instance()->m_previewParams = params;
 }
 
 const AlgorithmRegistry::PreviewParams& AlgorithmRegistry::configuredPreviewParams()
 {
-    return s_previewParams;
+    return instance()->m_previewParams;
 }
 
 int AlgorithmRegistry::configuredMaxWindows()
 {
-    return s_previewParams.maxWindows;
+    return instance()->m_previewParams.maxWindows;
 }
 
 int AlgorithmRegistry::effectiveMaxWindows(TilingAlgorithm* algorithm)
 {
+    const auto& params = instance()->m_previewParams;
     if (!algorithm) {
-        return s_previewParams.maxWindows;
+        return params.maxWindows;
     }
     // Use the user-configured maxWindows only for the active algorithm.
     // Other algorithms use their own default so each preview is representative.
-    if (s_previewParams.maxWindows > 0 && !s_previewParams.algorithmId.isEmpty()) {
-        auto* inst = instance();
-        if (inst && inst->algorithm(s_previewParams.algorithmId) == algorithm) {
-            return s_previewParams.maxWindows;
+    if (params.maxWindows > 0 && !params.algorithmId.isEmpty()) {
+        if (instance()->algorithm(params.algorithmId) == algorithm) {
+            return params.maxWindows;
         }
     }
     return algorithm->defaultMaxWindows();
@@ -292,25 +329,33 @@ QVariantList AlgorithmRegistry::generatePreviewZones(TilingAlgorithm* algorithm,
         count = effectiveMaxWindows(algorithm);
     }
 
-    // Apply configured params only to the active algorithm (or centered-master's dedicated params).
-    // Non-active algorithms use their own defaults so each preview is representative.
+    // Apply configured params: active algorithm uses global masterCount/splitRatio,
+    // other algorithms check savedAlgorithmSettings for per-algorithm overrides,
+    // and fall back to their own defaults.
     auto* inst = instance();
-    const bool isActive =
-        inst && !s_previewParams.algorithmId.isEmpty() && inst->algorithm(s_previewParams.algorithmId) == algorithm;
-    const bool isCenteredMaster = inst && (algorithm == inst->algorithm(CenteredMaster));
+    const auto& params = inst->m_previewParams;
+    const bool isActive = !params.algorithmId.isEmpty() && inst->algorithm(params.algorithmId) == algorithm;
 
     int masterCount = 1;
     qreal splitRatio = algorithm->defaultSplitRatio();
-    if (isCenteredMaster) {
-        if (s_previewParams.centeredMasterMasterCount > 0)
-            masterCount = s_previewParams.centeredMasterMasterCount;
-        if (s_previewParams.centeredMasterSplitRatio > 0)
-            splitRatio = s_previewParams.centeredMasterSplitRatio;
-    } else if (isActive) {
-        if (s_previewParams.masterCount > 0)
-            masterCount = s_previewParams.masterCount;
-        if (s_previewParams.splitRatio > 0)
-            splitRatio = s_previewParams.splitRatio;
+    if (isActive) {
+        if (params.masterCount > 0)
+            masterCount = params.masterCount;
+        if (params.splitRatio > 0)
+            splitRatio = params.splitRatio;
+    } else {
+        // Look up per-algorithm saved settings from the generalized map
+        const QString algoId = inst->findAlgorithmId(algorithm);
+        const auto it = params.savedAlgorithmSettings.constFind(algoId);
+        if (it != params.savedAlgorithmSettings.constEnd()) {
+            const QVariantMap& saved = it.value();
+            const int savedMasterCount = saved.value(PerAlgoKeys::MasterCount, -1).toInt();
+            const qreal savedSplitRatio = saved.value(PerAlgoKeys::SplitRatio, -1.0).toDouble();
+            if (savedMasterCount > 0)
+                masterCount = savedMasterCount;
+            if (savedSplitRatio > 0)
+                splitRatio = savedSplitRatio;
+        }
     }
 
     // Generate preview zones for a representative window count
@@ -352,8 +397,40 @@ QVariantMap AlgorithmRegistry::algorithmToVariantMap(TilingAlgorithm* algorithm,
     map[QLatin1String("zoneCount")] = effectiveMaxWindows(algorithm);
     map[QLatin1String("zones")] = generatePreviewZones(algorithm);
     map[QLatin1String("category")] = static_cast<int>(LayoutCategory::Autotile);
+    map[QLatin1String("zoneNumberDisplay")] = algorithm->zoneNumberDisplay();
+    if (algorithm->supportsMemory()) {
+        map[QLatin1String("memory")] = true;
+    }
+
+    // Section grouping for LayoutsPage
+    const auto section = sectionForAlgorithm(algorithm);
+    map[QLatin1String("sectionKey")] = section.key;
+    map[QLatin1String("sectionLabel")] = section.label;
+    map[QLatin1String("sectionOrder")] = section.order;
 
     return map;
+}
+
+AlgorithmRegistry::SectionInfo AlgorithmRegistry::sectionForAlgorithm(TilingAlgorithm* algorithm)
+{
+    if (!algorithm) {
+        return {QStringLiteral("built-in"), PzI18n::tr("Built-in"), 0};
+    }
+
+    // User-created scripts get their own section so users can easily
+    // distinguish their custom algorithms from bundled ones.
+    if (algorithm->isScripted() && algorithm->isUserScript()) {
+        return {QStringLiteral("custom"), PzI18n::tr("Custom"), 2};
+    }
+
+    // Memory-enabled algorithms (DwindleMemory, or system scripts with memory)
+    // are grouped separately to highlight their persistent behavior.
+    if (algorithm->supportsMemory()) {
+        return {QStringLiteral("persistent"), PzI18n::tr("Persistent"), 1};
+    }
+
+    // Built-in C++ algorithms and system-installed scripts
+    return {QStringLiteral("built-in"), PzI18n::tr("Built-in"), 0};
 }
 
 } // namespace PlasmaZones

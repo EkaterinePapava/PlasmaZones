@@ -91,6 +91,12 @@ public:
      */
     bool isEnabled() const noexcept;
 
+    /// @brief Read-only access to per-screen tiling states (used by daemon for state persistence)
+    const QHash<TilingStateKey, TilingState*>& screenStates() const
+    {
+        return m_screenStates;
+    }
+
     /**
      * @brief Check if a specific screen uses autotile
      * @param screenId Screen to check
@@ -891,15 +897,10 @@ private:
 
     QSet<QString> m_autotileScreens;
     QString m_algorithmId;
+    bool m_algorithmEverSet = false; ///< True after first successful setAlgorithm() call
     QString m_activeScreen; // Last-focused screen (updated by onWindowFocused)
     QHash<TilingStateKey, TilingState*> m_screenStates; // Owned via Qt parent (this)
-public:
-    const QHash<TilingStateKey, TilingState*>& screenStates() const
-    {
-        return m_screenStates;
-    }
 
-private:
     QHash<QString, TilingStateKey> m_windowToStateKey; // windowId -> owning state key
     QHash<QString, QSize> m_windowMinSizes; // windowId -> minimum size from KWin
 

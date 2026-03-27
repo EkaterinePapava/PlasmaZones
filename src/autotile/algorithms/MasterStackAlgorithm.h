@@ -42,15 +42,29 @@ public:
     // TilingAlgorithm interface
     QString name() const override;
     QString description() const override;
-    QString icon() const noexcept override;
 
     QVector<QRect> calculateZones(const TilingParams& params) const override;
 
-    int masterZoneIndex() const noexcept override;
-    bool supportsMasterCount() const noexcept override;
-    bool supportsSplitRatio() const noexcept override;
-    qreal defaultSplitRatio() const noexcept override;
-    int defaultMaxWindows() const noexcept override;
+    int masterZoneIndex() const override
+    {
+        return 0; // First zone is always master
+    }
+    bool supportsMasterCount() const override
+    {
+        return true;
+    }
+    bool supportsSplitRatio() const override
+    {
+        return true;
+    }
+    qreal defaultSplitRatio() const override
+    {
+        return 0.6; // 60% master
+    }
+    int defaultMaxWindows() const override
+    {
+        return 4; // 1 master + 3 stack
+    }
 };
 
 } // namespace PlasmaZones

@@ -49,36 +49,39 @@ public:
     // TilingAlgorithm interface
     QString name() const override;
     QString description() const override;
-    QString icon() const noexcept override;
 
     QVector<QRect> calculateZones(const TilingParams& params) const override;
 
     // Master is in center (index 0 in our output, but conceptually center)
-    int masterZoneIndex() const noexcept override
+    int masterZoneIndex() const override
     {
         return 0;
     }
 
     // Supports split ratio (center column width) but not master count
-    bool supportsMasterCount() const noexcept override
+    bool supportsMasterCount() const override
     {
         return false;
     }
-    bool supportsSplitRatio() const noexcept override
+    bool supportsSplitRatio() const override
     {
         return true;
     }
-    qreal defaultSplitRatio() const noexcept override
+    qreal defaultSplitRatio() const override
     {
         return 0.5;
     } // Center gets 50%
+    bool centerLayout() const override
+    {
+        return true;
+    }
 
-    // Need at least 3 windows for true three-column layout
-    int minimumWindows() const noexcept override
+    // Degrades gracefully to 1-2 columns for fewer windows
+    int minimumWindows() const override
     {
         return 1;
     }
-    int defaultMaxWindows() const noexcept override
+    int defaultMaxWindows() const override
     {
         return 5;
     }

@@ -29,11 +29,6 @@ QString MonocleAlgorithm::description() const
     return PzI18n::tr("One window fullscreen at a time, cycle through others");
 }
 
-QString MonocleAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-fullscreen");
-}
-
 QVector<QRect> MonocleAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;
@@ -42,7 +37,7 @@ QVector<QRect> MonocleAlgorithm::calculateZones(const TilingParams& params) cons
 
     QVector<QRect> zones;
 
-    if (windowCount <= 0 || !screenGeometry.isValid()) {
+    if (windowCount <= 0 || !screenGeometry.isValid() || !params.state) {
         return zones;
     }
 

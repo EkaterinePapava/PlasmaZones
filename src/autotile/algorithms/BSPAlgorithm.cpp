@@ -15,6 +15,7 @@ using namespace AutotileDefaults;
 // Self-registration: BSP provides balanced recursive splitting (alphabetical priority 10)
 namespace {
 AlgorithmRegistrar<BSPAlgorithm> s_bspRegistrar(DBus::AutotileAlgorithm::BSP, 10);
+constexpr int MaxBSPDepth = 50;
 }
 
 BSPAlgorithm::BSPAlgorithm(QObject* parent)
@@ -30,11 +31,6 @@ QString BSPAlgorithm::name() const
 QString BSPAlgorithm::description() const
 {
     return PzI18n::tr("Balanced recursive splitting into equal regions");
-}
-
-QString BSPAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-grid-symbolic");
 }
 
 QVector<QRect> BSPAlgorithm::calculateZones(const TilingParams& params) const
@@ -90,7 +86,15 @@ QVector<QRect> BSPAlgorithm::calculateZones(const TilingParams& params) const
     if (hasInvalidZone) {
         // Fall back to gap-aware equal columns layout
         zones.clear();
-        const QVector<int> columnWidths = distributeWithGaps(area.width(), windowCount, innerGap);
+        QVector<int> minWidthVec(windowCount, 0);
+        if (!minSizes.isEmpty()) {
+            for (int i = 0; i < windowCount && i < minSizes.size(); ++i) {
+                minWidthVec[i] = minSizes[i].width();
+            }
+        }
+        const QVector<int> columnWidths = minSizes.isEmpty()
+            ? distributeWithGaps(area.width(), windowCount, innerGap)
+            : distributeWithMinSizes(area.width(), windowCount, innerGap, minWidthVec);
         int currentX = area.x();
         for (int i = 0; i < windowCount; ++i) {
             zones.append(QRect(currentX, area.y(), columnWidths[i], area.height()));
@@ -209,13 +213,14 @@ QSize BSPAlgorithm::computeSubtreeMinDims(const BSPNode* node, const QVector<QSi
 }
 
 void BSPAlgorithm::applyGeometry(BSPNode* node, const QRect& rect, int innerGap, const QVector<QSize>& minSizes,
-                                 int leafStartIdx)
+                                 int leafStartIdx, int depth)
 {
-    if (!node) {
+    if (!node || depth > MaxBSPDepth) {
         return;
     }
 
     node->geometry = rect;
+    node->cachedArea = rect.isValid() ? static_cast<qint64>(rect.width()) * rect.height() : 0;
 
     if (node->isLeaf()) {
         return;
@@ -281,8 +286,8 @@ void BSPAlgorithm::applyGeometry(BSPNode* node, const QRect& rect, int innerGap,
             return;
         }
 
-        applyGeometry(node->first.get(), firstRect, innerGap, minSizes, leafStartIdx);
-        applyGeometry(node->second.get(), secondRect, innerGap, minSizes, leafStartIdx + firstChildLeaves);
+        applyGeometry(node->first.get(), firstRect, innerGap, minSizes, leafStartIdx, depth + 1);
+        applyGeometry(node->second.get(), secondRect, innerGap, minSizes, leafStartIdx + firstChildLeaves, depth + 1);
     } else {
         // Split left/right with innerGap between children
         const int contentWidth = rect.width() - innerGap;
@@ -299,22 +304,22 @@ void BSPAlgorithm::applyGeometry(BSPNode* node, const QRect& rect, int innerGap,
             return;
         }
 
-        applyGeometry(node->first.get(), firstRect, innerGap, minSizes, leafStartIdx);
-        applyGeometry(node->second.get(), secondRect, innerGap, minSizes, leafStartIdx + firstChildLeaves);
+        applyGeometry(node->first.get(), firstRect, innerGap, minSizes, leafStartIdx, depth + 1);
+        applyGeometry(node->second.get(), secondRect, innerGap, minSizes, leafStartIdx + firstChildLeaves, depth + 1);
     }
 }
 
-void BSPAlgorithm::collectLeaves(const BSPNode* node, QVector<QRect>& zones)
+void BSPAlgorithm::collectLeaves(const BSPNode* node, QVector<QRect>& zones, int depth)
 {
-    if (!node) {
+    if (!node || depth > MaxBSPDepth) {
         return;
     }
 
     if (node->isLeaf()) {
         zones.append(node->geometry);
     } else {
-        collectLeaves(node->first.get(), zones);
-        collectLeaves(node->second.get(), zones);
+        collectLeaves(node->first.get(), zones, depth + 1);
+        collectLeaves(node->second.get(), zones, depth + 1);
     }
 }
 
@@ -322,39 +327,37 @@ void BSPAlgorithm::collectLeaves(const BSPNode* node, QVector<QRect>& zones)
 // Tree traversal helpers
 // =============================================================================
 
-int BSPAlgorithm::countLeaves(const BSPNode* node)
+int BSPAlgorithm::countLeaves(const BSPNode* node, int depth)
 {
-    if (!node) {
+    if (!node || depth > MaxBSPDepth) {
         return 0;
     }
     if (node->isLeaf()) {
         return 1;
     }
-    return countLeaves(node->first.get()) + countLeaves(node->second.get());
+    return countLeaves(node->first.get(), depth + 1) + countLeaves(node->second.get(), depth + 1);
 }
 
-BSPAlgorithm::BSPNode* BSPAlgorithm::largestLeaf(BSPNode* node)
+BSPAlgorithm::BSPNode* BSPAlgorithm::largestLeaf(BSPNode* node, int depth)
 {
-    if (!node) {
+    if (!node || depth > MaxBSPDepth) {
         return nullptr;
     }
     if (node->isLeaf()) {
         return node;
     }
 
-    BSPNode* left = largestLeaf(node->first.get());
-    BSPNode* right = largestLeaf(node->second.get());
+    BSPNode* left = largestLeaf(node->first.get(), depth + 1);
+    BSPNode* right = largestLeaf(node->second.get(), depth + 1);
 
     if (!left)
         return right;
     if (!right)
         return left;
 
-    // Compare areas when geometries are available
-    const qint64 leftArea =
-        left->geometry.isValid() ? static_cast<qint64>(left->geometry.width()) * left->geometry.height() : 0;
-    const qint64 rightArea =
-        right->geometry.isValid() ? static_cast<qint64>(right->geometry.width()) * right->geometry.height() : 0;
+    // Compare cached areas set during applyGeometry
+    const qint64 leftArea = left->cachedArea;
+    const qint64 rightArea = right->cachedArea;
 
     // Fallback to right (deepest) when no geometry is available
     if (leftArea == 0 && rightArea == 0) {

@@ -40,23 +40,22 @@ public:
     // TilingAlgorithm interface
     QString name() const override;
     QString description() const override;
-    QString icon() const noexcept override;
 
     QVector<QRect> calculateZones(const TilingParams& params) const override;
 
-    bool supportsMasterCount() const noexcept override
+    bool supportsMasterCount() const override
     {
         return false;
     }
-    bool supportsSplitRatio() const noexcept override
+    bool supportsSplitRatio() const override
     {
         return true;
     }
-    qreal defaultSplitRatio() const noexcept override
+    qreal defaultSplitRatio() const override
     {
         return 0.5;
     }
-    int defaultMaxWindows() const noexcept override
+    int defaultMaxWindows() const override
     {
         return 5;
     }
@@ -73,6 +72,7 @@ private:
         qreal splitRatio = 0.5; ///< How to divide this node's space
         bool splitHorizontal = false; ///< true = top/bottom, false = left/right
         QRect geometry; ///< Computed geometry (set during layout pass)
+        qint64 cachedArea = 0; ///< Cached area from applyGeometry (avoids recompute)
         std::unique_ptr<BSPNode> first;
         std::unique_ptr<BSPNode> second;
         BSPNode* parent = nullptr; ///< Non-owning back-pointer
@@ -113,7 +113,7 @@ private:
      * @param leafStartIdx Index of the first leaf in minSizes for this subtree
      */
     static void applyGeometry(BSPNode* node, const QRect& rect, int innerGap, const QVector<QSize>& minSizes,
-                              int leafStartIdx);
+                              int leafStartIdx, int depth = 0);
 
     /**
      * @brief Compute minimum width and height required by a subtree
@@ -131,12 +131,12 @@ private:
     /**
      * @brief Collect leaf geometries in tree order (left-to-right, top-to-bottom)
      */
-    static void collectLeaves(const BSPNode* node, QVector<QRect>& zones);
+    static void collectLeaves(const BSPNode* node, QVector<QRect>& zones, int depth = 0);
 
     /**
      * @brief Count the number of leaf nodes in a subtree
      */
-    static int countLeaves(const BSPNode* node);
+    static int countLeaves(const BSPNode* node, int depth = 0);
 
     /**
      * @brief Find the leaf with the largest area (best candidate to split)
@@ -146,7 +146,7 @@ private:
      * Falls back to deepest-rightmost when geometries haven't been
      * assigned yet (first build pass).
      */
-    static BSPNode* largestLeaf(BSPNode* node);
+    static BSPNode* largestLeaf(BSPNode* node, int depth = 0);
 
     /**
      * @brief Choose split direction for a node based on its geometry

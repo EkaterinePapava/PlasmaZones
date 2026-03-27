@@ -33,11 +33,6 @@ QString CenteredMasterAlgorithm::description() const
     return PzI18n::tr("Master windows centered with stacks on both sides");
 }
 
-QString CenteredMasterAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-split-left-right");
-}
-
 QVector<QRect> CenteredMasterAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;
@@ -87,20 +82,7 @@ QVector<QRect> CenteredMasterAlgorithm::calculateZones(const TilingParams& param
         if (!minSizes.isEmpty()) {
             const int minMW = minWidthAt(minSizes, 0);
             const int minSW = minWidthAt(minSizes, masterCount);
-            const int totalMin = std::max(minMW, 0) + std::max(minSW, 0);
-            if (totalMin > contentWidth && totalMin > 0) {
-                masterWidth = static_cast<int>(static_cast<qint64>(contentWidth) * std::max(minMW, 1) / totalMin);
-                stackWidth = contentWidth - masterWidth;
-            } else {
-                if (minMW > 0 && masterWidth < minMW) {
-                    masterWidth = minMW;
-                    stackWidth = contentWidth - masterWidth;
-                }
-                if (minSW > 0 && stackWidth < minSW) {
-                    stackWidth = minSW;
-                    masterWidth = contentWidth - stackWidth;
-                }
-            }
+            solveTwoPartMinSizes(contentWidth, masterWidth, stackWidth, minMW, minSW);
         }
 
         // Masters stacked vertically on left

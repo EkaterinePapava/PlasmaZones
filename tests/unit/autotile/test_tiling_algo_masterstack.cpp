@@ -62,7 +62,6 @@ private Q_SLOTS:
     {
         MasterStackAlgorithm algo;
         QCOMPARE(algo.name(), QStringLiteral("Master + Stack"));
-        QVERIFY(!algo.icon().isEmpty());
         QVERIFY(algo.supportsMasterCount());
         QVERIFY(algo.supportsSplitRatio());
         QCOMPARE(algo.masterZoneIndex(), 0);
@@ -176,7 +175,6 @@ private Q_SLOTS:
     {
         ColumnsAlgorithm algo;
         QCOMPARE(algo.name(), QStringLiteral("Columns"));
-        QVERIFY(!algo.icon().isEmpty());
         QVERIFY(!algo.supportsMasterCount());
         QVERIFY(!algo.supportsSplitRatio());
         QCOMPARE(algo.masterZoneIndex(), -1);
@@ -255,7 +253,6 @@ private Q_SLOTS:
     {
         BSPAlgorithm algo;
         QCOMPARE(algo.name(), QStringLiteral("Binary Split"));
-        QVERIFY(!algo.icon().isEmpty());
         QVERIFY(!algo.supportsMasterCount());
         QVERIFY(algo.supportsSplitRatio());
         QCOMPARE(algo.masterZoneIndex(), -1);
@@ -362,7 +359,6 @@ private Q_SLOTS:
     {
         DwindleAlgorithm algo;
         QCOMPARE(algo.name(), QStringLiteral("Dwindle"));
-        QVERIFY(!algo.icon().isEmpty());
         QVERIFY(!algo.supportsMasterCount());
         QVERIFY(algo.supportsSplitRatio());
         QCOMPARE(algo.masterZoneIndex(), -1);

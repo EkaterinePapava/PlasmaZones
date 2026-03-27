@@ -16,7 +16,57 @@ Flickable {
     property alias selectedScreenName: psHelper.selectedScreenName
     readonly property alias isPerScreen: psHelper.isPerScreen
     readonly property alias hasOverrides: psHelper.hasOverrides
+    // m-13: Cache availableAlgorithms() to avoid calling it on every binding re-evaluation
+    property var _cachedAlgos: settingsController.availableAlgorithms()
     readonly property string effectiveAlgorithm: settingValue("Algorithm", appSettings.autotileAlgorithm)
+    // Derive algorithm ID from the combo's current selection (tracks UI immediately,
+    // not delayed by D-Bus round-trip to daemon)
+    readonly property string selectedAlgorithm: {
+        if (!algorithmCombo)
+            return root.effectiveAlgorithm;
+
+        let val = algorithmCombo.currentValue;
+        if (!val || val === "")
+            return root.effectiveAlgorithm;
+
+        if (val.startsWith("autotile:"))
+            return val.substring(9);
+
+        return val;
+    }
+    // Data-driven algorithm capabilities (lookup from cached availableAlgorithms by ID)
+    readonly property var algoCapabilities: {
+        const algos = root._cachedAlgos;
+        const algoId = root.selectedAlgorithm;
+        for (let i = 0; i < algos.length; i++) {
+            if (algos[i].id === algoId)
+                return algos[i];
+
+        }
+        return null;
+    }
+    readonly property bool algoSupportsSplitRatio: algoCapabilities ? (algoCapabilities.supportsSplitRatio === true) : false
+    readonly property bool algoSupportsMasterCount: algoCapabilities ? (algoCapabilities.supportsMasterCount === true) : false
+    // Whether the algorithm uses a center layout (ratio/count labels say "Center" instead of "Master").
+    // Check capabilities map first (for future extensibility via scripted algorithm metadata),
+    // falling back to hardcoded IDs for built-in algorithms. See PR #256 / M13.
+    readonly property bool algoCenterLayout: algoCapabilities ? (algoCapabilities.centerLayout === true) : (root.selectedAlgorithm === "three-column" || root.selectedAlgorithm === "centered-master")
+
+    function savedAlgoSetting(key, fallback) {
+        // For the active algorithm, prefer the live global setting over the
+        // per-algorithm map (which is only updated on algorithm switch).
+        if (root.selectedAlgorithm === root.effectiveAlgorithm) {
+            if (key === "splitRatio")
+                return root.settingValue("SplitRatio", appSettings.autotileSplitRatio);
+
+            if (key === "masterCount")
+                return root.settingValue("MasterCount", appSettings.autotileMasterCount);
+
+        }
+        var perAlgo = appSettings.autotilePerAlgorithmSettings;
+        var entry = perAlgo ? perAlgo[root.selectedAlgorithm] : null;
+        return (entry && entry[key] !== undefined) ? entry[key] : fallback;
+    }
 
     function settingValue(key, globalValue) {
         return psHelper.settingValue(key, globalValue);
@@ -28,6 +78,14 @@ Flickable {
 
     contentHeight: content.implicitHeight
     clip: true
+
+    Connections {
+        function onAvailableAlgorithmsChanged() {
+            root._cachedAlgos = settingsController.availableAlgorithms();
+        }
+
+        target: settingsController
+    }
 
     PerScreenOverrideHelper {
         id: psHelper
@@ -59,150 +117,58 @@ Flickable {
         // =================================================================
         // Gaps Card (per-monitor)
         // =================================================================
-        SettingsCard {
+        GapsSettingsCard {
             Layout.fillWidth: true
-            headerText: i18n("Gaps")
-            collapsible: true
-
-            contentItem: Kirigami.FormLayout {
-                SettingsSpinBox {
-                    formLabel: i18n("Inner gap:")
-                    from: settingsController.autotileGapMin
-                    to: root.gapMax
-                    value: root.settingValue("InnerGap", appSettings.autotileInnerGap)
-                    tooltipText: i18n("Gap between tiled windows")
-                    onValueModified: (value) => {
-                        return root.writeSetting("InnerGap", value, function(v) {
-                            appSettings.autotileInnerGap = v;
-                        });
-                    }
-                }
-
-                RowLayout {
-                    Kirigami.FormData.label: i18n("Outer gap:")
-                    spacing: Kirigami.Units.smallSpacing
-
-                    SpinBox {
-                        from: 0
-                        to: root.gapMax
-                        value: root.settingValue("OuterGap", appSettings.autotileOuterGap)
-                        enabled: !tilePerSideCheck.checked
-                        onValueModified: root.writeSetting("OuterGap", value, function(v) {
-                            appSettings.autotileOuterGap = v;
-                        })
-                        ToolTip.visible: hovered
-                        ToolTip.text: i18n("Gap from screen edges")
-                    }
-
-                    Label {
-                        text: i18n("px")
-                        visible: !tilePerSideCheck.checked
-                    }
-
-                    CheckBox {
-                        id: tilePerSideCheck
-
-                        text: i18n("Set per side")
-                        checked: root.settingValue("UsePerSideOuterGap", appSettings.autotileUsePerSideOuterGap)
-                        onToggled: root.writeSetting("UsePerSideOuterGap", checked, function(v) {
-                            appSettings.autotileUsePerSideOuterGap = v;
-                        })
-                    }
-
-                }
-
-                GridLayout {
-                    Kirigami.FormData.label: i18n("Per-side gaps:")
-                    visible: tilePerSideCheck.checked
-                    columns: 6
-                    columnSpacing: Kirigami.Units.smallSpacing
-                    rowSpacing: Kirigami.Units.smallSpacing
-
-                    Label {
-                        text: i18n("Top:")
-                    }
-
-                    SpinBox {
-                        from: 0
-                        to: root.gapMax
-                        value: root.settingValue("OuterGapTop", appSettings.autotileOuterGapTop)
-                        onValueModified: root.writeSetting("OuterGapTop", value, function(v) {
-                            appSettings.autotileOuterGapTop = v;
-                        })
-                        Accessible.name: i18nc("@label", "Top edge gap")
-                    }
-
-                    Label {
-                        text: i18nc("@label", "px")
-                    }
-
-                    Label {
-                        text: i18n("Bottom:")
-                    }
-
-                    SpinBox {
-                        from: 0
-                        to: root.gapMax
-                        value: root.settingValue("OuterGapBottom", appSettings.autotileOuterGapBottom)
-                        onValueModified: root.writeSetting("OuterGapBottom", value, function(v) {
-                            appSettings.autotileOuterGapBottom = v;
-                        })
-                        Accessible.name: i18nc("@label", "Bottom edge gap")
-                    }
-
-                    Label {
-                        text: i18nc("@label", "px")
-                    }
-
-                    Label {
-                        text: i18n("Left:")
-                    }
-
-                    SpinBox {
-                        from: 0
-                        to: root.gapMax
-                        value: root.settingValue("OuterGapLeft", appSettings.autotileOuterGapLeft)
-                        onValueModified: root.writeSetting("OuterGapLeft", value, function(v) {
-                            appSettings.autotileOuterGapLeft = v;
-                        })
-                        Accessible.name: i18nc("@label", "Left edge gap")
-                    }
-
-                    Label {
-                        text: i18nc("@label", "px")
-                    }
-
-                    Label {
-                        text: i18n("Right:")
-                    }
-
-                    SpinBox {
-                        from: 0
-                        to: root.gapMax
-                        value: root.settingValue("OuterGapRight", appSettings.autotileOuterGapRight)
-                        onValueModified: root.writeSetting("OuterGapRight", value, function(v) {
-                            appSettings.autotileOuterGapRight = v;
-                        })
-                        Accessible.name: i18nc("@label", "Right edge gap")
-                    }
-
-                    Label {
-                        text: i18nc("@label", "px")
-                    }
-
-                }
-
-                CheckBox {
-                    Kirigami.FormData.label: i18n("Smart gaps:")
-                    text: i18n("Hide gaps when only one window is tiled")
-                    checked: root.settingValue("SmartGaps", appSettings.autotileSmartGaps)
-                    onToggled: root.writeSetting("SmartGaps", checked, function(v) {
-                        appSettings.autotileSmartGaps = v;
-                    })
-                }
-
+            gapMax: root.gapMax
+            gapMin: settingsController.autotileGapMin
+            innerGapValue: root.settingValue("InnerGap", appSettings.autotileInnerGap)
+            outerGapValue: root.settingValue("OuterGap", appSettings.autotileOuterGap)
+            usePerSideOuterGap: root.settingValue("UsePerSideOuterGap", appSettings.autotileUsePerSideOuterGap)
+            smartGapsValue: root.settingValue("SmartGaps", appSettings.autotileSmartGaps)
+            outerGapTopValue: root.settingValue("OuterGapTop", appSettings.autotileOuterGapTop)
+            outerGapBottomValue: root.settingValue("OuterGapBottom", appSettings.autotileOuterGapBottom)
+            outerGapLeftValue: root.settingValue("OuterGapLeft", appSettings.autotileOuterGapLeft)
+            outerGapRightValue: root.settingValue("OuterGapRight", appSettings.autotileOuterGapRight)
+            onInnerGapModified: (value) => {
+                return root.writeSetting("InnerGap", value, function(v) {
+                    appSettings.autotileInnerGap = v;
+                });
             }
-
+            onOuterGapModified: (value) => {
+                return root.writeSetting("OuterGap", value, function(v) {
+                    appSettings.autotileOuterGap = v;
+                });
+            }
+            onUsePerSideOuterGapToggled: (checked) => {
+                return root.writeSetting("UsePerSideOuterGap", checked, function(v) {
+                    appSettings.autotileUsePerSideOuterGap = v;
+                });
+            }
+            onOuterGapTopModified: (value) => {
+                return root.writeSetting("OuterGapTop", value, function(v) {
+                    appSettings.autotileOuterGapTop = v;
+                });
+            }
+            onOuterGapBottomModified: (value) => {
+                return root.writeSetting("OuterGapBottom", value, function(v) {
+                    appSettings.autotileOuterGapBottom = v;
+                });
+            }
+            onOuterGapLeftModified: (value) => {
+                return root.writeSetting("OuterGapLeft", value, function(v) {
+                    appSettings.autotileOuterGapLeft = v;
+                });
+            }
+            onOuterGapRightModified: (value) => {
+                return root.writeSetting("OuterGapRight", value, function(v) {
+                    appSettings.autotileOuterGapRight = v;
+                });
+            }
+            onSmartGapsToggled: (checked) => {
+                return root.writeSetting("SmartGaps", checked, function(v) {
+                    appSettings.autotileSmartGaps = v;
+                });
+            }
         }
 
         // =================================================================
@@ -242,10 +208,18 @@ Flickable {
                                 anchors.margins: Kirigami.Units.smallSpacing
                                 appSettings: settingsController
                                 showLabel: false
-                                algorithmId: root.effectiveAlgorithm
+                                algorithmId: root.selectedAlgorithm
+                                algorithmName: root.algoCapabilities ? (root.algoCapabilities.name || "") : ""
                                 windowCount: previewWindowSlider.slider.value
-                                splitRatio: root.effectiveAlgorithm === "centered-master" ? (root.settingValue("SplitRatio", appSettings.autotileCenteredMasterSplitRatio) || 0.5) : (root.settingValue("SplitRatio", appSettings.autotileSplitRatio) || 0.6)
-                                masterCount: root.effectiveAlgorithm === "centered-master" ? (root.settingValue("MasterCount", appSettings.autotileCenteredMasterMasterCount) || 1) : (root.settingValue("MasterCount", appSettings.autotileMasterCount) || 1)
+                                splitRatio: {
+                                    // When user is dragging the slider, use live value
+                                    if (splitRatioSlider.slider.pressed)
+                                        return splitRatioSlider.slider.value;
+
+                                    return root.savedAlgoSetting("splitRatio", root.algoCapabilities ? root.algoCapabilities.defaultSplitRatio : 0.6);
+                                }
+                                masterCount: root.savedAlgoSetting("masterCount", 1)
+                                zoneNumberDisplay: root.algoCapabilities ? (root.algoCapabilities.zoneNumberDisplay || "all") : "all"
                             }
 
                         }
@@ -264,61 +238,48 @@ Flickable {
 
                 }
 
-                // Algorithm selection - centered
+                // Algorithm selection - uses LayoutComboBox with preview thumbnails
                 ColumnLayout {
                     Layout.alignment: Qt.AlignHCenter
                     spacing: Kirigami.Units.smallSpacing
                     Layout.maximumWidth: Math.min(Kirigami.Units.gridUnit * 25, parent.width)
 
-                    WideComboBox {
+                    LayoutComboBox {
                         id: algorithmCombo
 
                         Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
                         Accessible.name: i18n("Tiling algorithm")
-                        textRole: "name"
-                        valueRole: "id"
-                        model: settingsController.availableAlgorithms()
-                        Component.onCompleted: currentIndex = Math.max(0, indexOfValue(root.effectiveAlgorithm))
+                        appSettings: settingsController
+                        showPreview: true
+                        layoutFilter: 1 // Autotile algorithms only
+                        showNoneOption: false
+                        currentLayoutId: "autotile:" + root.effectiveAlgorithm
                         onActivated: {
-                            root.writeSetting("Algorithm", currentValue, function(v) {
+                            // Extract algorithm ID from autotile: prefixed value
+                            let selectedId = algorithmCombo.currentValue;
+                            if (selectedId === "")
+                                selectedId = settingsController.autotileAlgorithm;
+                            else if (selectedId.startsWith("autotile:"))
+                                selectedId = selectedId.substring(9);
+                            root.writeSetting("Algorithm", selectedId, function(v) {
                                 appSettings.autotileAlgorithm = v;
                             });
-                            // Reset max windows to the new algorithm's default
-                            let algoData = model[currentIndex];
-                            if (algoData && algoData.defaultMaxWindows !== undefined)
-                                root.writeSetting("MaxWindows", algoData.defaultMaxWindows, function(v) {
-                                appSettings.autotileMaxWindows = v;
+                            // Reset maxWindows to the new algorithm's default.
+                            // Use Qt.callLater so algoCapabilities binding has
+                            // re-evaluated with the newly selected algorithm.
+                            Qt.callLater(function() {
+                                if (root.algoCapabilities) {
+                                    var newDefault = root.algoCapabilities.defaultMaxWindows || 6;
+                                    if (previewWindowSlider) {
+                                        previewWindowSlider.slider.value = newDefault;
+                                        root.writeSetting("MaxWindows", newDefault, function(v) {
+                                            appSettings.autotileMaxWindows = v;
+                                        });
+                                    }
+                                }
                             });
-
                         }
-                        ToolTip.visible: hovered
-                        ToolTip.text: i18n("Select how windows are automatically arranged on screen")
-
-                        // Re-sync when the effective algorithm changes externally
-                        Connections {
-                            function onEffectiveAlgorithmChanged() {
-                                algorithmCombo.currentIndex = Math.max(0, algorithmCombo.indexOfValue(root.effectiveAlgorithm));
-                            }
-
-                            target: root
-                        }
-
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignHCenter
-                        text: {
-                            const model = algorithmCombo.model;
-                            const idx = algorithmCombo.currentIndex;
-                            if (model && idx >= 0 && idx < model.length)
-                                return model[idx].description || "";
-
-                            return "";
-                        }
-                        wrapMode: Text.WordWrap
-                        opacity: 0.7
                     }
 
                 }
@@ -339,8 +300,9 @@ Flickable {
                         id: previewWindowSlider
 
                         Layout.fillWidth: true
+                        Accessible.name: i18n("Maximum preview windows")
                         from: settingsController.autotileMaxWindowsMin
-                        to: 12
+                        to: 12 // Intentional cap — most algorithms degrade beyond 12 windows; settingsController does not expose autotileMaxWindowsMax to QML
                         stepSize: 1
                         formatValue: function(v) {
                             return Math.round(v).toString();
@@ -368,7 +330,7 @@ Flickable {
                     Layout.fillWidth: true
                     Layout.maximumWidth: Math.min(Kirigami.Units.gridUnit * 20, parent.width)
                     spacing: Kirigami.Units.smallSpacing
-                    visible: root.effectiveAlgorithm === "master-stack" || root.effectiveAlgorithm === "three-column" || root.effectiveAlgorithm === "centered-master"
+                    visible: root.algoSupportsSplitRatio || root.algoSupportsMasterCount
 
                     Kirigami.Separator {
                         Layout.fillWidth: true
@@ -378,7 +340,7 @@ Flickable {
                     // Master/Center ratio
                     Label {
                         Layout.alignment: Qt.AlignHCenter
-                        text: root.effectiveAlgorithm === "three-column" || root.effectiveAlgorithm === "centered-master" ? i18n("Center Ratio") : i18n("Master Ratio")
+                        text: root.algoCenterLayout ? i18n("Center Ratio") : i18n("Master Ratio")
                         font.weight: Font.DemiBold
                     }
 
@@ -386,6 +348,7 @@ Flickable {
                         id: splitRatioSlider
 
                         Layout.fillWidth: true
+                        Accessible.name: root.algoCenterLayout ? i18n("Center ratio") : i18n("Master ratio")
                         from: settingsController.autotileSplitRatioMin
                         to: 0.9
                         stepSize: 0.05
@@ -393,12 +356,10 @@ Flickable {
                             return Math.round(v * 100) + "%";
                         }
                         onMoved: (value) => {
-                            if (root.effectiveAlgorithm === "centered-master")
-                                root.writeSetting("SplitRatio", value, function(v) {
-                                appSettings.autotileCenteredMasterSplitRatio = v;
-                            });
-                            else
-                                root.writeSetting("SplitRatio", value, function(v) {
+                            // Write to the global split ratio — the engine's
+                            // setAlgorithm() save/restore logic persists it
+                            // into the per-algorithm map on algorithm switch.
+                            root.writeSetting("SplitRatio", value, function(v) {
                                 appSettings.autotileSplitRatio = v;
                             });
                         }
@@ -407,7 +368,7 @@ Flickable {
                     Binding {
                         target: splitRatioSlider.slider
                         property: "value"
-                        value: root.effectiveAlgorithm === "centered-master" ? root.settingValue("SplitRatio", appSettings.autotileCenteredMasterSplitRatio) : root.settingValue("SplitRatio", appSettings.autotileSplitRatio)
+                        value: root.savedAlgoSetting("splitRatio", root.algoCapabilities ? root.algoCapabilities.defaultSplitRatio : 0.6)
                         when: !splitRatioSlider.slider.pressed
                         restoreMode: Binding.RestoreNone
                     }
@@ -416,10 +377,10 @@ Flickable {
                     RowLayout {
                         Layout.alignment: Qt.AlignHCenter
                         spacing: Kirigami.Units.smallSpacing
-                        visible: root.effectiveAlgorithm === "master-stack" || root.effectiveAlgorithm === "centered-master"
+                        visible: root.algoSupportsMasterCount
 
                         Label {
-                            text: root.effectiveAlgorithm === "centered-master" ? i18n("Center count:") : i18n("Master count:")
+                            text: root.algoCenterLayout ? i18n("Center count:") : i18n("Master count:")
                         }
 
                         SpinBox {
@@ -428,21 +389,16 @@ Flickable {
                             from: settingsController.autotileMasterCountMin
                             to: 5
                             onValueModified: {
-                                if (root.effectiveAlgorithm === "centered-master")
-                                    root.writeSetting("MasterCount", value, function(v) {
-                                    appSettings.autotileCenteredMasterMasterCount = v;
-                                });
-                                else
-                                    root.writeSetting("MasterCount", value, function(v) {
+                                root.writeSetting("MasterCount", value, function(v) {
                                     appSettings.autotileMasterCount = v;
                                 });
                             }
-                            Accessible.name: root.effectiveAlgorithm === "centered-master" ? i18n("Center count") : i18n("Master count")
+                            Accessible.name: root.algoCenterLayout ? i18n("Center count") : i18n("Master count")
                             ToolTip.visible: hovered
-                            ToolTip.text: root.effectiveAlgorithm === "centered-master" ? i18n("Number of windows in the center area") : i18n("Number of windows in the master area")
+                            ToolTip.text: root.algoCenterLayout ? i18n("Number of windows in the center area") : i18n("Number of windows in the master area")
 
                             Binding on value {
-                                value: root.effectiveAlgorithm === "centered-master" ? root.settingValue("MasterCount", appSettings.autotileCenteredMasterMasterCount) : root.settingValue("MasterCount", appSettings.autotileMasterCount)
+                                value: root.savedAlgoSetting("masterCount", 1)
                                 when: !masterCountSpinBox.activeFocus
                                 restoreMode: Binding.RestoreNone
                             }

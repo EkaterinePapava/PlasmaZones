@@ -45,29 +45,32 @@ public:
 
     QString name() const override;
     QString description() const override;
-    QString icon() const noexcept override;
 
     QVector<QRect> calculateZones(const TilingParams& params) const override;
 
-    bool supportsMasterCount() const noexcept override
+    bool supportsMasterCount() const override
     {
         return false;
     }
-    bool supportsSplitRatio() const noexcept override
+    bool supportsSplitRatio() const override
     {
         return true;
     }
-    qreal defaultSplitRatio() const noexcept override
+    qreal defaultSplitRatio() const override
     {
         return 0.15;
     }
-    int defaultMaxWindows() const noexcept override
+    int defaultMaxWindows() const override
     {
         return 5;
     }
-    bool producesOverlappingZones() const noexcept override
+    bool producesOverlappingZones() const override
     {
         return true;
+    }
+    QString zoneNumberDisplay() const noexcept override
+    {
+        return QStringLiteral("last");
     }
 };
 

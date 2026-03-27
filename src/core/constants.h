@@ -195,6 +195,10 @@ constexpr bool DefaultFocusNewWindows = true;
 constexpr int MinMaxWindows = 1;
 constexpr int MaxMaxWindows = 12;
 constexpr int DefaultMaxWindows = 6;
+constexpr int MaxZones = 256;
+constexpr int MaxRuntimeTreeDepth = 50; ///< Maximum recursion depth for split tree operations
+constexpr int MinMetadataWindows = 1;
+constexpr int MaxMetadataWindows = 100;
 constexpr int MinInsertPosition = 0;
 constexpr int MaxInsertPosition = 2;
 constexpr int MinAnimationDuration = 50;
@@ -362,6 +366,7 @@ inline constexpr QLatin1String MasterCount{"masterCount"};
 inline constexpr QLatin1String SplitRatio{"splitRatio"};
 
 // AutotileConfig keys
+inline constexpr QLatin1String PerAlgorithmSettings{"perAlgorithmSettings"};
 inline constexpr QLatin1String AlgorithmId{"algorithmId"};
 inline constexpr QLatin1String InnerGap{"innerGap"};
 inline constexpr QLatin1String OuterGap{"outerGap"};
@@ -377,10 +382,13 @@ inline constexpr QLatin1String FocusFollowsMouse{"focusFollowsMouse"};
 inline constexpr QLatin1String InsertPosition{"insertPosition"};
 inline constexpr QLatin1String RespectMinimumSize{"respectMinimumSize"};
 inline constexpr QLatin1String MaxWindows{"maxWindows"};
+inline constexpr QLatin1String CenteredMasterSplitRatio{"centeredMasterSplitRatio"};
+inline constexpr QLatin1String CenteredMasterMasterCount{"centeredMasterMasterCount"};
 // InsertPosition values
 inline constexpr QLatin1String InsertEnd{"end"};
 inline constexpr QLatin1String InsertAfterFocused{"afterFocused"};
 inline constexpr QLatin1String InsertAsMaster{"asMaster"};
+inline constexpr QLatin1String SplitTreeKey{"splitTree"};
 }
 
 /**
@@ -418,6 +426,7 @@ inline constexpr QLatin1String BSP{"bsp"};
 inline constexpr QLatin1String Columns{"columns"};
 inline constexpr QLatin1String Rows{"rows"};
 inline constexpr QLatin1String Dwindle{"dwindle"};
+inline constexpr QLatin1String DwindleMemory{"dwindle-memory"};
 inline constexpr QLatin1String Spiral{"spiral"};
 inline constexpr QLatin1String Monocle{"monocle"};
 inline constexpr QLatin1String ThreeColumn{"three-column"};

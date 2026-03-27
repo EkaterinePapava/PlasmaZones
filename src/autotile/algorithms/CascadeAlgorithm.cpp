@@ -11,6 +11,8 @@
 namespace PlasmaZones {
 
 namespace {
+constexpr qreal CascadeMinOffset = 0.02;
+constexpr qreal CascadeMaxOffset = 0.4;
 AlgorithmRegistrar<CascadeAlgorithm> s_cascadeRegistrar(DBus::AutotileAlgorithm::Cascade, 120);
 }
 
@@ -29,22 +31,22 @@ QString CascadeAlgorithm::description() const
     return PzI18n::tr("Overlapping windows in a diagonal cascade");
 }
 
-QString CascadeAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-file-columns");
-}
-
 QVector<QRect> CascadeAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;
     const auto& screenGeometry = params.screenGeometry;
     const auto& outerGaps = params.outerGaps;
+    const auto& minSizes = params.minSizes;
 
     QVector<QRect> zones;
 
-    if (windowCount <= 0 || !screenGeometry.isValid()) {
+    if (windowCount <= 0 || !screenGeometry.isValid() || !params.state) {
         return zones;
     }
+
+    const auto& state = *params.state;
+
+    // Overlapping layout — innerGap intentionally ignored (zones overlap by design)
 
     const QRect area = innerRect(screenGeometry, outerGaps);
 
@@ -54,7 +56,7 @@ QVector<QRect> CascadeAlgorithm::calculateZones(const TilingParams& params) cons
     }
 
     // splitRatio controls the cascade offset as a fraction of area dimensions
-    const qreal offsetRatio = params.state ? qBound(0.02, params.state->splitRatio(), 0.4) : 0.15;
+    const qreal offsetRatio = qBound(CascadeMinOffset, state.splitRatio(), CascadeMaxOffset);
     const int offsetX = std::max(20, qRound(area.width() * offsetRatio / (windowCount - 1)));
     const int offsetY = std::max(20, qRound(area.height() * offsetRatio / (windowCount - 1)));
 
@@ -67,7 +69,10 @@ QVector<QRect> CascadeAlgorithm::calculateZones(const TilingParams& params) cons
     for (int i = 0; i < windowCount; ++i) {
         const int x = area.x() + offsetX * i;
         const int y = area.y() + offsetY * i;
-        zones.append(QRect(x, y, winWidth, winHeight));
+        int w = winWidth;
+        int h = winHeight;
+        applyPerWindowMinSize(w, h, minSizes, i);
+        zones.append(QRect(x, y, w, h));
     }
 
     return zones;

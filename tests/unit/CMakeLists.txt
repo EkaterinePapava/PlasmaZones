@@ -66,6 +66,10 @@ pz_add_test(test_tiling_algo_wide_centered autotile/test_tiling_algo_wide_center
 # ═══════════════════════════════════════════════════════════════════════════════
 pz_add_test(test_algorithm_registry autotile/test_algorithm_registry.cpp)
 pz_add_test(test_algorithm_registry_custom autotile/test_algorithm_registry_custom.cpp)
+pz_add_test(test_scripted_algorithm autotile/test_scripted_algorithm.cpp)
+target_compile_definitions(test_scripted_algorithm PRIVATE "PZ_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
+pz_add_test(test_split_tree autotile/test_split_tree.cpp)
+pz_add_test(test_scripted_algorithm_loader autotile/test_scripted_algorithm_loader.cpp)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # autotile/ — Autotile Engine Tests (core, master, minsize, overflow)
@@ -203,6 +207,7 @@ set(_all_tests
     test_tiling_algo_masterstack test_tiling_algo_spiral_monocle
     test_tiling_algo_grid_threecolumn test_tiling_algo_wide_centered
     test_algorithm_registry test_algorithm_registry_custom
+    test_scripted_algorithm test_split_tree test_scripted_algorithm_loader
     test_autotile_engine_core test_autotile_engine_master
     test_autotile_engine_minsize test_autotile_engine_overflow
     test_autotile_ext_startup_float test_autotile_ext_algoswitch

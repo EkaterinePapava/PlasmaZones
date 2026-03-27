@@ -20,8 +20,11 @@ ColumnLayout {
     readonly property int layoutListMinHeight: Kirigami.Units.gridUnit * 20
     // View mode: 0 = Snapping Layouts, 1 = Auto Tile Algorithms
     property int viewMode: 0
-    // Aspect ratio labels come from Main.qml (window.aspectRatioLabels)
-    readonly property var aspectRatioLabels: window.aspectRatioLabels
+
+    // m-15: Extract URL-to-path helper to avoid duplicating regex in FileDialogs
+    function filePathFromUrl(url) {
+        return url.toString().replace(/^file:\/\/+/, "/");
+    }
 
     spacing: 0
 
@@ -95,42 +98,40 @@ ColumnLayout {
                         else if (root.viewMode === 1 && isAutotile)
                             filtered.push(allLayouts[i]);
                     }
-                    // Group by aspect ratio class
-                    let aspectOrder = ["any", "standard", "ultrawide", "super-ultrawide", "portrait"];
-                    let aspectLabels = root.aspectRatioLabels;
+                    // Group by sectionKey (data-driven: each item carries its own
+                    // sectionKey, sectionLabel, sectionOrder from the C++ side)
                     let groups = {
                     };
                     for (let i = 0; i < filtered.length; i++) {
-                        let cls = filtered[i].aspectRatioClass || "any";
-                        if (!groups[cls])
-                            groups[cls] = [];
+                        let key = filtered[i].sectionKey || "default";
+                        if (!groups[key])
+                            groups[key] = {
+                            "items": [],
+                            "order": filtered[i].sectionOrder !== undefined ? filtered[i].sectionOrder : 0,
+                            "label": filtered[i].sectionLabel || ""
+                        };
 
-                        groups[cls].push(filtered[i]);
+                        groups[key].items.push(filtered[i]);
                     }
-                    // Sort each group alphabetically
-                    for (let cls in groups) {
-                        groups[cls].sort((a, b) => {
+                    // Sort items within each group alphabetically
+                    for (let key in groups) {
+                        groups[key].items.sort((a, b) => {
                             return (a.name || "").localeCompare(b.name || "");
                         });
                     }
-                    // Build section model: [{label, layouts}, ...]
-                    let sections = [];
-                    let groupCount = 0;
-                    for (let a = 0; a < aspectOrder.length; a++) {
-                        if (groups[aspectOrder[a]] && groups[aspectOrder[a]].length > 0)
-                            groupCount++;
-
-                    }
-                    for (let a = 0; a < aspectOrder.length; a++) {
-                        let cls = aspectOrder[a];
-                        if (groups[cls] && groups[cls].length > 0)
-                            sections.push({
-                            "label": groupCount > 1 ? aspectLabels[cls] : "",
-                            "layouts": groups[cls]
+                    // Sort groups by sectionOrder, then build section model
+                    let sorted = Object.values(groups).sort((a, b) => {
+                        return a.order - b.order;
+                    });
+                    let nonEmpty = sorted.filter((g) => {
+                        return g.items.length > 0;
+                    });
+                    model = nonEmpty.map((g) => {
+                        return ({
+                            "label": nonEmpty.length > 1 ? g.label : "",
+                            "layouts": g.items
                         });
-
-                    }
-                    model = sections;
+                    });
                 }
 
                 function selectDefaultLayout(mode) {
@@ -147,6 +148,7 @@ ColumnLayout {
                     return layoutId !== "";
                 }
 
+                Accessible.name: i18n("Layout grid")
                 Layout.fillWidth: true
                 Layout.leftMargin: Kirigami.Units.smallSpacing
                 Layout.rightMargin: Kirigami.Units.smallSpacing
@@ -259,7 +261,7 @@ ColumnLayout {
         nameFilters: ["JSON files (*.json)", "All files (*)"]
         fileMode: FileDialog.OpenFile
         onAccepted: {
-            settingsController.importLayout(selectedFile.toString().replace(/^file:\/\/+/, "/"));
+            settingsController.importLayout(root.filePathFromUrl(selectedFile));
         }
     }
 
@@ -273,7 +275,7 @@ ColumnLayout {
         nameFilters: ["JSON files (*.json)"]
         fileMode: FileDialog.SaveFile
         onAccepted: {
-            settingsController.exportLayout(exportDialog.layoutId, selectedFile.toString().replace(/^file:\/\/+/, "/"));
+            settingsController.exportLayout(exportDialog.layoutId, root.filePathFromUrl(selectedFile));
         }
     }
 
@@ -285,7 +287,7 @@ ColumnLayout {
         nameFilters: ["JSON files (*.json)", "All files (*)"]
         fileMode: FileDialog.OpenFile
         onAccepted: {
-            settingsController.importFromKZonesFile(selectedFile.toString().replace(/^file:\/\/+/, "/"));
+            settingsController.importFromKZonesFile(root.filePathFromUrl(selectedFile));
         }
     }
 

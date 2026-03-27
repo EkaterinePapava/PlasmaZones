@@ -86,6 +86,7 @@ include(FeatureSummary)
 find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS
     Concurrent
     Core
+    Qml
     Quick
     QuickControls2
     Gui
@@ -340,6 +341,14 @@ install(DIRECTORY data/shaders/
     PATTERN "*.vert"
     PATTERN "*.frag"
     PATTERN "*.png"
+    PATTERN "*.svg"
+)
+
+# Install bundled scripted tiling algorithms
+install(DIRECTORY data/algorithms/
+    DESTINATION ${KDE_INSTALL_DATADIR}/plasmazones/algorithms
+    FILES_MATCHING
+    PATTERN "*.js"
 )
 
 # Install icons (hicolor for dark themes, hicolor-light for light themes)

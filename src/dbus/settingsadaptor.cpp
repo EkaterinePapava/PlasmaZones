@@ -392,10 +392,15 @@ void SettingsAdaptor::initializeRegistry()
         REGISTER_CONCRETE_STRING("autotileAlgorithm", autotileAlgorithm, setAutotileAlgorithm)
         REGISTER_CONCRETE_DOUBLE("autotileSplitRatio", autotileSplitRatio, setAutotileSplitRatio)
         REGISTER_CONCRETE_INT("autotileMasterCount", autotileMasterCount, setAutotileMasterCount)
-        REGISTER_CONCRETE_DOUBLE("autotileCenteredMasterSplitRatio", autotileCenteredMasterSplitRatio,
-                                 setAutotileCenteredMasterSplitRatio)
-        REGISTER_CONCRETE_INT("autotileCenteredMasterMasterCount", autotileCenteredMasterMasterCount,
-                              setAutotileCenteredMasterMasterCount)
+        // Per-algorithm settings map (QVariantMap)
+        m_getters[QStringLiteral("autotilePerAlgorithmSettings")] = [concrete]() {
+            return QVariant::fromValue(concrete->autotilePerAlgorithmSettings());
+        };
+        m_setters[QStringLiteral("autotilePerAlgorithmSettings")] = [concrete](const QVariant& v) {
+            concrete->setAutotilePerAlgorithmSettings(v.toMap());
+            return true;
+        };
+        m_schemas[QStringLiteral("autotilePerAlgorithmSettings")] = QStringLiteral("map");
         REGISTER_CONCRETE_INT("autotileInnerGap", autotileInnerGap, setAutotileInnerGap)
         REGISTER_CONCRETE_INT("autotileOuterGap", autotileOuterGap, setAutotileOuterGap)
         REGISTER_CONCRETE_BOOL("autotileUsePerSideOuterGap", autotileUsePerSideOuterGap, setAutotileUsePerSideOuterGap)
@@ -706,7 +711,7 @@ void SettingsAdaptor::setPerScreenSetting(const QString& screenId, const QString
         qCWarning(lcDbusSettings) << "setPerScreenSetting: unknown category" << category;
         return;
     }
-    concrete->save();
+    scheduleSave();
 }
 
 void SettingsAdaptor::clearPerScreenSettings(const QString& screenId, const QString& category)

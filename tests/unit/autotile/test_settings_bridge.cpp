@@ -117,32 +117,32 @@ private Q_SLOTS:
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // centeredMasterSplitRatio retile scope
+    // savedAlgorithmSettings isolation
     // ═══════════════════════════════════════════════════════════════════════════
 
-    void testSettingsBridge_centeredMasterSplitRatio_onlyRetilesCenteredMaster()
+    void testSettingsBridge_savedAlgorithmSettings_onlyAffectsActiveAlgorithm()
     {
         AutotileEngine engine(nullptr, nullptr, nullptr);
         const QString screen = QStringLiteral("eDP-1");
         engine.setAutotileScreens({screen});
 
-        // Set algorithm to something other than centered-master
+        // Set algorithm to master-stack first
         engine.setAlgorithm(DBus::AutotileAlgorithm::MasterStack);
 
-        // Store a centeredMasterSplitRatio value in config
-        engine.config()->centeredMasterSplitRatio = 0.45;
+        // Store saved settings for centered-master in the per-algorithm map
+        engine.config()->savedAlgorithmSettings[QStringLiteral("centered-master")] = {0.45, 2};
 
-        // The centeredMasterSplitRatio only affects the active split ratio when
-        // the algorithm IS centered-master. When it's master-stack, changes
-        // to centeredMasterSplitRatio should NOT alter the active split ratio.
-        const qreal originalRatio = engine.config()->splitRatio;
+        // Capture the master-stack ratio before mutation
+        const qreal masterStackRatio = engine.config()->splitRatio;
 
-        // NOTE: This assertion is trivially true by struct layout -- originalRatio is
-        // read from config->splitRatio and compared to config->splitRatio in the same
-        // scope with no intervening mutation. The real intent is to document that
-        // centeredMasterSplitRatio is a separate field from splitRatio and changing
-        // it does NOT affect the active split ratio when the algorithm is master-stack.
-        QVERIFY(qFuzzyCompare(engine.config()->splitRatio, originalRatio));
+        // Mutate the saved centered-master ratio — should NOT affect the active ratio
+        engine.config()->savedAlgorithmSettings[QStringLiteral("centered-master")] = {0.35, 3};
+        QVERIFY(qFuzzyCompare(engine.config()->splitRatio, masterStackRatio));
+
+        // Now switch to centered-master — saved settings should be applied
+        engine.setAlgorithm(DBus::AutotileAlgorithm::CenteredMaster);
+        QVERIFY(qFuzzyCompare(engine.config()->splitRatio, 0.35));
+        QCOMPARE(engine.config()->masterCount, 3);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

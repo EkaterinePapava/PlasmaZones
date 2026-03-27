@@ -29,11 +29,6 @@ QString ColumnsAlgorithm::description() const
     return PzI18n::tr("Equal-width vertical columns");
 }
 
-QString ColumnsAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-split-left-right");
-}
-
 QVector<QRect> ColumnsAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;
@@ -44,7 +39,7 @@ QVector<QRect> ColumnsAlgorithm::calculateZones(const TilingParams& params) cons
 
     QVector<QRect> zones;
 
-    if (windowCount <= 0 || !screenGeometry.isValid()) {
+    if (windowCount <= 0 || !screenGeometry.isValid() || !params.state) {
         return zones;
     }
 

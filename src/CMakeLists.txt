@@ -130,7 +130,12 @@ set(plasmazones_core_SRCS
     autotile/TilingAlgorithm.cpp
     autotile/TilingAlgorithm.h
     autotile/TilingState.cpp
+    autotile/TilingStateSerialization.cpp
     autotile/TilingState.h
+    autotile/SplitTree.cpp
+    autotile/SplitTreeRebuild.cpp
+    autotile/SplitTreeSerializer.cpp
+    autotile/SplitTree.h
     autotile/AlgorithmRegistry.cpp
     autotile/AlgorithmRegistry.h
     autotile/AutotileConfig.cpp
@@ -155,6 +160,8 @@ set(plasmazones_core_SRCS
     autotile/algorithms/BSPAlgorithm.h
     autotile/algorithms/DwindleAlgorithm.cpp
     autotile/algorithms/DwindleAlgorithm.h
+    autotile/algorithms/DwindleMemoryAlgorithm.cpp
+    autotile/algorithms/DwindleMemoryAlgorithm.h
     autotile/algorithms/SpiralAlgorithm.cpp
     autotile/algorithms/SpiralAlgorithm.h
     autotile/algorithms/ThreeColumnAlgorithm.cpp
@@ -173,6 +180,14 @@ set(plasmazones_core_SRCS
     autotile/algorithms/StairAlgorithm.h
     autotile/algorithms/SpreadAlgorithm.cpp
     autotile/algorithms/SpreadAlgorithm.h
+    autotile/algorithms/ScriptedAlgorithm.cpp
+    autotile/algorithms/ScriptedAlgorithm.h
+    autotile/algorithms/ScriptedAlgorithmHelpers.cpp
+    autotile/algorithms/ScriptedAlgorithmHelpers.h
+    autotile/algorithms/ScriptedAlgorithmLoader.cpp
+    autotile/algorithms/ScriptedAlgorithmLoader.h
+    autotile/algorithms/ScriptedAlgorithmSandbox.cpp
+    autotile/algorithms/ScriptedAlgorithmSandbox.h
     snap/SnapEngine.cpp
     snap/SnapEngine.h
     snap/snapengine/float.cpp
@@ -196,6 +211,8 @@ generate_export_header(plasmazones_core
 target_link_libraries(plasmazones_core
     PUBLIC
         Qt6::Core
+        # Qt6::Qml is PUBLIC because ScriptedAlgorithm.h exposes QJSEngine/QJSValue types
+        Qt6::Qml
         Qt6::Quick
         Qt6::Gui
         Qt6::DBus

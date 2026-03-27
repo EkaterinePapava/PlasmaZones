@@ -10,6 +10,7 @@
 #include "../autotile/AlgorithmRegistry.h"
 #include "../autotile/TilingAlgorithm.h"
 #include "../autotile/TilingState.h"
+#include "../autotile/algorithms/ScriptedAlgorithmLoader.h"
 
 #include "../config/configdefaults.h"
 
@@ -37,6 +38,21 @@ SettingsController::SettingsController(QObject* parent)
     : QObject(parent)
     , m_screenHelper(&m_settings, this)
 {
+    // Load scripted algorithms so they appear in the algorithm dropdown.
+    // The daemon also creates its own ScriptedAlgorithmLoader — the KCM runs
+    // in a separate process, so both need an independent loader to populate
+    // the shared AlgorithmRegistry singleton within their respective processes.
+    auto* scriptLoader = new ScriptedAlgorithmLoader(this);
+    scriptLoader->scanAndRegister();
+
+    // When scripted algorithms change (hot-reload), notify UI consumers.
+    // Emit both signals: availableAlgorithmsChanged for algorithm-specific
+    // listeners, and layoutsChanged so LayoutComboBox rebuilds its model
+    // (the layouts list includes autotile entries from the registry).
+    connect(scriptLoader, &ScriptedAlgorithmLoader::algorithmsChanged, this,
+            &SettingsController::availableAlgorithmsChanged);
+    connect(scriptLoader, &ScriptedAlgorithmLoader::algorithmsChanged, this, &SettingsController::layoutsChanged);
+
     // Listen for external settings changes from the daemon
     QDBusConnection::sessionBus().connect(QString(DBus::ServiceName), QString(DBus::ObjectPath),
                                           QString(DBus::Interface::Settings), QStringLiteral("settingsChanged"), this,
@@ -1639,7 +1655,12 @@ QVariantList SettingsController::availableAlgorithms() const
             algoMap[QStringLiteral("id")] = id;
             algoMap[QStringLiteral("name")] = algo->name();
             algoMap[QStringLiteral("description")] = algo->description();
-            algoMap[QStringLiteral("defaultMaxWindows")] = algo->defaultMaxWindows();
+            algoMap[QLatin1String("defaultMaxWindows")] = algo->defaultMaxWindows();
+            algoMap[QLatin1String("supportsSplitRatio")] = algo->supportsSplitRatio();
+            algoMap[QLatin1String("supportsMasterCount")] = algo->supportsMasterCount();
+            algoMap[QLatin1String("defaultSplitRatio")] = algo->defaultSplitRatio();
+            algoMap[QLatin1String("zoneNumberDisplay")] = algo->zoneNumberDisplay();
+            algoMap[QLatin1String("centerLayout")] = algo->centerLayout();
             algorithms.append(algoMap);
         }
     }

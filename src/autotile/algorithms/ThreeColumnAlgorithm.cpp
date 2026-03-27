@@ -32,11 +32,6 @@ QString ThreeColumnAlgorithm::description() const
     return PzI18n::tr("Master window centered with columns on each side");
 }
 
-QString ThreeColumnAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-column-three");
-}
-
 QVector<QRect> ThreeColumnAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;
@@ -83,21 +78,7 @@ QVector<QRect> ThreeColumnAlgorithm::calculateZones(const TilingParams& params) 
         if (!minSizes.isEmpty()) {
             const int minMW = minWidthAt(minSizes, 0);
             const int minSW = minWidthAt(minSizes, 1);
-            const int totalMin2 = minMW + minSW;
-            if (totalMin2 > contentWidth && totalMin2 > 0) {
-                // Unsatisfiable: distribute proportionally
-                masterWidth = static_cast<int>(static_cast<qint64>(contentWidth) * std::max(minMW, 1) / totalMin2);
-                stackWidth = contentWidth - masterWidth;
-            } else {
-                if (minMW > 0 && masterWidth < minMW) {
-                    masterWidth = minMW;
-                    stackWidth = contentWidth - masterWidth;
-                }
-                if (minSW > 0 && stackWidth < minSW) {
-                    stackWidth = minSW;
-                    masterWidth = contentWidth - stackWidth;
-                }
-            }
+            solveTwoPartMinSizes(contentWidth, masterWidth, stackWidth, minMW, minSW);
         }
 
         zones.append(QRect(area.x(), area.y(), masterWidth, area.height()));
@@ -127,9 +108,7 @@ QVector<QRect> ThreeColumnAlgorithm::calculateZones(const TilingParams& params) 
     int minLeftWidth = 0;
     int minRightWidth = 0;
     if (!minSizes.isEmpty()) {
-        if (minSizes.size() > 0) {
-            minCenterWidth = minSizes[0].width();
-        }
+        minCenterWidth = minSizes[0].width();
         // Interleaved: zone 1,3,5,... are left; zone 2,4,6,... are right
         int li = 0, ri = 0;
         for (int i = 0; i < stackCount; ++i) {

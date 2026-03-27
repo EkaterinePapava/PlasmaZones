@@ -29,11 +29,6 @@ QString GridAlgorithm::description() const
     return PzI18n::tr("Equal-sized grid layout");
 }
 
-QString GridAlgorithm::icon() const noexcept
-{
-    return QStringLiteral("view-grid");
-}
-
 QVector<QRect> GridAlgorithm::calculateZones(const TilingParams& params) const
 {
     const int windowCount = params.windowCount;
@@ -43,7 +38,7 @@ QVector<QRect> GridAlgorithm::calculateZones(const TilingParams& params) const
 
     QVector<QRect> zones;
 
-    if (windowCount <= 0 || !screenGeometry.isValid()) {
+    if (windowCount <= 0 || !screenGeometry.isValid() || !params.state) {
         return zones;
     }
 
@@ -83,10 +78,10 @@ QVector<QRect> GridAlgorithm::calculateZones(const TilingParams& params) const
     }
 
     // Calculate column widths and row heights with gaps, respecting min sizes
-    const QVector<int> columnWidths = colMinWidths.isEmpty()
+    const QVector<int> columnWidths = minSizes.isEmpty()
         ? distributeWithGaps(area.width(), cols, innerGap)
         : distributeWithMinSizes(area.width(), cols, innerGap, colMinWidths);
-    const QVector<int> rowHeights = rowMinHeights.isEmpty()
+    const QVector<int> rowHeights = minSizes.isEmpty()
         ? distributeWithGaps(area.height(), rows, innerGap)
         : distributeWithMinSizes(area.height(), rows, innerGap, rowMinHeights);
 

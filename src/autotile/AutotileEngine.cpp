@@ -19,6 +19,7 @@
 #include "PerScreenConfigResolver.h"
 #include "SettingsBridge.h"
 #include "TilingAlgorithm.h"
+// DwindleMemoryAlgorithm.h no longer needed — prepareTilingState() is virtual on TilingAlgorithm
 #include "TilingState.h"
 #include "core/constants.h"
 #include "core/layout.h"
@@ -148,7 +149,9 @@ void AutotileEngine::rotateWindows(bool clockwise, const QString& /*screenId*/)
 
 void AutotileEngine::moveToPosition(const QString& /*windowId*/, int position, const QString& /*screenId*/)
 {
-    // AutotileEngine uses focused window internally
+    // NOTE: Currently operates on the focused window regardless of windowId.
+    // The autotile engine tracks windows by focus, not by ID. This is a known
+    // limitation of the IWindowEngine interface contract for autotiling.
     moveFocusedToPosition(position);
 }
 
@@ -418,35 +421,35 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
         return;
     }
 
-    // Save current split ratio and master count back to per-algorithm fields
-    // when switching AWAY from centered-master, so values are remembered.
-    if (m_algorithmId == QLatin1String("centered-master")) {
-        m_config->centeredMasterSplitRatio = m_config->splitRatio;
-        m_config->centeredMasterMasterCount = m_config->masterCount;
-    }
-
-    // Always reset split ratio to the new algorithm's default when switching.
-    // Different algorithms interpret the same ratio value differently:
-    //   MasterStack 0.6 = 60% master width
-    //   BSP 0.5 = balanced 50/50 first split
-    //   Columns: ignores ratio entirely
-    // Preserving a ratio across algorithm switches produces wrong geometries
-    // (e.g., Firefox too wide when switching from MasterStack 0.6 to BSP).
     TilingAlgorithm* oldAlgo = registry->algorithm(m_algorithmId);
     TilingAlgorithm* newAlgo = registry->algorithm(newId);
     const int oldMaxWindows = m_config->maxWindows;
-    if (oldAlgo && newAlgo) {
-        // When switching TO centered-master, use the dedicated per-algorithm values.
-        // For other algorithms, reset to their default split ratio.
-        if (newId == QLatin1String("centered-master")) {
-            m_config->splitRatio = m_config->centeredMasterSplitRatio;
-            m_config->masterCount = m_config->centeredMasterMasterCount;
+
+    // Save current algorithm's ratio + master count before switching.
+    // Only save after the first setAlgorithm() call has completed, to avoid
+    // persisting uninitialised struct defaults from the constructor.
+    if (m_algorithmEverSet && oldAlgo) {
+        m_config->savedAlgorithmSettings[m_algorithmId] = {m_config->splitRatio, m_config->masterCount};
+    }
+
+    // Look up saved settings AFTER the save above — insertion may rehash the
+    // QHash, invalidating any iterator obtained before the insert.
+    auto savedIt = m_config->savedAlgorithmSettings.constFind(newId);
+
+    // Restore per-algorithm split ratio and master count from saved settings,
+    // falling back to the algorithm's defaults when no saved entry exists.
+    auto restorePerAlgoSettings = [this](TilingAlgorithm* algo, QHash<QString, AlgorithmSettings>::const_iterator it) {
+        if (it != m_config->savedAlgorithmSettings.constEnd()) {
+            m_config->splitRatio = it->splitRatio;
+            m_config->masterCount = it->masterCount;
         } else {
-            const qreal newDefault = newAlgo->defaultSplitRatio();
-            if (!qFuzzyCompare(1.0 + m_config->splitRatio, 1.0 + newDefault)) {
-                m_config->splitRatio = newDefault;
-            }
+            m_config->splitRatio = algo->defaultSplitRatio();
+            m_config->masterCount = AutotileDefaults::DefaultMasterCount;
         }
+    };
+
+    if (oldAlgo && newAlgo) {
+        restorePerAlgoSettings(newAlgo, savedIt);
         propagateGlobalSplitRatio();
         propagateGlobalMasterCount();
 
@@ -456,13 +459,8 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
         resetMaxWindowsForAlgorithmSwitch(oldAlgo, newAlgo);
     } else if (newAlgo) {
         // oldAlgo is nullptr (first-ever call or corrupted m_algorithmId).
-        // Initialize config from the new algorithm's defaults.
-        if (newId == QLatin1String("centered-master")) {
-            m_config->splitRatio = m_config->centeredMasterSplitRatio;
-            m_config->masterCount = m_config->centeredMasterMasterCount;
-        } else {
-            m_config->splitRatio = newAlgo->defaultSplitRatio();
-        }
+        // Initialize config from the new algorithm's defaults or saved settings.
+        restorePerAlgoSettings(newAlgo, savedIt);
         m_config->maxWindows = newAlgo->defaultMaxWindows();
         propagateGlobalSplitRatio();
         propagateGlobalMasterCount();
@@ -474,8 +472,21 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
     // setAlgorithm with stale KCM algo).
     m_settingsBridge->syncAlgorithmToSettings(newId, m_config->splitRatio, m_config->maxWindows, oldMaxWindows);
 
+    m_algorithmEverSet = true;
     m_algorithmId = newId;
     m_config->algorithmId = newId;
+
+    // Clear stale split trees when switching away from a memory algorithm.
+    // Without this, deserialized trees from a previous DwindleMemory session
+    // persist after algorithm switch, wasting memory and risking confusion.
+    // Must happen BEFORE emitting algorithmChanged so that listeners see
+    // consistent state (no stale trees from the old algorithm).
+    if (newAlgo && !newAlgo->supportsMemory()) {
+        for (auto* state : m_screenStates) {
+            state->clearSplitTree();
+        }
+    }
+
     Q_EMIT algorithmChanged(m_algorithmId);
 
     // Backfill windows when the new algorithm's maxWindows is higher.
@@ -875,7 +886,7 @@ void AutotileEngine::processPendingRetiles()
 
 void AutotileEngine::retile(const QString& screenId)
 {
-    // R3/R4: m_retiling serves as a re-entrancy guard for both retile() and
+    // m_retiling serves as a re-entrancy guard for both retile() and
     // retileAfterOperation(). Both methods set it with QScopeGuard and check it
     // on entry. They are mutually exclusive: retileAfterOperation() returns early
     // if m_retiling is already true (set by retile()), so the dual QScopeGuard
@@ -1597,6 +1608,10 @@ void AutotileEngine::recalculateLayout(const QString& screenId)
             minSizes[i] = m_windowMinSizes.value(windows[i], QSize(0, 0));
         }
     }
+
+    // Let memory-based algorithms prepare their state (e.g., lazily create a SplitTree)
+    // before calculateZones(). Virtual dispatch avoids concrete type casts here.
+    algo->prepareTilingState(state);
 
     // Pass minSizes to algorithm so it can incorporate them directly into zone
     // calculations using its topology knowledge (split tree, column structure, etc.)

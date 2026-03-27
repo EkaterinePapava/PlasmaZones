@@ -31,11 +31,6 @@ public:
     {
         return QStringLiteral("Test algorithm for unit tests");
     }
-    QString icon() const noexcept override
-    {
-        return QStringLiteral("test-icon");
-    }
-
     QVector<QRect> calculateZones(const TilingParams& params) const override
     {
         QVector<QRect> zones;
@@ -89,6 +84,8 @@ private Q_SLOTS:
         int countBefore = registry->availableAlgorithms().size();
 
         QSignalSpy spy(registry, &AlgorithmRegistry::algorithmRegistered);
+        // Registry::registerAlgorithm takes ownership even on rejection
+        // (deletes the pointer when id is empty), so no manual delete needed.
         registry->registerAlgorithm(QString(), new CustomTestAlgorithm());
 
         QCOMPARE(registry->availableAlgorithms().size(), countBefore);
@@ -217,21 +214,23 @@ private Q_SLOTS:
         auto* registry = AlgorithmRegistry::instance();
         auto available = registry->availableAlgorithms();
 
-        QCOMPARE(available.size(), 14);
+        // At least 15 built-in algorithms are registered before any scripted loader runs
+        QVERIFY(available.size() >= 15);
         QCOMPARE(available[0], DBus::AutotileAlgorithm::BSP);
         QCOMPARE(available[1], DBus::AutotileAlgorithm::CenteredMaster);
         QCOMPARE(available[2], DBus::AutotileAlgorithm::Columns);
         QCOMPARE(available[3], DBus::AutotileAlgorithm::Dwindle);
-        QCOMPARE(available[4], DBus::AutotileAlgorithm::Grid);
-        QCOMPARE(available[5], DBus::AutotileAlgorithm::MasterStack);
-        QCOMPARE(available[6], DBus::AutotileAlgorithm::Monocle);
-        QCOMPARE(available[7], DBus::AutotileAlgorithm::Rows);
-        QCOMPARE(available[8], DBus::AutotileAlgorithm::Spiral);
-        QCOMPARE(available[9], DBus::AutotileAlgorithm::ThreeColumn);
-        QCOMPARE(available[10], DBus::AutotileAlgorithm::Wide);
-        QCOMPARE(available[11], DBus::AutotileAlgorithm::Cascade);
-        QCOMPARE(available[12], DBus::AutotileAlgorithm::Stair);
-        QCOMPARE(available[13], DBus::AutotileAlgorithm::Spread);
+        QCOMPARE(available[4], DBus::AutotileAlgorithm::DwindleMemory);
+        QCOMPARE(available[5], DBus::AutotileAlgorithm::Grid);
+        QCOMPARE(available[6], DBus::AutotileAlgorithm::MasterStack);
+        QCOMPARE(available[7], DBus::AutotileAlgorithm::Monocle);
+        QCOMPARE(available[8], DBus::AutotileAlgorithm::Rows);
+        QCOMPARE(available[9], DBus::AutotileAlgorithm::Spiral);
+        QCOMPARE(available[10], DBus::AutotileAlgorithm::ThreeColumn);
+        QCOMPARE(available[11], DBus::AutotileAlgorithm::Wide);
+        QCOMPARE(available[12], DBus::AutotileAlgorithm::Cascade);
+        QCOMPARE(available[13], DBus::AutotileAlgorithm::Stair);
+        QCOMPARE(available[14], DBus::AutotileAlgorithm::Spread);
     }
 
     void testOrder_matchesAllAlgorithms()

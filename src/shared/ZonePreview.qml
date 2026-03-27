@@ -50,8 +50,8 @@ Item {
     property int minZoneSize: 8
     /// Whether to show zone numbers
     property bool showZoneNumbers: true
-    /// Override to force only-show-last-zone-number behavior (e.g. for cascade)
-    property bool onlyShowLastZoneNumber: false
+    /// How to display zone numbers: "all", "first", "last", "firstAndLast", "none"
+    property string zoneNumberDisplay: "all"
     /// Auto-detect stacked/overlapping layout (monocle, cascade, etc.)
     /// When true, only the last zone's number label is shown.
     readonly property bool isStackedLayout: {
@@ -134,8 +134,8 @@ Item {
             }
             property real relX: Math.max(0, Math.min(relGeo.x || 0, 1))
             property real relY: Math.max(0, Math.min(relGeo.y || 0, 1))
-            property real relWidth: Math.min(relGeo.width || 0.25, 1 - relX)
-            property real relHeight: Math.min(relGeo.height || 1, 1 - relY)
+            property real relWidth: Math.max(0, Math.min(relGeo.width || 0.25, 1 - relX))
+            property real relHeight: Math.max(0, Math.min(relGeo.height || 1, 1 - relY))
             // Check if this zone is selected (by index, highlightAllZones, or by zone ID)
             property bool isZoneSelected: {
                 // Highlight all zones when any is selected (highlightAllZones mode)
@@ -212,7 +212,31 @@ Item {
                 font.family: root.fontFamily
                 color: root.labelFontColor
                 opacity: (root.isActive || root.isHovered || zoneRect.isZoneSelected || zoneRect.isZoneHovered) ? 0.9 : 0.6
-                visible: root.showZoneNumbers && (!(root.isStackedLayout || root.onlyShowLastZoneNumber) || index === root.zones.length - 1) && parent.width >= 16 && parent.height >= 16
+                visible: {
+                    if (!root.showZoneNumbers)
+                        return false;
+
+                    if (parent.width < 16 || parent.height < 16)
+                        return false;
+
+                    var display = root.zoneNumberDisplay;
+                    // Auto-detect stacked layouts (monocle-style) if no explicit override
+                    if (display === "all" && root.isStackedLayout)
+                        display = "last";
+
+                    switch (display) {
+                    case "none":
+                        return false;
+                    case "first":
+                        return index === 0;
+                    case "last":
+                        return index === root.zones.length - 1;
+                    case "firstAndLast":
+                        return index === 0 || index === root.zones.length - 1;
+                    default:
+                        return true; // "all"
+                    }
+                }
 
                 Behavior on opacity {
                     NumberAnimation {
@@ -228,7 +252,7 @@ Item {
                 id: zoneMouseArea
 
                 anchors.fill: parent
-                anchors.margins: -2 // Slightly larger hit area
+                anchors.margins: -Math.round(Kirigami.Units.smallSpacing / 2) // Slightly larger hit area
                 hoverEnabled: root.interactive && root.visible
                 enabled: root.interactive
                 onEntered: root.zoneHovered(index)

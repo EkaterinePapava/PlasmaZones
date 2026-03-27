@@ -33,7 +33,6 @@ private Q_SLOTS:
     {
         ThreeColumnAlgorithm algo;
         QCOMPARE(algo.name(), QStringLiteral("Three Column"));
-        QVERIFY(!algo.icon().isEmpty());
         QVERIFY(!algo.supportsMasterCount());
         QVERIFY(algo.supportsSplitRatio());
         QCOMPARE(algo.masterZoneIndex(), 0);

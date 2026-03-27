@@ -42,27 +42,26 @@ public:
     // TilingAlgorithm interface
     QString name() const override;
     QString description() const override;
-    QString icon() const noexcept override;
 
     QVector<QRect> calculateZones(const TilingParams& params) const override;
 
-    int masterZoneIndex() const noexcept override
+    int masterZoneIndex() const override
     {
         return 0;
     }
-    bool supportsMasterCount() const noexcept override
+    bool supportsMasterCount() const override
     {
         return true;
     }
-    bool supportsSplitRatio() const noexcept override
+    bool supportsSplitRatio() const override
     {
         return true;
     }
-    qreal defaultSplitRatio() const noexcept override
+    qreal defaultSplitRatio() const override
     {
         return 0.5;
     }
-    int defaultMaxWindows() const noexcept override
+    int defaultMaxWindows() const override
     {
         return 5;
     }
