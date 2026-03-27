@@ -141,17 +141,17 @@ public:
         return m_daemonController.isRunning();
     }
 
-    Settings* settings() const
+    Settings* settings()
     {
-        return const_cast<Settings*>(&m_settings);
+        return &m_settings;
     }
-    DaemonController* daemonController() const
+    DaemonController* daemonController()
     {
-        return const_cast<DaemonController*>(&m_daemonController);
+        return &m_daemonController;
     }
-    UpdateChecker* updateChecker() const
+    UpdateChecker* updateChecker()
     {
-        return const_cast<UpdateChecker*>(&m_updateChecker);
+        return &m_updateChecker;
     }
     QString dismissedUpdateVersion() const
     {

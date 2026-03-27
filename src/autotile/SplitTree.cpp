@@ -151,7 +151,7 @@ SplitTree::InsertReady SplitTree::prepareInsert(const QString& windowId)
         return InsertReady::Done;
     }
 
-    // E1: Depth guard — always check, regardless of tree size
+    // Depth guard — always check, regardless of tree size
     if (treeHeight() >= MaxRuntimeTreeDepth) {
         qCWarning(lcAutotile) << "SplitTree: max depth reached, rejecting insert";
         return InsertReady::Rejected;
@@ -348,14 +348,14 @@ void SplitTree::resizeSplit(const QString& windowId, qreal newRatio)
 QVector<QRect> SplitTree::applyGeometry(const QRect& area, int innerGap) const
 {
     QVector<QRect> zones;
-    // EC-2: Zero-size rect guard
+    // Zero-size rect guard
     if (area.width() <= 0 || area.height() <= 0) {
         return zones;
     }
     if (!m_root) {
         return zones;
     }
-    // EC-3: Clamp negative innerGap
+    // Clamp negative innerGap
     innerGap = qMax(0, innerGap);
     applyGeometryRecursive(m_root.get(), area, innerGap, zones);
     return zones;

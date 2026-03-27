@@ -475,7 +475,7 @@ void TilingState::notifyStateChanged()
     Q_EMIT stateChanged();
 }
 
-// ── forEachTiledWindow — DRY helper for tiled-window iteration (M6) ──────────
+// ── forEachTiledWindow — DRY helper for tiled-window iteration ───────────────
 
 void TilingState::forEachTiledWindow(const std::function<bool(const QString& windowId, int tiledIndex)>& func) const
 {

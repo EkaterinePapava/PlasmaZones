@@ -1655,12 +1655,12 @@ QVariantList SettingsController::availableAlgorithms() const
             algoMap[QStringLiteral("id")] = id;
             algoMap[QStringLiteral("name")] = algo->name();
             algoMap[QStringLiteral("description")] = algo->description();
-            algoMap[QStringLiteral("defaultMaxWindows")] = algo->defaultMaxWindows();
-            algoMap[QStringLiteral("supportsSplitRatio")] = algo->supportsSplitRatio();
-            algoMap[QStringLiteral("supportsMasterCount")] = algo->supportsMasterCount();
-            algoMap[QStringLiteral("defaultSplitRatio")] = algo->defaultSplitRatio();
-            algoMap[QStringLiteral("zoneNumberDisplay")] = algo->zoneNumberDisplay();
-            algoMap[QStringLiteral("centerLayout")] = algo->centerLayout();
+            algoMap[QLatin1String("defaultMaxWindows")] = algo->defaultMaxWindows();
+            algoMap[QLatin1String("supportsSplitRatio")] = algo->supportsSplitRatio();
+            algoMap[QLatin1String("supportsMasterCount")] = algo->supportsMasterCount();
+            algoMap[QLatin1String("defaultSplitRatio")] = algo->defaultSplitRatio();
+            algoMap[QLatin1String("zoneNumberDisplay")] = algo->zoneNumberDisplay();
+            algoMap[QLatin1String("centerLayout")] = algo->centerLayout();
             algorithms.append(algoMap);
         }
     }

@@ -39,7 +39,7 @@ struct WatchdogContext
 {
     std::mutex mutex; ///< Guards engine pointer access and condition variable
     std::condition_variable cv; ///< Used to wake the persistent watchdog thread
-    uint64_t generation{0}; ///< H3: Plain counter — all accesses are under mutex
+    uint64_t generation{0}; ///< Plain counter — all accesses are under mutex
     bool pending{false}; ///< True when a new watchdog check is requested
     bool shutdown{false}; ///< True when the watchdog thread should exit
     QJSEngine* engine = nullptr; ///< Stable engine pointer shared with watchdog thread
@@ -83,7 +83,7 @@ ScriptedAlgorithm::ScriptedAlgorithm(const QString& filePath, QObject* parent)
             ctx->pending = false;
             const uint64_t gen = ctx->generation;
 
-            // M-03: Use cv.wait_for instead of sleep_for so that disarming
+            // Use cv.wait_for instead of sleep_for so that disarming
             // (generation change) or shutdown wakes us immediately rather than
             // sleeping the full timeout duration unconditionally.
             const bool expired =
@@ -117,7 +117,7 @@ ScriptedAlgorithm::~ScriptedAlgorithm()
     }
 }
 
-// D2: Extracted watchdog arm-evaluate-disarm-check pattern into a reusable helper.
+// Extracted watchdog arm-evaluate-disarm-check pattern into a reusable helper.
 // Arms the watchdog, calls fn(), disarms the watchdog, checks for timeout.
 // Returns the QJSValue from fn(), or a synthetic error QJSValue on timeout.
 QJSValue ScriptedAlgorithm::guardedCall(const std::function<QJSValue()>& fn) const
@@ -138,7 +138,7 @@ QJSValue ScriptedAlgorithm::guardedCall(const std::function<QJSValue()>& fn) con
     const QJSValue result = fn();
 
     // Disarm the watchdog by advancing generation and atomically check for timeout.
-    // C2: setInterrupted(false) MUST be inside the lock to prevent the watchdog
+    // setInterrupted(false) MUST be inside the lock to prevent the watchdog
     // thread from firing between unlock and the clear.
     bool wasInterrupted;
     {
@@ -149,17 +149,17 @@ QJSValue ScriptedAlgorithm::guardedCall(const std::function<QJSValue()>& fn) con
             m_engine->setInterrupted(false);
         }
     }
-    // M1: collectGarbage() moved outside the mutex — generation is already advanced
+    // collectGarbage() moved outside the mutex — generation is already advanced
     // and the interrupt flag is cleared, so the watchdog cannot fire on stale state.
     if (wasInterrupted) {
         m_engine->collectGarbage();
     }
-    // M-03: Notify the watchdog so it wakes from wait_for immediately on disarm
+    // Notify the watchdog so it wakes from wait_for immediately on disarm
     // instead of sleeping until the full timeout expires.
     m_watchdog->cv.notify_one();
 
     if (wasInterrupted) {
-        // M2: Signal timeout via flag instead of evaluating JS on a just-interrupted engine
+        // Signal timeout via flag instead of evaluating JS on a just-interrupted engine
         m_lastCallTimedOut = true;
         return QJSValue(QStringLiteral("Script execution timed out"));
     }
@@ -191,7 +191,7 @@ void ScriptedAlgorithm::setUserScript(bool isUser)
 bool ScriptedAlgorithm::loadScript(const QString& filePath)
 {
     m_filePath = filePath;
-    // L10: Include "script:" prefix for consistency with ScriptedAlgorithmLoader's registry key
+    // Include "script:" prefix for consistency with ScriptedAlgorithmLoader's registry key
     m_scriptId = QStringLiteral("script:") + QFileInfo(filePath).completeBaseName();
     m_valid = false;
     m_cachedValuesLoaded = false;
@@ -202,7 +202,7 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     m_cachedSupportsMasterCount = false;
     m_cachedSupportsSplitRatio = false;
     m_cachedProducesOverlappingZones = false;
-    // D3: Reset consolidated metadata struct
+    // Reset consolidated metadata struct
     m_metadata = ScriptedHelpers::ScriptMetadata{};
 
     QFile file(filePath);
@@ -211,7 +211,7 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         return false;
     }
 
-    // M12: Reject scripts larger than 1 MB to prevent resource exhaustion
+    // Reject scripts larger than 1 MB to prevent resource exhaustion
     static constexpr qint64 MaxScriptSizeBytes = 1024 * 1024; // 1 MB
     if (file.size() > MaxScriptSizeBytes) {
         qCWarning(lcAutotile) << "Script file too large:" << filePath << file.size() << "bytes (max"
@@ -227,10 +227,10 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         return false;
     }
 
-    // M3: Parse metadata via helper — D3: single struct assignment
+    // Parse metadata via helper — single struct assignment
     m_metadata = ScriptedHelpers::parseMetadata(source, filePath);
 
-    // M3: Apply sandbox hardening BEFORE helper injection so that the sandbox
+    // Apply sandbox hardening BEFORE helper injection so that the sandbox
     // restrictions (frozen prototypes, disabled eval/Function) are in place before
     // any user-visible globals are defined. hardenSandbox() also freezes the helper
     // globals via freezeGlobal() — those calls are no-ops until the helpers exist,
@@ -240,13 +240,13 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         return false;
     }
 
-    // M3: Inject built-in helpers from ScriptedAlgorithmHelpers
+    // Inject built-in helpers from ScriptedAlgorithmHelpers
     m_engine->evaluate(ScriptedHelpers::treeHelperJs(), QStringLiteral("builtin:applyTreeGeometry"));
     m_engine->evaluate(ScriptedHelpers::lShapeHelperJs(), QStringLiteral("builtin:lShapeLayout"));
     m_engine->evaluate(ScriptedHelpers::deckHelperJs(), QStringLiteral("builtin:deckLayout"));
     m_engine->evaluate(ScriptedHelpers::distributeEvenlyHelperJs(), QStringLiteral("builtin:distributeEvenly"));
 
-    // M3: Freeze helper globals so user scripts cannot overwrite them.
+    // Freeze helper globals so user scripts cannot overwrite them.
     // This must happen after injection since hardenSandbox's freezeGlobal calls
     // ran before the helpers existed.
     for (const auto& helperName : {QLatin1String("applyTreeGeometry"), QLatin1String("lShapeLayout"),
@@ -255,7 +255,7 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
                                .arg(QLatin1String(helperName)));
     }
 
-    // D2: Use guardedCall helper for watchdog arm-evaluate-disarm-check pattern.
+    // Use guardedCall helper for watchdog arm-evaluate-disarm-check pattern.
     // Wrap user script in an IIFE that shadows eval/Function with undefined via
     // parameter binding. This is defense-in-depth: QJSEngine V4 treats direct
     // eval() as a language-level built-in that bypasses Object.defineProperty on
@@ -282,7 +282,7 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         return m_engine->evaluate(wrappedSource, filePath);
     });
 
-    // M2: Check structured timeout flag instead of parsing error message strings
+    // Check structured timeout flag instead of parsing error message strings
     if (m_lastCallTimedOut) {
         qCWarning(lcAutotile) << "ScriptedAlgorithm: script timed out during evaluate, file=" << filePath;
         return false;
@@ -312,7 +312,7 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     m_jsCenterLayout = m_engine->globalObject().property(QStringLiteral("centerLayout"));
 
     m_valid = true;
-    // C-1: Cache JS override values through guardedCall so that a malicious function
+    // Cache JS override values through guardedCall so that a malicious function
     // (e.g. `function masterZoneIndex() { while(true){} }`) cannot hang forever.
     // If the guarded call times out, we keep the existing default cached value.
     auto guardedCacheJsValue = [this]<typename T>(const QJSValue& jsFn, T fallback) -> T {
@@ -346,12 +346,12 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     return true;
 }
 
-// L1: calculateZones() is NOT reentrant — it mutates mutable QJSEngine state
+// calculateZones() is NOT reentrant — it mutates mutable QJSEngine state
 // (params object, watchdog generation, interrupt flag). All calls must be serialized
 // on the owning thread.
 QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) const
 {
-    // C1: Runtime thread guard — QJSEngine is not thread-safe
+    // Runtime thread guard — QJSEngine is not thread-safe
     if (QThread::currentThread() != thread()) {
         qCWarning(lcAutotile) << "ScriptedAlgorithm::calculateZones called from wrong thread";
         return {};
@@ -364,12 +364,12 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
     // Compute the usable area after outer gaps
     const QRect area = innerRect(params.screenGeometry, params.outerGaps);
 
-    // L2: Early return for empty area (e.g., gaps exceed screen geometry)
+    // Early return for empty area (e.g., gaps exceed screen geometry)
     if (area.isEmpty()) {
         return {};
     }
 
-    // DRY-3: Single-window case always fills the area. Scripts cannot customize
+    // Single-window case always fills the area. Scripts cannot customize
     // single-window behavior — this is intentional to avoid unnecessary JS calls.
     if (params.windowCount == 1) {
         return {area};
@@ -404,7 +404,7 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
     }
 
     // minSizes array
-    // B1: Cap the loop at MaxZones (256) to match the array allocation size
+    // Cap the loop at MaxZones (256) to match the array allocation size
     const int minSizesCap = std::min<int>(params.minSizes.size(), MaxZones);
     QJSValue jsMinSizes = m_engine->newArray(static_cast<uint>(minSizesCap));
     for (int i = 0; i < minSizesCap; ++i) {
@@ -415,12 +415,12 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
     }
     jsParams.setProperty(QStringLiteral("minSizes"), jsMinSizes);
 
-    // D2: Use guardedCall helper for watchdog arm-evaluate-disarm-check pattern
+    // Use guardedCall helper for watchdog arm-evaluate-disarm-check pattern
     const QJSValue result = guardedCall([this, &jsParams]() {
         return m_calculateZonesFn.call({jsParams});
     });
 
-    // M2: Check structured timeout flag instead of parsing error message strings
+    // Check structured timeout flag instead of parsing error message strings
     if (m_lastCallTimedOut) {
         qCWarning(lcAutotile) << "ScriptedAlgorithm: script timed out, script=" << m_scriptId;
         return {};
@@ -436,11 +436,11 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
         return {};
     }
 
-    // M3: Delegate to helpers for array conversion and bounds clamping
+    // Delegate to helpers for array conversion and bounds clamping
     const QVector<QRect> zones = ScriptedHelpers::jsArrayToRects(result, m_scriptId, MaxZones);
     const QVector<QRect> clamped = ScriptedHelpers::clampZonesToArea(zones, area, m_scriptId);
 
-    // S2: Collect garbage periodically to limit script memory accumulation.
+    // Collect garbage periodically to limit script memory accumulation.
     // Every-call GC is expensive during frequent retiles (e.g. window drag);
     // every 8th call balances memory hygiene against jank.
     if (++m_gcCounter % GcInterval == 0) {
@@ -456,7 +456,7 @@ QJSValue ScriptedAlgorithm::splitNodeToJSValue(const SplitNode* node, int depth)
         return QJSValue();
     }
 
-    // m-7: Cache Object.freeze once at the top of the recursion instead of looking it up per node
+    // Cache Object.freeze once at the top of the recursion instead of looking it up per node
     const QJSValue freezeFn =
         m_engine->globalObject().property(QStringLiteral("Object")).property(QStringLiteral("freeze"));
     if (!freezeFn.isCallable()) {
@@ -492,7 +492,7 @@ QJSValue ScriptedAlgorithm::splitNodeToJSValueImpl(const SplitNode* node, const 
                            splitNodeToJSValueImpl(node->second.get(), freezeFn, depth + 1, nodeCount));
     }
 
-    // L-1: Freeze the node so scripts cannot mutate the tree representation
+    // Freeze the node so scripts cannot mutate the tree representation
     if (freezeFn.isCallable()) {
         freezeFn.call({jsNode});
     }
@@ -533,7 +533,7 @@ QString ScriptedAlgorithm::description() const
 
 int ScriptedAlgorithm::masterZoneIndex() const
 {
-    // H2: Unified three-tier resolution via template helper
+    // Unified three-tier resolution via template helper
     return resolveJsOverride<int>(m_jsMasterZoneIndex, m_cachedMasterZoneIndex, m_metadata.masterZoneIndex);
 }
 
@@ -550,7 +550,7 @@ bool ScriptedAlgorithm::supportsSplitRatio() const
 
 qreal ScriptedAlgorithm::defaultSplitRatio() const
 {
-    // DRY-5: Use resolveJsOverrideClamped to unify clamped resolution
+    // Use resolveJsOverrideClamped to unify clamped resolution
     const qreal fallback =
         (m_metadata.defaultSplitRatio > 0.0) ? m_metadata.defaultSplitRatio : TilingAlgorithm::defaultSplitRatio();
     return resolveJsOverrideClamped<qreal>(m_jsDefaultSplitRatio, m_cachedDefaultSplitRatio, fallback, MinSplitRatio,
@@ -559,7 +559,7 @@ qreal ScriptedAlgorithm::defaultSplitRatio() const
 
 int ScriptedAlgorithm::minimumWindows() const
 {
-    // DRY-5: Use resolveJsOverrideClamped to unify clamped resolution
+    // Use resolveJsOverrideClamped to unify clamped resolution
     const int fallback =
         (m_metadata.minimumWindows > 0) ? m_metadata.minimumWindows : TilingAlgorithm::minimumWindows();
     return resolveJsOverrideClamped<int>(m_jsMinimumWindows, m_cachedMinimumWindows, fallback, MinMetadataWindows,
@@ -568,7 +568,7 @@ int ScriptedAlgorithm::minimumWindows() const
 
 int ScriptedAlgorithm::defaultMaxWindows() const
 {
-    // DRY-5: Use resolveJsOverrideClamped to unify clamped resolution
+    // Use resolveJsOverrideClamped to unify clamped resolution
     const int fallback =
         (m_metadata.defaultMaxWindows > 0) ? m_metadata.defaultMaxWindows : TilingAlgorithm::defaultMaxWindows();
     return resolveJsOverrideClamped<int>(m_jsDefaultMaxWindows, m_cachedDefaultMaxWindows, fallback, MinMetadataWindows,

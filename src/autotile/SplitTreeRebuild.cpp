@@ -12,7 +12,7 @@ namespace PlasmaZones {
 using namespace AutotileDefaults;
 
 // =============================================================================
-// Rebuild from order (SOLID-1: moved from TilingState)
+// Rebuild from order (moved from TilingState)
 // =============================================================================
 
 /**

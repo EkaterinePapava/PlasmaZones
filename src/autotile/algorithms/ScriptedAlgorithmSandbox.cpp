@@ -11,7 +11,7 @@ namespace PlasmaZones {
 
 bool hardenSandbox(QJSEngine* engine)
 {
-    // H2: Safe evaluate wrapper — checks for errors on all sandbox-hardening calls.
+    // Safe evaluate wrapper — checks for errors on all sandbox-hardening calls.
     // Non-critical hardening steps log warnings but do not abort.
     auto safeEval = [engine](const QString& code, const QString& context) {
         QJSValue result = engine->evaluate(code);
@@ -23,7 +23,7 @@ bool hardenSandbox(QJSEngine* engine)
         }
     };
 
-    // H2: Critical evaluate wrapper — returns false if the hardening step fails.
+    // Critical evaluate wrapper — returns false if the hardening step fails.
     // Used for eval/Function lockdown where failure means the sandbox is bypassable.
     auto criticalEval = [engine](const QString& code, const QString& context) -> bool {
         QJSValue result = engine->evaluate(code);
@@ -39,7 +39,7 @@ bool hardenSandbox(QJSEngine* engine)
     // distributeEvenly) are frozen AFTER injection in ScriptedAlgorithm::loadScript(),
     // not here — freezing before injection would lock them to undefined.
 
-    // m-8: DRY helper for the repeated Object.defineProperty pattern used to disable globals.
+    // DRY helper for the repeated Object.defineProperty pattern used to disable globals.
     // When critical=true, failure aborts the sandbox; otherwise logs a warning and continues.
     auto disableGlobal = [&](const QLatin1String& name, bool critical = false) -> bool {
         const QString js = QStringLiteral(
@@ -53,7 +53,7 @@ bool hardenSandbox(QJSEngine* engine)
         return true;
     };
 
-    // H2: Disable eval() and Function constructor to prevent dynamic code generation.
+    // Disable eval() and Function constructor to prevent dynamic code generation.
     // These are CRITICAL — if any fails, the sandbox cannot prevent arbitrary code execution.
     if (!disableGlobal(QLatin1String("eval"), true)) {
         return false;
@@ -70,12 +70,12 @@ bool hardenSandbox(QJSEngine* engine)
                       QStringLiteral("Function.prototype freeze"))) {
         return false;
     }
-    // M2: Disable the Function global to prevent dynamic code generation
+    // Disable the Function global to prevent dynamic code generation
     if (!disableGlobal(QLatin1String("Function"), true)) {
         return false;
     }
 
-    // C1: Freeze GeneratorFunction and AsyncFunction constructors to prevent sandbox bypass.
+    // Freeze GeneratorFunction and AsyncFunction constructors to prevent sandbox bypass.
     // GeneratorFunction is CRITICAL — if it fails, generators can escape the sandbox.
     if (!criticalEval(
             QStringLiteral(
@@ -110,8 +110,8 @@ bool hardenSandbox(QJSEngine* engine)
         }
     }
 
-    // S3: Freeze built-in prototypes to prevent prototype pollution.
-    // H1: Includes String, Number, Boolean, RegExp, Date, Error, Map, Set
+    // Freeze built-in prototypes to prevent prototype pollution.
+    // Includes String, Number, Boolean, RegExp, Date, Error, Map, Set
     // in addition to Object and Array. If any freeze fails, the sandbox is
     // compromised — caller must abort.
     {
@@ -139,7 +139,7 @@ bool hardenSandbox(QJSEngine* engine)
         QStringLiteral("Object.freeze(Object); Object.freeze(Array); Object.freeze(JSON); Object.freeze(Math);"),
         QStringLiteral("built-in constructor freeze"));
 
-    // H1: Close Object.constructor -> Function escape route on all major built-in objects
+    // Close Object.constructor -> Function escape route on all major built-in objects
     safeEval(QStringLiteral("(function() {"
                             "  var undef = void 0;"
                             "  [Object, Array, String, Number, Boolean, RegExp, Date, Error,"
@@ -154,7 +154,7 @@ bool hardenSandbox(QJSEngine* engine)
                             "})();"),
              QStringLiteral("built-in constructor lockdown"));
 
-    // B4: Disable Proxy, Reflect, WeakRef, and FinalizationRegistry to prevent sandbox bypass
+    // Disable Proxy, Reflect, WeakRef, and FinalizationRegistry to prevent sandbox bypass
     {
         QJSValue global = engine->globalObject();
         QJSValue freezeObj = engine->evaluate(QStringLiteral("Object.freeze"));
@@ -168,16 +168,16 @@ bool hardenSandbox(QJSEngine* engine)
         }
     }
 
-    // C-2: Disable globalThis to prevent sandbox bypass
+    // Disable globalThis to prevent sandbox bypass
     disableGlobal(QLatin1String("globalThis"));
-    // C-2b: Disable Symbol (critical — prevents Symbol.toPrimitive type-confusion attacks)
+    // Disable Symbol (critical — prevents Symbol.toPrimitive type-confusion attacks)
     if (!disableGlobal(QLatin1String("Symbol"), true)) {
         return false;
     }
 
-    // S1: Strip dangerous QJSEngine-provided globals via defineProperty (not deleteProperty)
+    // Strip dangerous QJSEngine-provided globals via defineProperty (not deleteProperty)
     // to prevent scripts from re-creating them (e.g., Qt.createQmlObject() escape)
-    // m-9: Also blocks the global `import` property. The `import()` syntax (dynamic import
+    // Also blocks the global `import` property. The `import()` syntax (dynamic import
     // expression) is not supported by QJSEngine V4 and is thus not a concern.
     {
         for (const auto& name : {QLatin1String("Qt"), QLatin1String("qsTr"), QLatin1String("qsTrId"),

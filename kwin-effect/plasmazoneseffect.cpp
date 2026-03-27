@@ -696,11 +696,11 @@ void PlasmaZonesEffect::setupWindowConnections(KWin::EffectWindow* w)
         m_dragTracker->handleWindowFinishMoveResize(window);
     });
 
-    // C2: Track when user manually unmaximizes a monocle-maximized window
+    // Track when user manually unmaximizes a monocle-maximized window
     connect(w, &KWin::EffectWindow::windowMaximizedStateChanged, m_autotileHandler.get(),
             &AutotileHandler::slotWindowMaximizedStateChanged);
 
-    // M1: Track when a monocle-maximized window goes fullscreen
+    // Track when a monocle-maximized window goes fullscreen
     connect(w, &KWin::EffectWindow::windowFullScreenChanged, m_autotileHandler.get(),
             &AutotileHandler::slotWindowFullScreenChanged);
 

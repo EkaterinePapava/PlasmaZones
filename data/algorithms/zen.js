@@ -42,7 +42,7 @@ function calculateZones(params) {
         return stacked;
     }
 
-    // D-05: Use injected distributeEvenly helper for vertical stacking
+    // Use injected distributeEvenly helper for vertical stacking
     const slots = distributeEvenly(area.y, area.height, count, gap);
     const zones = [];
     for (let i = 0; i < slots.length; i++) {

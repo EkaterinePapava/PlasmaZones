@@ -96,7 +96,7 @@ TilingState* TilingState::fromJson(const QJsonObject& json, QObject* parent)
     if (json.contains(AutotileJsonKeys::SplitTreeKey)) {
         state->m_splitTree = SplitTree::fromJson(json[AutotileJsonKeys::SplitTreeKey].toObject());
         if (state->m_splitTree) {
-            // m8: Single-pass leaf validation — checks count, membership, and duplicates together.
+            // Single-pass leaf validation — checks count, membership, and duplicates together.
             // The split tree only contains tiled windows — floating windows are
             // removed from the tree — so we must compare against tiledWindowCount().
             const QStringList leafIds = state->m_splitTree->leafOrder();

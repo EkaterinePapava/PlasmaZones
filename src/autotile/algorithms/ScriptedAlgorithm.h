@@ -147,7 +147,7 @@ private:
      */
     QJSValue splitNodeToJSValue(const SplitNode* node, int depth = 0) const;
 
-    /// m-7: Recursive helper that receives a cached Object.freeze function
+    /// Recursive helper that receives a cached Object.freeze function
     QJSValue splitNodeToJSValueImpl(const SplitNode* node, const QJSValue& freezeFn, int depth, int& nodeCount) const;
 
     /**
@@ -162,25 +162,25 @@ private:
     template<typename T>
     T resolveJsOverrideClamped(const QJSValue& jsFn, T cachedValue, T metadataFallback, T minVal, T maxVal) const;
 
-    /// D-02: Arms watchdog, calls fn(), disarms, checks for timeout. Returns error on timeout.
+    /// Arms watchdog, calls fn(), disarms, checks for timeout. Returns error on timeout.
     QJSValue guardedCall(const std::function<QJSValue()>& fn) const;
 
-    /// B-09: Unified with AutotileDefaults::MaxRuntimeTreeDepth to prevent silent truncation
+    /// Unified with AutotileDefaults::MaxRuntimeTreeDepth to prevent silent truncation
     static constexpr int MaxTreeConversionDepth = AutotileDefaults::MaxRuntimeTreeDepth;
 
     // Owned via QObject parent; mutable because calculateZones() is const but JS evaluation mutates engine state
     mutable QJSEngine* m_engine = nullptr;
-    std::shared_ptr<WatchdogContext> m_watchdog; ///< D1: Consolidated watchdog shared state
+    std::shared_ptr<WatchdogContext> m_watchdog; ///< Consolidated watchdog shared state
     mutable QJSValue m_calculateZonesFn;
     QString m_filePath;
     QString m_scriptId;
     bool m_valid = false;
     bool m_isUserScript = false;
-    mutable bool m_lastCallTimedOut = false; ///< M2: Set by guardedCall on timeout, checked by callers
+    mutable bool m_lastCallTimedOut = false; ///< Set by guardedCall on timeout, checked by callers
     mutable uint32_t m_gcCounter = 0; ///< GC throttle counter for calculateZones
     static constexpr uint32_t GcInterval = 8; ///< Collect garbage every N calculateZones calls
 
-    // D3: Consolidated parsed metadata (from // @key value comments)
+    // Consolidated parsed metadata (from // @key value comments)
     ScriptedHelpers::ScriptMetadata m_metadata;
 
     // Optional JS function overrides (checked at call time)
@@ -193,7 +193,7 @@ private:
     mutable QJSValue m_jsProducesOverlappingZones;
     mutable QJSValue m_jsCenterLayout;
 
-    // H5: Cached JS virtual method overrides (loaded once at script load time)
+    // Cached JS virtual method overrides (loaded once at script load time)
     int m_cachedMinimumWindows = 1;
     int m_cachedDefaultMaxWindows = 6;
     int m_cachedMasterZoneIndex = -1;

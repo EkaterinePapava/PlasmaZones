@@ -46,7 +46,7 @@ private Q_SLOTS:
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // P0: detectMultiZone should not include large background zone
+    // detectMultiZone should not include large background zone
     // when cursor is between two sub-zones on top of it
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -94,7 +94,7 @@ private Q_SLOTS:
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // P0: expandPaintedZonesToRect should not pull in background zone
+    // expandPaintedZonesToRect should not pull in background zone
     // ═══════════════════════════════════════════════════════════════════════
 
     void testExpandPaintedZones_subZonesOnBackground_excludesBackground()
@@ -123,7 +123,7 @@ private Q_SLOTS:
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // P1: expandPaintedZones still fills gaps between non-overlapping zones
+    // expandPaintedZones still fills gaps between non-overlapping zones
     // ═══════════════════════════════════════════════════════════════════════
 
     void testExpandPaintedZones_gapFilling_stillWorks()
@@ -153,7 +153,7 @@ private Q_SLOTS:
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // P0: exact-50% boundary — sub-zones tile top half of background zone
+    // exact-50% boundary — sub-zones tile top half of background zone
     // The background zone's intersection ratio is exactly 0.5; it must be excluded.
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -186,7 +186,7 @@ private Q_SLOTS:
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // P0: detectZone center-distance — cursor near center of background zone
+    // detectZone center-distance — cursor near center of background zone
     // selects background instead of always picking smallest overlapping zone
     // (regression test for discussion #258)
     // ═══════════════════════════════════════════════════════════════════════
@@ -302,7 +302,7 @@ private Q_SLOTS:
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // P0: detectMultiZone still excludes background zone when spanning
+    // detectMultiZone still excludes background zone when spanning
     // sub-zones — verifies #211 fix survives the #258 change
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -334,7 +334,7 @@ private Q_SLOTS:
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // P1: detectMultiZone with non-overlapping zones still works normally
+    // detectMultiZone with non-overlapping zones still works normally
     // ═══════════════════════════════════════════════════════════════════════
 
     void testDetectMultiZone_nonOverlapping_worksNormally()

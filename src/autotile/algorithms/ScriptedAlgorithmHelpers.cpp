@@ -14,7 +14,7 @@ namespace ScriptedHelpers {
 
 QString treeHelperJs()
 {
-    // M-11: Inject MaxRuntimeTreeDepth from C++ constant so JS and C++ stay in sync
+    // Inject MaxRuntimeTreeDepth from C++ constant so JS and C++ stay in sync
     return QStringLiteral(
                "function applyTreeGeometry(node, rect, gap, _depth) {"
                "  if ((_depth || 0) > %1) return [];")
@@ -195,7 +195,7 @@ QVector<QRect> jsArrayToRects(const QJSValue& result, const QString& scriptId, i
 
     for (int i = 0; i < effectiveLength; ++i) {
         const QJSValue elem = result.property(static_cast<quint32>(i));
-        // m1: Validate that each element is an object before extracting properties
+        // Validate that each element is an object before extracting properties
         if (!elem.isObject()) {
             qCWarning(lcAutotile) << "Skipping non-object zone element at index" << i;
             continue;
@@ -207,7 +207,7 @@ QVector<QRect> jsArrayToRects(const QJSValue& result, const QString& scriptId, i
             qCWarning(lcAutotile) << "Skipping zone with missing width/height at index" << i << "script=" << scriptId;
             continue;
         }
-        // M10: Clamp x and y to non-negative to prevent off-screen zones
+        // Clamp x and y to non-negative to prevent off-screen zones
         const int x = std::max(0, elem.property(QStringLiteral("x")).toInt());
         const int y = std::max(0, elem.property(QStringLiteral("y")).toInt());
         int w = wProp.toInt();
@@ -272,7 +272,7 @@ ScriptMetadata parseMetadata(const QString& source, const QString& filePath)
         const QString value = match.captured(2).trimmed();
 
         if (key == QLatin1String("name")) {
-            // S-10: Sanitize metadata — length cap + HTML escape
+            // Sanitize metadata — length cap + HTML escape
             meta.name = value.left(100).toHtmlEscaped();
         } else if (key == QLatin1String("description")) {
             meta.description = value.left(500).toHtmlEscaped();

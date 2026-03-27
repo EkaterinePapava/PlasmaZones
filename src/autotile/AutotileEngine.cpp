@@ -886,7 +886,7 @@ void AutotileEngine::processPendingRetiles()
 
 void AutotileEngine::retile(const QString& screenId)
 {
-    // R3/R4: m_retiling serves as a re-entrancy guard for both retile() and
+    // m_retiling serves as a re-entrancy guard for both retile() and
     // retileAfterOperation(). Both methods set it with QScopeGuard and check it
     // on entry. They are mutually exclusive: retileAfterOperation() returns early
     // if m_retiling is already true (set by retile()), so the dual QScopeGuard

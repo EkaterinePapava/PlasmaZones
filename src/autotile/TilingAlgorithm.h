@@ -170,7 +170,12 @@ public:
      */
     virtual bool producesOverlappingZones() const;
 
-    // noexcept virtuals below only read cached fields; non-noexcept ones may allocate or run JS.
+    // ── noexcept convention for virtual methods ──────────────────────────
+    // Methods below are noexcept because they only read cached POD fields.
+    // Methods above (supportsMasterCount, supportsSplitRatio, etc.) are NOT
+    // noexcept because ScriptedAlgorithm overrides may allocate QStrings or
+    // invoke cached JS values. When adding new virtuals, use noexcept only
+    // if the implementation is guaranteed to never allocate or throw.
 
     /**
      * @brief How zone numbers should be displayed in previews

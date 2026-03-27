@@ -14,13 +14,13 @@
 
 namespace PlasmaZones {
 
-// M2: Single file-scope constant shared by loadFromDirectory() and reWatchFiles()
+// Single file-scope constant shared by loadFromDirectory() and reWatchFiles()
 static constexpr int MaxWatchedFilesPerDir = 100;
 
 ScriptedAlgorithmLoader::ScriptedAlgorithmLoader(QObject* parent)
     : QObject(parent)
 {
-    // L11: Lazy user directory creation — moved ensureUserDirectoryExists()
+    // Lazy user directory creation — moved ensureUserDirectoryExists()
     // to scanAndRegister() so it is only called when actually needed.
     setupFileWatcher();
 }
@@ -87,7 +87,7 @@ void ScriptedAlgorithmLoader::ensureUserDirectoryExists()
     QDir dir(dirPath);
     if (!dir.exists()) {
         if (dir.mkpath(QStringLiteral("."))) {
-            // B6: Restrict user algorithm directory to owner-only access (0700)
+            // Restrict user algorithm directory to owner-only access (0700)
             QFile::setPermissions(dir.absolutePath(),
                                   QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
             qCInfo(lcAutotile) << "Created user algorithm directory:" << dir.absolutePath();
@@ -99,7 +99,7 @@ void ScriptedAlgorithmLoader::ensureUserDirectoryExists()
 
 bool ScriptedAlgorithmLoader::scanAndRegister()
 {
-    // L11: Lazily create user directory on first scan
+    // Lazily create user directory on first scan
     ensureUserDirectoryExists();
 
     auto* registry = AlgorithmRegistry::instance();
@@ -119,7 +119,7 @@ bool ScriptedAlgorithmLoader::scanAndRegister()
 
     const QString userDir = userAlgorithmDir();
     for (const QString& dir : std::as_const(dirs)) {
-        // E2: Use canonical paths to handle symlinks and relative path differences
+        // Use canonical paths to handle symlinks and relative path differences
         loadFromDirectory(dir, QFileInfo(dir).canonicalFilePath() == QFileInfo(userDir).canonicalFilePath());
     }
 
@@ -141,7 +141,7 @@ bool ScriptedAlgorithmLoader::scanAndRegister()
         }
     }
 
-    // M5: Also detect newly added or updated scripts (not just removals)
+    // Also detect newly added or updated scripts (not just removals)
     if (!changed) {
         for (const QString& id : std::as_const(newScriptIds)) {
             if (!oldScriptIdToPath.contains(id) || oldScriptIdToPath.value(id) != m_scriptIdToPath.value(id)) {
@@ -152,7 +152,7 @@ bool ScriptedAlgorithmLoader::scanAndRegister()
     }
 
     qCInfo(lcAutotile) << "Scripted algorithms loaded:" << m_scriptIdToPath.size() << "changed=" << changed;
-    // M-5: Always emit — the signal is cheap (listeners just refresh their model)
+    // Always emit — the signal is cheap (listeners just refresh their model)
     // and content-only edits (same IDs/paths but different script body) would
     // otherwise be missed by the old change-detection logic.
     Q_EMIT algorithmsChanged();
@@ -162,16 +162,16 @@ bool ScriptedAlgorithmLoader::scanAndRegister()
 void ScriptedAlgorithmLoader::loadFromDirectory(const QString& dir, bool isUserDir)
 {
     QDir dirObj(dir);
-    // H4: Exclude symlinks to prevent path traversal attacks
+    // Exclude symlinks to prevent path traversal attacks
     const QStringList files =
         dirObj.entryList({QStringLiteral("*.js")}, QDir::Files | QDir::NoSymLinks | QDir::Readable);
 
-    // S-07: Directory containment check — prevent symlink/traversal escapes
+    // Directory containment check — prevent symlink/traversal escapes
     const QString canonicalDir = QFileInfo(dir).canonicalFilePath();
     if (canonicalDir.isEmpty())
         return;
 
-    // S-08: Cap file watcher count to prevent resource exhaustion
+    // Cap file watcher count to prevent resource exhaustion
     int filesProcessed = 0;
 
     for (const QString& file : files) {
@@ -186,7 +186,7 @@ void ScriptedAlgorithmLoader::loadFromDirectory(const QString& dir, bool isUserD
         if (fullPath.isEmpty())
             continue; // file vanished between listing and stat
 
-        // S-07: Verify resolved path stays within the algorithm directory
+        // Verify resolved path stays within the algorithm directory
         if (!fullPath.startsWith(canonicalDir + QLatin1Char('/'))) {
             qCWarning(lcAutotile) << "Script path escaped directory:" << fullPath;
             continue;
@@ -201,7 +201,7 @@ void ScriptedAlgorithmLoader::loadFromDirectory(const QString& dir, bool isUserD
         }
         const QString scriptId = QStringLiteral("script:") + baseName;
 
-        // H3: Create with nullptr parent so the registry takes full ownership
+        // Create with nullptr parent so the registry takes full ownership
         // via setParent(this) in registerAlgorithm(). If the algo is invalid,
         // we delete it explicitly below.
         auto* algo = new ScriptedAlgorithm(fullPath, nullptr);
@@ -275,7 +275,7 @@ void ScriptedAlgorithmLoader::scheduleRefresh()
 void ScriptedAlgorithmLoader::performDebouncedRefresh()
 {
     qCInfo(lcAutotile) << "Algorithm directory changed, refreshing...";
-    // H-4: scanAndRegister() emits algorithmsChanged() internally when changed,
+    // scanAndRegister() emits algorithmsChanged() internally when changed,
     // so we do NOT re-emit here to avoid double signal emission.
     scanAndRegister();
     reWatchFiles();
@@ -290,7 +290,7 @@ void ScriptedAlgorithmLoader::reWatchFiles()
     // After a refresh (which may follow delete+recreate), re-add any
     // .js files that lost their inotify watch due to inode replacement.
     // algorithmDirectories() already includes the writable user dir.
-    // M5: Build QSets once to avoid O(n^2) repeated contains() calls
+    // Build QSets once to avoid O(n^2) repeated contains() calls
     const QSet<QString> watchedDirs(m_watcher->directories().cbegin(), m_watcher->directories().cend());
     const QSet<QString> watchedFiles(m_watcher->files().cbegin(), m_watcher->files().cend());
     const QStringList allDirs = algorithmDirectories();
@@ -302,14 +302,14 @@ void ScriptedAlgorithmLoader::reWatchFiles()
         if (!watchedDirs.contains(dir)) {
             m_watcher->addPath(dir);
         }
-        // H-5: Validate path containment (same as loadFromDirectory) to prevent
+        // Validate path containment (same as loadFromDirectory) to prevent
         // symlink/traversal escapes when re-adding file watches
         const QString canonicalDir = QFileInfo(dir).canonicalFilePath();
         if (canonicalDir.isEmpty())
             continue;
         QDir dirObj(dir);
         const QStringList files = dirObj.entryList({QStringLiteral("*.js")}, QDir::Files | QDir::NoSymLinks);
-        // M6: Cap watched files per directory to match loadFromDirectory's limit
+        // Cap watched files per directory to match loadFromDirectory's limit
         int filesWatched = 0;
         for (const QString& file : files) {
             if (filesWatched >= MaxWatchedFilesPerDir) {
