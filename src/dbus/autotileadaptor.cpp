@@ -190,8 +190,8 @@ void AutotileAdaptor::windowOpened(const QString& windowId, const QString& scree
         qCDebug(lcDbusAutotile) << "windowOpened: empty screen ID for window" << windowId;
         return;
     }
-    qCDebug(lcDbusAutotile) << "windowOpened: windowId=" << windowId << "screen=" << screenId
-                            << "minSize=" << minWidth << "x" << minHeight;
+    qCDebug(lcDbusAutotile) << "windowOpened: windowId=" << windowId << "screen=" << screenId << "minSize=" << minWidth
+                            << "x" << minHeight;
     m_engine->windowOpened(windowId, screenId, qMax(0, minWidth), qMax(0, minHeight));
 }
 
@@ -300,6 +300,14 @@ QString AutotileAdaptor::algorithmInfo(const QString& algorithmId)
     info[QLatin1String("description")] = algo->description();
     info[QLatin1String("supportsMasterCount")] = algo->supportsMasterCount();
     info[QLatin1String("supportsSplitRatio")] = algo->supportsSplitRatio();
+    info[QLatin1String("centerLayout")] = algo->centerLayout();
+    info[QLatin1String("defaultSplitRatio")] = algo->defaultSplitRatio();
+    info[QLatin1String("defaultMaxWindows")] = algo->defaultMaxWindows();
+    info[QLatin1String("producesOverlappingZones")] = algo->producesOverlappingZones();
+    info[QLatin1String("zoneNumberDisplay")] = algo->zoneNumberDisplay();
+    info[QLatin1String("isScripted")] = algo->isScripted();
+    info[QLatin1String("isUserScript")] = algo->isUserScript();
+    info[QLatin1String("supportsMemory")] = algo->supportsMemory();
 
     return QString::fromUtf8(QJsonDocument(info).toJson(QJsonDocument::Compact));
 }

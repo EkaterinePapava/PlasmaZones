@@ -45,15 +45,15 @@ function calculateZones(params) {
 
     // Degenerate case: gaps consume all available height
     if (area.height - gap * (rows - 1) <= 0) {
-        var fallback = [];
-        for (var i = 0; i < count; i++) {
+        const fallback = [];
+        for (let i = 0; i < count; i++) {
             fallback.push({ x: area.x, y: area.y, width: area.width, height: area.height });
         }
         return fallback;
     }
 
-    var EVEN_ROW_RATIO = 0.55; // Offset to prevent four-corner intersections
-    var ODD_ROW_RATIO = 0.45;
+    const EVEN_ROW_RATIO = 0.55; // Offset to prevent four-corner intersections
+    const ODD_ROW_RATIO = 0.45;
 
     for (let row = 0; row < rows; row++) {
         const y = area.y + row * (rowHeight + gap);

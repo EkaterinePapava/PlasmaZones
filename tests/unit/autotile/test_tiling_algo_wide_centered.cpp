@@ -461,11 +461,11 @@ private Q_SLOTS:
         QCOMPARE(ThreeColumnAlgorithm().calculateZones({3, screen, nullptr, 0, EdgeGaps::uniform(0)}).size(), 0);
         QCOMPARE(WideAlgorithm().calculateZones({3, screen, nullptr, 0, EdgeGaps::uniform(0)}).size(), 0);
         QCOMPARE(CenteredMasterAlgorithm().calculateZones({3, screen, nullptr, 0, EdgeGaps::uniform(0)}).size(), 0);
-        // Algorithms that work without state return zones
-        QCOMPARE(GridAlgorithm().calculateZones({3, screen, nullptr, 0, EdgeGaps::uniform(0)}).size(), 3);
-        QCOMPARE(ColumnsAlgorithm().calculateZones({3, screen, nullptr, 0, EdgeGaps::uniform(0)}).size(), 3);
-        QCOMPARE(RowsAlgorithm().calculateZones({3, screen, nullptr, 0, EdgeGaps::uniform(0)}).size(), 3);
-        QCOMPARE(MonocleAlgorithm().calculateZones({3, screen, nullptr, 0, EdgeGaps::uniform(0)}).size(), 3);
+        // All algorithms now consistently guard against null state
+        QCOMPARE(GridAlgorithm().calculateZones({3, screen, nullptr, 0, EdgeGaps::uniform(0)}).size(), 0);
+        QCOMPARE(ColumnsAlgorithm().calculateZones({3, screen, nullptr, 0, EdgeGaps::uniform(0)}).size(), 0);
+        QCOMPARE(RowsAlgorithm().calculateZones({3, screen, nullptr, 0, EdgeGaps::uniform(0)}).size(), 0);
+        QCOMPARE(MonocleAlgorithm().calculateZones({3, screen, nullptr, 0, EdgeGaps::uniform(0)}).size(), 0);
     }
 
     void test_innerRectHugeOuterGap()

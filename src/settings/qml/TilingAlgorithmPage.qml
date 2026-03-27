@@ -288,6 +288,7 @@ Flickable {
                         id: previewWindowSlider
 
                         Layout.fillWidth: true
+                        Accessible.name: i18n("Maximum preview windows")
                         from: settingsController.autotileMaxWindowsMin
                         to: 12 // Intentional cap — most algorithms degrade beyond 12 windows; settingsController does not expose autotileMaxWindowsMax to QML
                         stepSize: 1
@@ -335,6 +336,7 @@ Flickable {
                         id: splitRatioSlider
 
                         Layout.fillWidth: true
+                        Accessible.name: root.algoCenterLayout ? i18n("Center ratio") : i18n("Master ratio")
                         from: settingsController.autotileSplitRatioMin
                         to: 0.9
                         stepSize: 0.05

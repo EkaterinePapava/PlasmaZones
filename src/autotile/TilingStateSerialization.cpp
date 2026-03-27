@@ -117,8 +117,8 @@ void TilingState::clear()
 {
     // Track if we need to emit signals
     const bool hadData = !m_windowOrder.isEmpty() || !m_floatingWindows.isEmpty() || !m_focusedWindow.isEmpty()
-        || m_masterCount != DefaultMasterCount || !qFuzzyCompare(1.0 + m_splitRatio, 1.0 + DefaultSplitRatio)
-        || m_splitTree;
+        || !m_calculatedZones.isEmpty() || m_masterCount != DefaultMasterCount
+        || !qFuzzyCompare(1.0 + m_splitRatio, 1.0 + DefaultSplitRatio) || m_splitTree;
 
     if (!hadData) {
         return; // Already at defaults, nothing to do
@@ -128,6 +128,7 @@ void TilingState::clear()
     m_windowOrder.clear();
     m_floatingWindows.clear();
     m_focusedWindow.clear();
+    m_calculatedZones.clear();
     m_masterCount = DefaultMasterCount;
     m_splitRatio = DefaultSplitRatio;
     m_splitTree.reset();

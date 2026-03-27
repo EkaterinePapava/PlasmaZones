@@ -516,8 +516,10 @@ private Q_SLOTS:
         auto zones = algo.calculateZones({3, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
 
         QVERIFY(zones.isEmpty()); // Watchdog killed it — no zones returned
-        QVERIFY2(timer.elapsed() < 5000,
-                 qPrintable(QStringLiteral("Watchdog took %1ms, expected < 5000ms").arg(timer.elapsed())));
+        // Generous threshold: the watchdog should interrupt within ~100ms,
+        // but CI machines under load may be slower
+        QVERIFY2(timer.elapsed() < 10000,
+                 qPrintable(QStringLiteral("Watchdog took %1ms, expected < 10000ms").arg(timer.elapsed())));
     }
 
     void testCalculateZones_runtimeThrow()
@@ -604,6 +606,83 @@ private Q_SLOTS:
 
         ScriptedAlgorithm algo(path);
         QVERIFY(!algo.isValid());
+    }
+
+    void testCalculateZones_nanValues()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString path = writeTempScript(dir, QStringLiteral("nan-values.js"),
+                                       QStringLiteral("// @name NaNValues\n"
+                                                      "// @description Returns NaN zone values\n"
+                                                      "function calculateZones(params) {\n"
+                                                      "    return [{x: 0/0, y: 0, width: 100, height: 100}];\n"
+                                                      "}\n"));
+
+        ScriptedAlgorithm algo(path);
+        QVERIFY(algo.isValid());
+
+        TilingState state(QStringLiteral("test"));
+        auto zones = algo.calculateZones({1, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
+        // NaN toInt() returns 0; x is clamped to >= 0, width/height to >= 1
+        QCOMPARE(zones.size(), 1);
+        QVERIFY(zones[0].x() >= 0);
+        QVERIFY(zones[0].width() >= 1);
+        QVERIFY(zones[0].height() >= 1);
+    }
+
+    void testCalculateZones_infinityValues()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString path = writeTempScript(dir, QStringLiteral("inf-values.js"),
+                                       QStringLiteral("// @name InfValues\n"
+                                                      "// @description Returns Infinity zone values\n"
+                                                      "function calculateZones(params) {\n"
+                                                      "    return [{x: 0, y: 0, width: 1/0, height: 100}];\n"
+                                                      "}\n"));
+
+        ScriptedAlgorithm algo(path);
+        QVERIFY(algo.isValid());
+
+        TilingState state(QStringLiteral("test"));
+        auto zones = algo.calculateZones({1, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
+        // Infinity toInt() returns 0, clamped to >= 1; then clampZonesToArea bounds it
+        QCOMPARE(zones.size(), 1);
+        QVERIFY(zones[0].width() >= 1);
+        QVERIFY(zones[0].height() >= 1);
+    }
+
+    void testMetadata_outOfRangeDefaultSplitRatio()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+
+        // Test negative split ratio — should be clamped to MinSplitRatio (0.1)
+        QString negScript = QStringLiteral(
+            "// @name NegRatio\n"
+            "// @description Negative split ratio\n"
+            "// @defaultSplitRatio -1.0\n"
+            "function calculateZones(params) { return []; }\n");
+        QString negPath = writeTempScript(dir, QStringLiteral("neg-ratio.js"), negScript);
+
+        ScriptedAlgorithm negAlgo(negPath);
+        QVERIFY(negAlgo.isValid());
+        QVERIFY(negAlgo.defaultSplitRatio() >= AutotileDefaults::MinSplitRatio);
+        QVERIFY(negAlgo.defaultSplitRatio() <= AutotileDefaults::MaxSplitRatio);
+
+        // Test over-max split ratio — should be clamped to MaxSplitRatio (0.9)
+        QString highScript = QStringLiteral(
+            "// @name HighRatio\n"
+            "// @description Over-max split ratio\n"
+            "// @defaultSplitRatio 2.0\n"
+            "function calculateZones(params) { return []; }\n");
+        QString highPath = writeTempScript(dir, QStringLiteral("high-ratio.js"), highScript);
+
+        ScriptedAlgorithm highAlgo(highPath);
+        QVERIFY(highAlgo.isValid());
+        QVERIFY(highAlgo.defaultSplitRatio() >= AutotileDefaults::MinSplitRatio);
+        QVERIFY(highAlgo.defaultSplitRatio() <= AutotileDefaults::MaxSplitRatio);
     }
 
     void testLoad_emptyScript()

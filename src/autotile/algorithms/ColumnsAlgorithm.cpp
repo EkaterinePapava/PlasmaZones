@@ -39,7 +39,7 @@ QVector<QRect> ColumnsAlgorithm::calculateZones(const TilingParams& params) cons
 
     QVector<QRect> zones;
 
-    if (windowCount <= 0 || !screenGeometry.isValid()) {
+    if (windowCount <= 0 || !screenGeometry.isValid() || !params.state) {
         return zones;
     }
 

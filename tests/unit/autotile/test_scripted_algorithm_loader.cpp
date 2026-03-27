@@ -97,6 +97,12 @@ private:
 
 private Q_SLOTS:
 
+    void cleanupTestCase()
+    {
+        cleanupScriptedAlgorithms({QStringLiteral("script:gamma"), QStringLiteral("script:valid-name"),
+                                   QStringLiteral("script:shared"), QStringLiteral("script:ephemeral")});
+    }
+
     // =========================================================================
     // scanAndRegister tests
     // =========================================================================

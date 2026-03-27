@@ -607,6 +607,45 @@ private Q_SLOTS:
         QVERIFY(qFuzzyCompare(tree.root()->splitRatio, originalRatio));
     }
 
+    void testSwap_withNonexistentWindow()
+    {
+        SplitTree tree;
+        tree.insertAtEnd(QStringLiteral("win1"));
+        tree.insertAtEnd(QStringLiteral("win2"));
+        tree.insertAtEnd(QStringLiteral("win3"));
+
+        auto orderBefore = tree.leafOrder();
+        tree.swap(QStringLiteral("win1"), QStringLiteral("nonexistent"));
+        auto orderAfter = tree.leafOrder();
+
+        // Tree should be unchanged when one window ID doesn't exist
+        QCOMPARE(orderAfter, orderBefore);
+        QCOMPARE(tree.leafCount(), 3);
+    }
+
+    void testInsertAtPosition_outOfRange()
+    {
+        SplitTree tree;
+        tree.insertAtEnd(QStringLiteral("win1"));
+        tree.insertAtEnd(QStringLiteral("win2"));
+
+        // Negative index — should handle gracefully (falls back to insertAtEnd per docs)
+        tree.insertAtPosition(QStringLiteral("win3"), -1);
+        QCOMPARE(tree.leafCount(), 3);
+
+        // Index beyond leaf count — should fall back to insertAtEnd
+        tree.insertAtPosition(QStringLiteral("win4"), 999);
+        QCOMPARE(tree.leafCount(), 4);
+
+        // Verify tree is still consistent — all windows present
+        auto order = tree.leafOrder();
+        QCOMPARE(order.size(), 4);
+        QVERIFY(order.contains(QStringLiteral("win1")));
+        QVERIFY(order.contains(QStringLiteral("win2")));
+        QVERIFY(order.contains(QStringLiteral("win3")));
+        QVERIFY(order.contains(QStringLiteral("win4")));
+    }
+
     void testResizeSplit_boundaryValues()
     {
         SplitTree tree;

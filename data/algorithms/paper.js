@@ -24,6 +24,7 @@
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
 function calculateZones(params) {
+    // Overlapping layout — innerGap intentionally ignored (pages overlap by design)
     const count = params.windowCount;
     if (count <= 0) return [];
     const area = params.area;
@@ -39,7 +40,7 @@ function calculateZones(params) {
     // Clamp step so the last page doesn't overflow the area
     let step;
     if (count > 1) {
-        step = (leftover > 0) ? Math.max(1, Math.floor(leftover / (count - 1))) : 0;
+        step = Math.floor(leftover / (count - 1));
     } else {
         step = 0;
     }

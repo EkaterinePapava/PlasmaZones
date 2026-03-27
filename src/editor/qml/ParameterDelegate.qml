@@ -17,10 +17,10 @@ Item {
     id: paramDelegate
 
     // Required parameter data from Repeater modelData
-    property var paramData: null
+    required property var paramData
     // Dialog reference - passed explicitly from ShaderSettingsDialog
     // This is more reliable than parent chain walking through Loaders/FormLayouts
-    property var dialogRoot: null
+    required property var dialogRoot
     // Fallback: Walk parent chain if dialogRoot not passed explicitly
     readonly property var resolvedDialogRoot: {
         if (dialogRoot)
@@ -176,8 +176,10 @@ Item {
                 if (typeof colorStr !== "string" || colorStr.length === 0 || colorStr.charAt(0) !== "#")
                     return fallback;
 
-                var parsed = Qt.color(colorStr);
-                return parsed.valid ? colorStr : fallback;
+                // Qt 6 does not guarantee .valid on Qt.color() results;
+                // validate hex format with a regex instead.
+                var hexRe = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/;
+                return hexRe.test(colorStr) ? colorStr : fallback;
             }
 
             visible: paramDelegate.paramType === "color"

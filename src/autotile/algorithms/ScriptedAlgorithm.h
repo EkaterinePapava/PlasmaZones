@@ -112,6 +112,9 @@ public:
     void setUserScript(bool isUser);
 
     // TilingAlgorithm interface
+    // Note: name(), description(), and the JS-override accessors below lack noexcept
+    // because they can theoretically call into QJSEngine (which may throw or fail).
+    // Only metadata-only accessors (supportsMemory, centerLayout, etc.) are noexcept.
     QString name() const override;
     QString description() const override;
     QVector<QRect> calculateZones(const TilingParams& params) const override;
@@ -165,8 +168,8 @@ private:
     /// D-02: Arms watchdog, calls fn(), disarms, checks for timeout. Returns error on timeout.
     QJSValue guardedCall(const std::function<QJSValue()>& fn) const;
 
-    /// B-09: Unified with SplitTree::MaxRuntimeTreeDepth to prevent silent truncation
-    static constexpr int MaxTreeConversionDepth = SplitTree::MaxRuntimeTreeDepth;
+    /// B-09: Unified with AutotileDefaults::MaxRuntimeTreeDepth to prevent silent truncation
+    static constexpr int MaxTreeConversionDepth = AutotileDefaults::MaxRuntimeTreeDepth;
 
     mutable QJSEngine* m_engine = nullptr;
     std::shared_ptr<WatchdogContext> m_watchdog; ///< D1: Consolidated watchdog shared state
@@ -175,6 +178,7 @@ private:
     QString m_scriptId;
     bool m_valid = false;
     bool m_isUserScript = false;
+    mutable bool m_lastCallTimedOut = false; ///< M2: Set by guardedCall on timeout, checked by callers
 
     // D3: Consolidated parsed metadata (from // @key value comments)
     ScriptedHelpers::ScriptMetadata m_metadata;

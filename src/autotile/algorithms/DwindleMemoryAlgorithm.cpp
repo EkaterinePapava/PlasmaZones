@@ -6,6 +6,7 @@
 #include "../AlgorithmRegistry.h"
 #include "../SplitTree.h"
 #include "../TilingState.h"
+#include "core/logging.h"
 #include "pz_i18n.h"
 
 namespace PlasmaZones {
@@ -79,7 +80,9 @@ QVector<QRect> DwindleMemoryAlgorithm::calculateZones(const TilingParams& params
         return tree->applyGeometry(area, params.innerGap);
     }
 
-    // Fallback: count mismatch — behave like stateless dwindle
+    // Fallback: count mismatch or no tree — behave like stateless dwindle
+    qCDebug(lcAutotile) << "DwindleMemory: tree leaf count" << (tree ? tree->leafCount() : 0) << "!= window count"
+                        << windowCount << "- falling back to stateless dwindle";
     return calculateStatelessFallback(params);
 }
 

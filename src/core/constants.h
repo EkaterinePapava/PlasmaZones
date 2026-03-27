@@ -196,6 +196,7 @@ constexpr int MinMaxWindows = 1;
 constexpr int MaxMaxWindows = 12;
 constexpr int DefaultMaxWindows = 6;
 constexpr int MaxZones = 256;
+constexpr int MaxRuntimeTreeDepth = 50; ///< Maximum recursion depth for split tree operations
 constexpr int MinMetadataWindows = 1;
 constexpr int MaxMetadataWindows = 100;
 constexpr int MinInsertPosition = 0;

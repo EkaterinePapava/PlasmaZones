@@ -211,6 +211,7 @@ ComboBox {
         currentIndex = 0;
     }
 
+    Accessible.name: i18n("Layout selection")
     textRole: "text"
     valueRole: "value"
     model: []

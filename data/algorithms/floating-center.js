@@ -34,19 +34,19 @@
  */
 function renderPanel(zones, startX, startY, panelW, panelH, count, gap, horizontal) {
     if (count <= 0) return;
-    var totalGaps = (count - 1) * gap;
+    const totalGaps = (count - 1) * gap;
     if (horizontal) {
-        var tileW = Math.max(1, Math.round((panelW - totalGaps) / count));
-        for (var i = 0; i < count; i++) {
-            var x = startX + i * (tileW + gap);
-            var w = (i === count - 1) ? Math.max(1, startX + panelW - x) : tileW;
+        const tileW = Math.max(1, Math.round((panelW - totalGaps) / count));
+        for (let i = 0; i < count; i++) {
+            const x = startX + i * (tileW + gap);
+            const w = (i === count - 1) ? Math.max(1, startX + panelW - x) : tileW;
             zones.push({ x: x, y: startY, width: w, height: panelH });
         }
     } else {
-        var tileH = Math.max(1, Math.round((panelH - totalGaps) / count));
-        for (var i = 0; i < count; i++) {
-            var y = startY + i * (tileH + gap);
-            var h = (i === count - 1) ? Math.max(1, startY + panelH - y) : tileH;
+        const tileH = Math.max(1, Math.round((panelH - totalGaps) / count));
+        for (let i = 0; i < count; i++) {
+            const y = startY + i * (tileH + gap);
+            const h = (i === count - 1) ? Math.max(1, startY + panelH - y) : tileH;
             zones.push({ x: startX, y: y, width: panelW, height: h });
         }
     }

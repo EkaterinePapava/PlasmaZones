@@ -44,19 +44,20 @@ function calculateZones(params) {
 
     // Windows 2+: stack vertically in the right sidebar column
     const sidebarCount = count - 1;
+    if (sidebarCount <= 0) return zones;
     const totalGaps = (sidebarCount - 1) * gap;
 
     // Degenerate gap: stack sidebar windows when gaps exceed available height
     if (totalGaps >= area.height) {
-        for (var i = 0; i < sidebarCount; i++) {
+        for (let i = 0; i < sidebarCount; i++) {
             zones.push({ x: sidebarX, y: area.y, width: sidebarWidth, height: area.height });
         }
         return zones;
     }
 
     // D-05: Use injected distributeEvenly helper for vertical stacking
-    var slots = distributeEvenly(area.y, area.height, sidebarCount, gap);
-    for (var i = 0; i < slots.length; i++) {
+    const slots = distributeEvenly(area.y, area.height, sidebarCount, gap);
+    for (let i = 0; i < slots.length; i++) {
         zones.push({ x: sidebarX, y: slots[i].pos, width: sidebarWidth, height: slots[i].size });
     }
 

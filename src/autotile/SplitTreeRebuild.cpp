@@ -15,6 +15,26 @@ using namespace AutotileDefaults;
 // Rebuild from order (SOLID-1: moved from TilingState)
 // =============================================================================
 
+/**
+ * @brief Rebuild the split tree from a new window order, preserving split ratios where possible
+ *
+ * Builds a fresh tree by inserting windows in the given order, then restores the old tree's
+ * split ratios and directions if the leaf count has not changed.
+ *
+ * @note Ratio restoration only works correctly when the new tree has the same shape as the
+ * old tree. Because insertAtEndRaw always builds a right-leaning chain, two trees with the
+ * same leaf count will have identical shapes. However, if windows are reordered while count
+ * stays the same, the ratios from the old tree are applied positionally (pre-order traversal)
+ * to the new tree's internal nodes. This means each old ratio is applied to the structurally
+ * corresponding node, which may govern a different pair of windows than it did before.
+ *
+ * @warning When window order changes but count stays the same, a ratio that previously
+ * controlled (e.g.) windows A|B may now control windows C|D. The split positions are
+ * preserved structurally, but their semantic meaning relative to specific windows is lost.
+ *
+ * @param tiledWindows Ordered list of tiled window IDs (duplicates and empties are filtered)
+ * @param defaultSplitRatio Default split ratio for new internal nodes
+ */
 void SplitTree::rebuildFromOrder(const QStringList& tiledWindows, qreal defaultSplitRatio)
 {
     if (tiledWindows.isEmpty()) {

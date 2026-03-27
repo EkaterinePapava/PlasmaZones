@@ -27,7 +27,7 @@ function calculateZones(params) {
     const gap = params.innerGap || 0;
 
     const splitRatio = params.splitRatio;
-    var columnWidth = Math.round(area.width * splitRatio);
+    let columnWidth = Math.round(area.width * splitRatio);
     columnWidth = Math.max(1, columnWidth);
     const offsetX = area.x + Math.round((area.width - columnWidth) / 2);
 
@@ -35,17 +35,17 @@ function calculateZones(params) {
 
     // Degenerate gap: stack all windows when gaps exceed available height
     if (totalGaps >= area.height) {
-        var stacked = [];
-        for (var j = 0; j < count; j++) {
+        const stacked = [];
+        for (let j = 0; j < count; j++) {
             stacked.push({ x: offsetX, y: area.y, width: columnWidth, height: area.height });
         }
         return stacked;
     }
 
     // D-05: Use injected distributeEvenly helper for vertical stacking
-    var slots = distributeEvenly(area.y, area.height, count, gap);
-    var zones = [];
-    for (var i = 0; i < slots.length; i++) {
+    const slots = distributeEvenly(area.y, area.height, count, gap);
+    const zones = [];
+    for (let i = 0; i < slots.length; i++) {
         zones.push({ x: offsetX, y: slots[i].pos, width: columnWidth, height: slots[i].size });
     }
     return zones;

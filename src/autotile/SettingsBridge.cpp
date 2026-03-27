@@ -390,6 +390,7 @@ void SettingsBridge::loadState()
     }
 
     const QJsonArray screensArray = doc.array();
+    QSet<QString> processedKeys;
     for (const QJsonValue& val : screensArray) {
         const QJsonObject screenObj = val.toObject();
         const QString screenId = screenObj[QLatin1String("screen")].toString();
@@ -408,6 +409,15 @@ void SettingsBridge::loadState()
         loadKey.screenId = screenId;
         loadKey.desktop = (desktop > 0) ? desktop : m_engine->m_currentDesktop;
         loadKey.activity = !activity.isEmpty() ? activity : m_engine->m_currentActivity;
+
+        // Skip duplicate resolved keys (desktop=0 backward compat can map
+        // multiple entries to the same key).
+        const QString compositeKey =
+            QStringLiteral("%1/%2/%3").arg(loadKey.screenId).arg(loadKey.desktop).arg(loadKey.activity);
+        if (processedKeys.contains(compositeKey)) {
+            continue;
+        }
+        processedKeys.insert(compositeKey);
 
         TilingState* state = m_engine->stateForKey(loadKey);
 

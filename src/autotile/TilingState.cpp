@@ -439,7 +439,9 @@ bool TilingState::toggleFloating(const QString& windowId)
 
 QStringList TilingState::floatingWindows() const
 {
-    return QStringList(m_floatingWindows.begin(), m_floatingWindows.end());
+    QStringList list(m_floatingWindows.begin(), m_floatingWindows.end());
+    list.sort();
+    return list;
 }
 
 // ── Focus Tracking ───────────────────────────────────────────────────────────

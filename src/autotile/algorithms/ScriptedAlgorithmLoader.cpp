@@ -154,6 +154,10 @@ bool ScriptedAlgorithmLoader::scanAndRegister()
     }
 
     qCInfo(lcAutotile) << "Scripted algorithms loaded:" << m_scriptIdToPath.size() << "changed=" << changed;
+    // M4: Emit signal so listeners (e.g. UI) are notified of registry changes
+    if (changed) {
+        Q_EMIT algorithmsChanged();
+    }
     return changed;
 }
 

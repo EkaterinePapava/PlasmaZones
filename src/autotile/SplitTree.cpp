@@ -71,7 +71,7 @@ int SplitTree::subtreeHeight(const SplitNode* node, int depth)
     return 1 + std::max(subtreeHeight(node->first.get(), depth + 1), subtreeHeight(node->second.get(), depth + 1));
 }
 
-int SplitTree::treeHeight() const
+int SplitTree::treeHeight() const noexcept
 {
     return subtreeHeight(m_root.get());
 }
@@ -135,6 +135,11 @@ void SplitTree::splitLeaf(SplitNode* leaf, const QString& newId, qreal ratio)
 
 SplitTree::InsertReady SplitTree::prepareInsert(const QString& windowId)
 {
+    if (windowId.isEmpty()) {
+        qCWarning(lcAutotile) << "SplitTree: empty windowId rejected";
+        return InsertReady::Rejected;
+    }
+
     if (leafForWindow(windowId)) {
         qCWarning(lcAutotile) << "SplitTree: duplicate insert rejected" << windowId;
         return InsertReady::Rejected;
@@ -194,6 +199,8 @@ void SplitTree::insertAtEndImpl(const QString& windowId, qreal initialRatio)
 
 void SplitTree::insertAtEndRaw(const QString& windowId, qreal initialRatio)
 {
+    Q_ASSERT(!leafForWindow(windowId));
+
     if (!m_root) {
         m_root = std::make_unique<SplitNode>();
         m_root->windowId = windowId;
@@ -401,9 +408,9 @@ void SplitTree::applyGeometryRecursive(const SplitNode* node, const QRect& rect,
 // Private helpers (const versions do real work; non-const delegates safely)
 // =============================================================================
 
-const SplitNode* SplitTree::findLeaf(const SplitNode* node, const QString& windowId) const
+const SplitNode* SplitTree::findLeaf(const SplitNode* node, const QString& windowId, int depth) const
 {
-    if (!node) {
+    if (!node || depth > MaxRuntimeTreeDepth) {
         return nullptr;
     }
 
@@ -415,20 +422,20 @@ const SplitNode* SplitTree::findLeaf(const SplitNode* node, const QString& windo
         return nullptr;
     }
 
-    if (const SplitNode* found = findLeaf(node->first.get(), windowId)) {
+    if (const SplitNode* found = findLeaf(node->first.get(), windowId, depth + 1)) {
         return found;
     }
-    return findLeaf(node->second.get(), windowId);
+    return findLeaf(node->second.get(), windowId, depth + 1);
 }
 
-SplitNode* SplitTree::findLeaf(SplitNode* node, const QString& windowId) const
+SplitNode* SplitTree::findLeaf(SplitNode* node, const QString& windowId, int depth) const
 {
-    return const_cast<SplitNode*>(findLeaf(static_cast<const SplitNode*>(node), windowId));
+    return const_cast<SplitNode*>(findLeaf(static_cast<const SplitNode*>(node), windowId, depth));
 }
 
-const SplitNode* SplitTree::leafAtIndex(const SplitNode* node, int targetIndex, int& currentIndex) const
+const SplitNode* SplitTree::leafAtIndex(const SplitNode* node, int targetIndex, int& currentIndex, int depth) const
 {
-    if (!node) {
+    if (!node || depth > MaxRuntimeTreeDepth) {
         return nullptr;
     }
 
@@ -444,15 +451,15 @@ const SplitNode* SplitTree::leafAtIndex(const SplitNode* node, int targetIndex, 
         return nullptr;
     }
 
-    if (const SplitNode* found = leafAtIndex(node->first.get(), targetIndex, currentIndex)) {
+    if (const SplitNode* found = leafAtIndex(node->first.get(), targetIndex, currentIndex, depth + 1)) {
         return found;
     }
-    return leafAtIndex(node->second.get(), targetIndex, currentIndex);
+    return leafAtIndex(node->second.get(), targetIndex, currentIndex, depth + 1);
 }
 
-SplitNode* SplitTree::leafAtIndex(SplitNode* node, int targetIndex, int& currentIndex) const
+SplitNode* SplitTree::leafAtIndex(SplitNode* node, int targetIndex, int& currentIndex, int depth) const
 {
-    return const_cast<SplitNode*>(leafAtIndex(static_cast<const SplitNode*>(node), targetIndex, currentIndex));
+    return const_cast<SplitNode*>(leafAtIndex(static_cast<const SplitNode*>(node), targetIndex, currentIndex, depth));
 }
 
 const SplitNode* SplitTree::rightmostLeaf(const SplitNode* node) const
@@ -475,9 +482,9 @@ SplitNode* SplitTree::rightmostLeaf(SplitNode* node) const
     return const_cast<SplitNode*>(rightmostLeaf(static_cast<const SplitNode*>(node)));
 }
 
-void SplitTree::collectLeafOrder(const SplitNode* node, QStringList& order) const
+void SplitTree::collectLeafOrder(const SplitNode* node, QStringList& order, int depth) const
 {
-    if (!node) {
+    if (!node || depth > MaxRuntimeTreeDepth) {
         return;
     }
 
@@ -490,13 +497,13 @@ void SplitTree::collectLeafOrder(const SplitNode* node, QStringList& order) cons
         return;
     }
 
-    collectLeafOrder(node->first.get(), order);
-    collectLeafOrder(node->second.get(), order);
+    collectLeafOrder(node->first.get(), order, depth + 1);
+    collectLeafOrder(node->second.get(), order, depth + 1);
 }
 
-int SplitTree::countLeaves(const SplitNode* node) const
+int SplitTree::countLeaves(const SplitNode* node, int depth) const
 {
-    if (!node) {
+    if (!node || depth > MaxRuntimeTreeDepth) {
         return 0;
     }
 
@@ -508,7 +515,7 @@ int SplitTree::countLeaves(const SplitNode* node) const
         return 0;
     }
 
-    return countLeaves(node->first.get()) + countLeaves(node->second.get());
+    return countLeaves(node->first.get(), depth + 1) + countLeaves(node->second.get(), depth + 1);
 }
 
 } // namespace PlasmaZones

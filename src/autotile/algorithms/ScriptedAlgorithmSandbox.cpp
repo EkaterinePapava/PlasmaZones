@@ -12,7 +12,8 @@ namespace PlasmaZones {
 
 bool hardenSandbox(QJSEngine* engine)
 {
-    // H2: Safe evaluate wrapper — checks for errors on all sandbox-hardening calls
+    // H2: Safe evaluate wrapper — checks for errors on all sandbox-hardening calls.
+    // Non-critical hardening steps log warnings but do not abort.
     auto safeEval = [engine](const QString& code, const QString& context) {
         QJSValue result = engine->evaluate(code);
         if (result.isError()) {
@@ -20,32 +21,41 @@ bool hardenSandbox(QJSEngine* engine)
         }
     };
 
-    // m2: Freeze built-in helper globals so scripts cannot overwrite them
-    auto freezeGlobal = [engine](const char* name) {
-        QJSValue result = engine->evaluate(
-            QStringLiteral("Object.defineProperty(this, '%1', {writable: false, configurable: false});")
-                .arg(QLatin1String(name)));
+    // H2: Critical evaluate wrapper — returns false if the hardening step fails.
+    // Used for eval/Function lockdown where failure means the sandbox is bypassable.
+    auto criticalEval = [engine](const QString& code, const QString& context) -> bool {
+        QJSValue result = engine->evaluate(code);
         if (result.isError()) {
-            qWarning() << "ScriptedAlgorithm: sandbox hardening failed for freezeGlobal" << QLatin1String(name) << ":"
-                       << result.toString();
+            qCWarning(lcAutotile) << "ScriptedAlgorithm: CRITICAL sandbox hardening failed for" << context << ":"
+                                  << result.toString();
+            return false;
         }
+        return true;
     };
-    freezeGlobal("applyTreeGeometry");
-    freezeGlobal("lShapeLayout");
-    freezeGlobal("deckLayout");
-    freezeGlobal("distributeEvenly");
 
-    // H2: Disable eval() and Function constructor to prevent dynamic code generation
-    safeEval(QStringLiteral(
-                 "Object.defineProperty(this, 'eval', {value: undefined, writable: false, configurable: false});"),
-             QStringLiteral("eval lockdown"));
-    safeEval(QStringLiteral("Object.defineProperty(Function.prototype, 'constructor', "
-                            "{value: undefined, writable: false, configurable: false});"),
-             QStringLiteral("Function.prototype.constructor lockdown"));
+    // NOTE: Built-in helper globals (applyTreeGeometry, lShapeLayout, deckLayout,
+    // distributeEvenly) are frozen AFTER injection in ScriptedAlgorithm::loadScript(),
+    // not here — freezing before injection would lock them to undefined.
+
+    // H2: Disable eval() and Function constructor to prevent dynamic code generation.
+    // These are CRITICAL — if any fails, the sandbox cannot prevent arbitrary code execution.
+    if (!criticalEval(
+            QStringLiteral(
+                "Object.defineProperty(this, 'eval', {value: undefined, writable: false, configurable: false});"),
+            QStringLiteral("eval lockdown"))) {
+        return false;
+    }
+    if (!criticalEval(QStringLiteral("Object.defineProperty(Function.prototype, 'constructor', "
+                                     "{value: undefined, writable: false, configurable: false});"),
+                      QStringLiteral("Function.prototype.constructor lockdown"))) {
+        return false;
+    }
     // M2: Disable the Function global to prevent dynamic code generation
-    safeEval(QStringLiteral(
-                 "Object.defineProperty(this, 'Function', {value: undefined, writable: false, configurable: false});"),
-             QStringLiteral("Function global lockdown"));
+    if (!criticalEval(QStringLiteral("Object.defineProperty(this, 'Function', "
+                                     "{value: undefined, writable: false, configurable: false});"),
+                      QStringLiteral("Function global lockdown"))) {
+        return false;
+    }
 
     // C1: Freeze GeneratorFunction and AsyncFunction constructors to prevent sandbox bypass
     safeEval(
@@ -59,11 +69,22 @@ bool hardenSandbox(QJSEngine* engine)
                        "})();"),
         QStringLiteral("generator/async constructor lockdown"));
 
-    // S3: Freeze Object.prototype and Array.prototype in a separate call.
-    // If this fails, the sandbox is compromised — caller must abort.
+    // S3: Freeze built-in prototypes to prevent prototype pollution.
+    // H1: Includes String, Number, Boolean, RegExp, Date, Error, Map, Set
+    // in addition to Object and Array. If any freeze fails, the sandbox is
+    // compromised — caller must abort.
     {
         QJSValue freezeResult =
-            engine->evaluate(QStringLiteral("Object.freeze(Object.prototype);Object.freeze(Array.prototype);"));
+            engine->evaluate(QStringLiteral("Object.freeze(Object.prototype);"
+                                            "Object.freeze(Array.prototype);"
+                                            "Object.freeze(String.prototype);"
+                                            "Object.freeze(Number.prototype);"
+                                            "Object.freeze(Boolean.prototype);"
+                                            "Object.freeze(RegExp.prototype);"
+                                            "Object.freeze(Date.prototype);"
+                                            "Object.freeze(Error.prototype);"
+                                            "Object.freeze(Map.prototype);"
+                                            "Object.freeze(Set.prototype);"));
         if (freezeResult.isError()) {
             qCWarning(lcAutotile) << "ScriptedAlgorithm: prototype freeze failed — sandbox compromised:"
                                   << freezeResult.toString();

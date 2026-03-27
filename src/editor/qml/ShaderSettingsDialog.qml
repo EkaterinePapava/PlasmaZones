@@ -135,9 +135,9 @@ Kirigami.Dialog {
                 return a.localeCompare(b);
             });
             var subcategories = [];
-            for (var s = 0; s < subKeys.length; s++) subcategories.push({
-                "name": subKeys[s],
-                "shaders": node.subcats[subKeys[s]]
+            for (var si = 0; si < subKeys.length; si++) subcategories.push({
+                "name": subKeys[si],
+                "shaders": node.subcats[subKeys[si]]
             })
             categories.push({
                 "name": keys[k],
@@ -1215,6 +1215,7 @@ Kirigami.Dialog {
 
                 HoverHandler {
                     id: previewHover
+
                     onPointChanged: {
                         if (previewHover.hovered)
                             previewBackground.previewMouse = Qt.point(previewHover.point.position.x, previewHover.point.position.y);

@@ -51,6 +51,8 @@ struct PLASMAZONES_EXPORT SplitNode
  * as windows are added, removed, swapped, or resized.
  *
  * This class is NOT a QObject. It is movable via unique_ptr members.
+ *
+ * @warning This class is not thread-safe. All access must be serialized by the caller.
  */
 class PLASMAZONES_EXPORT SplitTree
 {
@@ -95,10 +97,7 @@ public:
      * @brief Get the maximum height of the tree
      * @return Height (0 for empty tree, 1 for single leaf)
      */
-    int treeHeight() const;
-
-    /// Maximum runtime tree depth for insert operations and recursion guards
-    static constexpr int MaxRuntimeTreeDepth = 50;
+    int treeHeight() const noexcept;
 
     /**
      * @brief Find the leaf node for a given window ID
@@ -221,6 +220,9 @@ private:
         Done,
         Rejected
     };
+    /// Maximum runtime tree depth for insert operations and recursion guards
+    static constexpr int MaxRuntimeTreeDepth = 50;
+
     InsertReady prepareInsert(const QString& windowId);
 
     /// Insert at rightmost leaf without duplicate checking (for use by rebuildFromOrder)
@@ -231,14 +233,14 @@ private:
 
     std::unique_ptr<SplitNode> m_root;
 
-    SplitNode* findLeaf(SplitNode* node, const QString& windowId) const;
-    const SplitNode* findLeaf(const SplitNode* node, const QString& windowId) const;
-    SplitNode* leafAtIndex(SplitNode* node, int targetIndex, int& currentIndex) const;
-    const SplitNode* leafAtIndex(const SplitNode* node, int targetIndex, int& currentIndex) const;
+    SplitNode* findLeaf(SplitNode* node, const QString& windowId, int depth = 0) const;
+    const SplitNode* findLeaf(const SplitNode* node, const QString& windowId, int depth = 0) const;
+    SplitNode* leafAtIndex(SplitNode* node, int targetIndex, int& currentIndex, int depth = 0) const;
+    const SplitNode* leafAtIndex(const SplitNode* node, int targetIndex, int& currentIndex, int depth = 0) const;
     SplitNode* rightmostLeaf(SplitNode* node) const;
     const SplitNode* rightmostLeaf(const SplitNode* node) const;
-    void collectLeafOrder(const SplitNode* node, QStringList& order) const;
-    int countLeaves(const SplitNode* node) const;
+    void collectLeafOrder(const SplitNode* node, QStringList& order, int depth = 0) const;
+    int countLeaves(const SplitNode* node, int depth = 0) const;
     void applyGeometryRecursive(const SplitNode* node, const QRect& rect, int innerGap, QVector<QRect>& zones,
                                 int depth = 0) const;
 

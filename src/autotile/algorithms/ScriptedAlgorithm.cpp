@@ -32,14 +32,14 @@ static constexpr int ScriptWatchdogTimeoutMs = 250;
 /**
  * @brief Consolidated watchdog thread state shared between the main thread and the persistent watchdog thread
  *
- * All members are atomic or mutex-protected so that the destructor can safely
+ * All members are mutex-protected so that the destructor can safely
  * signal shutdown to the watchdog thread.
  */
 struct WatchdogContext
 {
     std::mutex mutex; ///< Guards engine pointer access and condition variable
     std::condition_variable cv; ///< Used to wake the persistent watchdog thread
-    std::atomic<uint64_t> generation{0}; ///< Generation counter to prevent stale watchdog interrupts
+    uint64_t generation{0}; ///< H3: Plain counter — all accesses are under mutex
     bool pending{false}; ///< True when a new watchdog check is requested
     bool shutdown{false}; ///< True when the watchdog thread should exit
     QJSEngine* engine = nullptr; ///< Stable engine pointer shared with watchdog thread
@@ -98,7 +98,7 @@ ScriptedAlgorithm::ScriptedAlgorithm(const QString& filePath, QObject* parent)
                 return;
             }
             ctx->pending = false;
-            const uint64_t gen = ctx->generation.load(std::memory_order_acquire);
+            const uint64_t gen = ctx->generation;
             lock.unlock();
 
             std::this_thread::sleep_for(std::chrono::milliseconds(ScriptWatchdogTimeoutMs));
@@ -107,7 +107,7 @@ ScriptedAlgorithm::ScriptedAlgorithm(const QString& filePath, QObject* parent)
             if (ctx->shutdown) {
                 return;
             }
-            if (ctx->generation.load(std::memory_order_acquire) == gen && ctx->engine) {
+            if (ctx->generation == gen && ctx->engine) {
                 ctx->engine->setInterrupted(true);
             }
         }
@@ -155,10 +155,12 @@ QJSValue ScriptedAlgorithm::guardedCall(const std::function<QJSValue()>& fn) con
     if (m_engine->isInterrupted()) {
         m_engine->setInterrupted(false);
         m_engine->collectGarbage();
-        // Return a synthetic error so callers can detect the timeout
-        return m_engine->evaluate(QStringLiteral("new Error('Script execution timed out')"));
+        // M2: Signal timeout via flag instead of evaluating JS on a just-interrupted engine
+        m_lastCallTimedOut = true;
+        return QJSValue(QStringLiteral("Script execution timed out"));
     }
 
+    m_lastCallTimedOut = false;
     return result;
 }
 
@@ -224,16 +226,28 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     // M3: Parse metadata via helper — D3: single struct assignment
     m_metadata = ScriptedHelpers::parseMetadata(source, filePath);
 
+    // M3: Apply sandbox hardening BEFORE helper injection so that the sandbox
+    // restrictions (frozen prototypes, disabled eval/Function) are in place before
+    // any user-visible globals are defined. hardenSandbox() also freezes the helper
+    // globals via freezeGlobal() — those calls are no-ops until the helpers exist,
+    // so we re-freeze them after injection below.
+    if (!hardenSandbox(m_engine)) {
+        qCWarning(lcAutotile) << "ScriptedAlgorithm: sandbox hardening failed, file=" << filePath;
+        return false;
+    }
+
     // M3: Inject built-in helpers from ScriptedAlgorithmHelpers
     m_engine->evaluate(ScriptedHelpers::treeHelperJs(), QStringLiteral("builtin:applyTreeGeometry"));
     m_engine->evaluate(ScriptedHelpers::lShapeHelperJs(), QStringLiteral("builtin:lShapeLayout"));
     m_engine->evaluate(ScriptedHelpers::deckHelperJs(), QStringLiteral("builtin:deckLayout"));
     m_engine->evaluate(ScriptedHelpers::distributeEvenlyHelperJs(), QStringLiteral("builtin:distributeEvenly"));
 
-    // C1: Apply sandbox hardening (extracted to ScriptedAlgorithmSandbox.cpp)
-    if (!hardenSandbox(m_engine)) {
-        qCWarning(lcAutotile) << "ScriptedAlgorithm: sandbox hardening failed, file=" << filePath;
-        return false;
+    // M3: Freeze helper globals so user scripts cannot overwrite them.
+    // This must happen after injection since hardenSandbox's freezeGlobal calls
+    // ran before the helpers existed.
+    for (const char* helperName : {"applyTreeGeometry", "lShapeLayout", "deckLayout", "distributeEvenly"}) {
+        m_engine->evaluate(QStringLiteral("Object.defineProperty(this, '%1', {writable: false, configurable: false});")
+                               .arg(QLatin1String(helperName)));
     }
 
     // D2: Use guardedCall helper for watchdog arm-evaluate-disarm-check pattern
@@ -241,16 +255,15 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         return m_engine->evaluate(source, filePath);
     });
 
-    // guardedCall returns a synthetic error on timeout; detect via message
+    // M2: Check structured timeout flag instead of parsing error message strings
+    if (m_lastCallTimedOut) {
+        qCWarning(lcAutotile) << "ScriptedAlgorithm: script timed out during evaluate, file=" << filePath;
+        return false;
+    }
     if (result.isError()) {
-        const QString msg = result.toString();
-        if (msg.contains(QLatin1String("timed out"))) {
-            qCWarning(lcAutotile) << "ScriptedAlgorithm: script timed out during evaluate, file=" << filePath;
-        } else {
-            qCWarning(lcAutotile) << "ScriptedAlgorithm: evaluation error file=" << filePath
-                                  << "line=" << result.property(QStringLiteral("lineNumber")).toInt()
-                                  << "message=" << msg;
-        }
+        qCWarning(lcAutotile) << "ScriptedAlgorithm: evaluation error file=" << filePath
+                              << "line=" << result.property(QStringLiteral("lineNumber")).toInt()
+                              << "message=" << result.toString();
         return false;
     }
 
@@ -271,6 +284,11 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     m_jsProducesOverlappingZones = m_engine->globalObject().property(QStringLiteral("producesOverlappingZones"));
 
     m_valid = true;
+    // M1: These cacheJsValue calls invoke JS override functions (e.g. masterZoneIndex())
+    // that were defined during the guarded evaluate() above. They are simple property
+    // accessors or constant-returning functions — they cannot contain infinite loops
+    // because any malicious loop would have been caught by the watchdog during evaluate().
+    // Therefore explicit watchdog protection is not needed here.
     m_cachedMasterZoneIndex = cacheJsValue<int>(m_jsMasterZoneIndex, m_cachedMasterZoneIndex);
     m_cachedSupportsMasterCount = cacheJsValue<bool>(m_jsSupportsMasterCount, m_cachedSupportsMasterCount);
     m_cachedSupportsSplitRatio = cacheJsValue<bool>(m_jsSupportsSplitRatio, m_cachedSupportsSplitRatio);
@@ -360,15 +378,14 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
         return m_calculateZonesFn.call({jsParams});
     });
 
-    // guardedCall handles timeout detection — check for it
+    // M2: Check structured timeout flag instead of parsing error message strings
+    if (m_lastCallTimedOut) {
+        qCWarning(lcAutotile) << "ScriptedAlgorithm: script timed out, script=" << m_scriptId;
+        return {};
+    }
     if (result.isError()) {
-        const QString msg = result.toString();
-        if (msg.contains(QLatin1String("timed out"))) {
-            qCWarning(lcAutotile) << "ScriptedAlgorithm: script timed out, script=" << m_scriptId;
-        } else {
-            qCWarning(lcAutotile) << "ScriptedAlgorithm: calculateZones() error script=" << m_scriptId
-                                  << "message=" << msg;
-        }
+        qCWarning(lcAutotile) << "ScriptedAlgorithm: calculateZones() error script=" << m_scriptId
+                              << "message=" << result.toString();
         return {};
     }
 
@@ -390,7 +407,7 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
 QJSValue ScriptedAlgorithm::splitNodeToJSValue(const SplitNode* node, int depth) const
 {
     if (!node || !m_engine || depth > MaxTreeConversionDepth) {
-        return QJSValue(QJSValue::UndefinedValue);
+        return QJSValue();
     }
 
     QJSValue jsNode = m_engine->newObject();

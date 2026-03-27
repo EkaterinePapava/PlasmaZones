@@ -32,6 +32,17 @@ Item {
     // when multiple properties change in the same frame
     property var zones: []
     property string zoneNumberDisplay: "all"
+    // Computed once at the root level (not per-delegate) to avoid N redundant
+    // C++ calls inside the Repeater delegate.
+    readonly property bool _currentAlgoSupportsMasterCount: {
+        var algos = root.appSettings.availableAlgorithms();
+        for (var i = 0; i < algos.length; i++) {
+            if (algos[i].id === root.algorithmId && algos[i].supportsMasterCount)
+                return true;
+
+        }
+        return false;
+    }
     // Algorithm display name (avoids hardcoded switch statement)
     property string algorithmName: ""
     // Algorithm name label (hidden when used inside the Tiling tab's algorithm section
@@ -79,18 +90,8 @@ Item {
         Rectangle {
             required property var modelData
             required property int index
-            // Data-driven capability check (avoids hardcoding algorithm IDs)
-            readonly property bool _algoSupportsMasterCount: {
-                const algos = root.appSettings.availableAlgorithms();
-                for (let i = 0; i < algos.length; i++) {
-                    if (algos[i].id === root.algorithmId)
-                        return algos[i].supportsMasterCount === true;
 
-                }
-                return false;
-            }
-
-            visible: root.appSettings && root.appSettings.generateAlgorithmPreview && root.algorithmId !== "" && index < root.masterCount && _algoSupportsMasterCount
+            visible: root.appSettings && root.appSettings.generateAlgorithmPreview && root.algorithmId !== "" && index < root.masterCount && root._currentAlgoSupportsMasterCount
             x: ((modelData.relativeGeometry && modelData.relativeGeometry.x) || 0) * root.width + Kirigami.Units.smallSpacing
             y: ((modelData.relativeGeometry && modelData.relativeGeometry.y) || 0) * root.height + Kirigami.Units.smallSpacing
             width: Kirigami.Units.smallSpacing * 2
