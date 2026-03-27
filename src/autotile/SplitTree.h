@@ -247,14 +247,15 @@ private:
     static int subtreeHeight(const SplitNode* node, int depth = 0);
     static void splitLeaf(SplitNode* leaf, const QString& newId, qreal ratio);
 
-    static void collectInternalNodeParams(const SplitNode* node, QVector<qreal>& ratios, QVector<bool>& directions);
+    static void collectInternalNodeParams(const SplitNode* node, QVector<qreal>& ratios, QVector<bool>& directions,
+                                          int depth = 0);
     static int applyInternalNodeParams(SplitNode* node, const QVector<qreal>& ratios, const QVector<bool>& directions,
-                                       int index);
+                                       int index, int depth = 0);
 
     static constexpr int MaxDeserializationDepth = 30;
     static constexpr int MaxDeserializationNodes = 1024; ///< Limit total nodes to prevent memory exhaustion
 
-    static QJsonObject nodeToJson(const SplitNode* node);
+    static QJsonObject nodeToJson(const SplitNode* node, int depth = 0);
     static std::unique_ptr<SplitNode> nodeFromJson(const QJsonObject& json, SplitNode* parent, int depth,
                                                    int& nodeCount, QSet<QString>& seenIds);
 };

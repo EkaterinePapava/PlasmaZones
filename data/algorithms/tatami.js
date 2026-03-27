@@ -29,6 +29,11 @@ function calculateZones(params) {
     const area = params.area;
     const gap = params.innerGap || 0;
 
+    // Single window: full area
+    if (count === 1) {
+        return [{ x: area.x, y: area.y, width: area.width, height: area.height }];
+    }
+
     // Two windows: simple vertical split at 50%
     if (count === 2) {
         const halfW = Math.round((area.width - gap) / 2);

@@ -83,21 +83,22 @@ void SplitTree::rebuildFromOrder(const QStringList& tiledWindows, qreal defaultS
     }
 }
 
-void SplitTree::collectInternalNodeParams(const SplitNode* node, QVector<qreal>& ratios, QVector<bool>& directions)
+void SplitTree::collectInternalNodeParams(const SplitNode* node, QVector<qreal>& ratios, QVector<bool>& directions,
+                                          int depth)
 {
-    if (!node || node->isLeaf()) {
+    if (!node || node->isLeaf() || depth >= MaxRuntimeTreeDepth) {
         return;
     }
     ratios.append(node->splitRatio);
     directions.append(node->splitHorizontal);
-    collectInternalNodeParams(node->first.get(), ratios, directions);
-    collectInternalNodeParams(node->second.get(), ratios, directions);
+    collectInternalNodeParams(node->first.get(), ratios, directions, depth + 1);
+    collectInternalNodeParams(node->second.get(), ratios, directions, depth + 1);
 }
 
 int SplitTree::applyInternalNodeParams(SplitNode* node, const QVector<qreal>& ratios, const QVector<bool>& directions,
-                                       int index)
+                                       int index, int depth)
 {
-    if (!node || node->isLeaf()) {
+    if (!node || node->isLeaf() || depth >= MaxRuntimeTreeDepth) {
         return index;
     }
     if (index < ratios.size() && index < directions.size()) {
@@ -105,8 +106,8 @@ int SplitTree::applyInternalNodeParams(SplitNode* node, const QVector<qreal>& ra
         node->splitHorizontal = directions[index];
     }
     ++index;
-    index = applyInternalNodeParams(node->first.get(), ratios, directions, index);
-    index = applyInternalNodeParams(node->second.get(), ratios, directions, index);
+    index = applyInternalNodeParams(node->first.get(), ratios, directions, index, depth + 1);
+    index = applyInternalNodeParams(node->second.get(), ratios, directions, index, depth + 1);
     return index;
 }
 

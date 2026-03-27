@@ -280,6 +280,10 @@ void TilingAlgorithm::solveTwoPartMinSizes(int contentDim, int& firstDim, int& s
             firstDim = contentDim - secondDim;
         }
     }
+
+    // Clamp to non-negative to prevent negative dimensions when mins exceed contentDim
+    firstDim = std::max(0, firstDim);
+    secondDim = std::max(0, secondDim);
 }
 
 TilingAlgorithm::ThreeColumnWidths TilingAlgorithm::solveThreeColumnWidths(int areaX, int contentWidth, int innerGap,

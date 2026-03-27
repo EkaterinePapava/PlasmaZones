@@ -468,11 +468,13 @@ const SplitNode* SplitTree::rightmostLeaf(const SplitNode* node) const
         return nullptr;
     }
     const SplitNode* current = node;
-    while (!current->isLeaf()) {
+    int iterations = 0;
+    while (!current->isLeaf() && iterations < MaxRuntimeTreeDepth) {
         const SplitNode* next = current->second ? current->second.get() : current->first.get();
         if (!next)
             break; // corrupt internal node -- treat current as leaf
         current = next;
+        ++iterations;
     }
     return current;
 }

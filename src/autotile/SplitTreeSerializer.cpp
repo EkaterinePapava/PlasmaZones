@@ -45,10 +45,15 @@ std::unique_ptr<SplitTree> SplitTree::fromJson(const QJsonObject& json)
     return tree;
 }
 
-QJsonObject SplitTree::nodeToJson(const SplitNode* node)
+QJsonObject SplitTree::nodeToJson(const SplitNode* node, int depth)
 {
     QJsonObject json;
     if (!node) {
+        return json;
+    }
+
+    if (depth >= MaxRuntimeTreeDepth) {
+        qCWarning(lcAutotile) << "SplitTree::nodeToJson: max depth exceeded, truncating";
         return json;
     }
 
@@ -57,8 +62,8 @@ QJsonObject SplitTree::nodeToJson(const SplitNode* node)
     } else {
         json[QLatin1String("ratio")] = node->splitRatio;
         json[QLatin1String("horizontal")] = node->splitHorizontal;
-        json[QLatin1String("first")] = nodeToJson(node->first.get());
-        json[QLatin1String("second")] = nodeToJson(node->second.get());
+        json[QLatin1String("first")] = nodeToJson(node->first.get(), depth + 1);
+        json[QLatin1String("second")] = nodeToJson(node->second.get(), depth + 1);
     }
 
     return json;

@@ -86,9 +86,7 @@ QVector<QRect> SpiralAlgorithm::calculateZones(const TilingParams& params) const
             const int contentWidth = remaining.width() - innerGap;
             if (contentWidth <= 0) {
                 zones.append(remaining);
-                for (int j = i + 1; j < windowCount; ++j) {
-                    zones.append(remaining);
-                }
+                appendGracefulDegradation(zones, remaining, windowCount - i - 1, innerGap);
                 break;
             }
             int windowWidth = static_cast<int>(contentWidth * splitRatio);
@@ -120,9 +118,7 @@ QVector<QRect> SpiralAlgorithm::calculateZones(const TilingParams& params) const
             const int contentHeight = remaining.height() - innerGap;
             if (contentHeight <= 0) {
                 zones.append(remaining);
-                for (int j = i + 1; j < windowCount; ++j) {
-                    zones.append(remaining);
-                }
+                appendGracefulDegradation(zones, remaining, windowCount - i - 1, innerGap);
                 break;
             }
             int windowHeight = static_cast<int>(contentHeight * splitRatio);

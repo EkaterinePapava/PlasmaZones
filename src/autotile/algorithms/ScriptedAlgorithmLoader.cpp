@@ -154,7 +154,8 @@ bool ScriptedAlgorithmLoader::scanAndRegister()
     }
 
     qCInfo(lcAutotile) << "Scripted algorithms loaded:" << m_scriptIdToPath.size() << "changed=" << changed;
-    // M4: Emit signal so listeners (e.g. UI) are notified of registry changes
+    // H-4: Emit here so external callers (daemon, settings) get notified.
+    // performDebouncedRefresh() does NOT re-emit to avoid double emission.
     if (changed) {
         Q_EMIT algorithmsChanged();
     }
@@ -278,11 +279,10 @@ void ScriptedAlgorithmLoader::scheduleRefresh()
 void ScriptedAlgorithmLoader::performDebouncedRefresh()
 {
     qCInfo(lcAutotile) << "Algorithm directory changed, refreshing...";
-    const bool changed = scanAndRegister();
+    // H-4: scanAndRegister() emits algorithmsChanged() internally when changed,
+    // so we do NOT re-emit here to avoid double signal emission.
+    scanAndRegister();
     reWatchFiles();
-    if (changed) {
-        Q_EMIT algorithmsChanged();
-    }
 }
 
 void ScriptedAlgorithmLoader::reWatchFiles()
@@ -306,10 +306,22 @@ void ScriptedAlgorithmLoader::reWatchFiles()
         if (!watchedDirs.contains(dir)) {
             m_watcher->addPath(dir);
         }
+        // H-5: Validate path containment (same as loadFromDirectory) to prevent
+        // symlink/traversal escapes when re-adding file watches
+        const QString canonicalDir = QFileInfo(dir).canonicalFilePath();
+        if (canonicalDir.isEmpty())
+            continue;
         QDir dirObj(dir);
         const QStringList files = dirObj.entryList({QStringLiteral("*.js")}, QDir::Files | QDir::NoSymLinks);
         for (const QString& file : files) {
-            const QString fullPath = dirObj.filePath(file);
+            const QString rawPath = dirObj.filePath(file);
+            const QString fullPath = QFileInfo(rawPath).canonicalFilePath();
+            if (fullPath.isEmpty())
+                continue;
+            if (!fullPath.startsWith(canonicalDir + QLatin1Char('/'))) {
+                qCWarning(lcAutotile) << "reWatchFiles: script path escaped directory:" << fullPath;
+                continue;
+            }
             if (!watchedFiles.contains(fullPath)) {
                 m_watcher->addPath(fullPath);
             }

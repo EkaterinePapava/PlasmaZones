@@ -108,9 +108,7 @@ QVector<QRect> ThreeColumnAlgorithm::calculateZones(const TilingParams& params) 
     int minLeftWidth = 0;
     int minRightWidth = 0;
     if (!minSizes.isEmpty()) {
-        if (minSizes.size() > 0) {
-            minCenterWidth = minSizes[0].width();
-        }
+        minCenterWidth = minSizes[0].width();
         // Interleaved: zone 1,3,5,... are left; zone 2,4,6,... are right
         int li = 0, ri = 0;
         for (int i = 0; i < stackCount; ++i) {

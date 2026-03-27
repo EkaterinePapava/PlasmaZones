@@ -26,7 +26,6 @@ ComboBox {
     // the model imperatively and only swap it when visible content changes.
     // Match the active filter so the default item is semantically consistent
     // Defer until popup closes
-    // Defer until popup closes
 
     id: root
 
@@ -270,7 +269,7 @@ ComboBox {
         height: Math.min(contentItem.implicitHeight + topPadding + bottomPadding, (root.Window.window ? root.Window.window.height : 600) - topMargin - bottomMargin)
         topMargin: Kirigami.Units.smallSpacing
         bottomMargin: Kirigami.Units.smallSpacing
-        padding: Math.round(Kirigami.Units.devicePixelRatio)
+        padding: Math.max(1, Math.round(Kirigami.Units.devicePixelRatio))
         onClosed: {
             if (root._rebuildPending) {
                 root._rebuildPending = false;

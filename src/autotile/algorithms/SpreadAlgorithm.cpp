@@ -72,7 +72,7 @@ QVector<QRect> SpreadAlgorithm::calculateZones(const TilingParams& params) const
     }
 
     // Distribute slot widths respecting scaled minimum sizes
-    const QVector<int> slotWidths = slotMinWidths.isEmpty()
+    const QVector<int> slotWidths = minSizes.isEmpty()
         ? distributeWithGaps(area.width(), windowCount, innerGap)
         : distributeWithMinSizes(area.width(), windowCount, innerGap, slotMinWidths);
 

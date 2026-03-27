@@ -45,6 +45,8 @@ QVector<QRect> StairAlgorithm::calculateZones(const TilingParams& params) const
 
     const auto& state = *params.state;
 
+    // Overlapping layout — innerGap intentionally ignored (zones overlap by design)
+
     const QRect area = innerRect(screenGeometry, outerGaps);
 
     if (windowCount == 1) {

@@ -5,7 +5,6 @@
 #include "core/logging.h"
 #include <QJSEngine>
 #include <QJSValue>
-#include <QLatin1String>
 #include <QString>
 
 namespace PlasmaZones {
@@ -17,7 +16,8 @@ bool hardenSandbox(QJSEngine* engine)
     auto safeEval = [engine](const QString& code, const QString& context) {
         QJSValue result = engine->evaluate(code);
         if (result.isError()) {
-            qWarning() << "ScriptedAlgorithm: sandbox hardening failed for" << context << ":" << result.toString();
+            qCWarning(lcAutotile) << "ScriptedAlgorithm: sandbox hardening failed for" << context << ":"
+                                  << result.toString();
         }
     };
 
@@ -122,6 +122,14 @@ bool hardenSandbox(QJSEngine* engine)
                          .arg(name),
                      QStringLiteral("disable %1").arg(name));
         }
+    }
+
+    // C-2: Disable globalThis and Symbol to prevent sandbox bypass
+    for (const auto& name : {QLatin1String("globalThis"), QLatin1String("Symbol")}) {
+        safeEval(QStringLiteral(
+                     "Object.defineProperty(this, '%1', {value: undefined, writable: false, configurable: false});")
+                     .arg(name),
+                 QStringLiteral("disable %1").arg(name));
     }
 
     // S1: Strip dangerous QJSEngine-provided globals via defineProperty (not deleteProperty)

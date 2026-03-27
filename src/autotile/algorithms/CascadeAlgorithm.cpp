@@ -45,6 +45,8 @@ QVector<QRect> CascadeAlgorithm::calculateZones(const TilingParams& params) cons
 
     const auto& state = *params.state;
 
+    // Overlapping layout — innerGap intentionally ignored (zones overlap by design)
+
     const QRect area = innerRect(screenGeometry, outerGaps);
 
     if (windowCount == 1) {

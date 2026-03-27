@@ -284,20 +284,33 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     m_jsProducesOverlappingZones = m_engine->globalObject().property(QStringLiteral("producesOverlappingZones"));
 
     m_valid = true;
-    // M1: These cacheJsValue calls invoke JS override functions (e.g. masterZoneIndex())
-    // that were defined during the guarded evaluate() above. They are simple property
-    // accessors or constant-returning functions — they cannot contain infinite loops
-    // because any malicious loop would have been caught by the watchdog during evaluate().
-    // Therefore explicit watchdog protection is not needed here.
-    m_cachedMasterZoneIndex = cacheJsValue<int>(m_jsMasterZoneIndex, m_cachedMasterZoneIndex);
-    m_cachedSupportsMasterCount = cacheJsValue<bool>(m_jsSupportsMasterCount, m_cachedSupportsMasterCount);
-    m_cachedSupportsSplitRatio = cacheJsValue<bool>(m_jsSupportsSplitRatio, m_cachedSupportsSplitRatio);
-    m_cachedMinimumWindows = std::clamp(cacheJsValue<int>(m_jsMinimumWindows, m_cachedMinimumWindows), 1, 100);
-    m_cachedDefaultMaxWindows = std::clamp(cacheJsValue<int>(m_jsDefaultMaxWindows, m_cachedDefaultMaxWindows), 1, 100);
+    // C-1: Cache JS override values through guardedCall so that a malicious function
+    // (e.g. `function masterZoneIndex() { while(true){} }`) cannot hang forever.
+    // If the guarded call times out, we keep the existing default cached value.
+    auto guardedCacheJsValue = [this]<typename T>(const QJSValue& jsFn, T fallback) -> T {
+        if (!jsFn.isCallable())
+            return fallback;
+        const QJSValue r = guardedCall([&jsFn]() {
+            return jsFn.call();
+        });
+        if (m_lastCallTimedOut) {
+            qCWarning(lcAutotile) << "ScriptedAlgorithm: JS override timed out, using default";
+            return fallback;
+        }
+        if (!r.isError() && detail::jsValueHasType<T>(r))
+            return detail::jsValueTo<T>(r);
+        return fallback;
+    };
+    m_cachedMasterZoneIndex = guardedCacheJsValue(m_jsMasterZoneIndex, m_cachedMasterZoneIndex);
+    m_cachedSupportsMasterCount = guardedCacheJsValue(m_jsSupportsMasterCount, m_cachedSupportsMasterCount);
+    m_cachedSupportsSplitRatio = guardedCacheJsValue(m_jsSupportsSplitRatio, m_cachedSupportsSplitRatio);
+    m_cachedMinimumWindows = std::clamp(guardedCacheJsValue(m_jsMinimumWindows, m_cachedMinimumWindows), 1, 100);
+    m_cachedDefaultMaxWindows =
+        std::clamp(guardedCacheJsValue(m_jsDefaultMaxWindows, m_cachedDefaultMaxWindows), 1, 100);
     m_cachedDefaultSplitRatio =
-        std::clamp(cacheJsValue<qreal>(m_jsDefaultSplitRatio, m_cachedDefaultSplitRatio), MinSplitRatio, MaxSplitRatio);
+        std::clamp(guardedCacheJsValue(m_jsDefaultSplitRatio, m_cachedDefaultSplitRatio), MinSplitRatio, MaxSplitRatio);
     m_cachedProducesOverlappingZones =
-        cacheJsValue<bool>(m_jsProducesOverlappingZones, m_cachedProducesOverlappingZones);
+        guardedCacheJsValue(m_jsProducesOverlappingZones, m_cachedProducesOverlappingZones);
     m_cachedValuesLoaded = true;
 
     qCInfo(lcAutotile) << "ScriptedAlgorithm: loaded script=" << m_scriptId << "file=" << filePath;
@@ -420,6 +433,13 @@ QJSValue ScriptedAlgorithm::splitNodeToJSValue(const SplitNode* node, int depth)
         jsNode.setProperty(QStringLiteral("horizontal"), node->splitHorizontal);
         jsNode.setProperty(QStringLiteral("first"), splitNodeToJSValue(node->first.get(), depth + 1));
         jsNode.setProperty(QStringLiteral("second"), splitNodeToJSValue(node->second.get(), depth + 1));
+    }
+
+    // L-1: Freeze the node so scripts cannot mutate the tree representation
+    const QJSValue freezeFn =
+        m_engine->globalObject().property(QStringLiteral("Object")).property(QStringLiteral("freeze"));
+    if (freezeFn.isCallable()) {
+        freezeFn.call({jsNode});
     }
 
     return jsNode;

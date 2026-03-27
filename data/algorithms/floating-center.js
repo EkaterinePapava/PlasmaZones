@@ -100,9 +100,9 @@ function calculateZones(params) {
     const hasBottom = bottomCount > 0;
 
     // Top/bottom panels span the full area width
-    const topH = marginY - gap;
+    const topH = Math.max(0, marginY - gap);
     const bottomY = area.y + marginY + centerH + gap;
-    const bottomH = area.y + area.height - bottomY;
+    const bottomH = Math.max(0, area.y + area.height - bottomY);
 
     // Side panels: constrained to the center band height (between top/bottom rows)
     const sideTop = area.y + marginY;
