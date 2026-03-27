@@ -7,6 +7,17 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.4.7] - 2026-03-27
+
+### Added
+- **Center-distance zone selection for overlapping zones** ([#258]): When zones overlap (e.g. quadrants + halves + fullscreen), the zone whose center is closest to the cursor now wins instead of always picking the smallest zone. This lets users reach background zones by dragging toward their center — matching the FancyZones behavior. The multi-zone span path is unaffected, preserving the [#211] fix.
+
+### Fixed
+- **Window picker inserts unmatchable values** ([#251]): "Pick from running windows" in App Rules and Exclusions inserted raw X11 window class format (e.g. `"signal signal"`) instead of the normalized form used for matching (`"signal"`). Manually typing the name worked; using the picker did not.
+- **Keyboard shortcuts move excluded windows** ([#251]): Move, Push, and Swap keyboard shortcuts ignored exclusion rules, moving the window behind an excluded app instead of doing nothing. All navigation shortcuts now check exclusions consistently.
+- **Drag-out unsnap doesn't clear persisted zone** ([#251]): Dragging a window out of its zone and closing it would still persist the zone, causing the window to snap back on reopen. The floating state flag was not always set due to an overly strict guard condition.
+- **D-Bus zone detection missing geometry recalculation**: `detectMultiZoneAtPosition` did not call `recalculateZoneGeometries` before detection, potentially using stale zone coordinates.
+
 ## [2.4.6] - 2026-03-27
 
 ### Added
@@ -1003,13 +1014,18 @@ Initial packaged release. Wayland-only (X11 support removed). Requires KDE Plasm
 - Session restoration and rotation after login ([#66])
 - Window tracking: snap/restore behavior, zone clearing, startup timing, rotation zone ID matching, floating window exclusion ([#67])
 
-[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.4.6...HEAD
+[Unreleased]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.4.7...HEAD
+[2.4.7]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.4.6...v2.4.7
 [2.4.6]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.4.5...v2.4.6
 [2.4.5]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.4.3...v2.4.5
 [2.4.3]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.4.2...v2.4.3
 [2.4.2]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.4.1...v2.4.2
+[#211]: https://github.com/fuddlesworth/PlasmaZones/discussions/211
+[#249]: https://github.com/fuddlesworth/PlasmaZones/issues/249
+[#251]: https://github.com/fuddlesworth/PlasmaZones/discussions/251
 [#252]: https://github.com/fuddlesworth/PlasmaZones/issues/252
 [#254]: https://github.com/fuddlesworth/PlasmaZones/issues/254
+[#258]: https://github.com/fuddlesworth/PlasmaZones/discussions/258
 [2.4.1]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.16...v2.4.0
 [2.3.16]: https://github.com/fuddlesworth/PlasmaZones/compare/v2.3.15...v2.3.16
