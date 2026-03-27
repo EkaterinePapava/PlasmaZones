@@ -200,6 +200,13 @@ public:
     static std::unique_ptr<SplitTree> fromJson(const QJsonObject& json);
 
 private:
+    enum class InsertReady {
+        Proceed,
+        Done,
+        Rejected
+    };
+    InsertReady prepareInsert(const QString& windowId);
+
     std::unique_ptr<SplitNode> m_root;
 
     SplitNode* findLeaf(SplitNode* node, const QString& windowId) const;

@@ -45,7 +45,7 @@
  * @param {string} bottomWidth - "master" (only master width) or "full" (full area width)
  * @param {string} rightHeight - "full" (full area height) or "master" (only master height)
  */
-// KEEP IN SYNC with quadrant-priority.js
+// TODO: remove when shared lShapeLayout helper is injected by C++ engine
 function lShapeLayout(area, count, gap, splitRatio, distribute, bottomWidth, rightHeight) {
     const masterW = Math.max(1, Math.round(area.width * splitRatio - gap / 2));
     const masterH = Math.max(1, Math.round(area.height * splitRatio - gap / 2));
@@ -96,9 +96,9 @@ function lShapeLayout(area, count, gap, splitRatio, distribute, bottomWidth, rig
 
     for (let r = 0; r < rightCount; r++) {
         const ry = area.y + r * (rightTileH + gap);
-        const rh = (r === rightCount - 1)
+        const rh = Math.max(1, (r === rightCount - 1)
             ? (area.y + rightH - ry)
-            : rightTileH;
+            : rightTileH);
 
         zones.push({
             x: rightX,
@@ -118,9 +118,9 @@ function lShapeLayout(area, count, gap, splitRatio, distribute, bottomWidth, rig
 
         for (let b = 0; b < bottomCount; b++) {
             const bx = area.x + b * (bottomTileW + gap);
-            const bw = (b === bottomCount - 1)
+            const bw = Math.max(1, (b === bottomCount - 1)
                 ? (area.x + btmWidth - bx)
-                : bottomTileW;
+                : bottomTileW);
 
             zones.push({
                 x: bx,

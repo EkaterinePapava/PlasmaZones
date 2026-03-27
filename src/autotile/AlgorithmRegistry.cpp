@@ -312,8 +312,8 @@ QVariantList AlgorithmRegistry::generatePreviewZones(TilingAlgorithm* algorithm,
         const auto it = s_previewParams.savedAlgorithmSettings.constFind(algoId);
         if (it != s_previewParams.savedAlgorithmSettings.constEnd()) {
             const QVariantMap& saved = it.value();
-            const int savedMasterCount = saved.value(QLatin1String("masterCount"), -1).toInt();
-            const qreal savedSplitRatio = saved.value(QLatin1String("splitRatio"), -1.0).toDouble();
+            const int savedMasterCount = saved.value(PerAlgoKeys::MasterCount, -1).toInt();
+            const qreal savedSplitRatio = saved.value(PerAlgoKeys::SplitRatio, -1.0).toDouble();
             if (savedMasterCount > 0)
                 masterCount = savedMasterCount;
             if (savedSplitRatio > 0)

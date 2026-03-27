@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <type_traits>
 
 class QJSEngine;
 
@@ -34,6 +35,36 @@ struct WatchdogContext
     std::atomic<uint64_t> generation{0}; ///< Generation counter to prevent stale watchdog interrupts
     QJSEngine* engine = nullptr; ///< Stable engine pointer shared with watchdog threads
 };
+
+namespace detail {
+
+/**
+ * @brief Type-checker for QJSValue results — selects isBool() for bool, isNumber() for numeric types
+ */
+template<typename T>
+bool jsValueHasType(const QJSValue& v)
+{
+    if constexpr (std::is_same_v<T, bool>)
+        return v.isBool();
+    else
+        return v.isNumber();
+}
+
+/**
+ * @brief Type-converter for QJSValue results — selects toBool() for bool, toInt() for int, toNumber() for qreal
+ */
+template<typename T>
+T jsValueTo(const QJSValue& v)
+{
+    if constexpr (std::is_same_v<T, bool>)
+        return v.toBool();
+    else if constexpr (std::is_same_v<T, int>)
+        return v.toInt();
+    else
+        return static_cast<T>(v.toNumber());
+}
+
+} // namespace detail
 
 /**
  * @brief Scripted tiling algorithm backed by a user-provided JavaScript file
@@ -105,6 +136,7 @@ public:
     int minimumWindows() const noexcept override;
     int defaultMaxWindows() const noexcept override;
     bool producesOverlappingZones() const noexcept override;
+    bool supportsMemory() const noexcept override;
     QString zoneNumberDisplay() const noexcept override;
     bool isScripted() const noexcept override;
     bool isUserScript() const noexcept override;
@@ -138,6 +170,18 @@ private:
      */
     QJSValue splitNodeToJSValue(const SplitNode* node, int depth = 0) const;
 
+    /**
+     * @brief Resolve a JS override value: return cached if loaded, else call JS, else metadata fallback
+     */
+    template<typename T>
+    T resolveJsOverride(const QJSValue& jsFn, T cachedValue, T metadataFallback) const noexcept;
+
+    /**
+     * @brief Cache a JS function result at load time, returning fallback if the call fails
+     */
+    template<typename T>
+    T cacheJsValue(const QJSValue& jsFn, T fallback);
+
     static constexpr int MaxTreeConversionDepth = 30;
 
     mutable QJSEngine* m_engine = nullptr;
@@ -153,6 +197,7 @@ private:
     QString m_description;
     bool m_supportsMasterCount = false;
     bool m_supportsSplitRatio = false;
+    bool m_supportsMemory = false;
     bool m_producesOverlappingZones = false;
     QString m_zoneNumberDisplay;
     qreal m_defaultSplitRatio = 0.0; // 0 = use base class default

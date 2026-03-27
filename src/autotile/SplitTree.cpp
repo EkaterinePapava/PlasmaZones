@@ -116,24 +116,33 @@ static void splitLeaf(SplitNode* leaf, const QString& newId, qreal ratio)
     leaf->second = std::move(secondChild);
 }
 
-void SplitTree::insertAtFocused(const QString& windowId, const QString& focusedWindowId, qreal initialRatio)
+SplitTree::InsertReady SplitTree::prepareInsert(const QString& windowId)
 {
     if (leafForWindow(windowId)) {
         qCWarning(lcAutotile) << "SplitTree: duplicate insert rejected" << windowId;
-        return;
+        return InsertReady::Rejected;
     }
 
     if (!m_root) {
         m_root = std::make_unique<SplitNode>();
         m_root->windowId = windowId;
-        return;
+        return InsertReady::Done;
     }
 
     // E1: Only run O(n) depth traversal when the tree is large enough to matter
     if (leafCount() > 15 && treeDepth() >= MaxRuntimeTreeDepth) {
         qCWarning(lcAutotile) << "SplitTree: max depth reached, rejecting insert";
-        return;
+        return InsertReady::Rejected;
     }
+
+    return InsertReady::Proceed;
+}
+
+void SplitTree::insertAtFocused(const QString& windowId, const QString& focusedWindowId, qreal initialRatio)
+{
+    const auto ready = prepareInsert(windowId);
+    if (ready != InsertReady::Proceed)
+        return;
 
     SplitNode* focused = focusedWindowId.isEmpty() ? nullptr : findLeaf(m_root.get(), focusedWindowId);
     if (!focused) {
@@ -148,22 +157,9 @@ void SplitTree::insertAtFocused(const QString& windowId, const QString& focusedW
 
 void SplitTree::insertAtEnd(const QString& windowId, qreal initialRatio)
 {
-    if (leafForWindow(windowId)) {
-        qCWarning(lcAutotile) << "SplitTree: duplicate insert rejected" << windowId;
+    const auto ready = prepareInsert(windowId);
+    if (ready != InsertReady::Proceed)
         return;
-    }
-
-    if (!m_root) {
-        m_root = std::make_unique<SplitNode>();
-        m_root->windowId = windowId;
-        return;
-    }
-
-    // E1: Only run O(n) depth traversal when the tree is large enough to matter
-    if (leafCount() > 15 && treeDepth() >= MaxRuntimeTreeDepth) {
-        qCWarning(lcAutotile) << "SplitTree: max depth reached, rejecting insert";
-        return;
-    }
 
     SplitNode* rm = rightmostLeaf(m_root.get());
     if (!rm) {
@@ -176,22 +172,9 @@ void SplitTree::insertAtEnd(const QString& windowId, qreal initialRatio)
 
 void SplitTree::insertAtPosition(const QString& windowId, int position, qreal initialRatio)
 {
-    if (leafForWindow(windowId)) {
-        qCWarning(lcAutotile) << "SplitTree: duplicate insert rejected" << windowId;
+    const auto ready = prepareInsert(windowId);
+    if (ready != InsertReady::Proceed)
         return;
-    }
-
-    if (!m_root) {
-        m_root = std::make_unique<SplitNode>();
-        m_root->windowId = windowId;
-        return;
-    }
-
-    // E1: Only run O(n) depth traversal when the tree is large enough to matter
-    if (leafCount() > 15 && treeDepth() >= MaxRuntimeTreeDepth) {
-        qCWarning(lcAutotile) << "SplitTree: max depth reached, rejecting insert";
-        return;
-    }
 
     int currentIndex = 0;
     SplitNode* target = leafAtIndex(m_root.get(), position, currentIndex);

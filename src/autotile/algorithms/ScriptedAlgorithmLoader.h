@@ -68,6 +68,8 @@ private:
     void reWatchFiles();
     void loadFromDirectory(const QString& dir, bool isUserDir);
     void scheduleRefresh();
+    QStringList algorithmDirectories() const;
+    void watchDirectory(const QString& dirPath);
 
     QFileSystemWatcher* m_watcher = nullptr;
     QTimer* m_refreshTimer = nullptr;

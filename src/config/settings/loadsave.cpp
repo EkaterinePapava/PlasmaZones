@@ -420,9 +420,9 @@ void Settings::loadAutotilingConfig(QSettingsConfigBackend* backend)
             const int cmCount = autotiling->readInt(QStringLiteral("AutotileCenteredMasterMasterCount"),
                                                     ConfigDefaults::autotileCenteredMasterMasterCount());
             QVariantMap entry;
-            entry[QStringLiteral("splitRatio")] = cmRatio;
-            entry[QStringLiteral("masterCount")] = cmCount;
-            m_autotilePerAlgorithmSettings[QStringLiteral("centered-master")] = entry;
+            entry[PerAlgoKeys::SplitRatio] = cmRatio;
+            entry[PerAlgoKeys::MasterCount] = cmCount;
+            m_autotilePerAlgorithmSettings[QLatin1String("centered-master")] = entry;
         }
     }
 

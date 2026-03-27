@@ -25,12 +25,13 @@
  * @param {boolean} horizontal - true for top-to-bottom, false for left-to-right
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
+// TODO: remove local copy when shared deckLayout helper is injected by C++ engine
 function deckLayout(area, count, focusedFraction, horizontal) {
     const axisSize = horizontal ? area.height : area.width;
     const bgCount = count - 1;
     const focusedSize = Math.max(1, Math.round(axisSize * focusedFraction));
     const peekTotal = axisSize - focusedSize;
-    const peekSize = bgCount > 0 ? Math.max(1, Math.round(peekTotal / bgCount)) : 0;
+    const peekSize = bgCount > 0 ? Math.max(1, Math.round(Math.max(0, peekTotal) / bgCount)) : 0;
 
     const zones = [];
 

@@ -45,6 +45,10 @@ Flickable {
     }
     readonly property bool algoSupportsSplitRatio: algoCapabilities ? (algoCapabilities.supportsSplitRatio === true) : false
     readonly property bool algoSupportsMasterCount: algoCapabilities ? (algoCapabilities.supportsMasterCount === true) : false
+    // Whether the algorithm uses a center layout (ratio/count labels say "Center" instead of "Master").
+    // Check capabilities map first (for future extensibility via scripted algorithm metadata),
+    // falling back to hardcoded IDs for built-in algorithms. See PR #256 / M13.
+    readonly property bool algoCenterLayout: algoCapabilities ? (algoCapabilities.centerLayout === true) : (root.selectedAlgorithm === "three-column" || root.selectedAlgorithm === "centered-master")
 
     function savedAlgoSetting(key, fallback) {
         // For the active algorithm, prefer the live global setting over the
@@ -323,6 +327,8 @@ Flickable {
                     Layout.maximumWidth: Math.min(Kirigami.Units.gridUnit * 25, parent.width)
 
                     LayoutComboBox {
+                        // "Default" selected — use default algorithm
+
                         id: algorithmCombo
 
                         Layout.alignment: Qt.AlignHCenter
@@ -334,8 +340,6 @@ Flickable {
                         showNoneOption: false
                         currentLayoutId: "autotile:" + root.effectiveAlgorithm
                         onActivated: {
-                            // "Default" selected — use default algorithm
-
                             // Extract algorithm ID from autotile: prefixed value
                             let selectedId = algorithmCombo.currentValue;
                             if (selectedId === "")
@@ -415,7 +419,7 @@ Flickable {
                     // Master/Center ratio
                     Label {
                         Layout.alignment: Qt.AlignHCenter
-                        text: root.selectedAlgorithm === "three-column" || root.selectedAlgorithm === "centered-master" ? i18n("Center Ratio") : i18n("Master Ratio")
+                        text: root.algoCenterLayout ? i18n("Center Ratio") : i18n("Master Ratio")
                         font.weight: Font.DemiBold
                     }
 
@@ -454,7 +458,7 @@ Flickable {
                         visible: root.algoSupportsMasterCount
 
                         Label {
-                            text: root.selectedAlgorithm === "centered-master" ? i18n("Center count:") : i18n("Master count:")
+                            text: root.algoCenterLayout ? i18n("Center count:") : i18n("Master count:")
                         }
 
                         SpinBox {
@@ -467,9 +471,9 @@ Flickable {
                                     appSettings.autotileMasterCount = v;
                                 });
                             }
-                            Accessible.name: root.selectedAlgorithm === "centered-master" ? i18n("Center count") : i18n("Master count")
+                            Accessible.name: root.algoCenterLayout ? i18n("Center count") : i18n("Master count")
                             ToolTip.visible: hovered
-                            ToolTip.text: root.selectedAlgorithm === "centered-master" ? i18n("Number of windows in the center area") : i18n("Number of windows in the master area")
+                            ToolTip.text: root.algoCenterLayout ? i18n("Number of windows in the center area") : i18n("Number of windows in the master area")
 
                             Binding on value {
                                 value: root.savedAlgoSetting("masterCount", 1)

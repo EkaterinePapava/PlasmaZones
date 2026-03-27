@@ -36,6 +36,37 @@ QString ScriptedAlgorithmLoader::userAlgorithmDir() const
     return dataDir + QStringLiteral("/plasmazones/algorithms");
 }
 
+QStringList ScriptedAlgorithmLoader::algorithmDirectories() const
+{
+    QStringList dirs = QStandardPaths::locateAll(
+        QStandardPaths::GenericDataLocation, QStringLiteral("plasmazones/algorithms"), QStandardPaths::LocateDirectory);
+
+    const QString userDir = userAlgorithmDir();
+    if (!userDir.isEmpty() && !dirs.contains(userDir)) {
+        dirs.prepend(userDir);
+    }
+    return dirs;
+}
+
+void ScriptedAlgorithmLoader::watchDirectory(const QString& dirPath)
+{
+    if (!QDir(dirPath).exists()) {
+        return;
+    }
+    m_watcher->addPath(dirPath);
+
+    // Watch individual .js files so in-place content modifications trigger fileChanged.
+    // Directory-level inotify only fires for create/delete/rename, not in-place writes.
+    QDir dirObj(dirPath);
+    const QStringList jsFiles = dirObj.entryList({QStringLiteral("*.js")}, QDir::Files);
+    for (const QString& file : jsFiles) {
+        m_watcher->addPath(dirObj.filePath(file));
+    }
+
+    qCInfo(lcAutotile) << "Watching algorithm directory:" << dirPath
+                       << "paths=" << m_watcher->files().size() + m_watcher->directories().size();
+}
+
 void ScriptedAlgorithmLoader::ensureUserDirectoryExists()
 {
     const QString dirPath = userAlgorithmDir();
@@ -68,8 +99,7 @@ void ScriptedAlgorithmLoader::scanAndRegister()
     m_scriptIdToPath.clear();
 
     // Find ALL algorithm directories across XDG data paths
-    QStringList dirs = QStandardPaths::locateAll(
-        QStandardPaths::GenericDataLocation, QStringLiteral("plasmazones/algorithms"), QStandardPaths::LocateDirectory);
+    QStringList dirs = algorithmDirectories();
 
     // Reverse: system dirs first, user dirs last (user overrides system by same filename)
     std::reverse(dirs.begin(), dirs.end());
@@ -140,37 +170,12 @@ void ScriptedAlgorithmLoader::setupFileWatcher()
 {
     m_watcher = new QFileSystemWatcher(this);
 
-    auto watchDir = [this](const QString& dir) {
-        if (!QDir(dir).exists()) {
-            return;
-        }
-        m_watcher->addPath(dir);
-
-        // Watch individual .js files so in-place content modifications trigger fileChanged.
-        // Directory-level inotify only fires for create/delete/rename, not in-place writes.
-        QDir dirObj(dir);
-        const QStringList jsFiles = dirObj.entryList({QStringLiteral("*.js")}, QDir::Files);
-        for (const QString& file : jsFiles) {
-            m_watcher->addPath(dirObj.filePath(file));
-        }
-
-        qCInfo(lcAutotile) << "Watching algorithm directory:" << dir
-                           << "paths=" << m_watcher->files().size() + m_watcher->directories().size();
-    };
-
-    // Watch ALL algorithm directories (system + user). locateAll() returns them
-    // in priority order (user first, system last).
-    const QStringList allDirs = QStandardPaths::locateAll(
-        QStandardPaths::GenericDataLocation, QStringLiteral("plasmazones/algorithms"), QStandardPaths::LocateDirectory);
+    // Watch ALL algorithm directories (system + user).
+    // algorithmDirectories() already includes the writable user dir
+    // even if it was not returned by locateAll().
+    const QStringList allDirs = algorithmDirectories();
     for (const QString& dir : allDirs) {
-        watchDir(dir);
-    }
-
-    // Also watch the writable user dir even if it has no scripts yet
-    // (user may add custom algorithms later)
-    const QString userDir = userAlgorithmDir();
-    if (!userDir.isEmpty() && !allDirs.contains(userDir)) {
-        watchDir(userDir);
+        watchDirectory(dir);
     }
 
     connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, &ScriptedAlgorithmLoader::onDirectoryChanged);
@@ -225,9 +230,11 @@ void ScriptedAlgorithmLoader::reWatchFiles()
 
     // After a refresh (which may follow delete+recreate), re-add any
     // .js files that lost their inotify watch due to inode replacement.
-    auto reWatch = [this](const QString& dir) {
+    // algorithmDirectories() already includes the writable user dir.
+    const QStringList allDirs = algorithmDirectories();
+    for (const QString& dir : allDirs) {
         if (!QDir(dir).exists()) {
-            return;
+            continue;
         }
         // Re-watch the directory itself
         if (!m_watcher->directories().contains(dir)) {
@@ -241,16 +248,6 @@ void ScriptedAlgorithmLoader::reWatchFiles()
                 m_watcher->addPath(fullPath);
             }
         }
-    };
-
-    const QStringList allDirs = QStandardPaths::locateAll(
-        QStandardPaths::GenericDataLocation, QStringLiteral("plasmazones/algorithms"), QStandardPaths::LocateDirectory);
-    for (const QString& dir : allDirs) {
-        reWatch(dir);
-    }
-    const QString userDir = userAlgorithmDir();
-    if (!userDir.isEmpty() && !allDirs.contains(userDir)) {
-        reWatch(userDir);
     }
 }
 

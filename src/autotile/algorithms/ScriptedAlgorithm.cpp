@@ -6,6 +6,7 @@
 #include "../TilingState.h"
 #include "core/constants.h"
 #include "core/logging.h"
+#include "pz_i18n.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QJSEngine>
@@ -26,6 +27,35 @@ using namespace AutotileDefaults;
 
 // L14: Named constant for watchdog timeout (was magic number 100)
 static constexpr int ScriptWatchdogTimeoutMs = 100;
+
+// H2: Template helpers for JS override resolution and caching
+
+template<typename T>
+T ScriptedAlgorithm::resolveJsOverride(const QJSValue& jsFn, T cachedValue, T metadataFallback) const noexcept
+{
+    // H5: Return cached value if available
+    if (m_cachedValuesLoaded && jsFn.isCallable()) {
+        return cachedValue;
+    }
+    // B3: Guard against invalid script state in uncached fallback path
+    if (m_valid && jsFn.isCallable()) {
+        const QJSValue result = jsFn.call();
+        if (!result.isError() && detail::jsValueHasType<T>(result))
+            return detail::jsValueTo<T>(result);
+    }
+    return metadataFallback;
+}
+
+template<typename T>
+T ScriptedAlgorithm::cacheJsValue(const QJSValue& jsFn, T fallback)
+{
+    if (jsFn.isCallable()) {
+        const QJSValue r = jsFn.call();
+        if (!r.isError() && detail::jsValueHasType<T>(r))
+            return detail::jsValueTo<T>(r);
+    }
+    return fallback;
+}
 
 ScriptedAlgorithm::ScriptedAlgorithm(const QString& filePath, QObject* parent)
     : TilingAlgorithm(parent)
@@ -146,6 +176,83 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         QStringLiteral("Object.defineProperty(this, 'applyTreeGeometry', "
                        "{writable: false, configurable: false});"));
 
+    // Inject built-in helper: lShapeLayout(area, gap, splitRatio, count)
+    // Produces an L-shaped master zone with right and bottom stacks.
+    static const QString lShapeHelper = QStringLiteral(
+        "function lShapeLayout(area, gap, splitRatio, count) {"
+        "  var masterW = Math.max(1, Math.round(area.width * splitRatio));"
+        "  var masterH = Math.max(1, Math.round(area.height * splitRatio));"
+        "  var zones = [{ x: area.x, y: area.y, width: masterW, height: masterH }];"
+        "  if (count <= 1) return zones;"
+        "  var remaining = count - 1;"
+        "  var rightX = area.x + masterW + gap;"
+        "  var rightW = Math.max(1, area.x + area.width - rightX);"
+        "  var rightH = area.height;"
+        "  var bottomY = area.y + masterH + gap;"
+        "  var bottomW = masterW;"
+        "  var bottomH = Math.max(1, area.y + area.height - bottomY);"
+        "  var rightCount = Math.ceil(remaining / 2);"
+        "  var bottomCount = remaining - rightCount;"
+        "  if (bottomCount <= 0) { rightCount = remaining; }"
+        "  if (rightCount > 0) {"
+        "    var rightTileH = Math.max(1, Math.round((rightH - (rightCount - 1) * gap) / rightCount));"
+        "    for (var r = 0; r < rightCount; r++) {"
+        "      var ry = area.y + r * (rightTileH + gap);"
+        "      var rh = Math.max(1, (r === rightCount - 1) ? (area.y + rightH - ry) : rightTileH);"
+        "      zones.push({ x: rightX, y: ry, width: rightW, height: rh });"
+        "    }"
+        "  }"
+        "  if (bottomCount > 0) {"
+        "    var bottomTileW = Math.max(1, Math.round((bottomW - (bottomCount - 1) * gap) / bottomCount));"
+        "    for (var b = 0; b < bottomCount; b++) {"
+        "      var bx = area.x + b * (bottomTileW + gap);"
+        "      var bw = Math.max(1, (b === bottomCount - 1) ? (area.x + bottomW - bx) : bottomTileW);"
+        "      zones.push({ x: bx, y: bottomY, width: bw, height: bottomH });"
+        "    }"
+        "  }"
+        "  return zones;"
+        "}");
+    m_engine->evaluate(lShapeHelper, QStringLiteral("builtin:lShapeLayout"));
+
+    m_engine->evaluate(
+        QStringLiteral("Object.defineProperty(this, 'lShapeLayout', "
+                       "{writable: false, configurable: false});"));
+
+    // Inject built-in helper: deckLayout(area, count, focusedFraction, horizontal)
+    // Card-deck layout with a focused foreground window and peeking background windows.
+    static const QString deckHelper = QStringLiteral(
+        "function deckLayout(area, count, focusedFraction, horizontal) {"
+        "  var axisSize = horizontal ? area.height : area.width;"
+        "  var crossSize = horizontal ? area.width : area.height;"
+        "  var focusedSize = Math.max(1, Math.round(axisSize * focusedFraction));"
+        "  var bgCount = count - 1;"
+        "  var peekTotal = axisSize - focusedSize;"
+        "  var peekSize = bgCount > 0 ? Math.max(1, Math.round(peekTotal / bgCount)) : 0;"
+        "  var zones = [];"
+        "  for (var i = 0; i < count; i++) {"
+        "    if (i === 0) {"
+        "      if (horizontal) {"
+        "        zones.push({ x: area.x, y: area.y, width: crossSize, height: focusedSize });"
+        "      } else {"
+        "        zones.push({ x: area.x, y: area.y, width: focusedSize, height: crossSize });"
+        "      }"
+        "    } else {"
+        "      var peekOffset = Math.min(focusedSize + (i - 1) * peekSize, axisSize - 1);"
+        "      if (horizontal) {"
+        "        zones.push({ x: area.x, y: area.y + peekOffset, width: crossSize, height: axisSize - peekOffset });"
+        "      } else {"
+        "        zones.push({ x: area.x + peekOffset, y: area.y, width: axisSize - peekOffset, height: crossSize });"
+        "      }"
+        "    }"
+        "  }"
+        "  return zones;"
+        "}");
+    m_engine->evaluate(deckHelper, QStringLiteral("builtin:deckLayout"));
+
+    m_engine->evaluate(
+        QStringLiteral("Object.defineProperty(this, 'deckLayout', "
+                       "{writable: false, configurable: false});"));
+
     // Evaluate the user script
     const QJSValue result = m_engine->evaluate(source, filePath);
     if (result.isError()) {
@@ -174,41 +281,16 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     m_valid = true;
 
     // H5: Cache JS virtual method overrides at load time to avoid repeated JS calls
-    if (m_jsMasterZoneIndex.isCallable()) {
-        const QJSValue r = m_jsMasterZoneIndex.call();
-        if (!r.isError() && r.isNumber())
-            m_cachedMasterZoneIndex = r.toInt();
-    }
-    if (m_jsSupportsMasterCount.isCallable()) {
-        const QJSValue r = m_jsSupportsMasterCount.call();
-        if (!r.isError() && r.isBool())
-            m_cachedSupportsMasterCount = r.toBool();
-    }
-    if (m_jsSupportsSplitRatio.isCallable()) {
-        const QJSValue r = m_jsSupportsSplitRatio.call();
-        if (!r.isError() && r.isBool())
-            m_cachedSupportsSplitRatio = r.toBool();
-    }
-    if (m_jsMinimumWindows.isCallable()) {
-        const QJSValue r = m_jsMinimumWindows.call();
-        if (!r.isError() && r.isNumber())
-            m_cachedMinimumWindows = std::clamp(r.toInt(), 1, 100);
-    }
-    if (m_jsDefaultMaxWindows.isCallable()) {
-        const QJSValue r = m_jsDefaultMaxWindows.call();
-        if (!r.isError() && r.isNumber())
-            m_cachedDefaultMaxWindows = std::clamp(r.toInt(), 1, 100);
-    }
-    if (m_jsDefaultSplitRatio.isCallable()) {
-        const QJSValue r = m_jsDefaultSplitRatio.call();
-        if (!r.isError() && r.isNumber())
-            m_cachedDefaultSplitRatio = std::clamp(r.toNumber(), MinSplitRatio, MaxSplitRatio);
-    }
-    if (m_jsProducesOverlappingZones.isCallable()) {
-        const QJSValue r = m_jsProducesOverlappingZones.call();
-        if (!r.isError() && r.isBool())
-            m_cachedProducesOverlappingZones = r.toBool();
-    }
+    // H2: Use cacheJsValue helper to eliminate duplication
+    m_cachedMasterZoneIndex = cacheJsValue<int>(m_jsMasterZoneIndex, m_cachedMasterZoneIndex);
+    m_cachedSupportsMasterCount = cacheJsValue<bool>(m_jsSupportsMasterCount, m_cachedSupportsMasterCount);
+    m_cachedSupportsSplitRatio = cacheJsValue<bool>(m_jsSupportsSplitRatio, m_cachedSupportsSplitRatio);
+    m_cachedMinimumWindows = std::clamp(cacheJsValue<int>(m_jsMinimumWindows, m_cachedMinimumWindows), 1, 100);
+    m_cachedDefaultMaxWindows = std::clamp(cacheJsValue<int>(m_jsDefaultMaxWindows, m_cachedDefaultMaxWindows), 1, 100);
+    m_cachedDefaultSplitRatio =
+        std::clamp(cacheJsValue<qreal>(m_jsDefaultSplitRatio, m_cachedDefaultSplitRatio), MinSplitRatio, MaxSplitRatio);
+    m_cachedProducesOverlappingZones =
+        cacheJsValue<bool>(m_jsProducesOverlappingZones, m_cachedProducesOverlappingZones);
     m_cachedValuesLoaded = true;
 
     qCInfo(lcAutotile) << "ScriptedAlgorithm: loaded script=" << m_scriptId << "file=" << filePath;
@@ -256,6 +338,8 @@ void ScriptedAlgorithm::parseMetadata(const QString& source)
             m_supportsSplitRatio = (value == QLatin1String("true"));
         } else if (key == QLatin1String("producesOverlappingZones")) {
             m_producesOverlappingZones = (value == QLatin1String("true"));
+        } else if (key == QLatin1String("supportsMemory")) {
+            m_supportsMemory = (value == QLatin1String("true"));
         } else if (key == QLatin1String("defaultSplitRatio")) {
             bool ok = false;
             const qreal v = value.toDouble(&ok);
@@ -351,7 +435,7 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
     // generation and the watchdog only interrupts if the generation still matches.
     const uint64_t myGen = ++(m_watchdog->generation);
 
-    // C1: Only spawn watchdog if none is already active (prevents ~60 threads/sec during resize)
+    // C1: Only spawn watchdog if none is already sleeping (prevents ~60 threads/sec during resize)
     auto ctx = m_watchdog; // shared_ptr copy — prevents use-after-free
     bool expected = false;
     if (ctx->active.compare_exchange_strong(expected, true)) {
@@ -467,7 +551,7 @@ QString ScriptedAlgorithm::name() const
         }
         return fallback;
     }
-    return QStringLiteral("Scripted");
+    return PzI18n::tr("Scripted");
 }
 
 QString ScriptedAlgorithm::description() const
@@ -475,54 +559,23 @@ QString ScriptedAlgorithm::description() const
     if (!m_description.isEmpty()) {
         return m_description;
     }
-    return QStringLiteral("User-provided scripted tiling algorithm");
+    return PzI18n::tr("User-provided scripted tiling algorithm");
 }
 
 int ScriptedAlgorithm::masterZoneIndex() const noexcept
 {
-    // H5: Return cached value if available
-    if (m_cachedValuesLoaded && m_jsMasterZoneIndex.isCallable()) {
-        return m_cachedMasterZoneIndex;
-    }
-    // QJSValue API is noexcept-safe (no C++ exceptions); the isError() check
-    // guards against JS-level errors.  Build uses -fno-exceptions.
-    // B3: Guard against invalid script state in uncached fallback path
-    if (m_valid && m_jsMasterZoneIndex.isCallable()) {
-        const QJSValue result = m_jsMasterZoneIndex.call();
-        if (!result.isError() && result.isNumber())
-            return result.toInt();
-    }
-    return m_masterZoneIndex;
+    // H2: Unified three-tier resolution via template helper
+    return resolveJsOverride<int>(m_jsMasterZoneIndex, m_cachedMasterZoneIndex, m_masterZoneIndex);
 }
 
 bool ScriptedAlgorithm::supportsMasterCount() const noexcept
 {
-    // H5: Return cached value if available
-    if (m_cachedValuesLoaded && m_jsSupportsMasterCount.isCallable()) {
-        return m_cachedSupportsMasterCount;
-    }
-    // B3: Guard against invalid script state in uncached fallback path
-    if (m_valid && m_jsSupportsMasterCount.isCallable()) {
-        const QJSValue result = m_jsSupportsMasterCount.call();
-        if (!result.isError() && result.isBool())
-            return result.toBool();
-    }
-    return m_supportsMasterCount;
+    return resolveJsOverride<bool>(m_jsSupportsMasterCount, m_cachedSupportsMasterCount, m_supportsMasterCount);
 }
 
 bool ScriptedAlgorithm::supportsSplitRatio() const noexcept
 {
-    // H5: Return cached value if available
-    if (m_cachedValuesLoaded && m_jsSupportsSplitRatio.isCallable()) {
-        return m_cachedSupportsSplitRatio;
-    }
-    // B3: Guard against invalid script state in uncached fallback path
-    if (m_valid && m_jsSupportsSplitRatio.isCallable()) {
-        const QJSValue result = m_jsSupportsSplitRatio.call();
-        if (!result.isError() && result.isBool())
-            return result.toBool();
-    }
-    return m_supportsSplitRatio;
+    return resolveJsOverride<bool>(m_jsSupportsSplitRatio, m_cachedSupportsSplitRatio, m_supportsSplitRatio);
 }
 
 qreal ScriptedAlgorithm::defaultSplitRatio() const noexcept
@@ -545,15 +598,13 @@ qreal ScriptedAlgorithm::defaultSplitRatio() const noexcept
 
 int ScriptedAlgorithm::minimumWindows() const noexcept
 {
-    // H5: Return cached value if available
+    // Special handling: clamp uncached JS result and fall through to base class
     if (m_cachedValuesLoaded && m_jsMinimumWindows.isCallable()) {
         return m_cachedMinimumWindows;
     }
-    // B3: Guard against invalid script state in uncached fallback path
     if (m_valid && m_jsMinimumWindows.isCallable()) {
         const QJSValue result = m_jsMinimumWindows.call();
         if (!result.isError() && result.isNumber())
-            // M11: Clamp JS override return values to same range as metadata parser
             return std::clamp(result.toInt(), 1, 100);
     }
     if (m_minimumWindows > 0) {
@@ -564,15 +615,13 @@ int ScriptedAlgorithm::minimumWindows() const noexcept
 
 int ScriptedAlgorithm::defaultMaxWindows() const noexcept
 {
-    // H5: Return cached value if available
+    // Special handling: clamp uncached JS result and fall through to base class
     if (m_cachedValuesLoaded && m_jsDefaultMaxWindows.isCallable()) {
         return m_cachedDefaultMaxWindows;
     }
-    // B3: Guard against invalid script state in uncached fallback path
     if (m_valid && m_jsDefaultMaxWindows.isCallable()) {
         const QJSValue result = m_jsDefaultMaxWindows.call();
         if (!result.isError() && result.isNumber())
-            // M11: Clamp JS override return values to same range as metadata parser
             return std::clamp(result.toInt(), 1, 100);
     }
     if (m_defaultMaxWindows > 0) {
@@ -583,17 +632,13 @@ int ScriptedAlgorithm::defaultMaxWindows() const noexcept
 
 bool ScriptedAlgorithm::producesOverlappingZones() const noexcept
 {
-    // H5: Return cached value if available
-    if (m_cachedValuesLoaded && m_jsProducesOverlappingZones.isCallable()) {
-        return m_cachedProducesOverlappingZones;
-    }
-    // B3: Guard against invalid script state in uncached fallback path
-    if (m_valid && m_jsProducesOverlappingZones.isCallable()) {
-        const QJSValue result = m_jsProducesOverlappingZones.call();
-        if (!result.isError() && result.isBool())
-            return result.toBool();
-    }
-    return m_producesOverlappingZones;
+    return resolveJsOverride<bool>(m_jsProducesOverlappingZones, m_cachedProducesOverlappingZones,
+                                   m_producesOverlappingZones);
+}
+
+bool ScriptedAlgorithm::supportsMemory() const noexcept
+{
+    return m_supportsMemory;
 }
 
 QString ScriptedAlgorithm::zoneNumberDisplay() const noexcept

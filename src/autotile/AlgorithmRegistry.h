@@ -5,6 +5,7 @@
 
 #include "plasmazones_export.h"
 #include <QHash>
+#include <QLatin1String>
 #include <QList>
 #include <QObject>
 #include <QRect>
@@ -15,6 +16,17 @@
 #include <functional>
 
 namespace PlasmaZones {
+
+/**
+ * @brief Named constants for per-algorithm settings keys
+ *
+ * Used by AlgorithmRegistry, AutotileConfig, and Settings serialization
+ * to avoid key drift between serialization and deserialization sites.
+ */
+namespace PerAlgoKeys {
+inline const QLatin1String SplitRatio = QLatin1String("splitRatio");
+inline const QLatin1String MasterCount = QLatin1String("masterCount");
+} // namespace PerAlgoKeys
 
 class TilingAlgorithm;
 
@@ -239,8 +251,10 @@ public:
     /**
      * @brief Get section grouping info for a tiling algorithm
      *
-     * Memory-capable algorithms → "persistent" section,
-     * all other algorithms → "automatic" section.
+     * Returns one of three sections:
+     * - "built-in"   (order 0): Standard C++ algorithms and system-installed scripts
+     * - "persistent" (order 1): Memory-capable algorithms (e.g. DwindleMemory)
+     * - "custom"     (order 2): User-provided scripted algorithms
      */
     static SectionInfo sectionForAlgorithm(TilingAlgorithm* algorithm);
 

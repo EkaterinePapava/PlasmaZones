@@ -32,7 +32,7 @@ function calculateZones(params) {
     if (count <= 0) return [];
     if (count === 1) return [area];
 
-    const pageRatio = params.splitRatio > 0 ? Math.min(params.splitRatio, 0.95) : 0.8;
+    const pageRatio = params.splitRatio > 0 ? Math.min(params.splitRatio, 0.9) : 0.8;
     let pageWidth = Math.round(area.width * pageRatio);
     if (pageWidth < 1) pageWidth = 1;
     if (pageWidth > area.width) pageWidth = area.width;
@@ -45,7 +45,7 @@ function calculateZones(params) {
     if (count > 1) {
         const rawStep = Math.round(leftover / (count - 1));
         const maxStep = Math.floor(leftover / (count - 1));
-        step = Math.max(1, Math.min(rawStep, maxStep));
+        step = Math.max(0, Math.min(rawStep, maxStep));
     } else {
         step = 0;
     }
