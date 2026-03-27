@@ -129,15 +129,15 @@ public:
     QString name() const override;
     QString description() const override;
     QVector<QRect> calculateZones(const TilingParams& params) const override;
-    int masterZoneIndex() const noexcept override;
-    bool supportsMasterCount() const noexcept override;
-    bool supportsSplitRatio() const noexcept override;
-    qreal defaultSplitRatio() const noexcept override;
-    int minimumWindows() const noexcept override;
-    int defaultMaxWindows() const noexcept override;
-    bool producesOverlappingZones() const noexcept override;
+    int masterZoneIndex() const override;
+    bool supportsMasterCount() const override;
+    bool supportsSplitRatio() const override;
+    qreal defaultSplitRatio() const override;
+    int minimumWindows() const override;
+    int defaultMaxWindows() const override;
+    bool producesOverlappingZones() const override;
     bool supportsMemory() const noexcept override;
-    QString zoneNumberDisplay() const noexcept override;
+    QString zoneNumberDisplay() const override;
     bool isScripted() const noexcept override;
     bool isUserScript() const noexcept override;
 
@@ -174,7 +174,13 @@ private:
      * @brief Resolve a JS override value: return cached if loaded, else call JS, else metadata fallback
      */
     template<typename T>
-    T resolveJsOverride(const QJSValue& jsFn, T cachedValue, T metadataFallback) const noexcept;
+    T resolveJsOverride(const QJSValue& jsFn, T cachedValue, T metadataFallback) const;
+
+    /**
+     * @brief Like resolveJsOverride, but clamps the result to [minVal, maxVal]
+     */
+    template<typename T>
+    T resolveJsOverrideClamped(const QJSValue& jsFn, T cachedValue, T metadataFallback, T minVal, T maxVal) const;
 
     /**
      * @brief Cache a JS function result at load time, returning fallback if the call fails

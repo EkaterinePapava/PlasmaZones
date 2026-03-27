@@ -183,6 +183,13 @@ public:
      */
     QVector<QRect> applyGeometry(const QRect& area, int innerGap) const;
 
+    /**
+     * @brief Rebuild tree from a new window order, preserving split ratios where possible
+     * @param tiledWindows Ordered list of tiled window IDs
+     * @param defaultSplitRatio Default split ratio for new internal nodes
+     */
+    void rebuildFromOrder(const QStringList& tiledWindows, qreal defaultSplitRatio = 0.55);
+
     // ═══════════════════════════════════════════════════════════════════════
     // Serialization
     // ═══════════════════════════════════════════════════════════════════════
@@ -215,6 +222,13 @@ private:
     void collectLeafOrder(const SplitNode* node, QStringList& order) const;
     int countLeaves(const SplitNode* node) const;
     void applyGeometryRecursive(const SplitNode* node, const QRect& rect, int innerGap, QVector<QRect>& zones) const;
+
+    static int nodeDepth(const SplitNode* node);
+    static void splitLeaf(SplitNode* leaf, const QString& newId, qreal ratio);
+
+    static void collectInternalNodeParams(const SplitNode* node, QVector<qreal>& ratios, QVector<bool>& directions);
+    static int applyInternalNodeParams(SplitNode* node, const QVector<qreal>& ratios, const QVector<bool>& directions,
+                                       int index);
 
     static constexpr int MaxDeserializationDepth = 30;
     static constexpr int MaxDeserializationNodes = 1024; ///< Limit total nodes to prevent memory exhaustion

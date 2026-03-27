@@ -11,9 +11,6 @@
 // @minimumWindows 1
 // @zoneNumberDisplay all
 
-// Guard pattern and splitRatio clamping are intentionally duplicated across
-// algorithm scripts because each one runs in its own QJSEngine instance.
-
 /**
  * Focus + Sidebar layout: one large main window on the left with a narrow
  * sidebar column on the right containing vertically stacked small windows.
@@ -27,10 +24,7 @@ function calculateZones(params) {
     const area = params.area;
     const gap = params.innerGap || 0;
 
-    if (count <= 0) return [];
-    if (count === 1) return [area];
-
-    const splitRatio = params.splitRatio > 0 ? Math.min(params.splitRatio, 0.9) : 0.7;
+    const splitRatio = params.splitRatio;
     const mainWidth = Math.max(1, Math.round(area.width * splitRatio - gap / 2));
     const sidebarX = Math.min(area.x + mainWidth + gap, area.x + area.width - 1);
     const sidebarWidth = Math.max(1, area.x + area.width - sidebarX);

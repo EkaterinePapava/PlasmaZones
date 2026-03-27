@@ -11,9 +11,6 @@
 // @minimumWindows 1
 // @zoneNumberDisplay last
 
-// Guard pattern and splitRatio clamping are intentionally duplicated across
-// algorithm scripts because each one runs in its own QJSEngine instance.
-
 /**
  * Paper layout: each window is an equal-width "page" (default 80%
  * of screen width) distributed evenly across the screen. Windows
@@ -29,10 +26,7 @@ function calculateZones(params) {
     const count = params.windowCount;
     const area = params.area;
 
-    if (count <= 0) return [];
-    if (count === 1) return [area];
-
-    const pageRatio = params.splitRatio > 0 ? Math.min(params.splitRatio, 0.9) : 0.8;
+    const pageRatio = params.splitRatio;
     let pageWidth = Math.round(area.width * pageRatio);
     if (pageWidth < 1) pageWidth = 1;
     if (pageWidth > area.width) pageWidth = area.width;

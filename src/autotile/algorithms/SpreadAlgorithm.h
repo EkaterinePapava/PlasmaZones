@@ -46,26 +46,26 @@ public:
 
     QVector<QRect> calculateZones(const TilingParams& params) const override;
 
-    bool supportsMasterCount() const noexcept override
+    bool supportsMasterCount() const override
     {
         return false;
     }
-    bool supportsSplitRatio() const noexcept override
+    bool supportsSplitRatio() const override
     {
         return true;
     }
-    qreal defaultSplitRatio() const noexcept override
+    qreal defaultSplitRatio() const override
     {
         return 0.8;
     }
-    int defaultMaxWindows() const noexcept override
+    int defaultMaxWindows() const override
     {
         return 4;
     }
     // Spread zones are centered within slots with padding — the post-layout
     // enforceWindowMinSizes boundary solver would destroy this spacing.
     // Min sizes are handled directly in calculateZones.
-    bool producesOverlappingZones() const noexcept override
+    bool producesOverlappingZones() const override
     {
         return true;
     }

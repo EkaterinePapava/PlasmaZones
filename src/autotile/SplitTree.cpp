@@ -54,7 +54,7 @@ int SplitTree::leafCount() const
     return countLeaves(m_root.get());
 }
 
-static int nodeDepth(const SplitNode* node)
+int SplitTree::nodeDepth(const SplitNode* node)
 {
     if (!node)
         return 0;
@@ -89,7 +89,7 @@ QStringList SplitTree::leafOrder() const
  * The new window (newId) goes into the second child.
  * Split direction alternates from the parent's direction.
  */
-static void splitLeaf(SplitNode* leaf, const QString& newId, qreal ratio)
+void SplitTree::splitLeaf(SplitNode* leaf, const QString& newId, qreal ratio)
 {
     // Choose split direction: alternate from parent, default to vertical (left/right)
     bool horizontal = false;
@@ -274,9 +274,15 @@ void SplitTree::resizeSplit(const QString& windowId, qreal newRatio)
 QVector<QRect> SplitTree::applyGeometry(const QRect& area, int innerGap) const
 {
     QVector<QRect> zones;
+    // EC-2: Zero-size rect guard
+    if (area.width() <= 0 || area.height() <= 0) {
+        return zones;
+    }
     if (!m_root) {
         return zones;
     }
+    // EC-3: Clamp negative innerGap
+    innerGap = qMax(0, innerGap);
     applyGeometryRecursive(m_root.get(), area, innerGap, zones);
     return zones;
 }
@@ -309,8 +315,10 @@ void SplitTree::applyGeometryRecursive(const SplitNode* node, const QRect& rect,
 
         const int firstHeight = std::max(1, static_cast<int>(contentHeight * ratio));
         const int secondHeight = std::max(1, contentHeight - firstHeight);
+        const int secondY = rect.y() + firstHeight + innerGap;
+        const int clampedSecondHeight = std::max(1, std::min(secondHeight, rect.y() + rect.height() - secondY));
         const QRect firstRect(rect.x(), rect.y(), rect.width(), firstHeight);
-        const QRect secondRect(rect.x(), rect.y() + firstHeight + innerGap, rect.width(), secondHeight);
+        const QRect secondRect(rect.x(), secondY, rect.width(), clampedSecondHeight);
 
         if (!firstRect.isValid() || !secondRect.isValid()) {
             applyGeometryRecursive(node->first.get(), rect, 0, zones);
@@ -332,8 +340,10 @@ void SplitTree::applyGeometryRecursive(const SplitNode* node, const QRect& rect,
 
         const int firstWidth = std::max(1, static_cast<int>(contentWidth * ratio));
         const int secondWidth = std::max(1, contentWidth - firstWidth);
+        const int secondX = rect.x() + firstWidth + innerGap;
+        const int clampedSecondWidth = std::max(1, std::min(secondWidth, rect.x() + rect.width() - secondX));
         const QRect firstRect(rect.x(), rect.y(), firstWidth, rect.height());
-        const QRect secondRect(rect.x() + firstWidth + innerGap, rect.y(), secondWidth, rect.height());
+        const QRect secondRect(secondX, rect.y(), clampedSecondWidth, rect.height());
 
         if (!firstRect.isValid() || !secondRect.isValid()) {
             applyGeometryRecursive(node->first.get(), rect, 0, zones);
@@ -344,6 +354,71 @@ void SplitTree::applyGeometryRecursive(const SplitNode* node, const QRect& rect,
         applyGeometryRecursive(node->first.get(), firstRect, innerGap, zones);
         applyGeometryRecursive(node->second.get(), secondRect, innerGap, zones);
     }
+}
+
+// =============================================================================
+// Rebuild from order (SOLID-1: moved from TilingState)
+// =============================================================================
+
+void SplitTree::rebuildFromOrder(const QStringList& tiledWindows, qreal defaultSplitRatio)
+{
+    if (tiledWindows.isEmpty()) {
+        m_root.reset();
+        return;
+    }
+    if (tiledWindows.size() == 1) {
+        auto singleTree = std::make_unique<SplitNode>();
+        singleTree->windowId = tiledWindows.first();
+        m_root = std::move(singleTree);
+        return;
+    }
+
+    // Capture existing split ratios from old tree
+    const int oldLeafCount = countLeaves(m_root.get());
+    QVector<qreal> oldRatios;
+    QVector<bool> oldDirections;
+    collectInternalNodeParams(m_root.get(), oldRatios, oldDirections);
+
+    // Build a fresh tree
+    m_root.reset();
+    for (const QString& windowId : tiledWindows) {
+        insertAtEnd(windowId, defaultSplitRatio);
+    }
+
+    // Restore ratios if leaf count matches
+    if (oldLeafCount != tiledWindows.size()) {
+        qCDebug(lcAutotile) << "rebuildFromOrder: leaf count changed from" << oldLeafCount << "to"
+                            << tiledWindows.size() << "-- skipping ratio restoration";
+    } else {
+        applyInternalNodeParams(m_root.get(), oldRatios, oldDirections, 0);
+    }
+}
+
+void SplitTree::collectInternalNodeParams(const SplitNode* node, QVector<qreal>& ratios, QVector<bool>& directions)
+{
+    if (!node || node->isLeaf()) {
+        return;
+    }
+    ratios.append(node->splitRatio);
+    directions.append(node->splitHorizontal);
+    collectInternalNodeParams(node->first.get(), ratios, directions);
+    collectInternalNodeParams(node->second.get(), ratios, directions);
+}
+
+int SplitTree::applyInternalNodeParams(SplitNode* node, const QVector<qreal>& ratios, const QVector<bool>& directions,
+                                       int index)
+{
+    if (!node || node->isLeaf()) {
+        return index;
+    }
+    if (index < ratios.size()) {
+        node->splitRatio = ratios[index];
+        node->splitHorizontal = directions[index];
+    }
+    ++index;
+    index = applyInternalNodeParams(node->first.get(), ratios, directions, index);
+    index = applyInternalNodeParams(node->second.get(), ratios, directions, index);
+    return index;
 }
 
 // =============================================================================

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "AutotileConfig.h"
+#include "AlgorithmRegistry.h"
 #include "core/constants.h"
 #include <QtMath>
 
@@ -43,8 +44,8 @@ QHash<QString, QPair<qreal, int>> AutotileConfig::perAlgoFromVariantMap(const QV
     QHash<QString, QPair<qreal, int>> result;
     for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
         const QVariantMap entry = it.value().toMap();
-        qreal ratio = std::clamp(entry.value(QLatin1String("splitRatio")).toDouble(), MinSplitRatio, MaxSplitRatio);
-        int count = std::clamp(entry.value(QLatin1String("masterCount")).toInt(), MinMasterCount, MaxMasterCount);
+        qreal ratio = std::clamp(entry.value(PerAlgoKeys::SplitRatio).toDouble(), MinSplitRatio, MaxSplitRatio);
+        int count = std::clamp(entry.value(PerAlgoKeys::MasterCount).toInt(), MinMasterCount, MaxMasterCount);
         result[it.key()] = {ratio, count};
     }
     return result;
@@ -55,8 +56,8 @@ QVariantMap AutotileConfig::perAlgoToVariantMap(const QHash<QString, QPair<qreal
     QVariantMap result;
     for (auto it = hash.constBegin(); it != hash.constEnd(); ++it) {
         QVariantMap entry;
-        entry[QLatin1String("splitRatio")] = it.value().first;
-        entry[QLatin1String("masterCount")] = it.value().second;
+        entry[PerAlgoKeys::SplitRatio] = it.value().first;
+        entry[PerAlgoKeys::MasterCount] = it.value().second;
         result[it.key()] = entry;
     }
     return result;
@@ -90,8 +91,8 @@ QJsonObject AutotileConfig::toJson() const
         QJsonObject perAlgo;
         for (auto it = savedAlgorithmSettings.constBegin(); it != savedAlgorithmSettings.constEnd(); ++it) {
             QJsonObject entry;
-            entry[QLatin1String("splitRatio")] = it.value().first;
-            entry[QLatin1String("masterCount")] = it.value().second;
+            entry[PerAlgoKeys::SplitRatio] = it.value().first;
+            entry[PerAlgoKeys::MasterCount] = it.value().second;
             perAlgo[it.key()] = entry;
         }
         json[QLatin1String("PerAlgorithmSettings")] = perAlgo;
@@ -131,8 +132,8 @@ AutotileConfig AutotileConfig::fromJson(const QJsonObject& json)
         const QJsonObject perAlgo = json[QLatin1String("PerAlgorithmSettings")].toObject();
         for (auto it = perAlgo.constBegin(); it != perAlgo.constEnd(); ++it) {
             const QJsonObject entry = it.value().toObject();
-            qreal ratio = std::clamp(entry[QLatin1String("splitRatio")].toDouble(0.5), MinSplitRatio, MaxSplitRatio);
-            int count = std::clamp(entry[QLatin1String("masterCount")].toInt(1), MinMasterCount, MaxMasterCount);
+            qreal ratio = std::clamp(entry[PerAlgoKeys::SplitRatio].toDouble(0.5), MinSplitRatio, MaxSplitRatio);
+            int count = std::clamp(entry[PerAlgoKeys::MasterCount].toInt(1), MinMasterCount, MaxMasterCount);
             config.savedAlgorithmSettings[it.key()] = {ratio, count};
         }
     } else {

@@ -45,11 +45,11 @@ public:
 
     QVector<QRect> calculateZones(const TilingParams& params) const override;
 
-    int masterZoneIndex() const noexcept override;
-    bool supportsMasterCount() const noexcept override;
-    bool supportsSplitRatio() const noexcept override;
-    qreal defaultSplitRatio() const noexcept override;
-    int defaultMaxWindows() const noexcept override;
+    int masterZoneIndex() const override;
+    bool supportsMasterCount() const override;
+    bool supportsSplitRatio() const override;
+    qreal defaultSplitRatio() const override;
+    int defaultMaxWindows() const override;
 };
 
 } // namespace PlasmaZones

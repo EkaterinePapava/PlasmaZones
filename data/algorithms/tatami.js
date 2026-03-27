@@ -10,9 +10,6 @@
 // @minimumWindows 1
 // @zoneNumberDisplay all
 
-// Guard pattern and splitRatio clamping are intentionally duplicated across
-// algorithm scripts because each one runs in its own QJSEngine instance.
-
 /**
  * Tatami layout: alternating horizontal and vertical rectangles
  * arranged so that no four corners ever meet at a single point.
@@ -29,9 +26,6 @@ function calculateZones(params) {
     const count = params.windowCount;
     const area = params.area;
     const gap = params.innerGap || 0;
-
-    if (count <= 0) return [];
-    if (count === 1) return [area];
 
     // Two windows: simple vertical split at 50%
     if (count === 2) {

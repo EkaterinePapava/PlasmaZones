@@ -106,7 +106,7 @@ public:
      *
      * @return Master zone index (0-based), or -1 if no master concept
      */
-    virtual int masterZoneIndex() const noexcept;
+    virtual int masterZoneIndex() const;
 
     /**
      * @brief Check if algorithm supports variable master count
@@ -115,7 +115,7 @@ public:
      *
      * @return true if master count can be adjusted
      */
-    virtual bool supportsMasterCount() const noexcept;
+    virtual bool supportsMasterCount() const;
 
     /**
      * @brief Check if algorithm supports split ratio adjustment
@@ -124,7 +124,7 @@ public:
      *
      * @return true if split ratio can be adjusted
      */
-    virtual bool supportsSplitRatio() const noexcept;
+    virtual bool supportsSplitRatio() const;
 
     /**
      * @brief Get default split ratio for this algorithm
@@ -133,7 +133,7 @@ public:
      *
      * @return Default ratio (0.0-1.0), typically 0.5-0.6
      */
-    virtual qreal defaultSplitRatio() const noexcept;
+    virtual qreal defaultSplitRatio() const;
 
     /**
      * @brief Get minimum number of windows for meaningful tiling
@@ -143,7 +143,7 @@ public:
      *
      * @return Minimum window count (typically 1)
      */
-    virtual int minimumWindows() const noexcept;
+    virtual int minimumWindows() const;
 
     /**
      * @brief Get default maximum number of windows for this algorithm
@@ -154,7 +154,7 @@ public:
      *
      * @return Default max window count for this algorithm (typically 4-10)
      */
-    virtual int defaultMaxWindows() const noexcept;
+    virtual int defaultMaxWindows() const;
 
     /**
      * @brief Whether this algorithm intentionally produces overlapping zones
@@ -165,7 +165,7 @@ public:
      *
      * @return true if zones intentionally overlap (default: false)
      */
-    virtual bool producesOverlappingZones() const noexcept;
+    virtual bool producesOverlappingZones() const;
 
     /**
      * @brief How zone numbers should be displayed in previews
@@ -175,7 +175,7 @@ public:
      *
      * @return Display mode string
      */
-    virtual QString zoneNumberDisplay() const noexcept;
+    virtual QString zoneNumberDisplay() const;
 
     /**
      * @brief Whether this algorithm is a user-provided scripted algorithm

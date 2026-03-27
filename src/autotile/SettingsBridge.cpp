@@ -144,8 +144,8 @@ void SettingsBridge::syncFromSettings(Settings* settings)
     previewParams.splitRatio = settings->autotileSplitRatio();
     for (auto it = cfg->savedAlgorithmSettings.constBegin(); it != cfg->savedAlgorithmSettings.constEnd(); ++it) {
         previewParams.savedAlgorithmSettings[it.key()] = QVariantMap{
-            {QLatin1String("masterCount"), it.value().second},
-            {QLatin1String("splitRatio"), it.value().first},
+            {PerAlgoKeys::MasterCount, it.value().second},
+            {PerAlgoKeys::SplitRatio, it.value().first},
         };
     }
     AlgorithmRegistry::setConfiguredPreviewParams(previewParams);

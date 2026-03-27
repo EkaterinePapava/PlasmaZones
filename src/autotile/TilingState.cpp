@@ -661,6 +661,24 @@ TilingState* TilingState::fromJson(const QJsonObject& json, QObject* parent)
                     state->m_splitTree.reset();
                 }
             }
+            // EC-7: Check for duplicate windowIds in leaf order
+            if (state->m_splitTree) {
+                const QStringList leafIds2 = state->m_splitTree->leafOrder();
+                QSet<QString> dupCheck;
+                dupCheck.reserve(leafIds2.size());
+                bool hasDuplicates = false;
+                for (const QString& lid : leafIds2) {
+                    if (dupCheck.contains(lid)) {
+                        hasDuplicates = true;
+                        break;
+                    }
+                    dupCheck.insert(lid);
+                }
+                if (hasDuplicates) {
+                    qCWarning(lcAutotile) << "SplitTree contains duplicate windowIds, discarding tree";
+                    state->m_splitTree.reset();
+                }
+            }
         }
     }
 
@@ -738,72 +756,7 @@ void TilingState::rebuildSplitTree()
         return; // No tree to rebuild
     }
 
-    const QStringList tiled = tiledWindows();
-    if (tiled.isEmpty()) {
-        m_splitTree.reset();
-        return;
-    }
-    if (tiled.size() == 1) {
-        // Preserve the tree with a single root leaf so that custom split
-        // ratios survive window count transitions (e.g., 3→1→3 windows).
-        auto singleTree = std::make_unique<SplitTree>();
-        singleTree->insertAtEnd(tiled.first());
-        m_splitTree = std::move(singleTree);
-        return;
-    }
-
-    // Capture existing split ratios from the old tree (indexed by depth-first
-    // internal node position) so we can restore them after rebuilding.
-    // The new tree has the same binary structure (N-1 internal nodes for N leaves)
-    // so positional mapping preserves ratios for the common prefix of nodes.
-    const int oldLeafCount = m_splitTree->leafCount();
-    QVector<qreal> oldRatios;
-    QVector<bool> oldDirections;
-    collectInternalNodeParams(m_splitTree->root(), oldRatios, oldDirections);
-
-    auto newTree = std::make_unique<SplitTree>();
-    for (const QString& windowId : tiled) {
-        newTree->insertAtEnd(windowId);
-    }
-
-    // E3: Only restore ratios when the leaf count matches — mismatched sizes
-    // produce incorrect positional mapping and corrupt the split layout.
-    if (oldLeafCount != tiled.size()) {
-        qCDebug(lcAutotile) << "rebuildSplitTree: leaf count changed from" << oldLeafCount << "to" << tiled.size()
-                            << "-- skipping ratio restoration";
-    } else {
-        // Restore saved ratios to the new tree's internal nodes (same traversal order)
-        applyInternalNodeParams(newTree->root(), oldRatios, oldDirections, 0);
-    }
-
-    m_splitTree = std::move(newTree);
-}
-
-void TilingState::collectInternalNodeParams(const SplitNode* node, QVector<qreal>& ratios, QVector<bool>& directions)
-{
-    if (!node || node->isLeaf()) {
-        return;
-    }
-    ratios.append(node->splitRatio);
-    directions.append(node->splitHorizontal);
-    collectInternalNodeParams(node->first.get(), ratios, directions);
-    collectInternalNodeParams(node->second.get(), ratios, directions);
-}
-
-int TilingState::applyInternalNodeParams(SplitNode* node, const QVector<qreal>& ratios, const QVector<bool>& directions,
-                                         int index)
-{
-    if (!node || node->isLeaf()) {
-        return index;
-    }
-    if (index < ratios.size()) {
-        node->splitRatio = ratios[index];
-        node->splitHorizontal = directions[index];
-    }
-    ++index;
-    index = applyInternalNodeParams(node->first.get(), ratios, directions, index);
-    index = applyInternalNodeParams(node->second.get(), ratios, directions, index);
-    return index;
+    m_splitTree->rebuildFromOrder(tiledWindows(), m_splitRatio);
 }
 
 } // namespace PlasmaZones

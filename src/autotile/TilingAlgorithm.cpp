@@ -14,42 +14,42 @@ TilingAlgorithm::TilingAlgorithm(QObject* parent)
 {
 }
 
-int TilingAlgorithm::masterZoneIndex() const noexcept
+int TilingAlgorithm::masterZoneIndex() const
 {
     return -1; // Default: no master concept (subclasses override if they have one)
 }
 
-bool TilingAlgorithm::supportsMasterCount() const noexcept
+bool TilingAlgorithm::supportsMasterCount() const
 {
     return false;
 }
 
-bool TilingAlgorithm::supportsSplitRatio() const noexcept
+bool TilingAlgorithm::supportsSplitRatio() const
 {
     return false;
 }
 
-qreal TilingAlgorithm::defaultSplitRatio() const noexcept
+qreal TilingAlgorithm::defaultSplitRatio() const
 {
     return DefaultSplitRatio;
 }
 
-int TilingAlgorithm::minimumWindows() const noexcept
+int TilingAlgorithm::minimumWindows() const
 {
     return 1;
 }
 
-int TilingAlgorithm::defaultMaxWindows() const noexcept
+int TilingAlgorithm::defaultMaxWindows() const
 {
     return DefaultMaxWindows;
 }
 
-bool TilingAlgorithm::producesOverlappingZones() const noexcept
+bool TilingAlgorithm::producesOverlappingZones() const
 {
     return false;
 }
 
-QString TilingAlgorithm::zoneNumberDisplay() const noexcept
+QString TilingAlgorithm::zoneNumberDisplay() const
 {
     return QStringLiteral("all");
 }

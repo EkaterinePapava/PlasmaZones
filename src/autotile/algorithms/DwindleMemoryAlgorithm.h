@@ -44,11 +44,11 @@ public:
 
     QVector<QRect> calculateZones(const TilingParams& params) const override;
 
-    bool supportsSplitRatio() const noexcept override
+    bool supportsSplitRatio() const override
     {
         return true;
     }
-    int defaultMaxWindows() const noexcept override
+    int defaultMaxWindows() const override
     {
         return 5;
     }

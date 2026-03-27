@@ -51,23 +51,26 @@ public:
     QVector<QRect> calculateZones(const TilingParams& params) const override;
 
     // Monocle doesn't support master count or split ratio - all windows are fullscreen
-    bool supportsMasterCount() const noexcept override
+    bool supportsMasterCount() const override
     {
         return false;
     }
-    bool supportsSplitRatio() const noexcept override
+    bool supportsSplitRatio() const override
     {
         return false;
     }
-    int defaultMaxWindows() const noexcept override
+    int defaultMaxWindows() const override
     {
         return 4;
     }
-    bool producesOverlappingZones() const noexcept override
+    bool producesOverlappingZones() const override
     {
         return true;
     }
-    QString zoneNumberDisplay() const noexcept override { return QStringLiteral("last"); }
+    QString zoneNumberDisplay() const override
+    {
+        return QStringLiteral("last");
+    }
 };
 
 } // namespace PlasmaZones

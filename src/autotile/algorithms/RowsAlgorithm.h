@@ -47,15 +47,15 @@ public:
     QVector<QRect> calculateZones(const TilingParams& params) const override;
 
     // Rows doesn't support master count or split ratio
-    bool supportsMasterCount() const noexcept override
+    bool supportsMasterCount() const override
     {
         return false;
     }
-    bool supportsSplitRatio() const noexcept override
+    bool supportsSplitRatio() const override
     {
         return false;
     }
-    int defaultMaxWindows() const noexcept override
+    int defaultMaxWindows() const override
     {
         return 4;
     }

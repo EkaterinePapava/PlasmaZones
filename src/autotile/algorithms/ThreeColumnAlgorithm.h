@@ -53,31 +53,31 @@ public:
     QVector<QRect> calculateZones(const TilingParams& params) const override;
 
     // Master is in center (index 0 in our output, but conceptually center)
-    int masterZoneIndex() const noexcept override
+    int masterZoneIndex() const override
     {
         return 0;
     }
 
     // Supports split ratio (center column width) but not master count
-    bool supportsMasterCount() const noexcept override
+    bool supportsMasterCount() const override
     {
         return false;
     }
-    bool supportsSplitRatio() const noexcept override
+    bool supportsSplitRatio() const override
     {
         return true;
     }
-    qreal defaultSplitRatio() const noexcept override
+    qreal defaultSplitRatio() const override
     {
         return 0.5;
     } // Center gets 50%
 
     // Need at least 3 windows for true three-column layout
-    int minimumWindows() const noexcept override
+    int minimumWindows() const override
     {
         return 1;
     }
-    int defaultMaxWindows() const noexcept override
+    int defaultMaxWindows() const override
     {
         return 5;
     }

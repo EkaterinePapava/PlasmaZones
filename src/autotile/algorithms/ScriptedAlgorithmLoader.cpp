@@ -241,7 +241,7 @@ void ScriptedAlgorithmLoader::reWatchFiles()
             m_watcher->addPath(dir);
         }
         QDir dirObj(dir);
-        const QStringList files = dirObj.entryList({QStringLiteral("*.js")}, QDir::Files);
+        const QStringList files = dirObj.entryList({QStringLiteral("*.js")}, QDir::Files | QDir::NoSymLinks);
         for (const QString& file : files) {
             const QString fullPath = dirObj.filePath(file);
             if (!m_watcher->files().contains(fullPath)) {

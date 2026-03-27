@@ -32,27 +32,27 @@ QString MasterStackAlgorithm::description() const
     return PzI18n::tr("Large master area with stacked secondary windows");
 }
 
-int MasterStackAlgorithm::masterZoneIndex() const noexcept
+int MasterStackAlgorithm::masterZoneIndex() const
 {
     return 0; // First zone is always master
 }
 
-bool MasterStackAlgorithm::supportsMasterCount() const noexcept
+bool MasterStackAlgorithm::supportsMasterCount() const
 {
     return true;
 }
 
-bool MasterStackAlgorithm::supportsSplitRatio() const noexcept
+bool MasterStackAlgorithm::supportsSplitRatio() const
 {
     return true;
 }
 
-qreal MasterStackAlgorithm::defaultSplitRatio() const noexcept
+qreal MasterStackAlgorithm::defaultSplitRatio() const
 {
     return DefaultSplitRatio; // 0.6 (60% master)
 }
 
-int MasterStackAlgorithm::defaultMaxWindows() const noexcept
+int MasterStackAlgorithm::defaultMaxWindows() const
 {
     return 4; // 1 master + 3 stack
 }

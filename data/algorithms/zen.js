@@ -11,9 +11,6 @@
 // @minimumWindows 1
 // @zoneNumberDisplay all
 
-// Guard pattern and splitRatio clamping are intentionally duplicated across
-// algorithm scripts because each one runs in its own QJSEngine instance.
-
 /**
  * Zen layout: all windows share the same width (splitRatio of screen) and
  * stack vertically in a centered column with gaps. Screen edges are empty
@@ -27,17 +24,9 @@ function calculateZones(params) {
     const area = params.area;
     const gap = params.innerGap || 0;
 
-    if (count <= 0) return [];
-
-    const splitRatio = params.splitRatio > 0 ? Math.min(params.splitRatio, 0.9) : 0.6;
+    const splitRatio = params.splitRatio;
     const columnWidth = Math.round(area.width * splitRatio);
     const offsetX = area.x + Math.round((area.width - columnWidth) / 2);
-
-    // Intentionally returns a centered column (not the full area) for single window —
-    // zen is about a focused, distraction-free experience with side margins.
-    if (count === 1) {
-        return [{ x: offsetX, y: area.y, width: columnWidth, height: area.height }];
-    }
 
     const totalGaps = (count - 1) * gap;
     const tileHeight = Math.max(1, Math.round((area.height - totalGaps) / count));

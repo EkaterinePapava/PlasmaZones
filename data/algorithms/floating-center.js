@@ -11,9 +11,6 @@
 // @minimumWindows 1
 // @zoneNumberDisplay all
 
-// Guard pattern and splitRatio clamping are intentionally duplicated across
-// algorithm scripts because each one runs in its own QJSEngine instance.
-
 /**
  * Floating Center layout: one centered main window with remaining windows
  * distributed as panels around all four edges (left, right, bottom, top).
@@ -39,10 +36,7 @@ function calculateZones(params) {
     const area = params.area;
     const gap = params.innerGap || 0;
 
-    if (count <= 0) return [];
-    if (count === 1) return [area];
-
-    const splitRatio = params.splitRatio > 0 ? Math.min(params.splitRatio, 0.9) : 0.65;
+    const splitRatio = params.splitRatio;
 
     const centerW = Math.round(area.width * splitRatio);
     const centerH = Math.round(area.height * splitRatio);
