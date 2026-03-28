@@ -110,18 +110,13 @@ void LayerShellWindow::setWindowGeometry(const QRect& rect)
     if (m_layerSurface) {
         QWindow* qwindow = m_waylandWindow->window();
         int anchors = qwindow->property(LayerSurfaceProps::Anchors).toInt();
-        auto [w, h] = computeLayerSize(anchors, rect.size());
+        auto [w, h] = LayerSurface::computeLayerSize(anchors, rect.size());
         zwlr_layer_surface_v1_set_size(m_layerSurface, w, h);
 
         if (m_wlSurface) {
             wl_surface_commit(m_wlSurface);
         }
     }
-}
-
-std::pair<uint32_t, uint32_t> LayerShellWindow::computeLayerSize(int anchors, const QSize& windowSize)
-{
-    return LayerSurface::computeLayerSize(anchors, windowSize);
 }
 
 void LayerShellWindow::applyProperties()
@@ -152,7 +147,7 @@ void LayerShellWindow::applyProperties()
     zwlr_layer_surface_v1_set_margin(m_layerSurface, marginTop, marginRight, marginBottom, marginLeft);
 
     // Size — use 0 for axes anchored to both edges; clamp to avoid uint32_t wrap on negative
-    auto [w, h] = computeLayerSize(anchors, qwindow->size());
+    auto [w, h] = LayerSurface::computeLayerSize(anchors, qwindow->size());
     zwlr_layer_surface_v1_set_size(m_layerSurface, w, h);
 }
 

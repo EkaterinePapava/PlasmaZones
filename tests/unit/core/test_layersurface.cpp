@@ -280,6 +280,24 @@ private Q_SLOTS:
         LayerSurface::BatchGuard guard(nullptr);
     }
 
+    void testBatchGuard_moveSemantics()
+    {
+        QWindow window;
+        auto* surface = LayerSurface::get(&window);
+        QSignalSpy spy(surface, &LayerSurface::propertiesChanged);
+
+        {
+            LayerSurface::BatchGuard outer(surface);
+            surface->setLayer(LayerSurface::LayerOverlay);
+
+            // Move the guard — source should be disarmed
+            LayerSurface::BatchGuard moved(std::move(outer));
+            // outer destructs here (disarmed, no decrement)
+        }
+        // moved destructs here — single emission
+        QCOMPARE(spy.count(), 1);
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // AnchorAll constant
     // ═══════════════════════════════════════════════════════════════════════════

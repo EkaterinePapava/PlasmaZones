@@ -85,6 +85,9 @@ public:
     QString scope() const;
 
     void setScreen(QScreen* screen);
+    /// Returns the target screen, or nullptr if unset / screen was unplugged.
+    /// The returned pointer may become dangling if the screen is destroyed;
+    /// callers must not cache the result across event loop iterations.
     QScreen* screen() const;
 
     void setMargins(const QMargins& margins);
@@ -143,6 +146,11 @@ public:
         }
         BatchGuard(const BatchGuard&) = delete;
         BatchGuard& operator=(const BatchGuard&) = delete;
+        BatchGuard(BatchGuard&& other) noexcept
+            : m_surface(std::exchange(other.m_surface, nullptr))
+        {
+        }
+        BatchGuard& operator=(BatchGuard&&) = delete;
 
     private:
         QPointer<LayerSurface> m_surface;

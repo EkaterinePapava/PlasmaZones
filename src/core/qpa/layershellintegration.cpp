@@ -102,6 +102,7 @@ void LayerShellIntegration::registryHandler(void* data, struct wl_registry* regi
             wl_registry_bind(registry, id, &zwlr_layer_shell_v1_interface, bindVersion));
         self->m_layerShellId = id;
         self->m_boundVersion = bindVersion;
+        self->m_globalAvailable = true;
         qCDebug(lcLayerShellIntegration) << "Bound zwlr_layer_shell_v1 v" << bindVersion;
     }
 }
@@ -119,11 +120,11 @@ void LayerShellIntegration::registryRemoveHandler(void* data, struct wl_registry
         // Destroying the global while child surfaces are alive causes UAF.
         // The compositor removing the global means it is shutting down or
         // reconfiguring; the layer surfaces will be invalidated by the compositor
-        // and receive closed events. We just null our pointer to prevent new
-        // surface creation.
-        self->m_layerShell = nullptr;
+        // and receive closed events. We mark the global as unavailable to prevent
+        // new surface creation, but keep m_layerShell and m_boundVersion intact
+        // so the destructor can properly clean up the wl_proxy binding.
+        self->m_globalAvailable = false;
         self->m_layerShellId = 0;
-        self->m_boundVersion = 0;
     }
 }
 

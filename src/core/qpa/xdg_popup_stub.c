@@ -16,7 +16,9 @@
 //
 // Weak attribute prevents duplicate symbol errors if another linked library
 // (e.g. Qt's own Wayland modules) also defines xdg_popup_interface.
+#if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
+#endif
 const struct wl_interface xdg_popup_interface = {
     "xdg_popup", 1, 0, NULL, 0, NULL,
 };
