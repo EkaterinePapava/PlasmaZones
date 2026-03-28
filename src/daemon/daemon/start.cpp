@@ -147,23 +147,35 @@ void Daemon::connectDesktopActivity()
         showDesktopSwitchOsd(desktop, currentActivity());
     });
 
-    // Prune stale TilingState entries when desktops are removed
+    // Prune stale TilingState entries and disabled-desktop numbers when desktops are removed
     connect(m_virtualDesktopManager.get(), &VirtualDesktopManager::desktopCountChanged, this, [this](int newCount) {
-        if (!m_autotileEngine) {
-            return;
-        }
-        // Desktop numbers are 1-based. Any state with desktop > newCount is stale.
-        // Iterate the engine's own state map to find stale desktops (avoids
-        // the arbitrary upper bound of the old newCount+20 sweep).
-        QSet<int> staleDesktops;
-        for (auto it = m_autotileEngine->screenStates().constBegin(); it != m_autotileEngine->screenStates().constEnd();
-             ++it) {
-            if (it.key().desktop > newCount) {
-                staleDesktops.insert(it.key().desktop);
+        // Prune stale disabled-desktop entries (desktop numbers > newCount no longer exist)
+        if (m_settings) {
+            QList<int> disabled = m_settings->disabledDesktops();
+            const int before = disabled.size();
+            disabled.removeIf([newCount](int d) {
+                return d > newCount;
+            });
+            if (disabled.size() != before) {
+                m_settings->setDisabledDesktops(disabled);
+                m_settings->save();
             }
         }
-        for (int d : staleDesktops) {
-            m_autotileEngine->pruneStatesForDesktop(d);
+
+        if (m_autotileEngine) {
+            // Desktop numbers are 1-based. Any state with desktop > newCount is stale.
+            // Iterate the engine's own state map to find stale desktops (avoids
+            // the arbitrary upper bound of the old newCount+20 sweep).
+            QSet<int> staleDesktops;
+            for (auto it = m_autotileEngine->screenStates().constBegin();
+                 it != m_autotileEngine->screenStates().constEnd(); ++it) {
+                if (it.key().desktop > newCount) {
+                    staleDesktops.insert(it.key().desktop);
+                }
+            }
+            for (int d : staleDesktops) {
+                m_autotileEngine->pruneStatesForDesktop(d);
+            }
         }
         // Prune fallback assignment maps
         pruneContextMapsForDesktop(newCount);

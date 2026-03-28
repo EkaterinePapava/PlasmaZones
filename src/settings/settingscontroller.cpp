@@ -1326,6 +1326,19 @@ void SettingsController::setFillOnDropModifier(int v)
 void SettingsController::onVirtualDesktopsChanged()
 {
     refreshVirtualDesktops();
+
+    // Prune disabled-desktop entries that reference desktops beyond the new count
+    QList<int> disabled = m_settings.disabledDesktops();
+    const int before = disabled.size();
+    disabled.removeIf([this](int d) {
+        return d > m_virtualDesktopCount;
+    });
+    if (disabled.size() != before) {
+        m_settings.setDisabledDesktops(disabled);
+        setNeedsSave(true);
+        Q_EMIT disabledDesktopsChanged();
+    }
+
     Q_EMIT virtualDesktopsChanged();
 }
 
