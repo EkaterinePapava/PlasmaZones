@@ -93,6 +93,10 @@ void applyZoneSelectorLayout(QQuickWindow* window, const ZoneSelectorLayout& lay
     writeQmlProperty(window, QStringLiteral("barHeight"), layout.barHeight);
 }
 
+// Set the zone selector window size for the computed layout.
+// Positioning is handled by layer surface anchors + margins (set in updateZoneSelectorWindow),
+// NOT by setX()/setY() — those are no-ops on layer surfaces since the compositor controls placement.
+// We only set width/height here, which the QPA plugin forwards via zwlr_layer_surface_v1_set_size.
 void applyZoneSelectorGeometry(QQuickWindow* window, QScreen* screen, const ZoneSelectorLayout& layout,
                                ZoneSelectorPosition pos)
 {
@@ -100,60 +104,12 @@ void applyZoneSelectorGeometry(QQuickWindow* window, QScreen* screen, const Zone
         return;
     }
 
-    const QRect screenGeom = screen->geometry();
-
-    // Calculate base positions - window positioned at screen edges
-    // QML handles internal margins within the window
-    const int centeredX = screenGeom.x() + (screenGeom.width() - layout.barWidth) / 2;
-    const int centeredY = screenGeom.y() + (screenGeom.height() - layout.barHeight) / 2;
-    const int rightX = screenGeom.x() + screenGeom.width() - layout.barWidth;
-    const int bottomY = screenGeom.y() + screenGeom.height() - layout.barHeight;
-
-    switch (pos) {
-    case ZoneSelectorPosition::TopLeft:
-        window->setX(screenGeom.x());
-        window->setY(screenGeom.y());
-        break;
-    case ZoneSelectorPosition::Top:
-        window->setX(centeredX);
-        window->setY(screenGeom.y());
-        break;
-    case ZoneSelectorPosition::TopRight:
-        window->setX(rightX);
-        window->setY(screenGeom.y());
-        break;
-    case ZoneSelectorPosition::Left:
-        window->setX(screenGeom.x());
-        window->setY(centeredY);
-        break;
-    case ZoneSelectorPosition::Right:
-        window->setX(rightX);
-        window->setY(centeredY);
-        break;
-    case ZoneSelectorPosition::BottomLeft:
-        window->setX(screenGeom.x());
-        window->setY(bottomY);
-        break;
-    case ZoneSelectorPosition::Bottom:
-        window->setX(centeredX);
-        window->setY(bottomY);
-        break;
-    case ZoneSelectorPosition::BottomRight:
-        window->setX(rightX);
-        window->setY(bottomY);
-        break;
-    case ZoneSelectorPosition::Center:
+    if (pos == ZoneSelectorPosition::Center) {
         // Fill the entire screen; QML "center" state positions the container in the middle
-        window->setX(screenGeom.x());
-        window->setY(screenGeom.y());
+        const QRect screenGeom = screen->geometry();
         window->setWidth(screenGeom.width());
         window->setHeight(screenGeom.height());
         return;
-    default:
-        // Fall back to Top position for invalid values
-        window->setX(centeredX);
-        window->setY(screenGeom.y());
-        break;
     }
     window->setWidth(layout.barWidth);
     window->setHeight(layout.barHeight);

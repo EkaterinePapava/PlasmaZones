@@ -25,8 +25,15 @@ LayerShellIntegration::LayerShellIntegration() = default;
 
 LayerShellIntegration::~LayerShellIntegration()
 {
-    if (m_layerShell && m_boundVersion >= 3) {
-        zwlr_layer_shell_v1_destroy(m_layerShell);
+    if (m_layerShell) {
+        if (m_boundVersion >= 3) {
+            // Protocol-level destroy request (added in v3)
+            zwlr_layer_shell_v1_destroy(m_layerShell);
+        } else {
+            // v1/v2 don't have a destroy request — clean up the client-side proxy
+            // to avoid leaking the wl_proxy allocation.
+            wl_proxy_destroy(reinterpret_cast<struct wl_proxy*>(m_layerShell));
+        }
     }
     if (m_registry) {
         wl_registry_destroy(m_registry);

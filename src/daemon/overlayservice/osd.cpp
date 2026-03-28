@@ -38,12 +38,16 @@ void centerLayerWindowOnScreen(QQuickWindow* window, const QRect& screenGeom, in
     if (!window) {
         return;
     }
-    if (auto* layerSurface = LayerSurface::get(window)) {
-        const int hMargin = qMax(0, (screenGeom.width() - osdWidth) / 2);
-        const int vMargin = qMax(0, (screenGeom.height() - osdHeight) / 2);
-        layerSurface->setAnchors(LayerSurface::AnchorAll);
-        layerSurface->setMargins(QMargins(hMargin, vMargin, hMargin, vMargin));
+    auto* layerSurface = LayerSurface::get(window);
+    if (!layerSurface) {
+        qCWarning(lcOverlay) << "centerLayerWindowOnScreen: no LayerSurface for window"
+                             << "— was LayerSurface::get() called before show()?";
+        return;
     }
+    const int hMargin = qMax(0, (screenGeom.width() - osdWidth) / 2);
+    const int vMargin = qMax(0, (screenGeom.height() - osdHeight) / 2);
+    layerSurface->setAnchors(LayerSurface::AnchorAll);
+    layerSurface->setMargins(QMargins(hMargin, vMargin, hMargin, vMargin));
 }
 
 // Calculate OSD size and center window

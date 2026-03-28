@@ -116,6 +116,8 @@ Q_SIGNALS:
 public:
     /// Suppress propertiesChanged() emission until the guard is destroyed.
     /// Use when calling multiple setters in sequence to avoid N round-trips.
+    /// Uses QPointer to safely handle LayerSurface destruction while a guard
+    /// is on the stack (unlikely in practice, but prevents dangling access).
     class BatchGuard
     {
     public:
@@ -137,7 +139,7 @@ public:
         BatchGuard& operator=(const BatchGuard&) = delete;
 
     private:
-        LayerSurface* m_surface;
+        QPointer<LayerSurface> m_surface;
     };
 
 private:

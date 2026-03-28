@@ -59,6 +59,10 @@ inline void configureLayerSurface(QQuickWindow* window, QScreen* screen, LayerSu
     if (!window) {
         return;
     }
+    if (!LayerSurface::isSupported()) {
+        qCWarning(lcOverlay) << "configureLayerSurface: zwlr_layer_shell_v1 not available —"
+                             << "window will be created as xdg_toplevel (wrong stacking/anchoring)";
+    }
     auto* layerSurface = LayerSurface::get(window);
     if (!layerSurface) {
         return;
