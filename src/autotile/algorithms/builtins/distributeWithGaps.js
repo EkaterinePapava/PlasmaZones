@@ -31,16 +31,19 @@ function distributeWithGaps(total, count, gap) {
             sizes[i] = Math.max(1, Math.floor(sizes[i] * shrinkRatio));
         }
         // After shrinking, Math.max(1, ...) floors may cause sum to exceed total.
-        // Subtract excess from the largest element (clamped to 1).
+        // Distribute excess across elements from largest to smallest (clamped to 1).
         let shrunkSum = 0;
         for (let i = 0; i < count; i++) shrunkSum += sizes[i];
-        if (shrunkSum + totalGaps > total) {
-            const excess = shrunkSum + totalGaps - total;
-            let maxIdx = 0;
-            for (let i = 1; i < count; i++) {
-                if (sizes[i] > sizes[maxIdx]) maxIdx = i;
+        let excess = shrunkSum + totalGaps - total;
+        while (excess > 0) {
+            let maxIdx = -1;
+            for (let i = 0; i < count; i++) {
+                if (sizes[i] > 1 && (maxIdx < 0 || sizes[i] > sizes[maxIdx])) maxIdx = i;
             }
-            sizes[maxIdx] = Math.max(1, sizes[maxIdx] - excess);
+            if (maxIdx < 0) break; // All at minimum
+            const take = Math.min(excess, sizes[maxIdx] - 1);
+            sizes[maxIdx] -= take;
+            excess -= take;
         }
     }
     return sizes;

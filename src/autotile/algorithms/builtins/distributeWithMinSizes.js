@@ -44,7 +44,7 @@ function distributeWithMinSizes(total, count, gap, minDims) {
         for (let i = 0; i < count; i++) currentSum += sizes[i];
         let diff = currentSum - available;
         if (diff > 0) {
-            // Overshoot: subtract from largest elements first
+            // Overshoot: subtract from trailing elements first (clamped to >= 1)
             for (let pass = 0; diff > 0 && pass < count; pass++) {
                 for (let i = count - 1; i >= 0 && diff > 0; i--) {
                     if (sizes[i] > 1) {

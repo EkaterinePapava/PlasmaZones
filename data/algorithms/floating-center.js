@@ -53,7 +53,7 @@ function calculateZones(params) {
     const area = params.area;
     const gap = params.innerGap || 0;
 
-    const splitRatio = params.splitRatio;
+    const splitRatio = Math.max(PZ_MIN_SPLIT, Math.min(PZ_MAX_SPLIT, params.splitRatio));
 
     const centerW = Math.floor(area.width * splitRatio);
     const centerH = Math.floor(area.height * splitRatio);

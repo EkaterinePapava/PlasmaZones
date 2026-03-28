@@ -339,6 +339,7 @@ private Q_SLOTS:
         state.setSplitRatio(0.7);
         auto zones = focusSidebar()->calculateZones({5, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
         QCOMPARE(zones.size(), 5);
+        QVERIFY(noOverlaps(zones));
         QVERIFY(allWithinBounds(zones, m_screenGeometry));
     }
 
@@ -374,6 +375,7 @@ private Q_SLOTS:
         state.setSplitRatio(0.65);
         auto zones = floatingCenter()->calculateZones({5, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
         QCOMPARE(zones.size(), 5);
+        QVERIFY(noOverlaps(zones));
         QVERIFY(allWithinBounds(zones, m_screenGeometry));
         // Center zone should be wider and taller than panels
         QVERIFY(zones[0].width() > 0);

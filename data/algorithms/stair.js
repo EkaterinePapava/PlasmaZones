@@ -49,10 +49,10 @@ function calculateZones(params) {
         let w = winWidth;
         let h = winHeight;
 
-        // Apply per-window minimum sizes
+        // Apply per-window minimum sizes, clamped to remaining space at this offset
         const clamped = applyPerWindowMinSize(w, h, params.minSizes, i);
-        w = Math.min(clamped.w, area.width);
-        h = Math.min(clamped.h, area.height);
+        w = Math.min(clamped.w, area.x + area.width - x);
+        h = Math.min(clamped.h, area.y + area.height - y);
 
         zones.push({ x: x, y: y, width: w, height: h });
     }

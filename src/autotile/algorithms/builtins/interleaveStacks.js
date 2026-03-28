@@ -21,7 +21,15 @@ function buildStackIsLeft(stackCount, leftCount, rightCount) {
         } else if (ri < rightCount) {
             stackIsLeft.push(false);
             ri++;
+        } else if (li < leftCount) {
+            stackIsLeft.push(true);
+            li++;
+        } else if (ri < rightCount) {
+            stackIsLeft.push(false);
+            ri++;
         } else {
+            // Both counts exhausted — should not happen with correct inputs;
+            // default to left to avoid undefined behavior
             stackIsLeft.push(true);
             li++;
         }
@@ -112,14 +120,28 @@ function assignInterleavedStacks(zones, stackIsLeft, stackCount,
     let rightY = areaY;
 
     for (let i = 0; i < stackCount; i++) {
-        if (stackIsLeft[i]) {
+        if (stackIsLeft[i] && leftIdx < leftHeights.length) {
             zones.push({x: leftX, y: leftY, width: leftWidth, height: leftHeights[leftIdx]});
             leftY += leftHeights[leftIdx] + gap;
             leftIdx++;
-        } else {
+        } else if (!stackIsLeft[i] && rightIdx < rightHeights.length) {
             zones.push({x: rightX, y: rightY, width: rightWidth, height: rightHeights[rightIdx]});
             rightY += rightHeights[rightIdx] + gap;
             rightIdx++;
+        } else {
+            // Fallback: place in whichever column still has capacity
+            if (leftIdx < leftHeights.length) {
+                zones.push({x: leftX, y: leftY, width: leftWidth, height: leftHeights[leftIdx]});
+                leftY += leftHeights[leftIdx] + gap;
+                leftIdx++;
+            } else if (rightIdx < rightHeights.length) {
+                zones.push({x: rightX, y: rightY, width: rightWidth, height: rightHeights[rightIdx]});
+                rightY += rightHeights[rightIdx] + gap;
+                rightIdx++;
+            } else {
+                // Both columns exhausted — stack on last known position
+                zones.push({x: leftX, y: leftY, width: leftWidth, height: 1});
+            }
         }
     }
 }

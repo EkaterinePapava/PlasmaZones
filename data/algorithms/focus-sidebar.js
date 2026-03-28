@@ -29,7 +29,7 @@ function calculateZones(params) {
 
     if (count <= 0) return [];
 
-    const splitRatio = params.splitRatio;
+    const splitRatio = Math.max(PZ_MIN_SPLIT, Math.min(PZ_MAX_SPLIT, params.splitRatio));
     const mainWidth = Math.max(1, Math.floor(area.width * splitRatio - gap / 2));
     const sidebarX = Math.min(area.x + mainWidth + gap, area.x + area.width - 1);
     const sidebarWidth = Math.max(1, area.x + area.width - sidebarX);

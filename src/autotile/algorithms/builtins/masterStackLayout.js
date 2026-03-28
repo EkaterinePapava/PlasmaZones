@@ -62,6 +62,11 @@ function masterStackLayout(area, count, gap, splitRatio, masterCount, minSizes, 
         ? extractMinWidths(minSizes, stackCount, masterCount)
         : extractMinHeights(minSizes, stackCount, masterCount);
 
+    // Degenerate secondary dimension — fill area fallback
+    if (secondarySize <= 0) {
+        return fillArea(area, count);
+    }
+
     // Distribute secondary dimension for master zones
     const masterSecondary = (masterMinSec.length === 0)
         ? distributeWithGaps(secondarySize, masterCount, gap)

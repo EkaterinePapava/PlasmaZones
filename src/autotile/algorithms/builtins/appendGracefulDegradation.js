@@ -12,9 +12,11 @@ function appendGracefulDegradation(zones, remaining, leftover, innerGap) {
     if (zones.length === 0) return;
     if (leftover <= 0) return;
     if (remaining.width >= remaining.height) {
+        if (remaining.width <= 0) return;
         const maxFit = Math.max(1, Math.floor(remaining.width / PZ_MIN_ZONE_SIZE));
         const fitCount = Math.min(leftover + 1, maxFit);
         const widths = distributeWithGaps(remaining.width, fitCount, innerGap);
+        if (widths.length === 0) return;
         zones[zones.length - 1] = {x: remaining.x, y: remaining.y,
             width: widths[0], height: remaining.height};
         let cx = remaining.x + widths[0] + innerGap;
@@ -27,9 +29,11 @@ function appendGracefulDegradation(zones, remaining, leftover, innerGap) {
                 width: zones[zones.length-1].width, height: zones[zones.length-1].height});
         }
     } else {
+        if (remaining.height <= 0) return;
         const maxFit = Math.max(1, Math.floor(remaining.height / PZ_MIN_ZONE_SIZE));
         const fitCount = Math.min(leftover + 1, maxFit);
         const heights = distributeWithGaps(remaining.height, fitCount, innerGap);
+        if (heights.length === 0) return;
         zones[zones.length - 1] = {x: remaining.x, y: remaining.y,
             width: remaining.width, height: heights[0]};
         let cy = remaining.y + heights[0] + innerGap;

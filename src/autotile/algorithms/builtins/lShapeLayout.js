@@ -57,7 +57,7 @@ function lShapeLayout(area, count, gap, splitRatio, distribute, bottomWidth, rig
         }
         return zones;
     }
-    const rightTileH = Math.max(1, Math.floor((rH - rightTotalGaps) / rightCount));
+    const rightTileH = (rightCount > 0) ? Math.max(1, Math.floor((rH - rightTotalGaps) / rightCount)) : 0;
     for (let r = 0; r < rightCount; r++) {
         const ry = Math.min(area.y + r * (rightTileH + gap), area.y + rH - 1);
         const rh = Math.max(1, (r === rightCount - 1) ? (area.y + rH - ry) : rightTileH);

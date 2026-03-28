@@ -23,8 +23,16 @@ function distributeEvenly(start, total, count, gap) {
     if (count === 1) return [{pos: start, size: total}];
     const totalGaps = (count - 1) * gap;
     if (totalGaps >= total) {
+        // Gaps consume all space — shrink gaps proportionally and give each item minimum size
+        const shrinkRatio = (total > 0) ? total / (totalGaps + count) : 0;
+        const itemSize = Math.max(1, Math.floor(shrinkRatio));
+        const shrunkGap = Math.max(0, Math.floor(gap * shrinkRatio));
         const r = [];
-        for (let i = 0; i < count; i++) r.push({pos: start, size: total});
+        let pos = start;
+        for (let i = 0; i < count; i++) {
+            r.push({pos: pos, size: itemSize});
+            pos += itemSize + shrunkGap;
+        }
         return r;
     }
     const tileSize = Math.max(1, Math.floor((total - totalGaps) / count));

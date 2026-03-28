@@ -368,6 +368,50 @@ private Q_SLOTS:
     }
 
     // =========================================================================
+    // Negative gap — all algorithms must produce valid zones
+    // =========================================================================
+
+    void testAllAlgorithms_negativeGap()
+    {
+        QRect screen(0, 0, 1000, 1000);
+        TilingState state(QStringLiteral("test"));
+        for (const auto& id : allAlgoIds()) {
+            auto* algo = AlgorithmRegistry::instance()->algorithm(id);
+            auto zones = algo->calculateZones({3, screen, &state, -10, EdgeGaps::uniform(0)});
+            QCOMPARE(zones.size(), 3);
+            for (const QRect& zone : zones) {
+                QVERIFY2(zone.width() > 0 && zone.height() > 0,
+                         qPrintable(QStringLiteral("Algorithm %1 with gap=-10: zone (%2x%3) non-positive")
+                                        .arg(id)
+                                        .arg(zone.width())
+                                        .arg(zone.height())));
+            }
+        }
+    }
+
+    // =========================================================================
+    // Edge gap overflow — EdgeGaps::uniform(600) on 1000x1000
+    // =========================================================================
+
+    void testAllAlgorithms_edgeGapOverflow()
+    {
+        QRect screen(0, 0, 1000, 1000);
+        TilingState state(QStringLiteral("test"));
+        for (const auto& id : allAlgoIds()) {
+            auto* algo = AlgorithmRegistry::instance()->algorithm(id);
+            auto zones = algo->calculateZones({3, screen, &state, 0, EdgeGaps::uniform(600)});
+            QCOMPARE(zones.size(), 3);
+            for (const QRect& zone : zones) {
+                QVERIFY2(zone.width() > 0 && zone.height() > 0,
+                         qPrintable(QStringLiteral("Algorithm %1 with edgeGaps=600: zone (%2x%3) non-positive")
+                                        .arg(id)
+                                        .arg(zone.width())
+                                        .arg(zone.height())));
+            }
+        }
+    }
+
+    // =========================================================================
     // Frozen globals sync test — verify builtins are immutable in sandbox
     // =========================================================================
 

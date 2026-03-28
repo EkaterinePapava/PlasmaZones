@@ -238,10 +238,10 @@ private Q_SLOTS:
             minX = qMin(minX, zones[i].x());
             maxRight = qMax(maxRight, zones[i].right());
         }
-        int spread = maxRight - minX;
-        QVERIFY2(spread > ScreenWidth / 2,
+        int totalSpan = maxRight - minX;
+        QVERIFY2(totalSpan > ScreenWidth / 2,
                  qPrintable(QStringLiteral("Spread zones should span a significant portion of the screen width, got %1")
-                                .arg(spread)));
+                                .arg(totalSpan)));
     }
 
     void testSpread_gaps()
@@ -264,6 +264,42 @@ private Q_SLOTS:
         for (const QRect& zone : zones) {
             QVERIFY2(zone.x() >= 100, qPrintable(QStringLiteral("Zone x (%1) should be >= 100").arg(zone.x())));
             QVERIFY2(zone.y() >= 200, qPrintable(QStringLiteral("Zone y (%1) should be >= 200").arg(zone.y())));
+        }
+    }
+    // =========================================================================
+    // Large window count tests
+    // =========================================================================
+
+    void testCascade_largeCount()
+    {
+        TilingState state(QStringLiteral("test"));
+        auto zones = cascade()->calculateZones({20, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
+        QCOMPARE(zones.size(), 20);
+        for (const QRect& zone : zones) {
+            QVERIFY(zone.width() > 0);
+            QVERIFY(zone.height() > 0);
+        }
+    }
+
+    void testStair_largeCount()
+    {
+        TilingState state(QStringLiteral("test"));
+        auto zones = stair()->calculateZones({20, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
+        QCOMPARE(zones.size(), 20);
+        for (const QRect& zone : zones) {
+            QVERIFY(zone.width() > 0);
+            QVERIFY(zone.height() > 0);
+        }
+    }
+
+    void testSpread_largeCount()
+    {
+        TilingState state(QStringLiteral("test"));
+        auto zones = spread()->calculateZones({20, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
+        QCOMPARE(zones.size(), 20);
+        for (const QRect& zone : zones) {
+            QVERIFY(zone.width() > 0);
+            QVERIFY(zone.height() > 0);
         }
     }
 };

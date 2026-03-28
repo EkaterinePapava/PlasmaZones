@@ -6,6 +6,15 @@
  * Uses injected PZ_MIN_ZONE_SIZE, PZ_MIN_SPLIT, PZ_MAX_SPLIT constants.
  * Returns {leftWidth, centerWidth, rightWidth, leftX, centerX, rightX}.
  *
+ * @param {number} areaX - Left edge X coordinate of the layout area
+ * @param {number} contentWidth - Available width for columns, EXCLUDING the 2 inter-column gaps.
+ *                                Caller must pass (area.width - 2 * innerGap), not the raw area width.
+ * @param {number} innerGap - Gap between columns (added to returned X positions)
+ * @param {number} splitRatio - Center column ratio (clamped to PZ_MIN_SPLIT..PZ_MAX_SPLIT)
+ * @param {number} minL - Minimum left column width (0 = unconstrained)
+ * @param {number} minC - Minimum center column width (0 = unconstrained)
+ * @param {number} minR - Minimum right column width (0 = unconstrained)
+ *
  * Port of TilingAlgorithm::solveThreeColumnWidths.
  */
 function solveThreeColumn(areaX, contentWidth, innerGap, splitRatio, minL, minC, minR) {

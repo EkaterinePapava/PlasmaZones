@@ -278,6 +278,26 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         return true;
     };
 
+    // Injection order matters: each helper must be injected after its dependencies.
+    // Dependency graph (arrows mean "depends on"):
+    //   applyTreeGeometry  (standalone)
+    //   lShapeLayout       (standalone)
+    //   deckLayout          (standalone)
+    //   distributeEvenly    (standalone)
+    //   distributeWithGaps  (standalone)
+    //   distributeWithMinSizes → distributeWithGaps
+    //   solveTwoPart        (standalone)
+    //   solveThreeColumn    (standalone, uses PZ_* constants)
+    //   computeCumulativeMinDims (standalone)
+    //   appendGracefulDegradation → distributeWithGaps
+    //   dwindleLayout       → computeCumulativeMinDims, appendGracefulDegradation
+    //   extractMinDims      (standalone)
+    //   interleaveStacks    (standalone)
+    //   applyPerWindowMinSize (standalone)
+    //   extractRegionMaxMin  (standalone)
+    //   fillArea             (standalone)
+    //   masterStackLayout   → fillArea, extractRegionMaxMin, solveTwoPart,
+    //                         extractMinDims, distributeWithGaps, distributeWithMinSizes
     if (!injectBuiltin(ScriptedHelpers::applyTreeGeometryJs(), QStringLiteral("builtin:applyTreeGeometry"))
         || !injectBuiltin(ScriptedHelpers::lShapeLayoutJs(), QStringLiteral("builtin:lShapeLayout"))
         || !injectBuiltin(ScriptedHelpers::deckLayoutJs(), QStringLiteral("builtin:deckLayout"))
@@ -335,6 +355,7 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         QLatin1String("extractRegionMaxMin"),
         QLatin1String("fillArea"),
         QLatin1String("masterStackLayout"),
+        QLatin1String("MAX_TREE_DEPTH"), // from applyTreeGeometry (const, but freeze for defense-in-depth)
     };
     for (const auto& name : frozenGlobals) {
         m_engine->evaluate(

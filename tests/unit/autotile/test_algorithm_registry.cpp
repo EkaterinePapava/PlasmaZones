@@ -204,11 +204,32 @@ private Q_SLOTS:
     {
         auto* registry = AlgorithmRegistry::instance();
         const QStringList builtinIds = {
-            QLatin1String("bsp"),     QLatin1String("cascade"),      QLatin1String("centered-master"),
-            QLatin1String("columns"), QLatin1String("dwindle"),      QLatin1String("dwindle-memory"),
-            QLatin1String("grid"),    QLatin1String("master-stack"), QLatin1String("monocle"),
-            QLatin1String("rows"),    QLatin1String("spiral"),       QLatin1String("spread"),
-            QLatin1String("stair"),   QLatin1String("three-column"), QLatin1String("wide"),
+            // 15 original C++-to-JS converted algorithms
+            QLatin1String("bsp"),
+            QLatin1String("cascade"),
+            QLatin1String("centered-master"),
+            QLatin1String("columns"),
+            QLatin1String("dwindle"),
+            QLatin1String("dwindle-memory"),
+            QLatin1String("grid"),
+            QLatin1String("master-stack"),
+            QLatin1String("monocle"),
+            QLatin1String("rows"),
+            QLatin1String("spiral"),
+            QLatin1String("spread"),
+            QLatin1String("stair"),
+            QLatin1String("three-column"),
+            QLatin1String("wide"),
+            // 9 JS-native algorithms (shipped with PR #256)
+            QLatin1String("corner-master"),
+            QLatin1String("quadrant-priority"),
+            QLatin1String("deck"),
+            QLatin1String("horizontal-deck"),
+            QLatin1String("zen"),
+            QLatin1String("focus-sidebar"),
+            QLatin1String("floating-center"),
+            QLatin1String("paper"),
+            QLatin1String("tatami"),
         };
         for (const auto& id : builtinIds) {
             QVERIFY2(registry->hasAlgorithm(id), qPrintable(QStringLiteral("Missing algorithm: ") + id));
