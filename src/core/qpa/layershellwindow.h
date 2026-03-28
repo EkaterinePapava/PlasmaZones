@@ -42,6 +42,7 @@ private:
     LayerShellIntegration* m_integration = nullptr;
     QtWaylandClient::QWaylandWindow* m_waylandWindow = nullptr;
     struct zwlr_layer_surface_v1* m_layerSurface = nullptr;
+    struct wl_surface* m_wlSurface = nullptr;
     struct wl_output* m_output = nullptr;
     bool m_configured = false;
     uint32_t m_pendingWidth = 0;

@@ -94,10 +94,6 @@ set(plasmazones_core_SRCS
     core/shaderregistry/params.cpp
     core/layersurface.cpp
     core/layersurface.h
-    core/qpa/layershellintegration.cpp
-    core/qpa/layershellintegration.h
-    core/qpa/layershellwindow.cpp
-    core/qpa/layershellwindow.h
     core/screenmanager.cpp
     core/screenmanager/panels.cpp
     core/screenmanager.h

@@ -29,10 +29,6 @@ public:
         return m_layerShell;
     }
 
-    /// Set QT_WAYLAND_SHELL_INTEGRATION env var to use our plugin.
-    /// Must be called before QGuiApplication is created.
-    static void registerPlugin();
-
     /// Access the singleton instance (available after Qt loads the plugin).
     static LayerShellIntegration* instance();
 

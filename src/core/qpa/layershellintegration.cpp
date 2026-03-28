@@ -3,6 +3,7 @@
 
 #include "layershellintegration.h"
 #include "layershellwindow.h"
+#include "../layersurface.h"
 
 #include <QLoggingCategory>
 #include <QtWaylandClient/private/qwaylanddisplay_p.h>
@@ -26,6 +27,9 @@ LayerShellIntegration::~LayerShellIntegration()
     if (m_layerShell) {
         zwlr_layer_shell_v1_destroy(m_layerShell);
     }
+    if (m_registry) {
+        wl_registry_destroy(m_registry);
+    }
     if (s_instance == this) {
         s_instance = nullptr;
     }
@@ -42,7 +46,9 @@ bool LayerShellIntegration::initialize(QtWaylandClient::QWaylandDisplay* display
     wl_display_roundtrip(wlDisplay);
 
     if (!m_layerShell) {
-        qCWarning(lcLayerShellIntegration) << "Compositor does not support zwlr_layer_shell_v1";
+        qCCritical(lcLayerShellIntegration) << "Compositor does not support zwlr_layer_shell_v1 —"
+                                            << "overlays will fall back to xdg_toplevel (wrong stacking/anchoring)."
+                                            << "GNOME/Mutter does not implement this protocol.";
         return false;
     }
 
@@ -55,7 +61,7 @@ LayerShellIntegration::createShellSurface(QtWaylandClient::QWaylandWindow* windo
 {
     // Only create layer surfaces for windows we've marked
     QWindow* qwindow = window->window();
-    if (!qwindow || !qwindow->property("_pz_layer_shell").toBool()) {
+    if (!qwindow || !qwindow->property(LayerSurfaceProps::IsLayerShell).toBool()) {
         // Not a layer-shell window — return nullptr so Qt falls back
         // to the default shell integration (xdg_toplevel).
         return nullptr;
@@ -88,21 +94,14 @@ void LayerShellIntegration::registryRemoveHandler(void* data, struct wl_registry
     Q_UNUSED(registry)
     auto* self = static_cast<LayerShellIntegration*>(data);
     if (id == self->m_layerShellId) {
-        qCWarning(lcLayerShellIntegration) << "zwlr_layer_shell_v1 global removed";
+        qCWarning(lcLayerShellIntegration) << "zwlr_layer_shell_v1 global removed —"
+                                           << "existing layer surfaces continue to work,"
+                                           << "but new layer surface creation will fail";
         if (self->m_layerShell) {
             zwlr_layer_shell_v1_destroy(self->m_layerShell);
             self->m_layerShell = nullptr;
         }
     }
-}
-
-void LayerShellIntegration::registerPlugin()
-{
-    // Tell Qt to use our pz-layer-shell wayland shell integration plugin.
-    // Must be called before QGuiApplication construction.
-    // The plugin is installed as libpz-layer-shell.so in Qt's
-    // wayland-shell-integration plugin directory.
-    qputenv("QT_WAYLAND_SHELL_INTEGRATION", "pz-layer-shell");
 }
 
 LayerShellIntegration* LayerShellIntegration::instance()

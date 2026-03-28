@@ -37,12 +37,12 @@ LayerShellWindow::LayerShellWindow(LayerShellIntegration* integration, QtWayland
     }
 
     // Read initial properties from QWindow dynamic properties
-    int layer = qwindow->property("_pz_layer").toInt();
-    QString scope = qwindow->property("_pz_scope").toString();
+    int layer = qwindow->property(LayerSurfaceProps::Layer).toInt();
+    QString scope = qwindow->property(LayerSurfaceProps::Scope).toString();
 
     // Create the layer surface
-    struct wl_surface* wlSurface = QtWaylandClient::QWaylandShellIntegration::wlSurfaceForWindow(waylandWindow);
-    m_layerSurface = zwlr_layer_shell_v1_get_layer_surface(integration->layerShell(), wlSurface, m_output,
+    m_wlSurface = QtWaylandClient::QWaylandShellIntegration::wlSurfaceForWindow(waylandWindow);
+    m_layerSurface = zwlr_layer_shell_v1_get_layer_surface(integration->layerShell(), m_wlSurface, m_output,
                                                            static_cast<uint32_t>(layer), scope.toUtf8().constData());
 
     zwlr_layer_surface_v1_add_listener(m_layerSurface, &s_layerSurfaceListener, this);
@@ -51,7 +51,7 @@ LayerShellWindow::LayerShellWindow(LayerShellIntegration* integration, QtWayland
     applyProperties();
 
     // Initial commit to get a configure event
-    wl_surface_commit(wlSurface);
+    wl_surface_commit(m_wlSurface);
 
     qCDebug(lcLayerShellWindow) << "Created layer surface:" << scope << "layer=" << layer
                                 << "screen=" << (targetScreen ? targetScreen->name() : QStringLiteral("null"));
@@ -73,19 +73,29 @@ void LayerShellWindow::applyConfigure()
 {
     // Re-read properties in case they changed since creation
     applyProperties();
+
+    // Commit so the compositor sees the updated properties.
+    // Layer-shell property changes are double-buffered and require a commit.
+    if (m_wlSurface) {
+        wl_surface_commit(m_wlSurface);
+    }
 }
 
 void LayerShellWindow::setWindowGeometry(const QRect& rect)
 {
     if (m_layerSurface) {
         QWindow* qwindow = m_waylandWindow->window();
-        int anchors = qwindow->property("_pz_anchors").toInt();
+        int anchors = qwindow->property(LayerSurfaceProps::Anchors).toInt();
         bool anchoredH = (anchors & LayerSurface::AnchorLeft) && (anchors & LayerSurface::AnchorRight);
         bool anchoredV = (anchors & LayerSurface::AnchorTop) && (anchors & LayerSurface::AnchorBottom);
 
         uint32_t w = anchoredH ? 0 : static_cast<uint32_t>(rect.width());
         uint32_t h = anchoredV ? 0 : static_cast<uint32_t>(rect.height());
         zwlr_layer_surface_v1_set_size(m_layerSurface, w, h);
+
+        if (m_wlSurface) {
+            wl_surface_commit(m_wlSurface);
+        }
     }
 }
 
@@ -98,22 +108,22 @@ void LayerShellWindow::applyProperties()
     QWindow* qwindow = m_waylandWindow->window();
 
     // Anchors
-    int anchors = qwindow->property("_pz_anchors").toInt();
+    int anchors = qwindow->property(LayerSurfaceProps::Anchors).toInt();
     zwlr_layer_surface_v1_set_anchor(m_layerSurface, static_cast<uint32_t>(anchors));
 
     // Exclusive zone
-    int exclusiveZone = qwindow->property("_pz_exclusive_zone").toInt();
+    int exclusiveZone = qwindow->property(LayerSurfaceProps::ExclusiveZone).toInt();
     zwlr_layer_surface_v1_set_exclusive_zone(m_layerSurface, exclusiveZone);
 
     // Keyboard interactivity
-    int keyboard = qwindow->property("_pz_keyboard").toInt();
+    int keyboard = qwindow->property(LayerSurfaceProps::Keyboard).toInt();
     zwlr_layer_surface_v1_set_keyboard_interactivity(m_layerSurface, static_cast<uint32_t>(keyboard));
 
     // Margins
-    int marginLeft = qwindow->property("_pz_margins_left").toInt();
-    int marginTop = qwindow->property("_pz_margins_top").toInt();
-    int marginRight = qwindow->property("_pz_margins_right").toInt();
-    int marginBottom = qwindow->property("_pz_margins_bottom").toInt();
+    int marginLeft = qwindow->property(LayerSurfaceProps::MarginsLeft).toInt();
+    int marginTop = qwindow->property(LayerSurfaceProps::MarginsTop).toInt();
+    int marginRight = qwindow->property(LayerSurfaceProps::MarginsRight).toInt();
+    int marginBottom = qwindow->property(LayerSurfaceProps::MarginsBottom).toInt();
     zwlr_layer_surface_v1_set_margin(m_layerSurface, marginTop, marginRight, marginBottom, marginLeft);
 
     // Size — use 0 for axes anchored to both edges

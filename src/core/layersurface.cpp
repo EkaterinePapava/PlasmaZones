@@ -20,12 +20,11 @@ LayerSurface::LayerSurface(QWindow* window)
 {
     // Mark window so the QPA shell integration creates a layer surface
     // instead of an xdg_toplevel when the platform window is created.
-    window->setProperty("_pz_layer_shell", true);
-    window->setProperty("_pz_layer_shell_surface", QVariant::fromValue(this));
-
-    connect(window, &QObject::destroyed, this, [window]() {
-        s_surfaces.remove(window);
-    });
+    window->setProperty(LayerSurfaceProps::IsLayerShell, true);
+    window->setProperty(LayerSurfaceProps::Surface, QVariant::fromValue(this));
+    // No QObject::destroyed connection needed — LayerSurface is parented to
+    // the window, so ~LayerSurface runs (and removes from s_surfaces) before
+    // the parent window finishes destruction.
 }
 
 LayerSurface::~LayerSurface()
@@ -44,6 +43,11 @@ LayerSurface* LayerSurface::get(QWindow* window)
         return *it;
     }
 
+    if (window->isVisible()) {
+        qCWarning(lcLayerSurface) << "LayerSurface::get() called after window is visible;"
+                                  << "layer and scope are immutable after show()";
+    }
+
     auto* surface = new LayerSurface(window);
     s_surfaces.insert(window, surface);
     return surface;
@@ -55,7 +59,7 @@ void LayerSurface::setLayer(Layer layer)
         return;
     }
     m_layer = layer;
-    m_window->setProperty("_pz_layer", static_cast<int>(layer));
+    m_window->setProperty(LayerSurfaceProps::Layer, static_cast<int>(layer));
     Q_EMIT layerChanged();
 }
 
@@ -70,7 +74,7 @@ void LayerSurface::setAnchors(Anchors anchors)
         return;
     }
     m_anchors = anchors;
-    m_window->setProperty("_pz_anchors", static_cast<int>(anchors));
+    m_window->setProperty(LayerSurfaceProps::Anchors, static_cast<int>(anchors));
     Q_EMIT anchorsChanged();
 }
 
@@ -85,7 +89,7 @@ void LayerSurface::setExclusiveZone(int32_t zone)
         return;
     }
     m_exclusiveZone = zone;
-    m_window->setProperty("_pz_exclusive_zone", zone);
+    m_window->setProperty(LayerSurfaceProps::ExclusiveZone, zone);
     Q_EMIT exclusionZoneChanged();
 }
 
@@ -100,7 +104,7 @@ void LayerSurface::setKeyboardInteractivity(KeyboardInteractivity interactivity)
         return;
     }
     m_keyboard = interactivity;
-    m_window->setProperty("_pz_keyboard", static_cast<int>(interactivity));
+    m_window->setProperty(LayerSurfaceProps::Keyboard, static_cast<int>(interactivity));
     Q_EMIT keyboardInteractivityChanged();
 }
 
@@ -111,8 +115,11 @@ LayerSurface::KeyboardInteractivity LayerSurface::keyboardInteractivity() const
 
 void LayerSurface::setScope(const QString& scope)
 {
+    if (m_scope == scope) {
+        return;
+    }
     m_scope = scope;
-    m_window->setProperty("_pz_scope", scope);
+    m_window->setProperty(LayerSurfaceProps::Scope, scope);
 }
 
 QString LayerSurface::scope() const
@@ -129,6 +136,10 @@ void LayerSurface::setScreen(QScreen* screen)
     if (screen) {
         m_window->setScreen(screen);
     }
+    if (m_window->isVisible()) {
+        qCWarning(lcLayerSurface) << "setScreen() called after show(); output binding is immutable"
+                                  << "— the layer surface remains on the original screen";
+    }
     Q_EMIT screenChanged();
 }
 
@@ -143,10 +154,10 @@ void LayerSurface::setMargins(const QMargins& margins)
         return;
     }
     m_margins = margins;
-    m_window->setProperty("_pz_margins_left", margins.left());
-    m_window->setProperty("_pz_margins_top", margins.top());
-    m_window->setProperty("_pz_margins_right", margins.right());
-    m_window->setProperty("_pz_margins_bottom", margins.bottom());
+    m_window->setProperty(LayerSurfaceProps::MarginsLeft, margins.left());
+    m_window->setProperty(LayerSurfaceProps::MarginsTop, margins.top());
+    m_window->setProperty(LayerSurfaceProps::MarginsRight, margins.right());
+    m_window->setProperty(LayerSurfaceProps::MarginsBottom, margins.bottom());
     Q_EMIT marginsChanged();
 }
 

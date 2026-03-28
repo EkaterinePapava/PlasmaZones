@@ -12,6 +12,22 @@
 
 namespace PlasmaZones {
 
+/// Property keys used by LayerSurface ↔ QPA plugin communication.
+/// Centralized here to prevent key mismatches between the two layers.
+namespace LayerSurfaceProps {
+inline constexpr const char* IsLayerShell = "_pz_layer_shell";
+inline constexpr const char* Surface = "_pz_layer_shell_surface";
+inline constexpr const char* Layer = "_pz_layer";
+inline constexpr const char* Anchors = "_pz_anchors";
+inline constexpr const char* ExclusiveZone = "_pz_exclusive_zone";
+inline constexpr const char* Keyboard = "_pz_keyboard";
+inline constexpr const char* Scope = "_pz_scope";
+inline constexpr const char* MarginsLeft = "_pz_margins_left";
+inline constexpr const char* MarginsTop = "_pz_margins_top";
+inline constexpr const char* MarginsRight = "_pz_margins_right";
+inline constexpr const char* MarginsBottom = "_pz_margins_bottom";
+} // namespace LayerSurfaceProps
+
 /// Drop-in replacement for LayerShellQt::Window backed by a custom QPA
 /// shell integration plugin that speaks zwlr_layer_shell_v1 directly.
 /// No KDE dependency required.
