@@ -1336,7 +1336,7 @@ ApplicationWindow {
                         icon.name: "edit-undo"
                         enabled: settingsController.needsSave
                         flat: true
-                        onClicked: settingsController.load()
+                        onClicked: resetConfirmDialog.open()
                         opacity: enabled ? 1 : 0.4
 
                         Behavior on opacity {
@@ -1352,7 +1352,7 @@ ApplicationWindow {
                         text: i18n("Defaults")
                         icon.name: "document-revert"
                         flat: true
-                        onClicked: settingsController.defaults()
+                        onClicked: defaultsConfirmDialog.open()
                         opacity: 0.7
                     }
 
@@ -1450,6 +1450,54 @@ ApplicationWindow {
                 text: i18n("Cancel")
                 icon.name: "dialog-cancel"
                 onTriggered: unsavedChangesDialog.close()
+            }
+        ]
+    }
+
+    // ── Reset confirmation dialog ───────────────────────────────────
+    Kirigami.PromptDialog {
+        id: resetConfirmDialog
+
+        title: i18n("Discard Changes")
+        subtitle: i18n("Are you sure you want to discard all unsaved changes?")
+        standardButtons: Kirigami.Dialog.NoButton
+        customFooterActions: [
+            Kirigami.Action {
+                text: i18n("Discard")
+                icon.name: "edit-undo"
+                onTriggered: {
+                    resetConfirmDialog.close();
+                    settingsController.load();
+                }
+            },
+            Kirigami.Action {
+                text: i18n("Cancel")
+                icon.name: "dialog-cancel"
+                onTriggered: resetConfirmDialog.close()
+            }
+        ]
+    }
+
+    // ── Defaults confirmation dialog ────────────────────────────────
+    Kirigami.PromptDialog {
+        id: defaultsConfirmDialog
+
+        title: i18n("Restore Defaults")
+        subtitle: i18n("Are you sure you want to reset all settings to their default values?")
+        standardButtons: Kirigami.Dialog.NoButton
+        customFooterActions: [
+            Kirigami.Action {
+                text: i18n("Restore Defaults")
+                icon.name: "document-revert"
+                onTriggered: {
+                    defaultsConfirmDialog.close();
+                    settingsController.defaults();
+                }
+            },
+            Kirigami.Action {
+                text: i18n("Cancel")
+                icon.name: "dialog-cancel"
+                onTriggered: defaultsConfirmDialog.close()
             }
         ]
     }

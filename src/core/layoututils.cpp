@@ -225,14 +225,11 @@ static void appendAutotileEntries(QVector<UnifiedLayoutEntry>& list)
         entry.zoneCount = AlgorithmRegistry::effectiveMaxWindows(algo);
         entry.zoneNumberDisplay = algo->zoneNumberDisplay();
         entry.memory = algo->supportsMemory();
+        entry.supportsMasterCount = algo->supportsMasterCount();
+        entry.supportsSplitRatio = algo->supportsSplitRatio();
+        entry.producesOverlappingZones = algo->producesOverlappingZones();
         entry.isScripted = algo->isScripted();
         entry.isUserScript = algo->isUserScript();
-
-        // Section grouping (shared helper avoids DRY violation with algorithmToVariantMap)
-        const auto section = AlgorithmRegistry::sectionForAlgorithm(algo);
-        entry.sectionKey = section.key;
-        entry.sectionLabel = section.label;
-        entry.sectionOrder = section.order;
 
         list.append(entry);
     }
@@ -380,6 +377,11 @@ QVariantMap toVariantMap(const UnifiedLayoutEntry& entry)
     if (entry.memory) {
         map[QLatin1String("memory")] = true;
     }
+    if (entry.isAutotile) {
+        map[QLatin1String("supportsMasterCount")] = entry.supportsMasterCount;
+        map[QLatin1String("supportsSplitRatio")] = entry.supportsSplitRatio;
+        map[QLatin1String("producesOverlappingZones")] = entry.producesOverlappingZones;
+    }
     if (entry.referenceAspectRatio > 0.0) {
         map[QLatin1String("referenceAspectRatio")] = entry.referenceAspectRatio;
     }
@@ -437,6 +439,11 @@ QJsonObject toJson(const UnifiedLayoutEntry& entry)
     }
     if (entry.memory) {
         json[QLatin1String("memory")] = true;
+    }
+    if (entry.isAutotile) {
+        json[QLatin1String("supportsMasterCount")] = entry.supportsMasterCount;
+        json[QLatin1String("supportsSplitRatio")] = entry.supportsSplitRatio;
+        json[QLatin1String("producesOverlappingZones")] = entry.producesOverlappingZones;
     }
 
     // hiddenFromSelector is added by callers that have access to the Layout*
