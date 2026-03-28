@@ -14,10 +14,17 @@ function solveTwoPart(contentDim, firstDim, secondDim, minFirst, minSecond) {
         firstDim = Math.floor(contentDim * Math.max(minFirst, 1) / totalMin);
         secondDim = contentDim - firstDim;
     } else {
-        // Simultaneously satisfy both constraints: ensure firstDim >= minFirst
-        // while also ensuring secondDim (= contentDim - firstDim) >= minSecond.
-        firstDim = Math.max(minFirst, contentDim - Math.max(minSecond, 0, contentDim - firstDim));
-        secondDim = contentDim - firstDim;
+        // Sequential two-step clamp matching C++ solveTwoPartMinSizes:
+        // 1. Satisfy minFirst (may shrink secondDim)
+        if (minFirst > 0 && firstDim < minFirst) {
+            firstDim = minFirst;
+            secondDim = contentDim - firstDim;
+        }
+        // 2. Satisfy minSecond (may shrink firstDim)
+        if (minSecond > 0 && secondDim < minSecond) {
+            secondDim = minSecond;
+            firstDim = contentDim - secondDim;
+        }
     }
     firstDim = Math.max(0, firstDim);
     secondDim = Math.max(0, secondDim);

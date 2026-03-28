@@ -34,8 +34,6 @@ ScriptedAlgorithmLoader::~ScriptedAlgorithmLoader()
     if (!QCoreApplication::instance())
         return;
     auto* registry = AlgorithmRegistry::instance();
-    if (registry->availableAlgorithms().isEmpty())
-        return;
     for (auto it = m_scriptIdToPath.constBegin(); it != m_scriptIdToPath.constEnd(); ++it) {
         registry->unregisterAlgorithm(it.key());
     }
@@ -131,10 +129,9 @@ bool ScriptedAlgorithmLoader::scanAndRegister()
     }
 
     // Remove stale scripts that no longer exist on disk.
-    // AlgorithmRegistry::unregisterAlgorithm() uses synchronous delete.
-    // This is safe here because scanAndRegister() runs on the main thread
-    // where calculateZones() is also called (QJSEngine is single-threaded),
-    // so no in-flight calls can exist.
+    // AlgorithmRegistry::unregisterAlgorithm() uses deleteLater(), so the
+    // algorithm object lives until the event loop drains the deferred-delete
+    // queue — safe for any in-flight signal handlers.
     bool changed = false;
     for (auto it = oldScriptIdToPath.constBegin(); it != oldScriptIdToPath.constEnd(); ++it) {
         if (!newScriptIds.contains(it.key())) {

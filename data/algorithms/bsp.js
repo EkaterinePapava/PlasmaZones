@@ -24,8 +24,8 @@
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
 
-// Use the sandbox-injected MAX_TREE_DEPTH constant (kept in sync with C++ core/constants.h)
-const MaxBSPDepth = (typeof MAX_TREE_DEPTH !== 'undefined') ? MAX_TREE_DEPTH : 50;
+// Use the sandbox-injected MAX_TREE_DEPTH constant (kept in sync with C++ core/constants.h).
+// MAX_TREE_DEPTH is always defined and frozen by the sandbox before this script runs.
 
 function calculateZones(params) {
     const count = params.windowCount;
@@ -141,7 +141,7 @@ function growTree(root, defaultRatio) {
 // ─── Geometry computation (top-down) ────────────────────────────────────────
 
 function computeSubtreeMinDims(node, minSizes, leafStartIdx, innerGap, depth) {
-    if (!node || (depth || 0) > MaxBSPDepth) return {w: 0, h: 0, leafCount: 0};
+    if (!node || (depth || 0) > MAX_TREE_DEPTH) return {w: 0, h: 0, leafCount: 0};
 
     if (isLeaf(node)) {
         if (leafStartIdx < minSizes.length) {
@@ -185,7 +185,7 @@ function clampOrProportionalFallback(ratio, minFirstRatio, maxFirstRatio, firstD
 }
 
 function bspApplyGeometry(node, rect, innerGap, minSizes, leafStartIdx, depth) {
-    if (!node || depth > MaxBSPDepth) return;
+    if (!node || depth > MAX_TREE_DEPTH) return;
 
     node.geometry = {x: rect.x, y: rect.y, width: rect.width, height: rect.height};
     node.cachedArea = (rect.width > 0 && rect.height > 0) ? rect.width * rect.height : 0;
@@ -259,7 +259,7 @@ function bspApplyGeometry(node, rect, innerGap, minSizes, leafStartIdx, depth) {
 }
 
 function collectLeaves(node, zones, depth) {
-    if (!node || depth > MaxBSPDepth) return;
+    if (!node || depth > MAX_TREE_DEPTH) return;
 
     if (isLeaf(node)) {
         zones.push({x: node.geometry.x, y: node.geometry.y,
@@ -273,13 +273,13 @@ function collectLeaves(node, zones, depth) {
 // ─── Tree traversal helpers ─────────────────────────────────────────────────
 
 function countLeavesInSubtree(node, depth) {
-    if (!node || depth > MaxBSPDepth) return 0;
+    if (!node || depth > MAX_TREE_DEPTH) return 0;
     if (isLeaf(node)) return 1;
     return countLeavesInSubtree(node.first, depth + 1) + countLeavesInSubtree(node.second, depth + 1);
 }
 
 function findLargestLeaf(node, depth) {
-    if (!node || depth > MaxBSPDepth) return null;
+    if (!node || depth > MAX_TREE_DEPTH) return null;
     if (isLeaf(node)) return node;
 
     const left = findLargestLeaf(node.first, depth + 1);

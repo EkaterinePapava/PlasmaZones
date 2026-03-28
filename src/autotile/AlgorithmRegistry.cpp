@@ -119,13 +119,15 @@ void AlgorithmRegistry::registerAlgorithm(const QString& id, TilingAlgorithm* al
         // algorithm pointers without risk of use-after-free.
         Q_EMIT algorithmUnregistered(id);
 
-        // Use synchronous delete (not deleteLater) to match cleanup() semantics.
-        // The old algorithm is no longer referenced — it was just removed from
-        // m_algorithms — so immediate deletion is safe. Using deleteLater() here
-        // would risk a double-free if cleanup() runs in the same event loop cycle
-        // (aboutToQuit fires before the deferred-delete queue drains).
+        // Use deleteLater() to avoid re-entrancy: signal handlers connected to
+        // algorithmUnregistered may call back into the registry (e.g., to
+        // re-register or query algorithms). Synchronous delete during signal
+        // emission would risk use-after-free if a handler holds a pointer.
+        // The double-free concern with cleanup() is addressed by cleanup()
+        // clearing m_algorithms before deleting — deleteLater'd objects that
+        // are no longer in the map are harmless.
         old->setParent(nullptr);
-        delete old;
+        old->deleteLater();
     }
 
     // Take ownership
@@ -173,11 +175,12 @@ bool AlgorithmRegistry::unregisterAlgorithm(const QString& id)
     // without risk of use-after-free on any cached algorithm pointers.
     Q_EMIT algorithmUnregistered(id);
 
-    // Use synchronous delete (not deleteLater) to match cleanup() and
-    // registerAlgorithm() semantics — prevents double-free if cleanup()
-    // runs before the deferred-delete queue drains.
+    // Use deleteLater() to avoid re-entrancy: signal handlers connected to
+    // algorithmUnregistered may call back into the registry. Synchronous
+    // delete during signal emission would risk use-after-free if a handler
+    // holds a pointer to the algorithm.
     algorithm->setParent(nullptr);
-    delete algorithm;
+    algorithm->deleteLater();
     return true;
 }
 
