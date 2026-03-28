@@ -278,26 +278,24 @@ faster prototype path since `Qt6GuiPrivate` is already a dependency.
 
 ## Migration Plan
 
-### Phase 1: Create abstraction (no behavior change)
+See [multi-compositor-implementation-plan.md](multi-compositor-implementation-plan.md)
+for the full step-by-step plan.
+
+### Phase 1: Interface + QPA Plugin + Migration (5-7 days)
 
 1. Create `src/core/layersurface.h` with the interface shown above
-2. Create a **LayerShellQt backend** that delegates to `LayerShellQt::Window`
-3. Update all 11 files to use `PlasmaZones::LayerSurface` instead of
-   `LayerShellQt::Window` directly
-4. Verify everything works identically on KDE Plasma
+2. Implement QPA shell integration plugin (Option A) — creates
+   `zwlr_layer_surface_v1` directly via Wayland protocol
+3. Implement `LayerSurface` backed by the QPA plugin
+4. Vendor `wlr-layer-shell-unstable-v1.xml`, add `wayland-scanner` to build
+5. Migrate all 11 files from `LayerShellQt::Window` to `LayerSurface`
+6. Remove `LayerShellQt` from CMake entirely
+7. Verify on KDE Plasma
 
-This phase introduces the abstraction without changing any behavior. LayerShellQt
-is still the backend.
+No intermediate shim, no dual-backend, no `USE_LAYERSHELLQT` flag.
+One implementation, everywhere.
 
-### Phase 2: Direct Wayland backend
-
-1. Implement the direct `zwlr_layer_shell_v1` backend
-2. Add build option: `-DUSE_LAYERSHELLQT=ON/OFF` (default ON for now)
-3. Vendor the protocol XML
-4. Add `wayland-scanner` to build system
-5. Implement QPA shell integration (Option A) or direct API (Option C)
-
-### Phase 3: Test on multiple compositors
+### Phase 2: Multi-Compositor Testing + CI/Packaging (4-6 days)
 
 | Compositor | Test | Priority |
 |---|---|---|
@@ -310,12 +308,7 @@ is still the backend.
 | COSMIC | Zone overlay | P2 |
 | labwc | Zone overlay | P2 |
 
-### Phase 4: Drop LayerShellQt default
-
-1. Change default to `-DUSE_LAYERSHELLQT=OFF`
-2. Keep LayerShellQt backend as optional for users who prefer it
-3. Remove KDE Frameworks from required dependencies
-4. Update packaging
+Update CI and packaging to remove LayerShellQt dep.
 
 ## Build System Changes
 
@@ -334,40 +327,32 @@ target_link_libraries(plasmazones-editor PRIVATE LayerShellQt::Interface)
 ### After
 
 ```cmake
-# CMakeLists.txt
-option(USE_LAYERSHELLQT "Use KDE LayerShellQt (OFF = direct Wayland protocol)" OFF)
-
-if(USE_LAYERSHELLQT)
-    find_package(LayerShellQt 6.6 REQUIRED)
-    add_compile_definitions(PLASMAZONES_USE_LAYERSHELLQT)
-else()
-    find_package(Wayland REQUIRED COMPONENTS Client)
-    find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
-    # Generate protocol code
-    # ...
-endif()
+# CMakeLists.txt — LayerShellQt is gone entirely
+find_package(Wayland REQUIRED COMPONENTS Client)
+find_package(Qt6 REQUIRED COMPONENTS WaylandClient)
+find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
 
 # src/CMakeLists.txt
-if(USE_LAYERSHELLQT)
-    target_link_libraries(plasmazones_core PUBLIC LayerShellQt::Interface)
-else()
-    target_link_libraries(plasmazones_core PUBLIC Wayland::Client)
-    target_sources(plasmazones_core PRIVATE
-        core/layersurface.cpp
-        core/qpa/layershellintegration.cpp
-        ${LAYER_SHELL_GENERATED_SRCS}
-    )
-endif()
+target_link_libraries(plasmazones_core
+    PUBLIC Wayland::Client
+    PRIVATE Qt6::WaylandClientPrivate
+)
+target_sources(plasmazones_core PRIVATE
+    core/layersurface.cpp
+    core/qpa/layershellintegration.cpp
+    core/qpa/layershellwindow.cpp
+    ${LAYER_SHELL_GENERATED}
+)
 ```
 
-### New dependencies (when LayerShellQt is OFF)
+### New dependencies
 
 | Dependency | Already required? | Notes |
 |---|---|---|
 | `libwayland-client` | Yes (transitive via Qt6) | Already present on any Wayland system |
 | `wayland-scanner` | Yes (build-time, via ECM) | Can also use standalone |
 | `Qt6::GuiPrivate` | Yes (for QRhi shaders) | Already a dependency |
-| `Qt6::WaylandClient` (private) | **New** (for QPA integration) | Only needed for Option A/C |
+| `Qt6::WaylandClient` (private) | **New** (for QPA integration) | Same class of dep as Qt6GuiPrivate |
 
 ## Remaining KDE Dependencies After This Change
 

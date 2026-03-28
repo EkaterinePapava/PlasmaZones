@@ -5,8 +5,32 @@ Parent document: [multi-compositor-support.md](multi-compositor-support.md)
 ## Goal
 
 Replace the `LayerShellQt` KDE dependency with a direct `zwlr_layer_shell_v1`
-Wayland protocol implementation, enabling PlasmaZones overlays to work on any
-Wayland compositor (Hyprland, Sway, Wayfire, niri, COSMIC, etc.).
+Wayland protocol implementation via a custom QPA shell integration plugin,
+enabling PlasmaZones overlays to work on any Wayland compositor (Hyprland,
+Sway, Wayfire, niri, COSMIC, etc.).
+
+## Build Strategy
+
+**No dual-backend / auto-detect.** The QPA plugin is the only layer-shell
+implementation. LayerShellQt is removed entirely.
+
+The existing `-DUSE_KDE_FRAMEWORKS=ON` flag (which gates KF6 deps like
+KGlobalAccel, KCMUtils) is the only relevant build switch. Layer-shell
+support always uses our QPA plugin regardless of KDE or non-KDE build.
+
+```cmake
+# Layer-shell is ALWAYS our QPA plugin — no LayerShellQt anywhere
+find_package(Wayland REQUIRED COMPONENTS Client)
+find_package(Qt6 REQUIRED COMPONENTS WaylandClient)
+find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
+
+# KDE-specific features (shortcuts, KCM, etc.) are separate
+option(USE_KDE_FRAMEWORKS "Build with KDE Framework integration" ON)
+```
+
+**Rationale**: Two layer-shell backends means two code paths to test and
+maintain. Our QPA plugin works on KDE Plasma just as well as LayerShellQt
+does (it speaks the same protocol). One implementation, everywhere.
 
 ## Prerequisites
 
@@ -15,17 +39,18 @@ Wayland compositor (Hyprland, Sway, Wayfire, niri, COSMIC, etc.).
 - [ ] Read LayerShellQt source at `invent.kde.org/plasma/layer-shell-qt` to
       understand QPA shell integration internals
 
-## Phase 1: Abstraction Layer (no behavior change)
+## Phase 1: Interface + QPA Plugin + Migration
 
-**Goal**: Introduce `PlasmaZones::LayerSurface` interface that wraps LayerShellQt
-today and can swap backends later. No user-visible change.
+**Goal**: Create `PlasmaZones::LayerSurface` interface backed by our QPA
+plugin, migrate all call sites, and remove LayerShellQt entirely. No
+intermediate shim — we go straight to the direct Wayland implementation.
 
 ### Step 1.1: Create the interface header
 
 **File**: `src/core/layersurface.h`
 
-Define `PlasmaZones::LayerSurface` with the same enums and methods as
-`LayerShellQt::Window`, matching the exact values so casts aren't needed:
+Define `PlasmaZones::LayerSurface` with enums matching
+`zwlr_layer_shell_v1` protocol values:
 
 ```
 Layer:                  Background=0, Bottom=1, Top=2, Overlay=3
@@ -33,7 +58,7 @@ KeyboardInteractivity:  None=0, Exclusive=1, OnDemand=2
 Anchor:                 Top=1, Bottom=2, Left=4, Right=8
 ```
 
-Methods (mirrors LayerShellQt::Window 1:1):
+Methods:
 - `static LayerSurface* get(QWindow* window)`
 - `setLayer(Layer)`
 - `setAnchors(Anchors)`
@@ -43,40 +68,19 @@ Methods (mirrors LayerShellQt::Window 1:1):
 - `setScreen(QScreen*)`
 - `setMargins(const QMargins&)`
 
-This is a thin wrapper — no new logic.
+### Step 1.2: Implement QPA shell integration
 
-### Step 1.2: Create the LayerShellQt backend
+See Phase 2 steps 2.1–2.6 below for the QPA plugin details. This is built
+at the same time as the interface — no separate phase.
+
+### Step 1.3: Implement `LayerSurface` backed by QPA plugin
 
 **File**: `src/core/layersurface.cpp`
 
-Implement `LayerSurface` by delegating every call to `LayerShellQt::Window`:
+`LayerSurface::get()` marks the window for layer-shell and creates/retrieves
+a `LayerShellWindow` via the QPA integration. No LayerShellQt anywhere.
 
-```cpp
-LayerSurface* LayerSurface::get(QWindow* window)
-{
-    // LayerShellQt::Window is created/cached per QWindow
-    auto* lsqt = LayerShellQt::Window::get(window);
-    if (!lsqt) return nullptr;
-
-    // Create or retrieve our wrapper
-    auto* ls = window->findChild<LayerSurface*>(
-        QString(), Qt::FindDirectChildrenOnly);
-    if (!ls) {
-        ls = new LayerSurface(window, lsqt);
-    }
-    return ls;
-}
-
-void LayerSurface::setLayer(Layer layer)
-{
-    m_lsqt->setLayer(static_cast<LayerShellQt::Window::Layer>(layer));
-}
-// ... same pattern for all methods
-```
-
-Guarded by `#ifdef PLASMAZONES_USE_LAYERSHELLQT` (always defined in this phase).
-
-### Step 1.3: Migrate all call sites
+### Step 1.4: Migrate all call sites
 
 Replace `LayerShellQt::Window` with `PlasmaZones::LayerSurface` in all 11 files.
 This is a mechanical find-and-replace:
@@ -95,7 +99,7 @@ This is a mechanical find-and-replace:
 | `CMakeLists.txt` | No change yet (still REQUIRED) |
 | `src/CMakeLists.txt` | Add `layersurface.cpp` to `plasmazones_core` sources |
 
-### Step 1.4: Update `configureLayerShell()` helper
+### Step 1.5: Update `configureLayerShell()` helper
 
 The central helper in `internal.h` becomes the primary consumer of
 `LayerSurface`. Rename to `configureLayerSurface()` for clarity:
@@ -116,9 +120,9 @@ inline void configureLayerSurface(QQuickWindow* window, QScreen* screen,
 Callers that pass raw `int` for layer/keyboard get updated to use the enum
 directly — better type safety.
 
-### Step 1.5: Verify
+### Step 1.6: Verify
 
-- [ ] Build succeeds with no warnings
+- [ ] Build succeeds — no LayerShellQt references remain
 - [ ] All existing tests pass
 - [ ] Manual test on KDE Plasma: zone overlay, OSD, snap assist, selector,
       geometry sensors all behave identically
@@ -127,10 +131,19 @@ directly — better type safety.
 
 ```
 New files:
-  src/core/layersurface.h           (~100 lines)
-  src/core/layersurface.cpp         (~120 lines)
+  src/core/layersurface.h                   (~100 lines)
+  src/core/layersurface.cpp                 (~250 lines)
+  src/core/protocols/wlr-layer-shell-unstable-v1.xml
+  src/core/qpa/layershellintegration.h      (~60 lines)
+  src/core/qpa/layershellintegration.cpp    (~150 lines)
+  src/core/qpa/layershellwindow.h           (~80 lines)
+  src/core/qpa/layershellwindow.cpp         (~200 lines)
+  tests/unit/core/test_layersurface.cpp     (~150 lines)
 
 Modified files:
+  CMakeLists.txt                            (remove LayerShellQt, add Wayland)
+  src/CMakeLists.txt                        (replace LayerShellQt with QPA sources)
+  src/daemon/main.cpp                       (register QPA integration)
   src/daemon/overlayservice/internal.h
   src/daemon/overlayservice/overlay.cpp
   src/daemon/overlayservice/osd.cpp
@@ -138,16 +151,15 @@ Modified files:
   src/daemon/overlayservice/snapassist.cpp
   src/daemon/overlayservice/shader.cpp
   src/core/screenmanager.cpp
-  src/CMakeLists.txt
   tests/unit/ui/test_overlay_helpers.cpp
 ```
 
 ---
 
-## Phase 2: Direct Wayland Backend
+## Phase 2: QPA Plugin Implementation Details
 
-**Goal**: Implement `zwlr_layer_shell_v1` protocol client directly, making
-LayerShellQt optional.
+The following steps detail the QPA shell integration plugin created as
+part of Phase 1. They are separated here for clarity.
 
 ### Step 2.1: Vendor the protocol XML
 
@@ -162,67 +174,60 @@ system wayland-protocols)
 
 **File**: `CMakeLists.txt` (top-level)
 
-```cmake
-option(USE_LAYERSHELLQT
-    "Use KDE LayerShellQt for layer-shell (OFF = direct Wayland protocol)" ON)
+Remove `find_package(LayerShellQt)` entirely. Replace with:
 
-if(USE_LAYERSHELLQT)
-    find_package(LayerShellQt 6.6 REQUIRED)
-    add_compile_definitions(PLASMAZONES_USE_LAYERSHELLQT)
-else()
-    find_package(Wayland REQUIRED COMPONENTS Client)
-    find_package(Qt6 REQUIRED COMPONENTS WaylandClient)
-    find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
-endif()
+```cmake
+# Layer-shell: always our QPA plugin (no LayerShellQt)
+find_package(Wayland REQUIRED COMPONENTS Client)
+find_package(Qt6 REQUIRED COMPONENTS WaylandClient)
+find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
 ```
 
 **File**: `src/CMakeLists.txt`
 
 ```cmake
-if(NOT USE_LAYERSHELLQT)
-    set(_proto_dir ${CMAKE_CURRENT_SOURCE_DIR}/core/protocols)
-    set(_gen_dir ${CMAKE_CURRENT_BINARY_DIR}/generated)
-    file(MAKE_DIRECTORY ${_gen_dir})
+set(_proto_dir ${CMAKE_CURRENT_SOURCE_DIR}/core/protocols)
+set(_gen_dir ${CMAKE_CURRENT_BINARY_DIR}/generated)
+file(MAKE_DIRECTORY ${_gen_dir})
 
-    add_custom_command(
-        OUTPUT ${_gen_dir}/wlr-layer-shell-client-protocol.h
-               ${_gen_dir}/wlr-layer-shell-protocol.c
-        COMMAND ${WAYLAND_SCANNER} client-header
-                ${_proto_dir}/wlr-layer-shell-unstable-v1.xml
-                ${_gen_dir}/wlr-layer-shell-client-protocol.h
-        COMMAND ${WAYLAND_SCANNER} private-code
-                ${_proto_dir}/wlr-layer-shell-unstable-v1.xml
-                ${_gen_dir}/wlr-layer-shell-protocol.c
-        DEPENDS ${_proto_dir}/wlr-layer-shell-unstable-v1.xml
-        COMMENT "Generating wlr-layer-shell Wayland protocol code"
-    )
+add_custom_command(
+    OUTPUT ${_gen_dir}/wlr-layer-shell-client-protocol.h
+           ${_gen_dir}/wlr-layer-shell-protocol.c
+    COMMAND ${WAYLAND_SCANNER} client-header
+            ${_proto_dir}/wlr-layer-shell-unstable-v1.xml
+            ${_gen_dir}/wlr-layer-shell-client-protocol.h
+    COMMAND ${WAYLAND_SCANNER} private-code
+            ${_proto_dir}/wlr-layer-shell-unstable-v1.xml
+            ${_gen_dir}/wlr-layer-shell-protocol.c
+    DEPENDS ${_proto_dir}/wlr-layer-shell-unstable-v1.xml
+    COMMENT "Generating wlr-layer-shell Wayland protocol code"
+)
 
-    set(LAYER_SHELL_GENERATED
-        ${_gen_dir}/wlr-layer-shell-client-protocol.h
-        ${_gen_dir}/wlr-layer-shell-protocol.c
-    )
-endif()
+set(LAYER_SHELL_GENERATED
+    ${_gen_dir}/wlr-layer-shell-client-protocol.h
+    ${_gen_dir}/wlr-layer-shell-protocol.c
+)
 ```
 
-Update link targets:
+Update link targets (all three targets — replace `LayerShellQt::Interface`):
 
 ```cmake
-if(USE_LAYERSHELLQT)
-    target_link_libraries(plasmazones_core PUBLIC LayerShellQt::Interface)
-else()
-    target_link_libraries(plasmazones_core
-        PUBLIC Wayland::Client
-        PRIVATE Qt6::WaylandClientPrivate
-    )
-    target_sources(plasmazones_core PRIVATE
-        core/layersurface_wayland.cpp
-        core/qpa/layershellintegration.cpp
-        core/qpa/layershellwindow.cpp
-        ${LAYER_SHELL_GENERATED}
-    )
-    target_include_directories(plasmazones_core PRIVATE ${_gen_dir})
-endif()
+target_link_libraries(plasmazones_core
+    PUBLIC Wayland::Client
+    PRIVATE Qt6::WaylandClientPrivate
+)
+target_sources(plasmazones_core PRIVATE
+    core/layersurface.cpp
+    core/qpa/layershellintegration.cpp
+    core/qpa/layershellwindow.cpp
+    ${LAYER_SHELL_GENERATED}
+)
+target_include_directories(plasmazones_core PRIVATE ${_gen_dir})
 ```
+
+Remove `LayerShellQt::Interface` from `plasmazonesd` and
+`plasmazones-editor` link targets (they get it transitively via
+`plasmazones_core` PUBLIC link).
 
 ### Step 2.3: Implement QPA shell integration
 
@@ -258,12 +263,12 @@ src/core/qpa/layershellwindow.cpp         (~200 lines)
 environment variable or by calling
 `QWaylandClientExtension::registerShellIntegration()` at startup.
 
-### Step 2.4: Implement direct Wayland backend for `LayerSurface`
+### Step 2.4: Replace `LayerSurface` implementation
 
-**File**: `src/core/layersurface_wayland.cpp`
+**File**: `src/core/layersurface.cpp` (replaces Phase 1 shim)
 
-When `PLASMAZONES_USE_LAYERSHELLQT` is NOT defined, `LayerSurface::get()`
-creates/retrieves a `LayerShellWindow` via the QPA integration:
+`LayerSurface::get()` creates/retrieves a `LayerShellWindow` via the QPA
+integration:
 
 ```cpp
 LayerSurface* LayerSurface::get(QWindow* window)
@@ -289,7 +294,8 @@ void LayerSurface::setLayer(Layer layer)
 ```
 
 The `m_shellWindow` pointer is resolved when the QPA creates the platform
-window (after `show()` is called).
+window (after `show()` is called). No `#ifdef` guards — this is the only
+implementation.
 
 ### Step 2.5: Initialize integration at daemon startup
 
@@ -323,9 +329,9 @@ output. Without it, the compositor chooses the output (usually primary).
 
 ### Step 2.7: Verify
 
-- [ ] Build succeeds with `-DUSE_LAYERSHELLQT=OFF`
-- [ ] Build succeeds with `-DUSE_LAYERSHELLQT=ON` (regression check)
-- [ ] Manual test on KDE Plasma with both backends
+- [ ] Build succeeds (LayerShellQt is no longer referenced anywhere)
+- [ ] `find_package(LayerShellQt)` is gone from CMakeLists.txt
+- [ ] Manual test on KDE Plasma (must match previous behavior exactly)
 - [ ] Zone overlay appears on correct screen
 - [ ] Geometry sensors detect panel areas correctly
 - [ ] OSD centers properly via margins
@@ -337,17 +343,17 @@ output. Without it, the compositor chooses the output (usually primary).
 ```
 New files:
   src/core/protocols/wlr-layer-shell-unstable-v1.xml
-  src/core/layersurface_wayland.cpp         (~250 lines)
   src/core/qpa/layershellintegration.h      (~60 lines)
   src/core/qpa/layershellintegration.cpp    (~150 lines)
   src/core/qpa/layershellwindow.h           (~80 lines)
   src/core/qpa/layershellwindow.cpp         (~200 lines)
+  tests/unit/core/test_layersurface.cpp     (~150 lines)
 
 Modified files:
-  CMakeLists.txt                            (option + conditional find_package)
-  src/CMakeLists.txt                        (conditional sources + links)
-  src/core/layersurface.cpp                 (#ifdef for backend selection)
-  src/daemon/main.cpp                       (integration registration)
+  CMakeLists.txt                            (remove LayerShellQt, add Wayland)
+  src/CMakeLists.txt                        (replace LayerShellQt with QPA sources)
+  src/core/layersurface.cpp                 (replace shim with QPA-backed impl)
+  src/daemon/main.cpp                       (register QPA integration)
 ```
 
 ---
@@ -409,61 +415,36 @@ For each compositor, create a minimal config that includes:
 
 **Goal**: Clean up build options, update CI, update package specs.
 
-### Step 4.1: CMake option default
+### Step 4.1: Update CI
 
-Initially default to `ON` (LayerShellQt) for safety:
-
-```cmake
-option(USE_LAYERSHELLQT
-    "Use KDE LayerShellQt for layer-shell (OFF = direct protocol)" ON)
-```
-
-After multi-compositor testing passes, flip default to `OFF`.
-
-### Step 4.2: Auto-detect KDE environment
-
-Add convenience logic to auto-select backend based on environment:
-
-```cmake
-# Auto-detect: if LayerShellQt is found, use it; otherwise fall back to direct
-if(NOT DEFINED USE_LAYERSHELLQT)
-    find_package(LayerShellQt 6.6 QUIET)
-    if(LayerShellQt_FOUND)
-        set(USE_LAYERSHELLQT ON)
-    else()
-        set(USE_LAYERSHELLQT OFF)
-    endif()
-endif()
-```
-
-### Step 4.3: Update CI matrix
-
-Add compositor-specific CI jobs:
+CI no longer needs LayerShellQt dev packages. Replace with Wayland dev deps:
 
 ```yaml
 # .github/workflows/build.yml
 strategy:
   matrix:
     include:
-      - name: "KDE (LayerShellQt)"
-        cmake_flags: "-DUSE_LAYERSHELLQT=ON"
-        deps: "layer-shell-qt-devel"
-      - name: "Generic Wayland (direct)"
-        cmake_flags: "-DUSE_LAYERSHELLQT=OFF"
+      - name: "Full KDE build"
+        cmake_flags: "-DUSE_KDE_FRAMEWORKS=ON"
+        deps: "wayland-devel qt6-wayland-devel kf6-kglobalaccel-devel"
+      - name: "Minimal (no KDE)"
+        cmake_flags: "-DUSE_KDE_FRAMEWORKS=OFF"
         deps: "wayland-devel qt6-wayland-devel"
 ```
 
-### Step 4.4: Update packaging
+### Step 4.2: Update packaging
 
-**Arch PKGBUILD**: Add `USE_LAYERSHELLQT` option, make `layer-shell-qt`
-optional dependency instead of required.
+**All package specs**: Remove `layer-shell-qt` from build/runtime deps.
+Add `qt6-wayland-devel` (or equivalent) if not already present.
 
-**Debian control**: Split into `plasmazones` (direct) and
-`plasmazones-kde` (with LayerShellQt) packages, or make it a build flag.
+**Arch PKGBUILD**: Drop `layer-shell-qt` from `depends`. Add
+`qt6-wayland` if missing.
 
-**RPM spec**: Add `%bcond_with layershellqt` conditional.
+**Debian control**: Drop `layer-shell-qt-dev` from `Build-Depends`.
 
-**Nix**: Add `useLayerShellQt` option to the derivation.
+**RPM spec**: Drop `layer-shell-qt-devel` from `BuildRequires`.
+
+**Nix**: Drop `layer-shell-qt` from `buildInputs`.
 
 ### Step 4.5: Update documentation
 
@@ -504,19 +485,21 @@ src/bridges/
 | File | Phase | Lines (est.) | Purpose |
 |---|---|---|---|
 | `src/core/layersurface.h` | 1 | ~100 | Interface |
-| `src/core/layersurface.cpp` | 1 | ~120 | LayerShellQt backend |
-| `src/core/layersurface_wayland.cpp` | 2 | ~250 | Direct Wayland backend |
-| `src/core/protocols/wlr-layer-shell-unstable-v1.xml` | 2 | ~300 | Vendored protocol spec |
-| `src/core/qpa/layershellintegration.h` | 2 | ~60 | QPA plugin header |
-| `src/core/qpa/layershellintegration.cpp` | 2 | ~150 | QPA plugin impl |
-| `src/core/qpa/layershellwindow.h` | 2 | ~80 | Shell surface header |
-| `src/core/qpa/layershellwindow.cpp` | 2 | ~200 | Shell surface impl |
-| `tests/unit/core/test_layersurface.cpp` | 2 | ~150 | Unit tests |
+| `src/core/layersurface.cpp` | 1 | ~250 | QPA-backed implementation |
+| `src/core/protocols/wlr-layer-shell-unstable-v1.xml` | 1 | ~300 | Vendored protocol spec |
+| `src/core/qpa/layershellintegration.h` | 1 | ~60 | QPA plugin header |
+| `src/core/qpa/layershellintegration.cpp` | 1 | ~150 | QPA plugin impl |
+| `src/core/qpa/layershellwindow.h` | 1 | ~80 | Shell surface header |
+| `src/core/qpa/layershellwindow.cpp` | 1 | ~200 | Shell surface impl |
+| `tests/unit/core/test_layersurface.cpp` | 1 | ~150 | Unit tests |
 
 ### Modified Files
 
 | File | Phase | Nature of change |
 |---|---|---|
+| `CMakeLists.txt` | 1 | Remove LayerShellQt, add Wayland deps |
+| `src/CMakeLists.txt` | 1 | Replace LayerShellQt with QPA sources |
+| `src/daemon/main.cpp` | 1 | Register QPA integration |
 | `src/daemon/overlayservice/internal.h` | 1 | Replace LayerShellQt types with LayerSurface |
 | `src/daemon/overlayservice/overlay.cpp` | 1 | Replace include + direct calls |
 | `src/daemon/overlayservice/osd.cpp` | 1 | Replace include + direct calls |
@@ -525,24 +508,20 @@ src/bridges/
 | `src/daemon/overlayservice/shader.cpp` | 1 | Replace include (uses helper) |
 | `src/core/screenmanager.cpp` | 1 | Replace include + sensor setup |
 | `tests/unit/ui/test_overlay_helpers.cpp` | 1 | Replace includes + references |
-| `src/CMakeLists.txt` | 1+2 | Add sources, conditional linking |
-| `CMakeLists.txt` | 2 | Add option, conditional find_package |
-| `src/daemon/main.cpp` | 2 | Register QPA integration |
-| `.github/workflows/build.yml` | 4 | Add matrix entries |
-| `packaging/arch/PKGBUILD` | 4 | Optional LayerShellQt dep |
-| `packaging/debian/control` | 4 | Optional LayerShellQt dep |
-| `packaging/rpm/plasmazones.spec` | 4 | Conditional build |
+| `.github/workflows/build.yml` | 3 | Update deps (drop LayerShellQt) |
+| `packaging/arch/PKGBUILD` | 3 | Remove LayerShellQt dep |
+| `packaging/debian/control` | 3 | Remove LayerShellQt dep |
+| `packaging/rpm/plasmazones.spec` | 3 | Remove LayerShellQt dep |
 
 ## Timeline
 
 | Phase | Effort | Dependencies |
 |---|---|---|
-| Phase 1: Abstraction | 2-3 days | None |
-| Phase 2: Wayland backend | 4-6 days | Phase 1 |
-| Phase 3: Testing | 3-5 days | Phase 2 |
-| Phase 4: CI/packaging | 1-2 days | Phase 3 |
-| **Total** | **~2-3 weeks** | |
+| Phase 1: Interface + QPA plugin + migration | 5-7 days | None |
+| Phase 2: (implementation details for Phase 1) | — | — |
+| Phase 3: Multi-compositor testing + CI/packaging | 4-6 days | Phase 1 |
+| **Total** | **~2 weeks** | |
 
-Phase 1 can be merged independently as it has zero risk (pure refactor,
-LayerShellQt still used). Phases 2-4 land together or incrementally behind
-the `USE_LAYERSHELLQT` build flag.
+All code lands in one branch. Phase 1 is the entire implementation —
+QPA plugin, interface, call site migration, LayerShellQt removal.
+Phase 3 is testing and packaging cleanup.
