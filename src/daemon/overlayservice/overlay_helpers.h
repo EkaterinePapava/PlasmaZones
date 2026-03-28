@@ -131,8 +131,7 @@ inline LayerSurface::Anchors getAnchorsForPosition(ZoneSelectorPosition pos)
     case ZoneSelectorPosition::Center:
         // Anchor to all edges so the window fills the screen; the QML "center" state
         // positions the container in the middle of the full-screen transparent window.
-        return LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorBottom | LayerSurface::AnchorLeft
-                                     | LayerSurface::AnchorRight);
+        return LayerSurface::AnchorAll;
     case ZoneSelectorPosition::Right:
         return LayerSurface::Anchors(LayerSurface::AnchorRight | LayerSurface::AnchorTop | LayerSurface::AnchorBottom);
     case ZoneSelectorPosition::BottomLeft:

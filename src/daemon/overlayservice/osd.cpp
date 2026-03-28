@@ -30,7 +30,9 @@ struct OsdWindowSetup
     }
 };
 
-// Center an OSD/layer window on screen using layer surface margins
+// Center an OSD/layer window on screen using layer surface margins.
+// Precondition: the window must already have a LayerSurface (created before show()).
+// This function retrieves the existing LayerSurface — it does not create one.
 void centerLayerWindowOnScreen(QQuickWindow* window, const QRect& screenGeom, int osdWidth, int osdHeight)
 {
     if (!window) {
@@ -39,8 +41,7 @@ void centerLayerWindowOnScreen(QQuickWindow* window, const QRect& screenGeom, in
     if (auto* layerSurface = LayerSurface::get(window)) {
         const int hMargin = qMax(0, (screenGeom.width() - osdWidth) / 2);
         const int vMargin = qMax(0, (screenGeom.height() - osdHeight) / 2);
-        layerSurface->setAnchors(LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorBottom
-                                                       | LayerSurface::AnchorLeft | LayerSurface::AnchorRight));
+        layerSurface->setAnchors(LayerSurface::AnchorAll);
         layerSurface->setMargins(QMargins(hMargin, vMargin, hMargin, vMargin));
     }
 }

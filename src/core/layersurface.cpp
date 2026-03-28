@@ -71,6 +71,15 @@ bool LayerSurface::isSupported()
     return integration && integration->layerShell();
 }
 
+void LayerSurface::emitPropertiesChanged()
+{
+    if (m_batchDepth > 0) {
+        m_batchDirty = true;
+    } else {
+        Q_EMIT propertiesChanged();
+    }
+}
+
 void LayerSurface::setLayer(Layer layer)
 {
     if (m_layer == layer) {
@@ -79,7 +88,7 @@ void LayerSurface::setLayer(Layer layer)
     m_layer = layer;
     m_window->setProperty(LayerSurfaceProps::Layer, static_cast<int>(layer));
     Q_EMIT layerChanged();
-    Q_EMIT propertiesChanged();
+    emitPropertiesChanged();
 }
 
 LayerSurface::Layer LayerSurface::layer() const
@@ -95,7 +104,7 @@ void LayerSurface::setAnchors(Anchors anchors)
     m_anchors = anchors;
     m_window->setProperty(LayerSurfaceProps::Anchors, static_cast<int>(anchors));
     Q_EMIT anchorsChanged();
-    Q_EMIT propertiesChanged();
+    emitPropertiesChanged();
 }
 
 LayerSurface::Anchors LayerSurface::anchors() const
@@ -111,7 +120,7 @@ void LayerSurface::setExclusiveZone(int32_t zone)
     m_exclusiveZone = zone;
     m_window->setProperty(LayerSurfaceProps::ExclusiveZone, zone);
     Q_EMIT exclusiveZoneChanged();
-    Q_EMIT propertiesChanged();
+    emitPropertiesChanged();
 }
 
 int32_t LayerSurface::exclusiveZone() const
@@ -127,7 +136,7 @@ void LayerSurface::setKeyboardInteractivity(KeyboardInteractivity interactivity)
     m_keyboard = interactivity;
     m_window->setProperty(LayerSurfaceProps::Keyboard, static_cast<int>(interactivity));
     Q_EMIT keyboardInteractivityChanged();
-    Q_EMIT propertiesChanged();
+    emitPropertiesChanged();
 }
 
 LayerSurface::KeyboardInteractivity LayerSurface::keyboardInteractivity() const
@@ -143,7 +152,7 @@ void LayerSurface::setScope(const QString& scope)
     m_scope = scope;
     m_window->setProperty(LayerSurfaceProps::Scope, scope);
     Q_EMIT scopeChanged();
-    Q_EMIT propertiesChanged();
+    emitPropertiesChanged();
 }
 
 QString LayerSurface::scope() const
@@ -184,7 +193,7 @@ void LayerSurface::setMargins(const QMargins& margins)
     m_window->setProperty(LayerSurfaceProps::MarginsRight, margins.right());
     m_window->setProperty(LayerSurfaceProps::MarginsBottom, margins.bottom());
     Q_EMIT marginsChanged();
-    Q_EMIT propertiesChanged();
+    emitPropertiesChanged();
 }
 
 QMargins LayerSurface::margins() const

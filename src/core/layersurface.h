@@ -64,6 +64,9 @@ public:
     Q_DECLARE_FLAGS(Anchors, Anchor)
     Q_FLAG(Anchors)
 
+    /// Convenience constant: anchor to all four edges (full-screen overlay).
+    static constexpr Anchors AnchorAll = Anchors(AnchorTop | AnchorBottom | AnchorLeft | AnchorRight);
+
     void setLayer(Layer layer);
     Layer layer() const;
 
@@ -105,15 +108,47 @@ Q_SIGNALS:
     void marginsChanged();
     void screenChanged();
 
-    /// Emitted after any property setter completes. The QPA LayerShellWindow
-    /// connects to this to push changes to the compositor immediately,
-    /// rather than waiting for the next configure event.
+    /// Emitted after any property setter completes (unless batching is active).
+    /// The QPA LayerShellWindow connects to this to push changes to the compositor
+    /// immediately, rather than waiting for the next configure event.
     void propertiesChanged();
 
+public:
+    /// Suppress propertiesChanged() emission until the guard is destroyed.
+    /// Use when calling multiple setters in sequence to avoid N round-trips.
+    class BatchGuard
+    {
+    public:
+        explicit BatchGuard(LayerSurface* surface)
+            : m_surface(surface)
+        {
+            if (m_surface) {
+                ++m_surface->m_batchDepth;
+            }
+        }
+        ~BatchGuard()
+        {
+            if (m_surface && --m_surface->m_batchDepth == 0 && m_surface->m_batchDirty) {
+                m_surface->m_batchDirty = false;
+                Q_EMIT m_surface->propertiesChanged();
+            }
+        }
+        BatchGuard(const BatchGuard&) = delete;
+        BatchGuard& operator=(const BatchGuard&) = delete;
+
+    private:
+        LayerSurface* m_surface;
+    };
+
 private:
+    friend class BatchGuard;
     explicit LayerSurface(QWindow* window);
 
+    void emitPropertiesChanged();
+
     QWindow* m_window = nullptr;
+    int m_batchDepth = 0;
+    bool m_batchDirty = false;
     Layer m_layer = LayerTop;
     Anchors m_anchors;
     // Default -1: surface ignores exclusive zones from other surfaces (panels, bars)

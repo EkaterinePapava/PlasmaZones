@@ -63,6 +63,9 @@ inline void configureLayerSurface(QQuickWindow* window, QScreen* screen, LayerSu
     if (!layerSurface) {
         return;
     }
+    // Batch all property changes into a single propertiesChanged() emission
+    // so the QPA plugin only does one applyProperties()+commit round-trip.
+    LayerSurface::BatchGuard batch(layerSurface);
     layerSurface->setScreen(screen);
     layerSurface->setLayer(layer);
     layerSurface->setKeyboardInteractivity(keyboardInteractivity);

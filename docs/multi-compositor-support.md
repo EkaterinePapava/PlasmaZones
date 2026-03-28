@@ -409,7 +409,7 @@ window management are a separate effort tracked independently.
 | Compositor-specific layer-shell quirks | Low | Low | Test matrix above; protocol is well-standardized |
 | Performance regression vs LayerShellQt | Very Low | Low | Direct protocol calls are actually faster (no KDE middleware) |
 | Geometry sensor behavior differs | Low | High | Sensor is critical for panel detection; extensive multi-compositor testing needed |
-| KDE users hit regressions | Low | High | Keep LayerShellQt as optional backend; default to it when KDE detected |
+| KDE users hit regressions | Low | High | QPA plugin speaks the same protocol as LayerShellQt; extensive testing on KDE Plasma before merge |
 
 ## Effort Estimate
 

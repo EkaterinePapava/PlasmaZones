@@ -13,6 +13,10 @@
 // stub is ever reached at runtime, the NULL method arrays will cause
 // an immediate crash — which is the correct behavior since it means
 // we have a logic error (we should never create layer-shell popups).
+//
+// Weak attribute prevents duplicate symbol errors if another linked library
+// (e.g. Qt's own Wayland modules) also defines xdg_popup_interface.
+__attribute__((weak))
 const struct wl_interface xdg_popup_interface = {
     "xdg_popup", 1, 0, NULL, 0, NULL,
 };

@@ -116,8 +116,7 @@ void OverlayService::showSnapAssist(const QString& screenId, const QString& empt
     // Match main overlay: full-screen anchors so zone coordinates (overlay-local) line up
     configureLayerSurface(m_snapAssistWindow, screen, LayerSurface::LayerTop,
                           LayerSurface::KeyboardInteractivityExclusive, QStringLiteral("plasmazones-snap-assist"),
-                          LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorBottom
-                                                | LayerSurface::AnchorLeft | LayerSurface::AnchorRight));
+                          LayerSurface::AnchorAll);
 
     assertWindowOnScreen(m_snapAssistWindow, screen);
     m_snapAssistWindow->setGeometry(screen->geometry());
@@ -360,8 +359,7 @@ void OverlayService::showLayoutPicker(const QString& screenId)
     // Full-screen layer shell with keyboard interactivity
     configureLayerSurface(m_layoutPickerWindow, screen, LayerSurface::LayerTop,
                           LayerSurface::KeyboardInteractivityExclusive, QStringLiteral("plasmazones-layout-picker"),
-                          LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorBottom
-                                                | LayerSurface::AnchorLeft | LayerSurface::AnchorRight));
+                          LayerSurface::AnchorAll);
 
     assertWindowOnScreen(m_layoutPickerWindow, screen);
     m_layoutPickerWindow->setGeometry(screenGeom);
