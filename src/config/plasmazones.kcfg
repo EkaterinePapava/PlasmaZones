@@ -72,7 +72,7 @@
       <label>Monitor names where PlasmaZones is disabled (no overlay, no zone picker, no snapping)</label>
       <default></default>
     </entry>
-    <entry name="DisabledDesktops" type="StringList">
+    <entry name="DisabledDesktops" type="IntList">
       <label>Virtual desktop numbers where PlasmaZones is disabled</label>
       <default></default>
     </entry>

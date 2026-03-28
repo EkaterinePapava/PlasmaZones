@@ -264,7 +264,7 @@ void OverlayService::updateSettings(ISettings* settings)
     // the current configuration.
     syncCavaState();
 
-    // Hide overlay and zone selector on monitors that are now disabled
+    // Hide overlay and zone selector on screens/desktops/activities that are now disabled
     if (m_settings) {
         for (auto* screen : m_overlayWindows.keys()) {
             if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
@@ -298,7 +298,7 @@ void OverlayService::updateSettings(ISettings* settings)
     // Keep zone selector windows in sync with settings changes (position, layout, sizing).
     // Without this, changing settings while the selector is visible can leave stale geometry
     // and anchors, causing corrupted rendering or incorrect window sizing.
-    // Skip disabled monitors.
+    // Skip disabled screens/desktops/activities.
     if (!m_zoneSelectorWindows.isEmpty()) {
         for (auto* screen : m_zoneSelectorWindows.keys()) {
             if (m_settings
