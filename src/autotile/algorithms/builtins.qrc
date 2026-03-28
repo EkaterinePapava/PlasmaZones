@@ -17,5 +17,7 @@
     <file alias="lShapeLayout.js">builtins/lShapeLayout.js</file>
     <file alias="deckLayout.js">builtins/deckLayout.js</file>
     <file alias="distributeEvenly.js">builtins/distributeEvenly.js</file>
+    <file alias="equalColumnsLayout.js">builtins/equalColumnsLayout.js</file>
+    <file alias="fillRegion.js">builtins/fillRegion.js</file>
 </qresource>
 </RCC>

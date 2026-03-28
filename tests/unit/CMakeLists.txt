@@ -72,6 +72,8 @@ pz_add_test(test_tiling_algo_deck_zen autotile/test_tiling_algo_deck_zen.cpp)
 target_compile_definitions(test_tiling_algo_deck_zen PRIVATE "PZ_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
 pz_add_test(test_tiling_algo_edge_cases autotile/test_tiling_algo_edge_cases.cpp)
 target_compile_definitions(test_tiling_algo_edge_cases PRIVATE "PZ_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
+pz_add_test(test_tiling_algo_bsp autotile/test_tiling_algo_bsp.cpp)
+target_compile_definitions(test_tiling_algo_bsp PRIVATE "PZ_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # autotile/ — Algorithm Registry Tests
@@ -228,6 +230,7 @@ set(_all_tests
     test_tiling_algo_grid_threecolumn test_tiling_algo_wide_centered
     test_tiling_algo_cascade_stair_spread
     test_tiling_algo_lshape test_tiling_algo_deck_zen test_tiling_algo_edge_cases
+    test_tiling_algo_bsp
     test_algorithm_registry test_algorithm_registry_custom
     test_scripted_algorithm test_split_tree test_scripted_algorithm_loader
     test_autotile_engine_core test_autotile_engine_master

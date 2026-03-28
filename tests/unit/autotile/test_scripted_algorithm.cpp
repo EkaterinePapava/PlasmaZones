@@ -896,6 +896,57 @@ private Q_SLOTS:
             QWARN("V4 limitation: constructor chain not blocked — watchdog is primary defense");
         }
     }
+
+    // =========================================================================
+    // Frozen globals integrity test (INFRA-3)
+    // =========================================================================
+
+    void testFrozenGlobals_builtinOverwriteFails()
+    {
+        // Verify that a user script cannot overwrite frozen builtin helpers.
+        // The sandbox freezes globals like fillArea, equalColumnsLayout, etc.
+        // A script that attempts to reassign them should either throw (strict
+        // mode) or silently fail, and the algorithm should still produce
+        // correct output using the original frozen builtins.
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+
+        // Script tries to overwrite fillArea and equalColumnsLayout, then
+        // delegates to equalColumnsLayout — if the overwrite succeeded,
+        // equalColumnsLayout would return [] and produce zero zones.
+        QString script = QStringLiteral(
+            "// @name Frozen Globals Test\n"
+            "// @description Verify frozen builtins survive overwrite attempts\n"
+            "function calculateZones(params) {\n"
+            "    // Attempt to overwrite frozen builtins\n"
+            "    try { fillArea = function() { return []; }; } catch(e) {}\n"
+            "    try { equalColumnsLayout = function() { return []; }; } catch(e) {}\n"
+            "    try { distributeWithGaps = function() { return []; }; } catch(e) {}\n"
+            "    try { masterStackLayout = function() { return []; }; } catch(e) {}\n"
+            "    // Use equalColumnsLayout — if frozen, it still works correctly\n"
+            "    return equalColumnsLayout(params.area, params.windowCount, params.innerGap || 0, params.minSizes || "
+            "[]);\n"
+            "}\n");
+        QString path = writeTempScript(dir, QStringLiteral("frozen-globals.js"), script);
+
+        ScriptedAlgorithm algo(path);
+        QVERIFY(algo.isValid());
+
+        TilingState state(QStringLiteral("test"));
+        auto zones = algo.calculateZones({3, m_screenGeometry, &state, 0, EdgeGaps::uniform(0)});
+
+        // The frozen equalColumnsLayout should still work — 3 columns expected
+        QVERIFY2(
+            zones.size() == 3,
+            qPrintable(QStringLiteral("Expected 3 zones from frozen equalColumnsLayout, got %1").arg(zones.size())));
+
+        // Verify structural validity
+        for (const QRect& zone : zones) {
+            QVERIFY(zone.width() > 0);
+            QVERIFY(zone.height() > 0);
+        }
+        QVERIFY(allWithinBounds(zones, m_screenGeometry));
+    }
 };
 
 QTEST_MAIN(TestScriptedAlgorithm)

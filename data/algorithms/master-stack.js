@@ -27,7 +27,7 @@ function calculateZones(params) {
         params.windowCount,
         params.innerGap || 0,
         params.splitRatio,
-        params.masterCount,
+        params.masterCount || 1,
         params.minSizes || [],
         false
     );

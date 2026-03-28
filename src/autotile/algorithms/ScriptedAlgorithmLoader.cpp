@@ -27,7 +27,12 @@ ScriptedAlgorithmLoader::ScriptedAlgorithmLoader(QObject* parent)
 
 ScriptedAlgorithmLoader::~ScriptedAlgorithmLoader()
 {
+    // Guard: during static destruction, AlgorithmRegistry may already be cleaned up.
+    // unregisterAlgorithm() on a cleaned-up registry is a no-op (empty map),
+    // but we skip the loop entirely if the map is empty to avoid unnecessary work.
     auto* registry = AlgorithmRegistry::instance();
+    if (registry->availableAlgorithms().isEmpty())
+        return;
     for (auto it = m_scriptIdToPath.constBegin(); it != m_scriptIdToPath.constEnd(); ++it) {
         registry->unregisterAlgorithm(it.key());
     }
@@ -62,15 +67,9 @@ void ScriptedAlgorithmLoader::watchDirectory(const QString& dirPath)
 
     // Watch individual .js files so in-place content modifications trigger fileChanged.
     // Directory-level inotify only fires for create/delete/rename, not in-place writes.
-    QDir dirObj(dirPath);
-    const QStringList jsFiles = dirObj.entryList({QStringLiteral("*.js")}, QDir::Files | QDir::NoSymLinks);
-    int filesWatched = 0;
-    for (const QString& file : jsFiles) {
-        if (filesWatched >= MaxWatchedFilesPerDir) {
-            break;
-        }
-        m_watcher->addPath(dirObj.filePath(file));
-        ++filesWatched;
+    const QStringList validFiles = validatedJsFiles(dirPath, MaxWatchedFilesPerDir);
+    for (const QString& file : validFiles) {
+        m_watcher->addPath(file);
     }
 
     qCInfo(lcAutotile) << "Watching algorithm directory:" << dirPath
@@ -163,42 +162,14 @@ bool ScriptedAlgorithmLoader::scanAndRegister()
 
 void ScriptedAlgorithmLoader::loadFromDirectory(const QString& dir, bool isUserDir)
 {
-    QDir dirObj(dir);
-    // Exclude symlinks to prevent path traversal attacks
-    const QStringList files =
-        dirObj.entryList({QStringLiteral("*.js")}, QDir::Files | QDir::NoSymLinks | QDir::Readable);
+    const QStringList validFiles = validatedJsFiles(dir, MaxWatchedFilesPerDir);
 
-    // Directory containment check — prevent symlink/traversal escapes
-    const QString canonicalDir = QFileInfo(dir).canonicalFilePath();
-    if (canonicalDir.isEmpty())
-        return;
-
-    // Cap file watcher count to prevent resource exhaustion
-    int filesProcessed = 0;
-
-    for (const QString& file : files) {
-        if (filesProcessed >= MaxWatchedFilesPerDir) {
-            qCWarning(lcAutotile) << "Reached max file limit (" << MaxWatchedFilesPerDir << ") for directory:" << dir
-                                  << "— skipping remaining files";
-            break;
-        }
-
-        const QString rawPath = dirObj.filePath(file);
-        const QString fullPath = QFileInfo(rawPath).canonicalFilePath();
-        if (fullPath.isEmpty())
-            continue; // file vanished between listing and stat
-
-        // Verify resolved path stays within the algorithm directory
-        if (!fullPath.startsWith(canonicalDir + QLatin1Char('/'))) {
-            qCWarning(lcAutotile) << "Script path escaped directory:" << fullPath;
-            continue;
-        }
-
+    for (const QString& fullPath : validFiles) {
         // Validate filename against whitelist to prevent injection via crafted filenames
         static const QRegularExpression validIdRe(QStringLiteral("^[a-zA-Z0-9_-]+$"));
-        const QString baseName = QFileInfo(file).completeBaseName();
+        const QString baseName = QFileInfo(fullPath).completeBaseName();
         if (!validIdRe.match(baseName).hasMatch()) {
-            qCWarning(lcAutotile) << "Skipping script with invalid filename:" << file;
+            qCWarning(lcAutotile) << "Skipping script with invalid filename:" << fullPath;
             continue;
         }
         // Create with nullptr parent so the registry takes full ownership
@@ -221,7 +192,6 @@ void ScriptedAlgorithmLoader::loadFromDirectory(const QString& dir, bool isUserD
         algo->setUserScript(isUserDir);
         registry->registerAlgorithm(scriptId, algo);
         m_scriptIdToPath[scriptId] = fullPath;
-        ++filesProcessed;
 
         qCInfo(lcAutotile) << "Registered scripted algorithm:" << scriptId << "from=" << fullPath
                            << "user=" << isUserDir;
@@ -306,35 +276,45 @@ void ScriptedAlgorithmLoader::reWatchFiles()
         if (!watchedDirs.contains(dir)) {
             m_watcher->addPath(dir);
         }
-        // Validate path containment (same as loadFromDirectory) to prevent
-        // symlink/traversal escapes when re-adding file watches
-        const QString canonicalDir = QFileInfo(dir).canonicalFilePath();
-        if (canonicalDir.isEmpty())
-            continue;
-        QDir dirObj(dir);
-        const QStringList files = dirObj.entryList({QStringLiteral("*.js")}, QDir::Files | QDir::NoSymLinks);
-        // Cap watched files per directory to match loadFromDirectory's limit
-        int filesWatched = 0;
-        for (const QString& file : files) {
-            if (filesWatched >= MaxWatchedFilesPerDir) {
-                qCWarning(lcAutotile) << "reWatchFiles: reached max file limit (" << MaxWatchedFilesPerDir
-                                      << ") for directory:" << dir << "— skipping remaining files";
-                break;
+        // Validate path containment and cap file count (same as loadFromDirectory)
+        const QStringList validFiles = validatedJsFiles(dir, MaxWatchedFilesPerDir);
+        for (const QString& file : validFiles) {
+            if (!watchedFiles.contains(file)) {
+                m_watcher->addPath(file);
             }
-            const QString rawPath = dirObj.filePath(file);
-            const QString fullPath = QFileInfo(rawPath).canonicalFilePath();
-            if (fullPath.isEmpty())
-                continue;
-            if (!fullPath.startsWith(canonicalDir + QLatin1Char('/'))) {
-                qCWarning(lcAutotile) << "reWatchFiles: script path escaped directory:" << fullPath;
-                continue;
-            }
-            if (!watchedFiles.contains(fullPath)) {
-                m_watcher->addPath(fullPath);
-            }
-            ++filesWatched;
         }
     }
+}
+
+QStringList ScriptedAlgorithmLoader::validatedJsFiles(const QString& dirPath, int maxFiles) const
+{
+    QStringList result;
+    QDir dirObj(dirPath);
+    if (!dirObj.exists())
+        return result;
+
+    const QString canonicalDir = QFileInfo(dirPath).canonicalFilePath();
+    if (canonicalDir.isEmpty())
+        return result;
+
+    const QStringList files =
+        dirObj.entryList({QStringLiteral("*.js")}, QDir::Files | QDir::NoSymLinks | QDir::Readable);
+    for (const QString& file : files) {
+        if (result.size() >= maxFiles) {
+            qCWarning(lcAutotile) << "Reached max file limit (" << maxFiles << ") for directory:" << dirPath
+                                  << "— skipping remaining files";
+            break;
+        }
+        const QString fullPath = QFileInfo(dirObj.filePath(file)).canonicalFilePath();
+        if (fullPath.isEmpty())
+            continue;
+        if (!fullPath.startsWith(canonicalDir + QLatin1Char('/'))) {
+            qCWarning(lcAutotile) << "Script path escaped directory:" << fullPath;
+            continue;
+        }
+        result.append(fullPath);
+    }
+    return result;
 }
 
 } // namespace PlasmaZones

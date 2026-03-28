@@ -41,12 +41,10 @@ function renderPanel(zones, startX, startY, panelW, panelH, count, gap, horizont
     // Degenerate gap: if gaps consume all available panel dimension, equal-split without gaps
     if ((count - 1) * gap >= totalSize) {
         const equalSize = Math.max(1, Math.floor(totalSize / count));
-        for (let i = 0; i < count; i++) {
-            if (horizontal) {
-                zones.push({ x: startX, y: startY, width: equalSize, height: panelH });
-            } else {
-                zones.push({ x: startX, y: startY, width: panelW, height: equalSize });
-            }
+        if (horizontal) {
+            zones.push.apply(zones, fillRegion(startX, startY, equalSize, panelH, count));
+        } else {
+            zones.push.apply(zones, fillRegion(startX, startY, panelW, equalSize, count));
         }
         return;
     }

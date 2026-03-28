@@ -55,17 +55,7 @@ function calculateZones(params) {
     }
 
     if (hasInvalidZone) {
-        // Fall back to gap-aware equal columns layout
-        zones = [];
-        const minWidthVec = extractMinWidths(minSizes, count);
-        const columnWidths = (minWidthVec.length === 0)
-            ? distributeWithGaps(area.width, count, gap)
-            : distributeWithMinSizes(area.width, count, gap, minWidthVec);
-        let currentX = area.x;
-        for (let i = 0; i < count; i++) {
-            zones.push({x: currentX, y: area.y, width: columnWidths[i], height: area.height});
-            currentX += columnWidths[i] + gap;
-        }
+        zones = equalColumnsLayout(area, count, gap, minSizes);
     }
 
     return zones;

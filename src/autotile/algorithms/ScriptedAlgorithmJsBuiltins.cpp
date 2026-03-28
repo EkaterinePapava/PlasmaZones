@@ -135,5 +135,17 @@ QString distributeEvenlyJs()
     return s;
 }
 
+QString equalColumnsLayoutJs()
+{
+    static const QString s = loadBuiltinJs(QStringLiteral("equalColumnsLayout.js"));
+    return s;
+}
+
+QString fillRegionJs()
+{
+    static const QString s = loadBuiltinJs(QStringLiteral("fillRegion.js"));
+    return s;
+}
+
 } // namespace ScriptedHelpers
 } // namespace PlasmaZones

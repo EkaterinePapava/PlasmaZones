@@ -27,7 +27,7 @@ function calculateZones(params) {
     const area = params.area;
     const gap = params.innerGap || 0;
 
-    const splitRatio = params.splitRatio;
+    const splitRatio = Math.max(PZ_MIN_SPLIT, Math.min(PZ_MAX_SPLIT, params.splitRatio));
     let columnWidth = Math.floor(area.width * splitRatio);
     columnWidth = Math.max(1, columnWidth);
     const offsetX = area.x + Math.floor((area.width - columnWidth) / 2);
@@ -36,11 +36,7 @@ function calculateZones(params) {
 
     // Degenerate gap: stack all windows when gaps exceed available height
     if (totalGaps >= area.height) {
-        const stacked = [];
-        for (let j = 0; j < count; j++) {
-            stacked.push({ x: offsetX, y: area.y, width: columnWidth, height: area.height });
-        }
-        return stacked;
+        return fillRegion(offsetX, area.y, columnWidth, area.height, count);
     }
 
     // Use injected distributeEvenly helper for vertical stacking

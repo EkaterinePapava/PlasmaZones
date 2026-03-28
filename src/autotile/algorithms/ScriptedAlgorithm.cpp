@@ -319,7 +319,9 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         || !injectBuiltin(ScriptedHelpers::applyPerWindowMinSizeJs(), QStringLiteral("builtin:applyPerWindowMinSize"))
         || !injectBuiltin(ScriptedHelpers::extractRegionMaxMinJs(), QStringLiteral("builtin:extractRegionMaxMin"))
         || !injectBuiltin(ScriptedHelpers::fillAreaJs(), QStringLiteral("builtin:fillArea"))
-        || !injectBuiltin(ScriptedHelpers::masterStackLayoutJs(), QStringLiteral("builtin:masterStackLayout"))) {
+        || !injectBuiltin(ScriptedHelpers::masterStackLayoutJs(), QStringLiteral("builtin:masterStackLayout"))
+        || !injectBuiltin(ScriptedHelpers::equalColumnsLayoutJs(), QStringLiteral("builtin:equalColumnsLayout"))
+        || !injectBuiltin(ScriptedHelpers::fillRegionJs(), QStringLiteral("builtin:fillRegion"))) {
         return false;
     }
 
@@ -360,6 +362,8 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         QLatin1String("extractRegionMaxMin"),
         QLatin1String("fillArea"),
         QLatin1String("masterStackLayout"),
+        QLatin1String("equalColumnsLayout"),
+        QLatin1String("fillRegion"),
         QLatin1String("MAX_TREE_DEPTH"), // from applyTreeGeometry (declared with `var` so it's a
         // freezable global property; `const` would be block-scoped
         // and invisible to Object.defineProperty on `this`)

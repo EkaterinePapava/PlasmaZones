@@ -51,10 +51,7 @@ function calculateZones(params) {
 
     // Degenerate gap: stack sidebar windows when gaps exceed available height
     if (totalGaps >= area.height) {
-        for (let i = 0; i < sidebarCount; i++) {
-            zones.push({ x: sidebarX, y: area.y, width: sidebarWidth, height: area.height });
-        }
-        return zones;
+        return zones.concat(fillRegion(sidebarX, area.y, sidebarWidth, area.height, sidebarCount));
     }
 
     // Use injected distributeEvenly helper for vertical stacking

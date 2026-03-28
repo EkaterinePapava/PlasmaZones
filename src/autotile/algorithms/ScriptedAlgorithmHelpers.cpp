@@ -151,7 +151,7 @@ ScriptMetadata parseMetadata(const QString& source, const QString& filePath)
                 qCWarning(lcAutotile) << "ScriptedAlgorithm::parseMetadata: invalid @builtinId" << value << "in"
                                       << filePath;
             } else {
-                meta.builtinId = value;
+                meta.builtinId = value.left(64);
             }
         } else if (key != QLatin1String("icon")) {
             qCDebug(lcAutotile) << "ScriptedAlgorithm::parseMetadata: unknown metadata key" << key << "in" << filePath;

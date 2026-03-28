@@ -41,7 +41,7 @@ function calculateZones(params) {
 
     const masterCount = Math.max(1, Math.min(params.masterCount || 1, count));
     const stackCount = count - masterCount;
-    const splitRatio = params.splitRatio;
+    const splitRatio = Math.max(PZ_MIN_SPLIT, Math.min(PZ_MAX_SPLIT, params.splitRatio));
 
     // Case 1: Only masters — stack vertically, full width
     if (stackCount === 0) {
@@ -60,6 +60,10 @@ function calculateZones(params) {
 
     // Case 2: One stack window — 2-column layout (masters left, stack right)
     if (stackCount === 1) {
+        // Degenerate: gap consumes all width — fall back to stacking
+        if (area.width <= gap) {
+            return fillArea(area, count);
+        }
         const contentWidth = area.width - gap;
         let masterWidth = Math.floor(contentWidth * splitRatio);
         let stackWidth = contentWidth - masterWidth;

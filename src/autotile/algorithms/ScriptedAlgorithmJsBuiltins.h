@@ -162,5 +162,25 @@ QString deckLayoutJs();
  */
 QString distributeEvenlyJs();
 
+/**
+ * @brief JS source for equalColumnsLayout(area, count, gap, minSizes) built-in helper
+ *
+ * Equal-width columns layout with gap-aware distribution. Used as a
+ * standalone layout (columns algorithm) and as a fallback when other
+ * algorithms produce degenerate zones.
+ * Loaded from Qt resource :/builtins/equalColumnsLayout.js
+ */
+QString equalColumnsLayoutJs();
+
+/**
+ * @brief JS source for fillRegion(x, y, w, h, count) built-in helper
+ *
+ * Creates an array of identical zones covering the same region.
+ * Used as a degenerate-gap fallback when gaps exceed available space.
+ * Unlike fillArea(), this takes explicit x/y/w/h for partial regions.
+ * Loaded from Qt resource :/builtins/fillRegion.js
+ */
+QString fillRegionJs();
+
 } // namespace ScriptedHelpers
 } // namespace PlasmaZones
