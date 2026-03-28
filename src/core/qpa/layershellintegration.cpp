@@ -45,8 +45,6 @@ LayerShellIntegration::~LayerShellIntegration()
 
 bool LayerShellIntegration::initialize(QtWaylandClient::QWaylandDisplay* display)
 {
-    s_instance = this;
-
     // Get wl_display and do a registry roundtrip to bind zwlr_layer_shell_v1
     struct wl_display* wlDisplay = display->wl_display();
     m_registry = wl_display_get_registry(wlDisplay);
@@ -59,6 +57,10 @@ bool LayerShellIntegration::initialize(QtWaylandClient::QWaylandDisplay* display
                                             << "GNOME/Mutter does not implement this protocol.";
         return false;
     }
+
+    // Set singleton only after successful initialization — if initialize() returns
+    // false, Qt may destroy this object, and we must not leave a dangling s_instance.
+    s_instance = this;
 
     qCInfo(lcLayerShellIntegration) << "Layer shell integration initialized";
     return true;
@@ -112,9 +114,10 @@ void LayerShellIntegration::registryRemoveHandler(void* data, struct wl_registry
     Q_UNUSED(registry)
     auto* self = static_cast<LayerShellIntegration*>(data);
     if (id == self->m_layerShellId) {
-        qCWarning(lcLayerShellIntegration) << "zwlr_layer_shell_v1 global removed —"
+        qCWarning(lcLayerShellIntegration) << "zwlr_layer_shell_v1 global removed (id" << id << ") —"
                                            << "new layer surface creation will fail."
-                                           << "Existing layer surfaces may become invalid.";
+                                           << "Existing layer surfaces may become invalid."
+                                           << "If the compositor crashed, these surfaces are now stale.";
         // Do NOT destroy the global object here — existing LayerShellWindow
         // instances hold zwlr_layer_surface_v1 objects created from this global.
         // Destroying the global while child surfaces are alive causes UAF.

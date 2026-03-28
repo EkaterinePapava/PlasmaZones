@@ -303,15 +303,21 @@ void OverlayService::showShaderPreview(int x, int y, int width, int height, cons
     m_shaderPreviewScreen = screen;
     m_shaderPreviewShaderId = shaderId;
     m_shaderPreviewWindow->setScreen(screen);
-    m_shaderPreviewWindow->setGeometry(x, y, width, height);
 
     if (auto* layerSurface = LayerSurface::get(m_shaderPreviewWindow)) {
         const QRect screenGeom = screen->geometry();
         const int localX = x - screenGeom.x();
         const int localY = y - screenGeom.y();
+        // Batch anchors + margins into a single propertiesChanged() emission
+        LayerSurface::BatchGuard batch(layerSurface);
         layerSurface->setAnchors(LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorLeft));
         layerSurface->setMargins(QMargins(localX, localY, 0, 0));
     }
+
+    // Set window size — position is controlled by layer-surface anchors + margins,
+    // not by setX/setY which are no-ops on layer surfaces.
+    m_shaderPreviewWindow->setWidth(width);
+    m_shaderPreviewWindow->setHeight(height);
 
     // Shader properties — set all auxiliary props BEFORE shaderSource,
     // because setShaderSource() emits statusChanged() which cascades
@@ -358,7 +364,9 @@ void OverlayService::updateShaderPreview(int x, int y, int width, int height, co
     if (width > 0 && height > 0) {
         QScreen* screen = m_shaderPreviewWindow->screen();
         if (screen) {
-            m_shaderPreviewWindow->setGeometry(x, y, width, height);
+            // Size only — position is controlled by layer-surface anchors + margins.
+            m_shaderPreviewWindow->setWidth(width);
+            m_shaderPreviewWindow->setHeight(height);
             if (auto* layerSurface = LayerSurface::get(m_shaderPreviewWindow)) {
                 const QRect screenGeom = screen->geometry();
                 const int localX = x - screenGeom.x();

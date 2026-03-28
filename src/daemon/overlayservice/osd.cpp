@@ -46,6 +46,9 @@ void centerLayerWindowOnScreen(QQuickWindow* window, const QRect& screenGeom, in
     }
     const int hMargin = qMax(0, (screenGeom.width() - osdWidth) / 2);
     const int vMargin = qMax(0, (screenGeom.height() - osdHeight) / 2);
+    // Batch anchors + margins into a single propertiesChanged() emission
+    // to avoid two applyProperties()+wl_surface_commit round-trips.
+    LayerSurface::BatchGuard batch(layerSurface);
     layerSurface->setAnchors(LayerSurface::AnchorAll);
     layerSurface->setMargins(QMargins(hMargin, vMargin, hMargin, vMargin));
 }
@@ -71,13 +74,7 @@ bool OverlayService::prepareLayoutOsdWindow(QQuickWindow*& window, QRect& screen
     // Note: QCursor::pos() is NOT used here — it returns stale data for background
     // daemons on Wayland. Callers should always pass screenId from KWin effect data.
     // Accepts both connector name (e.g. "DP-2") and EDID-based screen ID (e.g. from currentScreenName).
-    QScreen* screen = nullptr;
-    if (!screenId.isEmpty()) {
-        screen = Utils::findScreenByIdOrName(screenId);
-    }
-    if (!screen) {
-        screen = Utils::primaryScreen();
-    }
+    QScreen* screen = resolveTargetScreen(screenId);
     if (!screen) {
         qCWarning(lcOverlay) << "No screen available for layout OSD";
         return false;
@@ -305,10 +302,7 @@ void OverlayService::showNavigationOsd(bool success, const QString& action, cons
 
     // Show on the screen where the navigation occurred, fallback to primary
     // Accepts both connector name and EDID-based screen ID for flexibility
-    QScreen* screen = Utils::findScreenByIdOrName(screenId);
-    if (!screen) {
-        screen = Utils::primaryScreen();
-    }
+    QScreen* screen = resolveTargetScreen(screenId);
     if (!screen) {
         qCWarning(lcOverlay) << "No screen available for navigation OSD";
         return;

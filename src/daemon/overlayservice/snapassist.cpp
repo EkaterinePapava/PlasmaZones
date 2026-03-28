@@ -32,13 +32,7 @@ void OverlayService::showSnapAssist(const QString& screenId, const QString& empt
         return;
     }
 
-    QScreen* screen = nullptr;
-    if (!screenId.isEmpty()) {
-        screen = Utils::findScreenByIdOrName(screenId);
-    }
-    if (!screen) {
-        screen = Utils::primaryScreen();
-    }
+    QScreen* screen = resolveTargetScreen(screenId);
     if (!screen) {
         qCWarning(lcOverlay) << "showSnapAssist: no screen available";
         Q_EMIT snapAssistDismissed();
@@ -119,7 +113,11 @@ void OverlayService::showSnapAssist(const QString& screenId, const QString& empt
                           LayerSurface::AnchorAll);
 
     assertWindowOnScreen(m_snapAssistWindow, screen);
-    m_snapAssistWindow->setGeometry(screen->geometry());
+    // Size only — position is controlled by layer-surface anchors (AnchorAll),
+    // setX/setY are no-ops on layer surfaces.
+    const QRect snapGeom = screen->geometry();
+    m_snapAssistWindow->setWidth(snapGeom.width());
+    m_snapAssistWindow->setHeight(snapGeom.height());
     m_snapAssistWindow->show();
     // Ensure the window receives keyboard focus for Escape handling on Wayland.
     // KeyboardInteractivityExclusive tells the compositor to send keyboard events,
@@ -283,13 +281,7 @@ void OverlayService::showLayoutPicker(const QString& screenId)
     }
 
     // Resolve target screen
-    QScreen* screen = nullptr;
-    if (!screenId.isEmpty()) {
-        screen = Utils::findScreenByIdOrName(screenId);
-    }
-    if (!screen) {
-        screen = Utils::primaryScreen();
-    }
+    QScreen* screen = resolveTargetScreen(screenId);
     if (!screen) {
         qCWarning(lcOverlay) << "showLayoutPicker: no screen available";
         return;
@@ -362,7 +354,10 @@ void OverlayService::showLayoutPicker(const QString& screenId)
                           LayerSurface::AnchorAll);
 
     assertWindowOnScreen(m_layoutPickerWindow, screen);
-    m_layoutPickerWindow->setGeometry(screenGeom);
+    // Size only — position is controlled by layer-surface anchors (AnchorAll),
+    // setX/setY are no-ops on layer surfaces.
+    m_layoutPickerWindow->setWidth(screenGeom.width());
+    m_layoutPickerWindow->setHeight(screenGeom.height());
     QMetaObject::invokeMethod(m_layoutPickerWindow, "show");
     m_layoutPickerWindow->requestActivate();
 
