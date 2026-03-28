@@ -47,19 +47,9 @@ function calculateZones(params) {
     const stackCount = count - masterCount;
     const splitRatio = Math.max(PZ_MIN_SPLIT, Math.min(PZ_MAX_SPLIT, params.splitRatio));
 
-    // Case 1: Only masters — stack vertically, full width
+    // Case 1: Only masters — delegate to shared masterStackLayout (DRY)
     if (stackCount === 0) {
-        const masterMinH = extractMinHeights(minSizes, masterCount);
-        const masterHeights = (masterMinH.length === 0)
-            ? distributeWithGaps(area.height, masterCount, gap)
-            : distributeWithMinSizes(area.height, masterCount, gap, masterMinH);
-        const zones = [];
-        let currentY = area.y;
-        for (let i = 0; i < masterCount; i++) {
-            zones.push({x: area.x, y: currentY, width: area.width, height: masterHeights[i]});
-            currentY += masterHeights[i] + gap;
-        }
-        return zones;
+        return masterStackLayout(area, count, gap, splitRatio, masterCount, minSizes, false);
     }
 
     // Case 2: One stack window — 2-column layout (masters left, stack right)

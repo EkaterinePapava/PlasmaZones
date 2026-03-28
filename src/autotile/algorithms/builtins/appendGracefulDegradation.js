@@ -16,6 +16,11 @@ function appendGracefulDegradation(zones, remaining, leftover, innerGap) {
     // primaryPos/primarySize: the axis we distribute along (x/width or y/height)
     // secondaryPos/secondarySize: the cross-axis (y/height or x/width)
     // buildZone(pos, size): returns a zone rect from primary position+size
+    //
+    // fitCount includes 1 for re-splitting the last existing zone, so total
+    // new zones produced = (fitCount - 1) fit zones + stacked remainder.
+    // The stacking loop runs for (leftover - fitCount + 1) iterations,
+    // yielding exactly `leftover` additional zones beyond the original.
     function degradeAxis(primarySize, primaryPos, buildZone) {
         if (primarySize <= 0) return;
         var maxFit = Math.max(1, Math.floor(primarySize / PZ_MIN_ZONE_SIZE));
@@ -28,6 +33,7 @@ function appendGracefulDegradation(zones, remaining, leftover, innerGap) {
             zones.push(buildZone(cursor, sizes[j]));
             cursor += sizes[j] + innerGap;
         }
+        // Stack remaining zones (that didn't fit) on top of the last zone
         for (var j2 = fitCount; j2 <= leftover; j2++) {
             var last = zones[zones.length - 1];
             zones.push({x: last.x, y: last.y, width: last.width, height: last.height});

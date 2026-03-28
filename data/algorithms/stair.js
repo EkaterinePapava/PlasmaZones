@@ -28,6 +28,11 @@ function calculateZones(params) {
     if (count <= 0) return [];
     const area = params.area;
 
+    // Degenerate screen — fill area (consistent with non-overlapping algorithms)
+    if (area.width < PZ_MIN_ZONE_SIZE || area.height < PZ_MIN_ZONE_SIZE) {
+        return fillArea(area, count);
+    }
+
     // Tighter than PZ_MIN_SPLIT/PZ_MAX_SPLIT: below 0.3 windows are too small for staircase effect
     const sizeRatio = Math.max(0.3, Math.min(0.8, params.splitRatio));
 

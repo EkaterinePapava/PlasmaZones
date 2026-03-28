@@ -28,6 +28,11 @@ function calculateZones(params) {
     if (count <= 0) return [];
     const area = params.area;
 
+    // Degenerate screen — fill area (consistent with non-overlapping algorithms)
+    if (area.width < PZ_MIN_ZONE_SIZE || area.height < PZ_MIN_ZONE_SIZE) {
+        return fillArea(area, count);
+    }
+
     // Single window: fill area (defensive — C++ ScriptedAlgorithm short-circuits
     // single-window before calling JS, but guard against standalone use)
     if (count === 1) {
