@@ -24,7 +24,7 @@ LayerShellIntegration::LayerShellIntegration() = default;
 
 LayerShellIntegration::~LayerShellIntegration()
 {
-    if (m_layerShell) {
+    if (m_layerShell && m_boundVersion >= 3) {
         zwlr_layer_shell_v1_destroy(m_layerShell);
     }
     if (m_registry) {
@@ -80,11 +80,14 @@ void LayerShellIntegration::registryHandler(void* data, struct wl_registry* regi
 {
     auto* self = static_cast<LayerShellIntegration*>(data);
     if (strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0) {
-        // Bind version 4 max (supports on_demand keyboard interactivity)
+        // Bind version 4 max (supports on_demand keyboard interactivity, added in v4).
+        // The vendored protocol XML is v5 (includes set_exclusive_edge), but we don't
+        // use v5 features. Capping at v4 avoids negotiation issues with older compositors.
         uint32_t bindVersion = qMin(version, 4u);
         self->m_layerShell = static_cast<struct zwlr_layer_shell_v1*>(
             wl_registry_bind(registry, id, &zwlr_layer_shell_v1_interface, bindVersion));
         self->m_layerShellId = id;
+        self->m_boundVersion = bindVersion;
         qCDebug(lcLayerShellIntegration) << "Bound zwlr_layer_shell_v1 v" << bindVersion;
     }
 }
@@ -98,10 +101,15 @@ void LayerShellIntegration::registryRemoveHandler(void* data, struct wl_registry
                                            << "existing layer surfaces continue to work,"
                                            << "but new layer surface creation will fail";
         if (self->m_layerShell) {
-            zwlr_layer_shell_v1_destroy(self->m_layerShell);
+            // The destroy request was added in protocol version 3. For older
+            // versions we must just drop our reference without sending destroy.
+            if (self->m_boundVersion >= 3) {
+                zwlr_layer_shell_v1_destroy(self->m_layerShell);
+            }
             self->m_layerShell = nullptr;
         }
         self->m_layerShellId = 0;
+        self->m_boundVersion = 0;
     }
 }
 

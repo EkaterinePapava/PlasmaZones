@@ -5,6 +5,7 @@
 
 #include <QMargins>
 #include <QObject>
+#include <QPointer>
 #include <QScreen>
 #include <QWindow>
 
@@ -102,6 +103,11 @@ Q_SIGNALS:
     void marginsChanged();
     void screenChanged();
 
+    /// Emitted after any property setter completes. The QPA LayerShellWindow
+    /// connects to this to push changes to the compositor immediately,
+    /// rather than waiting for the next configure event.
+    void propertiesChanged();
+
 private:
     explicit LayerSurface(QWindow* window);
 
@@ -111,7 +117,7 @@ private:
     int32_t m_exclusiveZone = -1;
     KeyboardInteractivity m_keyboard = KeyboardInteractivityNone;
     QString m_scope;
-    QScreen* m_screen = nullptr;
+    QPointer<QScreen> m_screen;
     QMargins m_margins;
 };
 

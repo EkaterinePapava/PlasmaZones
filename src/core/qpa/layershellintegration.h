@@ -41,6 +41,7 @@ private:
     struct zwlr_layer_shell_v1* m_layerShell = nullptr;
     struct wl_registry* m_registry = nullptr;
     uint32_t m_layerShellId = 0;
+    uint32_t m_boundVersion = 0;
 
     static LayerShellIntegration* s_instance;
 };

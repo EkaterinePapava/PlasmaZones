@@ -33,6 +33,8 @@ LayerSurface::LayerSurface(QWindow* window)
 
 LayerSurface::~LayerSurface()
 {
+    Q_ASSERT_X(!qApp || QThread::currentThread() == qApp->thread(), "LayerSurface::~LayerSurface",
+               "must be destroyed from the GUI thread");
     s_surfaces.remove(m_window);
 }
 
@@ -51,9 +53,10 @@ LayerSurface* LayerSurface::get(QWindow* window)
     }
 
     if (window->isVisible()) {
-        qCCritical(lcLayerSurface) << "LayerSurface::get() called after window is visible;"
-                                   << "layer and scope are immutable after show() —"
-                                   << "the returned surface's configuration will be ignored";
+        qCWarning(lcLayerSurface) << "LayerSurface::get() called after window is visible;"
+                                  << "layer, scope, and output are immutable after show()."
+                                  << "Dynamic properties (anchors, margins, keyboard, exclusiveZone)"
+                                  << "will still be pushed to the compositor.";
     }
 
     auto* surface = new LayerSurface(window);
@@ -75,6 +78,7 @@ void LayerSurface::setLayer(Layer layer)
     m_layer = layer;
     m_window->setProperty(LayerSurfaceProps::Layer, static_cast<int>(layer));
     Q_EMIT layerChanged();
+    Q_EMIT propertiesChanged();
 }
 
 LayerSurface::Layer LayerSurface::layer() const
@@ -90,6 +94,7 @@ void LayerSurface::setAnchors(Anchors anchors)
     m_anchors = anchors;
     m_window->setProperty(LayerSurfaceProps::Anchors, static_cast<int>(anchors));
     Q_EMIT anchorsChanged();
+    Q_EMIT propertiesChanged();
 }
 
 LayerSurface::Anchors LayerSurface::anchors() const
@@ -105,6 +110,7 @@ void LayerSurface::setExclusiveZone(int32_t zone)
     m_exclusiveZone = zone;
     m_window->setProperty(LayerSurfaceProps::ExclusiveZone, zone);
     Q_EMIT exclusiveZoneChanged();
+    Q_EMIT propertiesChanged();
 }
 
 int32_t LayerSurface::exclusiveZone() const
@@ -120,6 +126,7 @@ void LayerSurface::setKeyboardInteractivity(KeyboardInteractivity interactivity)
     m_keyboard = interactivity;
     m_window->setProperty(LayerSurfaceProps::Keyboard, static_cast<int>(interactivity));
     Q_EMIT keyboardInteractivityChanged();
+    Q_EMIT propertiesChanged();
 }
 
 LayerSurface::KeyboardInteractivity LayerSurface::keyboardInteractivity() const
@@ -135,6 +142,7 @@ void LayerSurface::setScope(const QString& scope)
     m_scope = scope;
     m_window->setProperty(LayerSurfaceProps::Scope, scope);
     Q_EMIT scopeChanged();
+    Q_EMIT propertiesChanged();
 }
 
 QString LayerSurface::scope() const
@@ -174,6 +182,7 @@ void LayerSurface::setMargins(const QMargins& margins)
     m_window->setProperty(LayerSurfaceProps::MarginsRight, margins.right());
     m_window->setProperty(LayerSurfaceProps::MarginsBottom, margins.bottom());
     Q_EMIT marginsChanged();
+    Q_EMIT propertiesChanged();
 }
 
 QMargins LayerSurface::margins() const

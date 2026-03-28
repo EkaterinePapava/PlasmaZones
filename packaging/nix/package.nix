@@ -22,6 +22,8 @@
   cmake,
   ninja,
   pkg-config,
+  wayland,
+  wayland-scanner,
   src,
   qt6,
   kdePackages,
@@ -68,6 +70,7 @@ stdenv.mkDerivation {
     cmake
     ninja
     pkg-config
+    wayland-scanner    # wayland-scanner (build-time protocol code generation)
     qt6.wrapQtAppsHook
     kdePackages.extra-cmake-modules
   ];
@@ -79,6 +82,7 @@ stdenv.mkDerivation {
     qt6.qtshadertools    # ShaderTools ShaderToolsPrivate (zone overlay shaders)
     qt6.qtsvg            # Svg (SVG icon rendering)
     qt6.qtwayland        # WaylandClient (layer-shell QPA plugin)
+    wayland              # Wayland::Client (libwayland-client for direct protocol usage)
   ] ++ (with kdePackages; [
     # KDE Frameworks 6 (6.6+ for Plasma 6.6)
     kcmutils

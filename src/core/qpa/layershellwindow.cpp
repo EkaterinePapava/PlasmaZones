@@ -39,13 +39,35 @@ LayerShellWindow::LayerShellWindow(LayerShellIntegration* integration, QtWayland
     // Read initial properties from QWindow dynamic properties
     int layer = qwindow->property(LayerSurfaceProps::Layer).toInt();
     QString scope = qwindow->property(LayerSurfaceProps::Scope).toString();
+    if (scope.isEmpty()) {
+        scope = QStringLiteral("plasmazones");
+    }
 
     // Create the layer surface
     m_wlSurface = QtWaylandClient::QWaylandShellIntegration::wlSurfaceForWindow(waylandWindow);
+    if (!m_wlSurface) {
+        qCCritical(lcLayerShellWindow) << "wlSurfaceForWindow returned null — cannot create layer surface";
+        return;
+    }
     m_layerSurface = zwlr_layer_shell_v1_get_layer_surface(integration->layerShell(), m_wlSurface, m_output,
                                                            static_cast<uint32_t>(layer), scope.toUtf8().constData());
 
     zwlr_layer_surface_v1_add_listener(m_layerSurface, &s_layerSurfaceListener, this);
+
+    // Connect to LayerSurface::propertiesChanged() so that property changes
+    // made after show() are immediately pushed to the compositor.
+    QVariant surfaceVar = qwindow->property(LayerSurfaceProps::Surface);
+    auto* layerSurface = surfaceVar.value<LayerSurface*>();
+    if (layerSurface) {
+        connect(layerSurface, &LayerSurface::propertiesChanged, this, [this]() {
+            if (m_layerSurface && m_configured) {
+                applyProperties();
+                if (m_wlSurface) {
+                    wl_surface_commit(m_wlSurface);
+                }
+            }
+        });
+    }
 
     // Apply all properties
     applyProperties();
@@ -89,8 +111,8 @@ void LayerShellWindow::setWindowGeometry(const QRect& rect)
         bool anchoredH = (anchors & LayerSurface::AnchorLeft) && (anchors & LayerSurface::AnchorRight);
         bool anchoredV = (anchors & LayerSurface::AnchorTop) && (anchors & LayerSurface::AnchorBottom);
 
-        uint32_t w = anchoredH ? 0 : static_cast<uint32_t>(rect.width());
-        uint32_t h = anchoredV ? 0 : static_cast<uint32_t>(rect.height());
+        uint32_t w = anchoredH ? 0 : static_cast<uint32_t>(qMax(0, rect.width()));
+        uint32_t h = anchoredV ? 0 : static_cast<uint32_t>(qMax(0, rect.height()));
         zwlr_layer_surface_v1_set_size(m_layerSurface, w, h);
 
         if (m_wlSurface) {
@@ -126,12 +148,12 @@ void LayerShellWindow::applyProperties()
     int marginBottom = qwindow->property(LayerSurfaceProps::MarginsBottom).toInt();
     zwlr_layer_surface_v1_set_margin(m_layerSurface, marginTop, marginRight, marginBottom, marginLeft);
 
-    // Size — use 0 for axes anchored to both edges
+    // Size — use 0 for axes anchored to both edges; clamp to avoid uint32_t wrap on negative
     bool anchoredH = (anchors & LayerSurface::AnchorLeft) && (anchors & LayerSurface::AnchorRight);
     bool anchoredV = (anchors & LayerSurface::AnchorTop) && (anchors & LayerSurface::AnchorBottom);
     QSize size = qwindow->size();
-    uint32_t w = anchoredH ? 0 : static_cast<uint32_t>(size.width());
-    uint32_t h = anchoredV ? 0 : static_cast<uint32_t>(size.height());
+    uint32_t w = anchoredH ? 0 : static_cast<uint32_t>(qMax(0, size.width()));
+    uint32_t h = anchoredV ? 0 : static_cast<uint32_t>(qMax(0, size.height()));
     zwlr_layer_surface_v1_set_size(m_layerSurface, w, h);
 }
 
