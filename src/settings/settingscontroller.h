@@ -503,6 +503,8 @@ public:
     Q_INVOKABLE QVariantList availableAlgorithms() const;
     Q_INVOKABLE QVariantList generateAlgorithmPreview(const QString& algorithmId, int windowCount, double splitRatio,
                                                       int masterCount) const;
+    Q_INVOKABLE void openAlgorithmsFolder();
+    Q_INVOKABLE bool importAlgorithm(const QString& filePath);
 
     // ── Per-screen autotile overrides ────────────────────────────────────────
     Q_INVOKABLE QVariantMap getPerScreenAutotileSettings(const QString& screenName) const;

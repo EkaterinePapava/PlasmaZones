@@ -53,6 +53,8 @@ ColumnLayout {
         onRequestImportFromKZones: settingsController.importFromKZones()
         onRequestImportKZonesFile: kzonesFileDialog.open()
         onRequestOpenLayoutsFolder: settingsController.openLayoutsFolder()
+        onRequestImportAlgorithm: algorithmImportDialog.open()
+        onRequestOpenAlgorithmsFolder: settingsController.openAlgorithmsFolder()
         onViewModeRequested: (mode) => {
             root.viewMode = mode;
             layoutGrid.selectedLayoutId = "";
@@ -258,7 +260,7 @@ ColumnLayout {
         id: importDialog
 
         title: i18n("Import Layout")
-        nameFilters: ["JSON files (*.json)", "All files (*)"]
+        nameFilters: [i18n("JSON files (*.json)"), i18n("All files (*)")]
         fileMode: FileDialog.OpenFile
         onAccepted: {
             settingsController.importLayout(root.filePathFromUrl(selectedFile));
@@ -272,10 +274,26 @@ ColumnLayout {
         property string layoutId: ""
 
         title: i18n("Export Layout")
-        nameFilters: ["JSON files (*.json)"]
+        nameFilters: [i18n("JSON files (*.json)")]
         fileMode: FileDialog.SaveFile
         onAccepted: {
             settingsController.exportLayout(exportDialog.layoutId, root.filePathFromUrl(selectedFile));
+        }
+    }
+
+    // Algorithm import dialog
+    FileDialog {
+        id: algorithmImportDialog
+
+        title: i18n("Import Tiling Algorithm")
+        nameFilters: [i18n("JavaScript files (*.js)"), i18n("All files (*)")]
+        fileMode: FileDialog.OpenFile
+        onAccepted: {
+            if (settingsController.importAlgorithm(root.filePathFromUrl(selectedFile))) {
+                if (window && window.showToast)
+                    window.showToast(i18n("Algorithm imported"));
+
+            }
         }
     }
 
@@ -284,7 +302,7 @@ ColumnLayout {
         id: kzonesFileDialog
 
         title: i18n("Import KZones Layout File")
-        nameFilters: ["JSON files (*.json)", "All files (*)"]
+        nameFilters: [i18n("JSON files (*.json)"), i18n("All files (*)")]
         fileMode: FileDialog.OpenFile
         onAccepted: {
             settingsController.importFromKZonesFile(root.filePathFromUrl(selectedFile));
