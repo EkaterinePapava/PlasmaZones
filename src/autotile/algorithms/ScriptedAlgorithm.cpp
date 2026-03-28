@@ -764,8 +764,8 @@ void ScriptedAlgorithm::prepareTilingState(TilingState* state) const
     // Reset split ratio to our default when it still holds a value from a
     // different algorithm (e.g. MasterStack's 0.6). Small differences within
     // the hysteresis band are kept so user fine-tuning is not discarded.
-    static constexpr qreal SplitRatioHysteresis = AutotileDefaults::SplitRatioHysteresis;
-    if (currentRatio > defRatio + SplitRatioHysteresis || currentRatio < defRatio - SplitRatioHysteresis) {
+    if (currentRatio > defRatio + AutotileDefaults::SplitRatioHysteresis
+        || currentRatio < defRatio - AutotileDefaults::SplitRatioHysteresis) {
         state->setSplitRatio(defRatio);
     }
 

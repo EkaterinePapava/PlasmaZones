@@ -11,6 +11,11 @@ namespace PlasmaZones {
 
 bool hardenSandbox(QJSEngine* engine)
 {
+    Q_ASSERT(engine);
+    if (!engine) {
+        return false;
+    }
+
     // Safe evaluate wrapper — checks for errors on all sandbox-hardening calls.
     // Non-critical hardening steps log warnings but do not abort.
     auto safeEval = [engine](const QString& code, const QString& context) {

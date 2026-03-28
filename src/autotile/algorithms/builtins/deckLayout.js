@@ -15,6 +15,9 @@
  */
 function deckLayout(area, count, focusedFraction, horizontal = false) {
     if (count <= 0) return [];
+    if (area.width <= 0 || area.height <= 0) {
+        return fillArea(area, count);
+    }
     const axisSize = horizontal ? area.height : area.width;
     const bgCount = count - 1;
     const focusedSize = Math.max(1, Math.floor(axisSize * focusedFraction));

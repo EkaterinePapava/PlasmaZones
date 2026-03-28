@@ -14,6 +14,7 @@
  * @returns {Array<{pos: number, size: number}>}
  */
 function distributeEvenly(start, total, count, gap) {
+    gap = Math.max(0, gap);
     if (count <= 0) return [];
     if (total <= 0) {
         const r = [];

@@ -195,9 +195,14 @@ void ScriptedAlgorithmLoader::loadFromDirectory(const QString& dir, bool isUserD
         auto* registry = AlgorithmRegistry::instance();
         algo->setUserScript(isUserDir);
 
-        // Warn when a user script overrides a bundled algorithm ID
-        if (isUserDir && registry->hasAlgorithm(scriptId)) {
-            qCWarning(lcAutotile) << "User script overrides bundled algorithm:" << scriptId << "from=" << fullPath;
+        // Warn when a script overrides an existing algorithm ID
+        if (registry->hasAlgorithm(scriptId)) {
+            if (isUserDir) {
+                qCWarning(lcAutotile) << "User script overrides bundled algorithm:" << scriptId << "from=" << fullPath;
+            } else {
+                qCWarning(lcAutotile) << "System script overrides existing algorithm:" << scriptId
+                                      << "from=" << fullPath;
+            }
         }
 
         registry->registerAlgorithm(scriptId, algo);

@@ -65,6 +65,15 @@ function calculateZones(params) {
     const area = params.area;
     const gap = Math.max(0, params.innerGap || 0);
 
+    if (area.width < PZ_MIN_ZONE_SIZE || area.height < PZ_MIN_ZONE_SIZE) {
+        return fillArea(area, count);
+    }
+
+    // Single window: fill full area (consistent with all other algorithms)
+    if (count === 1) {
+        return [{ x: area.x, y: area.y, width: area.width, height: area.height }];
+    }
+
     const splitRatio = Math.max(PZ_MIN_SPLIT, Math.min(PZ_MAX_SPLIT, params.splitRatio));
 
     const centerW = Math.floor(area.width * splitRatio);

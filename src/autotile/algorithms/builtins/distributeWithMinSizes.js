@@ -9,6 +9,7 @@
  * Port of TilingAlgorithm::distributeWithMinSizes.
  */
 function distributeWithMinSizes(total, count, gap, minDims) {
+    gap = Math.max(0, gap);
     if (count <= 0) return [];
     if (total <= 0) {
         // Return count-length array of 1s so callers can safely index

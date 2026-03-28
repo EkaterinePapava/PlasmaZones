@@ -30,6 +30,10 @@ function calculateZones(params) {
     const splitRatio = params.splitRatio;
     const minSizes = params.minSizes || [];
 
+    if (area.width < PZ_MIN_ZONE_SIZE || area.height < PZ_MIN_ZONE_SIZE) {
+        return fillArea(area, count);
+    }
+
     // Single window: fill area
     if (count === 1) {
         return [{ x: area.x, y: area.y, width: area.width, height: area.height }];

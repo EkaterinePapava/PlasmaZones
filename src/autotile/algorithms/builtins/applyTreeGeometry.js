@@ -30,7 +30,7 @@ function applyTreeGeometry(node, rect, gap, _depth) {
     if (!node.first || !node.second) {
         return [{x: rect.x, y: rect.y, width: Math.max(1, rect.width), height: Math.max(1, rect.height)}];
     }
-    const ratio = Math.max(0.1, Math.min(0.9, node.ratio || 0.5));
+    const ratio = Math.max(PZ_MIN_SPLIT, Math.min(PZ_MAX_SPLIT, node.ratio || 0.5));
     let zones = [];
     let content;
     if (node.horizontal) {

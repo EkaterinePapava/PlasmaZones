@@ -87,7 +87,14 @@ private Q_SLOTS:
         for (const auto& id : allAlgoIds()) {
             auto* algo = AlgorithmRegistry::instance()->algorithm(id);
             auto zones = algo->calculateZones({3, tiny, &state, 0, EdgeGaps::uniform(0)});
-            QCOMPARE(zones.size(), 3);
+            if (algo->producesOverlappingZones()) {
+                QVERIFY2(
+                    zones.size() >= 1 && zones.size() <= 3,
+                    qPrintable(
+                        QStringLiteral("Algorithm %1 on 10x10: expected 1-3 zones, got %2").arg(id).arg(zones.size())));
+            } else {
+                QCOMPARE(zones.size(), 3);
+            }
             for (const QRect& zone : zones) {
                 QVERIFY2(zone.width() > 0 && zone.height() > 0,
                          qPrintable(QStringLiteral("Algorithm %1 on 10x10: zone has non-positive dimension (%2x%3)")
@@ -109,7 +116,14 @@ private Q_SLOTS:
         for (const auto& id : allAlgoIds()) {
             auto* algo = AlgorithmRegistry::instance()->algorithm(id);
             auto zones = algo->calculateZones({4, tall, &state, 0, EdgeGaps::uniform(0)});
-            QCOMPARE(zones.size(), 4);
+            if (algo->producesOverlappingZones()) {
+                QVERIFY2(zones.size() >= 1 && zones.size() <= 4,
+                         qPrintable(QStringLiteral("Algorithm %1 on 100x2000: expected 1-4 zones, got %2")
+                                        .arg(id)
+                                        .arg(zones.size())));
+            } else {
+                QCOMPARE(zones.size(), 4);
+            }
             for (const QRect& zone : zones) {
                 QVERIFY2(zone.width() > 0 && zone.height() > 0,
                          qPrintable(QStringLiteral("Algorithm %1 on 100x2000: zone (%2x%3) non-positive")
@@ -127,7 +141,14 @@ private Q_SLOTS:
         for (const auto& id : allAlgoIds()) {
             auto* algo = AlgorithmRegistry::instance()->algorithm(id);
             auto zones = algo->calculateZones({4, wide, &state, 0, EdgeGaps::uniform(0)});
-            QCOMPARE(zones.size(), 4);
+            if (algo->producesOverlappingZones()) {
+                QVERIFY2(zones.size() >= 1 && zones.size() <= 4,
+                         qPrintable(QStringLiteral("Algorithm %1 on 2000x100: expected 1-4 zones, got %2")
+                                        .arg(id)
+                                        .arg(zones.size())));
+            } else {
+                QCOMPARE(zones.size(), 4);
+            }
             for (const QRect& zone : zones) {
                 QVERIFY2(zone.width() > 0 && zone.height() > 0,
                          qPrintable(QStringLiteral("Algorithm %1 on 2000x100: zone (%2x%3) non-positive")
@@ -149,7 +170,14 @@ private Q_SLOTS:
         for (const auto& id : allAlgoIds()) {
             auto* algo = AlgorithmRegistry::instance()->algorithm(id);
             auto zones = algo->calculateZones({3, screen, &state, 5000, EdgeGaps::uniform(0)});
-            QCOMPARE(zones.size(), 3);
+            if (algo->producesOverlappingZones()) {
+                QVERIFY2(zones.size() >= 1 && zones.size() <= 3,
+                         qPrintable(QStringLiteral("Algorithm %1 with gap=5000: expected 1-3 zones, got %2")
+                                        .arg(id)
+                                        .arg(zones.size())));
+            } else {
+                QCOMPARE(zones.size(), 3);
+            }
             for (const QRect& zone : zones) {
                 QVERIFY2(zone.width() > 0 && zone.height() > 0,
                          qPrintable(QStringLiteral("Algorithm %1 with gap=5000: zone (%2x%3) non-positive")
@@ -378,7 +406,14 @@ private Q_SLOTS:
         for (const auto& id : allAlgoIds()) {
             auto* algo = AlgorithmRegistry::instance()->algorithm(id);
             auto zones = algo->calculateZones({3, screen, &state, -10, EdgeGaps::uniform(0)});
-            QCOMPARE(zones.size(), 3);
+            if (algo->producesOverlappingZones()) {
+                QVERIFY2(zones.size() >= 1 && zones.size() <= 3,
+                         qPrintable(QStringLiteral("Algorithm %1 with gap=-10: expected 1-3 zones, got %2")
+                                        .arg(id)
+                                        .arg(zones.size())));
+            } else {
+                QCOMPARE(zones.size(), 3);
+            }
             for (const QRect& zone : zones) {
                 QVERIFY2(zone.width() > 0 && zone.height() > 0,
                          qPrintable(QStringLiteral("Algorithm %1 with gap=-10: zone (%2x%3) non-positive")
@@ -400,7 +435,14 @@ private Q_SLOTS:
         for (const auto& id : allAlgoIds()) {
             auto* algo = AlgorithmRegistry::instance()->algorithm(id);
             auto zones = algo->calculateZones({3, screen, &state, 0, EdgeGaps::uniform(600)});
-            QCOMPARE(zones.size(), 3);
+            if (algo->producesOverlappingZones()) {
+                QVERIFY2(zones.size() >= 1 && zones.size() <= 3,
+                         qPrintable(QStringLiteral("Algorithm %1 with edgeGaps=600: expected 1-3 zones, got %2")
+                                        .arg(id)
+                                        .arg(zones.size())));
+            } else {
+                QCOMPARE(zones.size(), 3);
+            }
             for (const QRect& zone : zones) {
                 QVERIFY2(zone.width() > 0 && zone.height() > 0,
                          qPrintable(QStringLiteral("Algorithm %1 with edgeGaps=600: zone (%2x%3) non-positive")

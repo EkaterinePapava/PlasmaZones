@@ -49,7 +49,7 @@ function lShapeLayout(area, count, gap, splitRatio, distribute = 'alternate', bo
     if (typeof bottomWidth === 'number') btmW = bottomWidth;
     const rightTotalGaps = (rightCount - 1) * gap;
     const bottomTotalGaps = (bottomCount - 1) * gap;
-    if ((rightCount > 0 && rightTotalGaps >= rH) || (bottomCount > 0 && bottomTotalGaps >= btmW)) {
+    if ((rightCount > 0 && rH - rightTotalGaps <= 0) || (bottomCount > 0 && btmW - bottomTotalGaps <= 0)) {
         for (let i = 1; i < count; i++) {
             zones.push({ x: area.x, y: area.y, width: area.width, height: area.height });
         }

@@ -16,7 +16,7 @@ function solveTwoPart(contentDim, firstDim, secondDim, minFirst, minSecond) {
     } else {
         // Simultaneously satisfy both constraints: ensure firstDim >= minFirst
         // while also ensuring secondDim (= contentDim - firstDim) >= minSecond.
-        firstDim = Math.max(minFirst, contentDim - Math.max(minSecond, contentDim - firstDim));
+        firstDim = Math.max(minFirst, contentDim - Math.max(minSecond, 0, contentDim - firstDim));
         secondDim = contentDim - firstDim;
     }
     firstDim = Math.max(0, firstDim);
