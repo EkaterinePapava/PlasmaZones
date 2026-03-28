@@ -97,6 +97,12 @@ ScriptedAlgorithm::ScriptedAlgorithm(const QString& filePath, QObject* parent)
     // statics) that is thread-safe for first-call but not for concurrent QJSEngine
     // evaluation. Enforce the single-thread contract.
     Q_ASSERT(!QCoreApplication::instance() || QThread::currentThread() == QCoreApplication::instance()->thread());
+    // Runtime guard — Q_ASSERT vanishes in release builds but QJSEngine corruption
+    // from off-thread construction is silent and catastrophic.
+    if (QCoreApplication::instance() && QThread::currentThread() != QCoreApplication::instance()->thread()) {
+        qCCritical(lcAutotile) << "ScriptedAlgorithm must be constructed on the main thread";
+        return;
+    }
     m_watchdog->engine = m_engine;
     m_watchdog->watchdogThread = std::thread([ctx = m_watchdog]() {
         while (true) {
@@ -277,7 +283,9 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
                                                      QStringLiteral("builtin:constants"));
     const QJSValue constResult3 = m_engine->evaluate(QStringLiteral("var PZ_MAX_SPLIT = %1;").arg(MaxSplitRatio),
                                                      QStringLiteral("builtin:constants"));
-    if (constResult1.isError() || constResult2.isError() || constResult3.isError()) {
+    const QJSValue constResult4 = m_engine->evaluate(
+        QStringLiteral("var MAX_TREE_DEPTH = %1;").arg(MaxRuntimeTreeDepth), QStringLiteral("builtin:constants"));
+    if (constResult1.isError() || constResult2.isError() || constResult3.isError() || constResult4.isError()) {
         qCWarning(lcAutotile) << "ScriptedAlgorithm: constant injection failed, file=" << filePath;
         return false;
     }
@@ -288,6 +296,7 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         QLatin1String("PZ_MIN_ZONE_SIZE"),
         QLatin1String("PZ_MIN_SPLIT"),
         QLatin1String("PZ_MAX_SPLIT"),
+        QLatin1String("MAX_TREE_DEPTH"),
     };
     for (const auto& name : earlyFreezeConstants) {
         m_engine->evaluate(
@@ -334,6 +343,8 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     //   masterStackLayout   → fillArea, extractRegionMaxMin, solveTwoPart,
     //                         extractMinDims, distributeWithOptionalMins
     //   equalColumnsLayout  → extractMinDims, distributeWithOptionalMins
+    //   threeColumnLayout   → fillArea, extractRegionMaxMin, solveThreeColumn,
+    //                         extractMinDims, interleaveStacks, distributeWithOptionalMins
     if (!injectBuiltin(ScriptedHelpers::applyTreeGeometryJs(), QStringLiteral("builtin:applyTreeGeometry"))
         || !injectBuiltin(ScriptedHelpers::lShapeLayoutJs(), QStringLiteral("builtin:lShapeLayout"))
         || !injectBuiltin(ScriptedHelpers::distributeEvenlyJs(), QStringLiteral("builtin:distributeEvenly"))
@@ -354,7 +365,8 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         || !injectBuiltin(ScriptedHelpers::fillAreaJs(), QStringLiteral("builtin:fillArea"))
         || !injectBuiltin(ScriptedHelpers::deckLayoutJs(), QStringLiteral("builtin:deckLayout"))
         || !injectBuiltin(ScriptedHelpers::masterStackLayoutJs(), QStringLiteral("builtin:masterStackLayout"))
-        || !injectBuiltin(ScriptedHelpers::equalColumnsLayoutJs(), QStringLiteral("builtin:equalColumnsLayout"))) {
+        || !injectBuiltin(ScriptedHelpers::equalColumnsLayoutJs(), QStringLiteral("builtin:equalColumnsLayout"))
+        || !injectBuiltin(ScriptedHelpers::threeColumnLayoutJs(), QStringLiteral("builtin:threeColumnLayout"))) {
         return false;
     }
 
@@ -369,10 +381,11 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     // NOT frozen. When adding a new builtin helper, add its exported
     // global name(s) here.
     static const QLatin1String frozenGlobals[] = {
-        // Injected constants
+        // Injected constants (from C++ AutotileDefaults)
         QLatin1String("PZ_MIN_ZONE_SIZE"),
         QLatin1String("PZ_MIN_SPLIT"),
         QLatin1String("PZ_MAX_SPLIT"),
+        QLatin1String("MAX_TREE_DEPTH"),
         // Helpers from ScriptedAlgorithmJsBuiltins
         QLatin1String("applyTreeGeometry"),
         QLatin1String("lShapeLayout"),
@@ -398,12 +411,10 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         QLatin1String("masterStackLayout"),
         QLatin1String("equalColumnsLayout"),
         QLatin1String("fillRegion"),
-        QLatin1String("MAX_TREE_DEPTH"), // from applyTreeGeometry (declared with `var` so it's a
-        // freezable global property; `const` would be block-scoped
-        // and invisible to Object.defineProperty on `this`)
+        QLatin1String("threeColumnLayout"),
         QLatin1String("_extractMinDims"), // internal helper from extractMinDims (used by extractMinWidths/Heights)
     };
-    static_assert(std::size(frozenGlobals) == 29, "frozenGlobals count mismatch — did you add a new builtin?");
+    static_assert(std::size(frozenGlobals) == 30, "frozenGlobals count mismatch — did you add a new builtin?");
     for (const auto& name : frozenGlobals) {
         QJSValue freezeResult = m_engine->evaluate(
             QStringLiteral("Object.defineProperty(this, '%1', {writable: false, configurable: false});").arg(name));

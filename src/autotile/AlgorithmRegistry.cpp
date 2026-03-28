@@ -230,7 +230,7 @@ QString AlgorithmRegistry::defaultAlgorithmId()
 TilingAlgorithm* AlgorithmRegistry::defaultAlgorithm() const
 {
     auto* algo = algorithm(defaultAlgorithmId());
-    if (!algo && !m_algorithms.isEmpty()) {
+    if (!algo && !m_algorithms.isEmpty() && !m_registrationOrder.isEmpty()) {
         // Configured default not registered (e.g. BSP script failed to load).
         // Fall back to the first available algorithm so callers never get nullptr
         // when algorithms are registered.

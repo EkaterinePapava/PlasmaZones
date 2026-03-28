@@ -27,7 +27,7 @@ function calculateZones(params) {
     if (count <= 0) return [];
     const area = params.area;
     const gap = params.innerGap;
-    const splitRatio = params.splitRatio;
+    const splitRatio = Math.max(PZ_MIN_SPLIT, Math.min(PZ_MAX_SPLIT, params.splitRatio));
     const minSizes = params.minSizes || [];
 
     if (area.width < PZ_MIN_ZONE_SIZE || area.height < PZ_MIN_ZONE_SIZE) {
@@ -41,9 +41,8 @@ function calculateZones(params) {
 
     // Two windows: simple left/right split
     if (count === 2) {
-        const ratio = Math.max(PZ_MIN_SPLIT, Math.min(splitRatio, PZ_MAX_SPLIT));
         const contentWidth = Math.max(1, area.width - gap);
-        let masterWidth = Math.floor(contentWidth * ratio);
+        let masterWidth = Math.floor(contentWidth * splitRatio);
         let stackWidth = contentWidth - masterWidth;
 
         // Joint min-width solve for 2-window case
@@ -73,69 +72,6 @@ function calculateZones(params) {
         return zones;
     }
 
-    // Three or more windows: true three-column layout
-    // TODO: Extract shared 3-column layout logic with centered-master.js (see PR #259 review)
-    const clampedRatio = Math.max(PZ_MIN_SPLIT, Math.min(splitRatio, PZ_MAX_SPLIT));
-    const contentWidth = area.width - 2 * gap;
-
-    if (contentWidth <= 0) {
-        return fillArea(area, count);
-    }
-
-    // Count windows for each column (excluding master)
-    const stackCount = count - 1;
-    const leftCount = Math.ceil(stackCount / 2); // Left gets extra if odd
-    const rightCount = stackCount - leftCount;
-
-    // Compute per-column minimum widths from minSizes
-    // Zone ordering: [center(0), left1(1), right1(2), left2(3), right2(4), ...]
-    const stackIsLeft = buildStackIsLeft(stackCount, leftCount, rightCount);
-    let minCenterWidth = 0;
-    if (minSizes.length > 0) {
-        minCenterWidth = (minSizes[0].w > 0) ? minSizes[0].w : 0;
-    }
-    const sideMinW = (minSizes.length > 0)
-        ? interleaveMinWidths(minSizes, stackIsLeft, stackCount, 1)
-        : {minLeftWidth: 0, minRightWidth: 0};
-    const minLeftWidth = sideMinW.minLeftWidth;
-    const minRightWidth = sideMinW.minRightWidth;
-
-    const cols = solveThreeColumn(area.x, contentWidth, gap, clampedRatio,
-                                minLeftWidth, minCenterWidth, minRightWidth);
-
-    const leftWidth = cols.leftWidth;
-    const centerWidth = cols.centerWidth;
-    const rightWidth = cols.rightWidth;
-    const leftX = cols.leftX;
-    const centerX = cols.centerX;
-    const rightX = cols.rightX;
-
-    // Build per-column min heights from minSizes interleaving order
-    const sideMinH = (minSizes.length > 0)
-        ? interleaveMinHeights(minSizes, stackIsLeft, stackCount, leftCount, rightCount, 1)
-        : {leftMinH: [], rightMinH: []};
-    const leftMinHeights = sideMinH.leftMinH;
-    const rightMinHeights = sideMinH.rightMinH;
-
-    // Calculate heights with gaps between vertically stacked zones
-    let leftHeights = [];
-    if (leftCount > 0) {
-        leftHeights = distributeWithOptionalMins(area.height, leftCount, gap, leftMinHeights);
-    }
-
-    let rightHeights = [];
-    if (rightCount > 0) {
-        rightHeights = distributeWithOptionalMins(area.height, rightCount, gap, rightMinHeights);
-    }
-
-    // First zone: center/master (full height)
-    const zones = [];
-    zones.push({x: centerX, y: area.y, width: centerWidth, height: area.height});
-
-    // Interleave left and right column windows
-    assignInterleavedStacks(zones, stackIsLeft, stackCount,
-                            leftX, rightX, leftWidth, rightWidth,
-                            leftHeights, rightHeights, area.y, gap);
-
-    return zones;
+    // Three or more windows: true three-column layout (masterCount = 1)
+    return threeColumnLayout(area, count, gap, splitRatio, 1, minSizes);
 }

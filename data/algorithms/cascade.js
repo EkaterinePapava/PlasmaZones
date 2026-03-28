@@ -23,6 +23,12 @@
  * @param {Object} params - Tiling parameters
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
+// Cascade-specific ratio bounds (tighter than PZ_MIN_SPLIT/PZ_MAX_SPLIT)
+var CascadeMinOffsetRatio = 0.02;
+var CascadeMaxOffsetRatio = 0.4;
+var CascadeMinOffsetPx = 20;   // Minimum per-step offset in pixels
+var CascadeMinWindowPx = 100;  // Minimum window dimension in pixels
+
 function calculateZones(params) {
     const count = params.windowCount;
     if (count <= 0) return [];
@@ -33,25 +39,25 @@ function calculateZones(params) {
         return fillArea(area, count);
     }
 
-    // Clamp splitRatio to cascade-specific range (0.02-0.4), tighter than the
+    // Clamp splitRatio to cascade-specific range, tighter than the
     // global PZ_MIN_SPLIT/PZ_MAX_SPLIT used by non-overlapping algorithms.
-    const offsetRatio = Math.max(0.02, Math.min(0.4, params.splitRatio));
+    const offsetRatio = Math.max(CascadeMinOffsetRatio, Math.min(CascadeMaxOffsetRatio, params.splitRatio));
 
     // Single window: no cascade offset needed — fill entire area
     if (count === 1) {
         return [{ x: area.x, y: area.y, width: area.width, height: area.height }];
     }
 
-    // Initial minimum of 20px per step; may be reduced by maxOffset clamp below
-    // when window minimum sizes constrain the available cascade space.
-    let offsetX = Math.max(20, Math.floor(area.width * offsetRatio / (count - 1)));
-    let offsetY = Math.max(20, Math.floor(area.height * offsetRatio / (count - 1)));
+    // Initial minimum of CascadeMinOffsetPx per step; may be reduced by maxOffset
+    // clamp below when window minimum sizes constrain the available cascade space.
+    let offsetX = Math.max(CascadeMinOffsetPx, Math.floor(area.width * offsetRatio / (count - 1)));
+    let offsetY = Math.max(CascadeMinOffsetPx, Math.floor(area.height * offsetRatio / (count - 1)));
 
     // Each window is sized to fill the area minus the total cascade offset
     const totalOffsetX = offsetX * (count - 1);
     const totalOffsetY = offsetY * (count - 1);
-    const winWidth = Math.max(100, area.width - totalOffsetX);
-    const winHeight = Math.max(100, area.height - totalOffsetY);
+    const winWidth = Math.max(CascadeMinWindowPx, area.width - totalOffsetX);
+    const winHeight = Math.max(CascadeMinWindowPx, area.height - totalOffsetY);
 
     // Clamp offsets so last window stays within area
     const maxOffsetX = Math.max(1, Math.floor((area.width - winWidth) / Math.max(1, count - 1)));

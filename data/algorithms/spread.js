@@ -21,6 +21,9 @@
  * @param {Object} params - Tiling parameters
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
+// Spread-specific minimum width fraction (below this, windows are too narrow)
+var SpreadMinFraction = 0.3;
+
 function calculateZones(params) {
     const count = params.windowCount;
     if (count <= 0) return [];
@@ -31,9 +34,9 @@ function calculateZones(params) {
     const gap = params.innerGap;
     const minSizes = params.minSizes || [];
 
-    // Clamp widthFraction to [0.3, 1.0] — upper bound is 1.0 (not PZ_MAX_SPLIT)
+    // Clamp widthFraction to [SpreadMinFraction, 1.0] — upper bound is 1.0 (not PZ_MAX_SPLIT)
     // because spread windows should be able to fill their entire slot.
-    const widthFraction = Math.max(0.3, Math.min(params.splitRatio, 1.0));
+    const widthFraction = Math.max(SpreadMinFraction, Math.min(params.splitRatio, 1.0));
 
     // Extract per-window minimum sizes.
     // Slot minimums are scaled up by 1/widthFraction so the window minimum is

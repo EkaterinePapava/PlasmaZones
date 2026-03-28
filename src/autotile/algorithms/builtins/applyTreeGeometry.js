@@ -15,10 +15,8 @@
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
 
-// Must match AutotileDefaults::MaxRuntimeTreeDepth in core/constants.h
-// Use var so the property attaches to the global object and can be frozen
-// by Object.defineProperty in the C++ sandbox (const is block-scoped in V4).
-var MAX_TREE_DEPTH = 50;
+// MAX_TREE_DEPTH is injected by the C++ sandbox from AutotileDefaults::MaxRuntimeTreeDepth
+// (core/constants.h) and frozen before this script runs. No local declaration needed.
 
 function applyTreeGeometry(node, rect, gap, _depth) {
     _depth = _depth || 0;

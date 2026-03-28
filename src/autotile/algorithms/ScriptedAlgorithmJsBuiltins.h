@@ -191,5 +191,14 @@ QString fillRegionJs();
  */
 QString distributeWithOptionalMinsJs();
 
+/**
+ * @brief JS source for threeColumnLayout(area, count, gap, splitRatio, masterCount, minSizes) helper
+ *
+ * Shared implementation for centered-master and three-column layouts.
+ * masterCount=1: three-column behavior. masterCount>1: centered-master behavior.
+ * Loaded from Qt resource :/builtins/threeColumnLayout.js
+ */
+QString threeColumnLayoutJs();
+
 } // namespace ScriptedHelpers
 } // namespace PlasmaZones

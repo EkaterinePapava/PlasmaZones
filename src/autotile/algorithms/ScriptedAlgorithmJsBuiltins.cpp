@@ -153,5 +153,11 @@ QString distributeWithOptionalMinsJs()
     return s;
 }
 
+QString threeColumnLayoutJs()
+{
+    static const QString s = loadBuiltinJs(QStringLiteral("threeColumnLayout.js"));
+    return s;
+}
+
 } // namespace ScriptedHelpers
 } // namespace PlasmaZones

@@ -23,6 +23,10 @@
  * @param {Object} params - Tiling parameters
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
+// Stair-specific ratio bounds (tighter than PZ_MIN_SPLIT/PZ_MAX_SPLIT)
+var StairMinSizeRatio = 0.3;
+var StairMaxSizeRatio = 0.8;
+
 function calculateZones(params) {
     const count = params.windowCount;
     if (count <= 0) return [];
@@ -38,8 +42,8 @@ function calculateZones(params) {
         return [{ x: area.x, y: area.y, width: area.width, height: area.height }];
     }
 
-    // Tighter than PZ_MIN_SPLIT/PZ_MAX_SPLIT: below 0.3 windows are too small for staircase effect
-    const sizeRatio = Math.max(0.3, Math.min(0.8, params.splitRatio));
+    // Tighter than PZ_MIN_SPLIT/PZ_MAX_SPLIT: below StairMinSizeRatio windows are too small
+    const sizeRatio = Math.max(StairMinSizeRatio, Math.min(StairMaxSizeRatio, params.splitRatio));
 
     // All windows are the same size (min 100px to preserve the C++ staircase visual minimum)
     const StairMinWindowPx = 100;

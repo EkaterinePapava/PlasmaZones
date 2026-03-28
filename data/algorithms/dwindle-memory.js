@@ -34,6 +34,11 @@ function calculateZones(params) {
     const gap = params.innerGap;
     const minSizes = params.minSizes || [];
 
+    // Degenerate screen — fall back before checking tree
+    if (area.width < PZ_MIN_ZONE_SIZE || area.height < PZ_MIN_ZONE_SIZE) {
+        return fillArea(area, count);
+    }
+
     // Use persistent split tree if available and leaf count matches
     // Note: minSizes are not applied when using persistent tree splits.
     // The tree stores ratios that reflect the user's manual adjustments.
