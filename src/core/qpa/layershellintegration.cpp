@@ -101,6 +101,7 @@ void LayerShellIntegration::registryRemoveHandler(void* data, struct wl_registry
             zwlr_layer_shell_v1_destroy(self->m_layerShell);
             self->m_layerShell = nullptr;
         }
+        self->m_layerShellId = 0;
     }
 }
 

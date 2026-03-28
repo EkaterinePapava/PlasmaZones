@@ -151,6 +151,14 @@ void LayerShellWindow::handleConfigure(void* data, struct zwlr_layer_surface_v1*
         qwindow->resize(static_cast<int>(width), static_cast<int>(height));
     }
 
+    // Re-apply current properties and commit so the compositor sees
+    // up-to-date anchors/margins/size immediately after the configure,
+    // rather than waiting for the next Qt-driven applyConfigure() cycle.
+    self->applyProperties();
+    if (self->m_wlSurface) {
+        wl_surface_commit(self->m_wlSurface);
+    }
+
     // Trigger exposure so Qt starts rendering
     QWindow* qwindow = self->m_waylandWindow->window();
     if (qwindow) {

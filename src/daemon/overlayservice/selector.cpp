@@ -241,15 +241,8 @@ void OverlayService::createZoneSelectorWindow(QScreen* screen)
     const auto pos = static_cast<ZoneSelectorPosition>(config.position);
 
     // Configure layer surface for zone selector (LayerTop for pointer input)
-    if (auto* layerSurface = LayerSurface::get(window)) {
-        layerSurface->setScreen(screen);
-        layerSurface->setLayer(LayerSurface::LayerTop);
-        layerSurface->setKeyboardInteractivity(LayerSurface::KeyboardInteractivityNone);
-
-        layerSurface->setAnchors(getAnchorsForPosition(pos));
-        layerSurface->setExclusiveZone(-1);
-        layerSurface->setScope(QStringLiteral("plasmazones-selector-%1").arg(screen->name()));
-    }
+    configureLayerSurface(window, screen, LayerSurface::LayerTop, LayerSurface::KeyboardInteractivityNone,
+                          QStringLiteral("plasmazones-selector-%1").arg(screen->name()), getAnchorsForPosition(pos));
 
     // Set screen properties for layout preview scaling
     qreal aspectRatio =

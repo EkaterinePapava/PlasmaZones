@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "layersurface.h"
+#include "qpa/layershellintegration.h"
 #include "logging.h"
 
 #include <QHash>
+#include <QThread>
+#include <QCoreApplication>
 
 Q_LOGGING_CATEGORY(lcLayerSurface, "plasmazones.layersurface")
 
@@ -12,6 +15,7 @@ namespace PlasmaZones {
 
 // Global registry: QWindow* → LayerSurface*
 // LayerSurface is parented to the QWindow, so it is destroyed when the window is.
+// Only accessed from the GUI thread (enforced by Q_ASSERT in get()).
 static QHash<QWindow*, LayerSurface*> s_surfaces;
 
 LayerSurface::LayerSurface(QWindow* window)
@@ -34,6 +38,9 @@ LayerSurface::~LayerSurface()
 
 LayerSurface* LayerSurface::get(QWindow* window)
 {
+    Q_ASSERT_X(!qApp || QThread::currentThread() == qApp->thread(), "LayerSurface::get",
+               "must be called from the GUI thread");
+
     if (!window) {
         return nullptr;
     }
@@ -44,13 +51,20 @@ LayerSurface* LayerSurface::get(QWindow* window)
     }
 
     if (window->isVisible()) {
-        qCWarning(lcLayerSurface) << "LayerSurface::get() called after window is visible;"
-                                  << "layer and scope are immutable after show()";
+        qCCritical(lcLayerSurface) << "LayerSurface::get() called after window is visible;"
+                                   << "layer and scope are immutable after show() —"
+                                   << "the returned surface's configuration will be ignored";
     }
 
     auto* surface = new LayerSurface(window);
     s_surfaces.insert(window, surface);
     return surface;
+}
+
+bool LayerSurface::isSupported()
+{
+    auto* integration = LayerShellIntegration::instance();
+    return integration && integration->layerShell();
 }
 
 void LayerSurface::setLayer(Layer layer)
@@ -90,7 +104,7 @@ void LayerSurface::setExclusiveZone(int32_t zone)
     }
     m_exclusiveZone = zone;
     m_window->setProperty(LayerSurfaceProps::ExclusiveZone, zone);
-    Q_EMIT exclusionZoneChanged();
+    Q_EMIT exclusiveZoneChanged();
 }
 
 int32_t LayerSurface::exclusiveZone() const
@@ -120,6 +134,7 @@ void LayerSurface::setScope(const QString& scope)
     }
     m_scope = scope;
     m_window->setProperty(LayerSurfaceProps::Scope, scope);
+    Q_EMIT scopeChanged();
 }
 
 QString LayerSurface::scope() const
@@ -132,13 +147,13 @@ void LayerSurface::setScreen(QScreen* screen)
     if (m_screen == screen) {
         return;
     }
-    m_screen = screen;
-    if (screen) {
-        m_window->setScreen(screen);
-    }
     if (m_window->isVisible()) {
         qCWarning(lcLayerSurface) << "setScreen() called after show(); output binding is immutable"
                                   << "— the layer surface remains on the original screen";
+    }
+    m_screen = screen;
+    if (screen) {
+        m_window->setScreen(screen);
     }
     Q_EMIT screenChanged();
 }

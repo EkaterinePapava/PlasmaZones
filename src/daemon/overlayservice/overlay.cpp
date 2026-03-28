@@ -306,15 +306,10 @@ void OverlayService::createOverlayWindow(QScreen* screen)
     }
 
     // Configure layer surface for full-screen overlay
-    if (auto* layerSurface = LayerSurface::get(window)) {
-        layerSurface->setScreen(screen);
-        layerSurface->setLayer(LayerSurface::LayerOverlay);
-        layerSurface->setKeyboardInteractivity(LayerSurface::KeyboardInteractivityNone);
-        layerSurface->setAnchors(LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorBottom
-                                                       | LayerSurface::AnchorLeft | LayerSurface::AnchorRight));
-        layerSurface->setExclusiveZone(-1);
-        layerSurface->setScope(QStringLiteral("plasmazones-overlay-%1").arg(screen->name()));
-    }
+    configureLayerSurface(window, screen, LayerSurface::LayerOverlay, LayerSurface::KeyboardInteractivityNone,
+                          QStringLiteral("plasmazones-overlay-%1").arg(screen->name()),
+                          LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorBottom
+                                                | LayerSurface::AnchorLeft | LayerSurface::AnchorRight));
 
     if (!Platform::isSupported()) {
         qCWarning(lcOverlay) << "Platform: not supported, requires Wayland";

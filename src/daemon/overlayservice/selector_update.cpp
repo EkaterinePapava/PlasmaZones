@@ -261,55 +261,42 @@ void OverlayService::updateZoneSelectorWindow(QScreen* screen)
         // exclusiveZone(-1) ignores panel geometry; the popup renders at absolute screen
         // coordinates over any panels, so hover coordinates match (no offset mismatch).
 
-        // Initialize to Top position as safe default
-        LayerSurface::Anchors anchors =
-            LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorLeft | LayerSurface::AnchorRight);
-        QMargins margins = QMargins(hMargin, 0, hMargin, std::max(0, screenH - layout.barHeight));
+        // Anchors use the shared helper (single source of truth for position→anchors mapping)
+        LayerSurface::Anchors anchors = getAnchorsForPosition(pos);
 
+        // Margins are position-specific: center the bar within the anchored region
+        QMargins margins;
         switch (pos) {
         case ZoneSelectorPosition::TopLeft:
-            anchors = LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorLeft);
             margins = QMargins(0, 0, screenW - layout.barWidth, screenH - layout.barHeight);
             break;
         case ZoneSelectorPosition::Top:
-            anchors =
-                LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorLeft | LayerSurface::AnchorRight);
             margins = QMargins(hMargin, 0, hMargin, std::max(0, screenH - layout.barHeight));
             break;
         case ZoneSelectorPosition::TopRight:
-            anchors = LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorRight);
             margins = QMargins(screenW - layout.barWidth, 0, 0, screenH - layout.barHeight);
             break;
         case ZoneSelectorPosition::Left:
-            anchors =
-                LayerSurface::Anchors(LayerSurface::AnchorLeft | LayerSurface::AnchorTop | LayerSurface::AnchorBottom);
             margins = QMargins(0, vMargin, 0, vMargin);
             break;
         case ZoneSelectorPosition::Right:
-            anchors =
-                LayerSurface::Anchors(LayerSurface::AnchorRight | LayerSurface::AnchorTop | LayerSurface::AnchorBottom);
             margins = QMargins(0, vMargin, 0, vMargin);
             break;
         case ZoneSelectorPosition::BottomLeft:
-            anchors = LayerSurface::Anchors(LayerSurface::AnchorBottom | LayerSurface::AnchorLeft);
             margins = QMargins(0, screenH - layout.barHeight, screenW - layout.barWidth, 0);
             break;
         case ZoneSelectorPosition::Bottom:
-            anchors = LayerSurface::Anchors(LayerSurface::AnchorBottom | LayerSurface::AnchorLeft
-                                            | LayerSurface::AnchorRight);
             margins = QMargins(hMargin, std::max(0, screenH - layout.barHeight), hMargin, 0);
             break;
         case ZoneSelectorPosition::BottomRight:
-            anchors = LayerSurface::Anchors(LayerSurface::AnchorBottom | LayerSurface::AnchorRight);
             margins = QMargins(screenW - layout.barWidth, screenH - layout.barHeight, 0, 0);
             break;
         case ZoneSelectorPosition::Center:
-            anchors = LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorBottom
-                                            | LayerSurface::AnchorLeft | LayerSurface::AnchorRight);
             margins = QMargins(0, 0, 0, 0);
             break;
         default:
-            // Already initialized to Top position
+            // Default to Top margins (matches getAnchorsForPosition default)
+            margins = QMargins(hMargin, 0, hMargin, std::max(0, screenH - layout.barHeight));
             break;
         }
         layerSurface->setAnchors(anchors);

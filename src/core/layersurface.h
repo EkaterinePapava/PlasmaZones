@@ -89,11 +89,16 @@ public:
     /// Ownership follows QObject parent (window).
     static LayerSurface* get(QWindow* window);
 
+    /// Returns true if the compositor supports zwlr_layer_shell_v1.
+    /// Only valid after QGuiApplication is constructed and the QPA plugin has initialized.
+    static bool isSupported();
+
 Q_SIGNALS:
     void layerChanged();
     void anchorsChanged();
-    void exclusionZoneChanged();
+    void exclusiveZoneChanged();
     void keyboardInteractivityChanged();
+    void scopeChanged();
     void marginsChanged();
     void screenChanged();
 

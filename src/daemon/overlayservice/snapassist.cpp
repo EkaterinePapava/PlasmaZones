@@ -114,15 +114,10 @@ void OverlayService::showSnapAssist(const QString& screenId, const QString& empt
     }
 
     // Match main overlay: full-screen anchors so zone coordinates (overlay-local) line up
-    if (auto* layerSurface = LayerSurface::get(m_snapAssistWindow)) {
-        layerSurface->setScreen(screen);
-        layerSurface->setLayer(LayerSurface::LayerTop);
-        layerSurface->setKeyboardInteractivity(LayerSurface::KeyboardInteractivityExclusive);
-        layerSurface->setAnchors(LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorBottom
-                                                       | LayerSurface::AnchorLeft | LayerSurface::AnchorRight));
-        layerSurface->setExclusiveZone(-1);
-        layerSurface->setScope(QStringLiteral("plasmazones-snap-assist"));
-    }
+    configureLayerSurface(m_snapAssistWindow, screen, LayerSurface::LayerTop,
+                          LayerSurface::KeyboardInteractivityExclusive, QStringLiteral("plasmazones-snap-assist"),
+                          LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorBottom
+                                                | LayerSurface::AnchorLeft | LayerSurface::AnchorRight));
 
     assertWindowOnScreen(m_snapAssistWindow, screen);
     m_snapAssistWindow->setGeometry(screen->geometry());
@@ -363,15 +358,10 @@ void OverlayService::showLayoutPicker(const QString& screenId)
     }
 
     // Full-screen layer shell with keyboard interactivity
-    if (auto* layerSurface = LayerSurface::get(m_layoutPickerWindow)) {
-        layerSurface->setScreen(screen);
-        layerSurface->setLayer(LayerSurface::LayerTop);
-        layerSurface->setKeyboardInteractivity(LayerSurface::KeyboardInteractivityExclusive);
-        layerSurface->setAnchors(LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorBottom
-                                                       | LayerSurface::AnchorLeft | LayerSurface::AnchorRight));
-        layerSurface->setExclusiveZone(-1);
-        layerSurface->setScope(QStringLiteral("plasmazones-layout-picker"));
-    }
+    configureLayerSurface(m_layoutPickerWindow, screen, LayerSurface::LayerTop,
+                          LayerSurface::KeyboardInteractivityExclusive, QStringLiteral("plasmazones-layout-picker"),
+                          LayerSurface::Anchors(LayerSurface::AnchorTop | LayerSurface::AnchorBottom
+                                                | LayerSurface::AnchorLeft | LayerSurface::AnchorRight));
 
     assertWindowOnScreen(m_layoutPickerWindow, screen);
     m_layoutPickerWindow->setGeometry(screenGeom);

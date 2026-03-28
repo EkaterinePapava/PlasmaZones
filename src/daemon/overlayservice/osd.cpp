@@ -254,14 +254,9 @@ void OverlayService::createLayoutOsdWindow(QScreen* screen)
     }
 
     // Configure layer surface for Wayland overlay (prevents window from appearing in taskbar)
-    if (auto* layerSurface = LayerSurface::get(window)) {
-        layerSurface->setScreen(screen);
-        layerSurface->setLayer(LayerSurface::LayerOverlay);
-        layerSurface->setKeyboardInteractivity(LayerSurface::KeyboardInteractivityNone);
-        // Anchors will be set dynamically in showLayoutOsd() based on window size
-        layerSurface->setScope(QStringLiteral("plasmazones-layout-osd-%1").arg(screen->name()));
-        layerSurface->setExclusiveZone(-1);
-    }
+    // Anchors will be set dynamically in showLayoutOsd() based on window size
+    configureLayerSurface(window, screen, LayerSurface::LayerOverlay, LayerSurface::KeyboardInteractivityNone,
+                          QStringLiteral("plasmazones-layout-osd-%1").arg(screen->name()));
 
     auto layoutOsdConn = connect(window, SIGNAL(dismissed()), this, SLOT(hideLayoutOsd()));
     if (!layoutOsdConn) {
@@ -433,13 +428,8 @@ void OverlayService::createNavigationOsdWindow(QScreen* screen)
     }
 
     // Configure layer surface for Wayland overlay
-    if (auto* layerSurface = LayerSurface::get(window)) {
-        layerSurface->setScreen(screen);
-        layerSurface->setLayer(LayerSurface::LayerOverlay);
-        layerSurface->setKeyboardInteractivity(LayerSurface::KeyboardInteractivityNone);
-        layerSurface->setScope(QStringLiteral("plasmazones-navigation-osd-%1").arg(screen->name()));
-        layerSurface->setExclusiveZone(-1);
-    }
+    configureLayerSurface(window, screen, LayerSurface::LayerOverlay, LayerSurface::KeyboardInteractivityNone,
+                          QStringLiteral("plasmazones-navigation-osd-%1").arg(screen->name()));
 
     auto navOsdConn = connect(window, SIGNAL(dismissed()), this, SLOT(hideNavigationOsd()));
     if (!navOsdConn) {
