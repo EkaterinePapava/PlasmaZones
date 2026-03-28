@@ -31,15 +31,15 @@ namespace {
 /// while an evaluation is in flight would corrupt engine state.
 struct ReentrancyGuard
 {
-    bool& flag;
-    explicit ReentrancyGuard(bool& f)
+    std::atomic<bool>& flag;
+    explicit ReentrancyGuard(std::atomic<bool>& f)
         : flag(f)
     {
-        flag = true;
+        flag.store(true, std::memory_order_relaxed);
     }
     ~ReentrancyGuard()
     {
-        flag = false;
+        flag.store(false, std::memory_order_relaxed);
     }
     Q_DISABLE_COPY_MOVE(ReentrancyGuard)
 };
@@ -415,12 +415,18 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         QLatin1String("_extractMinDims"), // internal helper from extractMinDims (used by extractMinWidths/Heights)
     };
     static_assert(std::size(frozenGlobals) == 30, "frozenGlobals count mismatch — did you add a new builtin?");
+    bool freezeFailed = false;
     for (const auto& name : frozenGlobals) {
         QJSValue freezeResult = m_engine->evaluate(
             QStringLiteral("Object.defineProperty(this, '%1', {writable: false, configurable: false});").arg(name));
         if (freezeResult.isError()) {
             qCWarning(lcAutotile) << "Failed to freeze global:" << name << freezeResult.toString();
+            freezeFailed = true;
         }
+    }
+    if (freezeFailed) {
+        qCWarning(lcAutotile) << "ScriptedAlgorithm: aborting load — global freeze failed, file=" << filePath;
+        return false;
     }
 
     // Use guardedCall helper for watchdog arm-evaluate-disarm-check pattern.
@@ -831,10 +837,13 @@ void ScriptedAlgorithm::prepareTilingState(TilingState* state) const
         return; // No tree needed for 0-1 windows
     }
 
+    // Cap window count to prevent unbounded tree growth (MaxZones = 256)
+    const int maxWindows = qMin(static_cast<int>(tiledWindows.size()), AutotileDefaults::MaxZones);
+
     const qreal ratio = state->splitRatio();
     auto newTree = std::make_unique<SplitTree>();
-    for (const QString& windowId : tiledWindows) {
-        newTree->insertAtEnd(windowId, ratio);
+    for (int i = 0; i < maxWindows; ++i) {
+        newTree->insertAtEnd(tiledWindows[i], ratio);
     }
     state->setSplitTree(std::move(newTree));
 }

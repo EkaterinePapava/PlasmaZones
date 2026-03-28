@@ -249,9 +249,18 @@ Q_SIGNALS:
     /**
      * @brief Emitted when an algorithm is unregistered
      *
-     * On replacement, the new algorithm is already in the registry when this
-     * signal fires — handlers should not assume the ID is absent.
-     * On explicit unregister, the algorithm has been removed before emission.
+     * This signal has dual semantics depending on the trigger:
+     *
+     * **Replacement** (re-registration with the same ID): the new algorithm is
+     * already registered under @p id when this signal fires. Calling
+     * @c algorithm(id) returns the replacement, and @c hasAlgorithm(id) is true.
+     *
+     * **Explicit unregister**: the algorithm has been removed before emission.
+     * Calling @c algorithm(id) returns @c nullptr, and @c hasAlgorithm(id)
+     * is false.
+     *
+     * Handlers that need to distinguish between the two cases should call
+     * @c hasAlgorithm(id) inside the slot.
      *
      * @param id The removed algorithm's ID
      */

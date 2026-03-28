@@ -69,8 +69,14 @@ void AlgorithmRegistry::cleanup()
     // them here prevents double-free if we then synchronously delete the
     // same pointer (impossible today, but defensive against future changes)
     // and ensures QJSEngine internals are torn down while Qt is alive.
+    //
+    // Use per-object sendPostedEvents() instead of the nullptr overload,
+    // which would drain ALL deferred-delete events globally — potentially
+    // destroying objects owned by unrelated subsystems mid-shutdown.
     if (QCoreApplication::instance()) {
-        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        for (auto* algo : std::as_const(m_algorithms)) {
+            QCoreApplication::sendPostedEvents(algo, QEvent::DeferredDelete);
+        }
     }
 
     // Explicitly delete all algorithm children while Qt is still alive.

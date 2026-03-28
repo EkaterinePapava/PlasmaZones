@@ -24,6 +24,7 @@
  * @param {Object} params - Tiling parameters
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
+// Note: this algorithm does not support per-window minimum sizes (minSizes).
 function calculateZones(params) {
     const count = params.windowCount;
     if (count <= 0) return [];

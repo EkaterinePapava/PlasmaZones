@@ -237,7 +237,11 @@ function bspApplyGeometry(node, rect, innerGap, minSizes, leafStartIdx, depth) {
         const secondRect = {x: rect.x, y: rect.y + firstHeight + innerGap, width: rect.width, height: secondHeight};
 
         // Guard: skip split if either partition is degenerate
-        if (firstRect.width <= 0 || firstRect.height <= 0 || secondRect.width <= 0 || secondRect.height <= 0) return;
+        if (firstRect.width <= 0 || firstRect.height <= 0 || secondRect.width <= 0 || secondRect.height <= 0) {
+            zeroLeaves(node.first);
+            zeroLeaves(node.second);
+            return;
+        }
 
         bspApplyGeometry(node.first, firstRect, innerGap, minSizes, leafStartIdx, depth + 1);
         bspApplyGeometry(node.second, secondRect, innerGap, minSizes, leafStartIdx + firstChildLeaves, depth + 1);
@@ -251,7 +255,11 @@ function bspApplyGeometry(node, rect, innerGap, minSizes, leafStartIdx, depth) {
         const secondRect = {x: rect.x + firstWidth + innerGap, y: rect.y, width: secondWidth, height: rect.height};
 
         // Guard: skip split if either partition is degenerate
-        if (firstRect.width <= 0 || firstRect.height <= 0 || secondRect.width <= 0 || secondRect.height <= 0) return;
+        if (firstRect.width <= 0 || firstRect.height <= 0 || secondRect.width <= 0 || secondRect.height <= 0) {
+            zeroLeaves(node.first);
+            zeroLeaves(node.second);
+            return;
+        }
 
         bspApplyGeometry(node.first, firstRect, innerGap, minSizes, leafStartIdx, depth + 1);
         bspApplyGeometry(node.second, secondRect, innerGap, minSizes, leafStartIdx + firstChildLeaves, depth + 1);
@@ -301,4 +309,15 @@ function findLargestLeaf(node, depth) {
 function chooseSplitDirection(geometry) {
     // Split perpendicular to longest axis for balanced regions
     return geometry.height > geometry.width;
+}
+
+function zeroLeaves(node) {
+    if (!node) return;
+    if (!node.first && !node.second) {
+        node.geometry = { x: 0, y: 0, width: 0, height: 0 };
+        node.cachedArea = 0;
+        return;
+    }
+    if (node.first) zeroLeaves(node.first);
+    if (node.second) zeroLeaves(node.second);
 }

@@ -110,14 +110,13 @@ private Q_SLOTS:
         engine.config()->maxWindows = 4;
         engine.retile();
 
-        // The backfill is called from syncFromSettings/setAlgorithm, not retile().
-        // Trigger it manually via the engine's exposed method pattern.
-        // Since backfillWindows is private, we test the observable effect through
-        // the settings bridge: config maxWindows increase alone does not trigger
-        // backfill without syncFromSettings. This test verifies the gate behavior.
-        // TODO: strengthen this test — currently only verifies the gate behavior,
-        // not actual backfill. Wire up Settings + syncFromSettings to test real
-        // backfill path.
+        // backfillWindows is private and only invoked via syncFromSettings(), which
+        // requires a fully-wired Settings object. Without that wiring, retile()
+        // alone does not trigger backfill — it only re-tiles already-tiled windows.
+        // Therefore this assertion can only verify the maxWindows gate kept the
+        // original 2 windows tiled; it cannot verify that win3 was backfilled.
+        // A full-integration test with Settings + syncFromSettings is needed to
+        // exercise the real backfill path (see TestSettingsIntegration).
         QVERIFY(state->tiledWindowCount() >= 2);
     }
 

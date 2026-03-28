@@ -31,6 +31,9 @@ ScriptedAlgorithmLoader::~ScriptedAlgorithmLoader()
     // Guard: during static destruction, AlgorithmRegistry (a Meyer's singleton)
     // may already be destroyed. QCoreApplication being null is a reliable proxy
     // for "we are in static destruction" — skip cleanup to avoid dangling pointer.
+    // Registry deletes its owned algorithms unconditionally for leak prevention;
+    // the loader only manages registration state, which is meaningless without
+    // QCoreApplication.
     if (!QCoreApplication::instance())
         return;
     auto* registry = AlgorithmRegistry::instance();

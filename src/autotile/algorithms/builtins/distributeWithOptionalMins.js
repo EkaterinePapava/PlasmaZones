@@ -15,7 +15,7 @@
  * @returns {number[]} Array of distributed sizes
  */
 function distributeWithOptionalMins(total, count, gap, minDims) {
-    if (minDims.length === 0) {
+    if (!minDims || minDims.length === 0) {
         return distributeWithGaps(total, count, gap);
     }
     return distributeWithMinSizes(total, count, gap, minDims);

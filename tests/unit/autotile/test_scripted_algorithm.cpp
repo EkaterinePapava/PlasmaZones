@@ -913,6 +913,109 @@ private Q_SLOTS:
     }
 
     // =========================================================================
+    // @builtinId validation edge cases
+    // =========================================================================
+
+    void testBuiltinId_scriptPrefixRejected()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString script = QStringLiteral(
+            "// @name Script Prefix Test\n"
+            "// @description builtinId with script: prefix should be rejected\n"
+            "// @builtinId script:bad\n"
+            "function calculateZones(params) { return []; }\n");
+        QString path = writeTempScript(dir, QStringLiteral("script-prefix.js"), script);
+
+        ScriptedAlgorithm algo(path);
+        QVERIFY(algo.isValid());
+        // script: prefix is rejected — builtinId should remain empty
+        QVERIFY2(
+            algo.builtinId().isEmpty(),
+            qPrintable(QStringLiteral("Expected empty builtinId for 'script:bad', got '%1'").arg(algo.builtinId())));
+    }
+
+    void testBuiltinId_uppercaseRejected()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString script = QStringLiteral(
+            "// @name Uppercase Test\n"
+            "// @description builtinId with uppercase should be rejected\n"
+            "// @builtinId UPPERCASE\n"
+            "function calculateZones(params) { return []; }\n");
+        QString path = writeTempScript(dir, QStringLiteral("uppercase-id.js"), script);
+
+        ScriptedAlgorithm algo(path);
+        QVERIFY(algo.isValid());
+        // Regex ^[a-z][a-z0-9-]*$ rejects uppercase
+        QVERIFY2(
+            algo.builtinId().isEmpty(),
+            qPrintable(QStringLiteral("Expected empty builtinId for 'UPPERCASE', got '%1'").arg(algo.builtinId())));
+    }
+
+    void testBuiltinId_startsWithDigitRejected()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString script = QStringLiteral(
+            "// @name Digit Start Test\n"
+            "// @description builtinId starting with digit should be rejected\n"
+            "// @builtinId 123startnum\n"
+            "function calculateZones(params) { return []; }\n");
+        QString path = writeTempScript(dir, QStringLiteral("digit-start.js"), script);
+
+        ScriptedAlgorithm algo(path);
+        QVERIFY(algo.isValid());
+        // Regex ^[a-z][a-z0-9-]*$ requires first char to be lowercase letter
+        QVERIFY2(
+            algo.builtinId().isEmpty(),
+            qPrintable(QStringLiteral("Expected empty builtinId for '123startnum', got '%1'").arg(algo.builtinId())));
+    }
+
+    void testBuiltinId_longValueTruncatedTo64()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        // Create a valid builtinId that is 65+ characters long
+        // Pattern: a-followed-by-64-more lowercase chars = 65 total
+        QString longId = QStringLiteral("a") + QString(64, QLatin1Char('b')); // 65 chars
+        QCOMPARE(longId.size(), 65);
+
+        QString script = QStringLiteral(
+                             "// @name Long ID Test\n"
+                             "// @description builtinId longer than 64 chars should be truncated\n"
+                             "// @builtinId ")
+            + longId
+            + QStringLiteral("\n"
+                             "function calculateZones(params) { return []; }\n");
+        QString path = writeTempScript(dir, QStringLiteral("long-id.js"), script);
+
+        ScriptedAlgorithm algo(path);
+        QVERIFY(algo.isValid());
+        // .left(64) truncation — builtinId should be exactly 64 chars
+        QVERIFY2(!algo.builtinId().isEmpty(), "Expected non-empty builtinId for a valid but long ID");
+        QCOMPARE(algo.builtinId().size(), 64);
+        QCOMPARE(algo.builtinId(), longId.left(64));
+    }
+
+    void testBuiltinId_validValueAccepted()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString script = QStringLiteral(
+            "// @name Valid ID Test\n"
+            "// @description Valid builtinId should be accepted\n"
+            "// @builtinId my-custom-algo\n"
+            "function calculateZones(params) { return []; }\n");
+        QString path = writeTempScript(dir, QStringLiteral("valid-id.js"), script);
+
+        ScriptedAlgorithm algo(path);
+        QVERIFY(algo.isValid());
+        QCOMPARE(algo.builtinId(), QStringLiteral("my-custom-algo"));
+    }
+
+    // =========================================================================
     // Frozen globals integrity test (INFRA-3)
     // =========================================================================
 

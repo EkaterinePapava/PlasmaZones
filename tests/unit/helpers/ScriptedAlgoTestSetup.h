@@ -79,9 +79,9 @@ public:
 
         // Verify a minimum number of algorithms loaded to catch silent JS/builtin failures
         auto* registry = AlgorithmRegistry::instance();
-        if (registry->availableAlgorithms().size() < 15) {
+        if (registry->availableAlgorithms().size() < 24) {
             qWarning() << "ScriptedAlgoTestSetup: Only" << registry->availableAlgorithms().size()
-                       << "algorithms loaded, expected at least 15";
+                       << "algorithms loaded, expected at least 24 (15 C++ builtins + 9 JS-native)";
             return false;
         }
         return true;

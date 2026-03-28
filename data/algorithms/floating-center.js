@@ -59,6 +59,7 @@ function renderPanel(zones, startX, startY, panelW, panelH, count, gap, horizont
     }
 }
 
+// Note: this algorithm does not support per-window minimum sizes (minSizes).
 function calculateZones(params) {
     const count = params.windowCount;
     if (count <= 0) return [];
@@ -67,6 +68,16 @@ function calculateZones(params) {
 
     if (area.width < PZ_MIN_ZONE_SIZE || area.height < PZ_MIN_ZONE_SIZE) {
         return fillArea(area, count);
+    }
+
+    // Single window: just center it in the area (no margins/panels needed)
+    if (count === 1) {
+        const splitRatio1 = Math.max(PZ_MIN_SPLIT, Math.min(PZ_MAX_SPLIT, params.splitRatio));
+        const cw = Math.floor(area.width * splitRatio1);
+        const ch = Math.floor(area.height * splitRatio1);
+        const cx = area.x + Math.floor((area.width - cw) / 2);
+        const cy = area.y + Math.floor((area.height - ch) / 2);
+        return [{ x: cx, y: cy, width: cw, height: ch }];
     }
 
     const splitRatio = Math.max(PZ_MIN_SPLIT, Math.min(PZ_MAX_SPLIT, params.splitRatio));
