@@ -25,8 +25,14 @@ Define zones on your screen. Drag windows into them. Done.
 - [How It Works](#how-it-works)
 - [Features](#features)
   - [Window Snapping](#window-snapping)
+  - [Layout Editor](#layout-editor)
   - [Autotiling](#autotiling)
   - [Shader Effects](#shader-effects)
+  - [Snap Assist](#snap-assist)
+  - [Zone Selector](#zone-selector)
+  - [Layout Picker](#layout-picker)
+  - [Multi-Monitor & Virtual Desktops](#multi-monitor--virtual-desktops)
+  - [Settings App](#settings-app)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Keyboard Shortcuts](#keyboard-shortcuts)
@@ -82,7 +88,7 @@ Hold **Alt** (or your configured modifier) while dragging a window. Zones light 
 ### Layout Editor
 
 - Visual canvas for drawing and resizing zones
-- 12 built-in templates (columns, grids, fibonacci, master-stack, focus+stack, and more)
+- 26 built-in templates (columns, grids, fibonacci, master-stack, focus+stack, and more)
 - Undo/redo, copy/paste, cut, duplicate
 - Split zones horizontally or vertically
 - Grid and edge snapping
@@ -97,7 +103,7 @@ Hold **Alt** (or your configured modifier) while dragging a window. Zones light 
 
 ### Autotiling
 
-Enable autotiling per-screen and windows arrange themselves using one of 11 algorithms:
+Enable autotiling per-screen and windows arrange themselves using one of 24 built-in algorithms:
 
 | Algorithm | Description |
 |-----------|-------------|
@@ -108,10 +114,25 @@ Enable autotiling per-screen and windows arrange themselves using one of 11 algo
 | Rows | Equal horizontal rows |
 | Grid | Automatic grid arrangement |
 | Dwindle | Recursive halving, alternating direction |
+| Dwindle (Memory) | Dwindle with persistent split positions — resize without affecting others |
 | Spiral | Recursive halving in a spiral |
 | BSP | Binary space partitioning |
 | Wide | Horizontal main area with stacked columns below |
 | Monocle | One window at a time, cycle between them |
+| Cascade | Overlapping windows in a diagonal cascade |
+| Corner Master | Master in a corner, rest fill the L-shaped remainder |
+| Deck | Focused window takes the left portion, others peek from the right |
+| Floating Center | Centered main window with peripheral panels on all sides |
+| Focus+Sidebar | Main window with vertically stacked sidebar |
+| Horizontal Deck | Focused window on top, others peek from the bottom |
+| Paper | Equal-width overlapping pages like a document viewer |
+| Quadrant Priority | First window gets a large corner quadrant |
+| Spread | Windows spread evenly across the screen with overlap |
+| Stair | Stepped staircase arrangement |
+| Tatami | Japanese tatami mat pattern — no four corners meet |
+| Zen | Centered column with margins for distraction-free work |
+
+All algorithms are written in JavaScript and run in a sandboxed engine. You can create your own custom algorithms — see the [Tiling Algorithms Guide](https://github.com/fuddlesworth/PlasmaZones/wiki/Tiling-Algorithms) on the wiki.
 
 - Per-screen algorithm selection with independent settings
 - Configurable master ratio and master count (separate settings for Centered Master vs Master+Stack)
@@ -135,18 +156,27 @@ Enable autotiling per-screen and windows arrange themselves using one of 11 algo
 
 ### Shader Effects
 
-14 built-in GLSL shader effects for zone overlays, including audio-reactive visuals:
+23 built-in GLSL shader effects for zone overlays, including audio-reactive visuals:
 
 | Effect | Description |
 |--------|-------------|
+| Arch Drift | Procedural Arch Linux logo with terminal rain and audio reactivity |
 | Aretha Shell | Cyberpunk hex grid with data streams |
 | Berry Drift | Metaball blobs in berry and violet tones |
 | CachyOS Drift | Crystalline drift with domain-warped FBM and iridescent glow |
 | Cosmic Flow | Fractal noise with animated colors |
+| Ember Trace | Fractal fire patterns with ping-pong feedback and eruption shockwaves |
+| EndeavourOS Drift | Tri-sail logo over constellation network with per-sail audio |
+| Fedora Drift | Infinity-f logo with neon tube strokes and northern-lights sky |
+| KDE Neon Drift | KDE gear logo with concentric rings and orbital dots |
 | Liquid Canvas | Wallpaper as a liquid painting with flow distortion |
 | Magnetic Field | Mouse-reactive field with orbiting particles |
 | Mosaic Pulse | Audio-reactive stained glass mosaic |
+| Neon Phantom | Ghosted neon energy with hexagonal lattice and scanline glitch |
 | Nexus Cascade | Plasma with distortion, bloom, and chromatic aberration |
+| NixOS Drift | Snowflake logo with aurora curtains and hexagonal Voronoi lattice |
+| openSUSE Drift | Chameleon scale field with thin-film color shifting and Geeko logo |
+| Plasma Sigil | Holographic PlasmaZones icon as a glowing energy sigil |
 | Prismata | Prismatic facets with audio-reactive chromatic fracture |
 | Sonic Ripple | Audio-reactive concentric rings with bass shockwaves |
 | Spectrum Bloom | Polar contour with frequency-driven shape morphing |
@@ -301,7 +331,7 @@ sudo cmake --install build
 ```
 
 This builds only the daemon and editor — no KWin effect or KCM.
-See [Compositor Integration](docs/compositor-integration.md) for
+See [Compositor Integration](https://github.com/fuddlesworth/PlasmaZones/wiki/Compositor-Integration) for
 shortcut and config setup on non-KDE compositors.
 
 After installation, enable the daemon:
@@ -562,34 +592,37 @@ systemctl --user restart plasmazones.service
 
 ## D-Bus API
 
-PlasmaZones exposes 7 D-Bus interfaces for scripting and integration:
+PlasmaZones exposes 10 D-Bus interfaces for scripting and integration:
 
 | Interface | Purpose |
 |-----------|---------|
 | `Autotile` | Autotiling engine control, algorithm selection, window float/unfloat |
+| `CompositorBridge` | Compositor-agnostic bridge protocol for non-KWin compositors |
+| `Control` | High-level convenience API for third-party integrations and scripts |
 | `LayoutManager` | Layout CRUD, screen/desktop/activity assignment, quick slots |
 | `Overlay` | Zone overlay visibility, highlighting, zone detection, Zone Selector |
 | `Screen` | Screen enumeration, geometry, scale, add/remove notifications |
 | `Settings` | Configuration load/save/reset, get/set by key |
+| `Shader` | Shader discovery, parameter introspection, compilation lifecycle |
 | `WindowDrag` | Window drag lifecycle from KWin, snap geometry response |
 | `WindowTracking` | Window-to-zone tracking, pre-snap geometry, floating state |
 
 ```bash
 # List all layouts
-qdbus org.plasmazones /PlasmaZones org.plasmazones.LayoutManager.getLayoutList
+qdbus6 org.plasmazones /PlasmaZones org.plasmazones.LayoutManager.getLayoutList
 
 # Get active layout (returns JSON)
-qdbus org.plasmazones /PlasmaZones org.plasmazones.LayoutManager.getActiveLayout
+qdbus6 org.plasmazones /PlasmaZones org.plasmazones.LayoutManager.getActiveLayout
 
 # Switch layout
-qdbus org.plasmazones /PlasmaZones org.plasmazones.LayoutManager.setActiveLayout "{uuid}"
+qdbus6 org.plasmazones /PlasmaZones org.plasmazones.LayoutManager.setActiveLayout "{uuid}"
 
 # Show/hide overlay
-qdbus org.plasmazones /PlasmaZones org.plasmazones.Overlay.showOverlay
-qdbus org.plasmazones /PlasmaZones org.plasmazones.Overlay.hideOverlay
+qdbus6 org.plasmazones /PlasmaZones org.plasmazones.Overlay.showOverlay
+qdbus6 org.plasmazones /PlasmaZones org.plasmazones.Overlay.hideOverlay
 
 # Get all screens
-qdbus org.plasmazones /PlasmaZones org.plasmazones.Screen.getScreens
+qdbus6 org.plasmazones /PlasmaZones org.plasmazones.Screen.getScreens
 ```
 
 Full API documentation: [wiki — D-Bus API](https://github.com/fuddlesworth/PlasmaZones/wiki/D-Bus-API)
@@ -601,7 +634,7 @@ Full API documentation: [wiki — D-Bus API](https://github.com/fuddlesworth/Pla
 ```
 src/
 ├── autotile/           # Autotiling engine, per-screen config
-│   └── algorithms/     # 14 tiling algorithms (master-stack, dwindle, bsp, etc.)
+│   └── algorithms/     # 24 tiling algorithms (master-stack, dwindle, bsp, etc.)
 ├── snap/               # Snap engine (zone matching, multi-zone selection)
 ├── core/               # Zone, Layout, LayoutManager, ShaderRegistry
 │   ├── geometryutils/  # Geometry math helpers
@@ -621,7 +654,7 @@ src/
 │   ├── helpers/        # D-Bus queries, serialization, batch operations
 │   ├── services/       # Snapping, templates, zone manager
 │   └── undo/           # Undo/redo command system
-├── dbus/               # D-Bus adaptors (7 interfaces)
+├── dbus/               # D-Bus adaptors (10 interfaces)
 ├── config/             # Settings (QSettingsConfigBackend), update checker
 ├── ui/                 # QML components (OSD, overlays, zone selector)
 └── shared/             # Shared QML components and plugins
@@ -630,7 +663,8 @@ kwin-effect/            # KWin effect plugin
 └── autotilehandler/    # Autotile event handling from KWin
 data/
 ├── layouts/            # Default layout templates (12)
-└── shaders/            # Built-in GLSL shader effects (13) + shared utilities
+├── algorithms/         # Built-in JS tiling algorithms (24) — user scripts in ~/.local/share/plasmazones/algorithms/
+└── shaders/            # Built-in GLSL shader effects (23) + shared utilities
 packaging/
 ├── arch/               # AUR PKGBUILD (source, binary, git)
 ├── debian/             # Debian packaging
@@ -639,7 +673,7 @@ packaging/
 └── rpm/                # RPM spec
 cmake/                  # CMake helpers (format-qml, uninstall)
 tests/unit/             # Unit tests (autotile, config, core, helpers, ui)
-dbus/                   # D-Bus XML interface definitions (7 interfaces)
+dbus/                   # D-Bus XML interface definitions (10 interfaces)
 icons/                  # Application icons (hicolor + hicolor-light)
 translations/           # Qt Linguist translations (.ts/.qm)
 docs/                   # Documentation and media
