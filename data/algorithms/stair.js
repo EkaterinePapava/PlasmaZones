@@ -24,8 +24,8 @@
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
 // Stair-specific ratio bounds (tighter than PZ_MIN_SPLIT/PZ_MAX_SPLIT)
-var StairMinSizeRatio = 0.3;
-var StairMaxSizeRatio = 0.8;
+const StairMinSizeRatio = 0.3;
+const StairMaxSizeRatio = 0.8;
 
 function calculateZones(params) {
     const count = params.windowCount;

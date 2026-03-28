@@ -30,6 +30,7 @@ static QString loadBuiltinJs(const QString& name)
     if (content.isEmpty()) {
         qCCritical(lcAutotile) << "Builtin JS resource is empty:" << name;
     }
+    Q_ASSERT_X(!content.isEmpty(), "loadBuiltinJs", qPrintable(QStringLiteral("Missing QRC resource: ") + name));
     return content;
 }
 

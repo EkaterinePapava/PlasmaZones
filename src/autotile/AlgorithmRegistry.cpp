@@ -63,6 +63,16 @@ void AlgorithmRegistry::cleanup()
         return; // Already cleaned up (e.g., aboutToQuit already ran)
     }
 
+    // Drain any pending deleteLater() calls from safeDeleteAlgorithm().
+    // Hot-reload during shutdown could leave orphaned algorithms with
+    // parent=nullptr that are still queued for deferred deletion. Flushing
+    // them here prevents double-free if we then synchronously delete the
+    // same pointer (impossible today, but defensive against future changes)
+    // and ensures QJSEngine internals are torn down while Qt is alive.
+    if (QCoreApplication::instance()) {
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    }
+
     // Explicitly delete all algorithm children while Qt is still alive.
     // This prevents crashes when the static singleton is destroyed after
     // QCoreApplication during static destruction (ScriptedAlgorithm

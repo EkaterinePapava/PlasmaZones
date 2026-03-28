@@ -18,6 +18,9 @@
  */
 function lShapeLayout(area, count, gap, splitRatio, distribute = 'alternate', bottomWidth = 'master', rightHeight = 'master') {
     if (count <= 0) return [];
+    if (area.width < PZ_MIN_ZONE_SIZE || area.height < PZ_MIN_ZONE_SIZE) {
+        return fillArea(area, count);
+    }
     splitRatio = Math.max(PZ_MIN_SPLIT, Math.min(PZ_MAX_SPLIT, splitRatio));
     const masterW = Math.max(1, Math.floor(area.width * splitRatio - gap / 2));
     const masterH = Math.max(1, Math.floor(area.height * splitRatio - gap / 2));

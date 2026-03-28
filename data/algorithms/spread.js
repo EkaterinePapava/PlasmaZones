@@ -22,7 +22,7 @@
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
 // Spread-specific minimum width fraction (below this, windows are too narrow)
-var SpreadMinFraction = 0.3;
+const SpreadMinFraction = 0.3;
 
 function calculateZones(params) {
     const count = params.windowCount;

@@ -24,10 +24,10 @@
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
 // Cascade-specific ratio bounds (tighter than PZ_MIN_SPLIT/PZ_MAX_SPLIT)
-var CascadeMinOffsetRatio = 0.02;
-var CascadeMaxOffsetRatio = 0.4;
-var CascadeMinOffsetPx = 20;   // Minimum per-step offset in pixels
-var CascadeMinWindowPx = 100;  // Minimum window dimension in pixels
+const CascadeMinOffsetRatio = 0.02;
+const CascadeMaxOffsetRatio = 0.4;
+const CascadeMinOffsetPx = 20;   // Minimum per-step offset in pixels
+const CascadeMinWindowPx = 100;  // Minimum window dimension in pixels
 
 function calculateZones(params) {
     const count = params.windowCount;
