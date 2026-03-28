@@ -278,10 +278,10 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         return true;
     };
 
-    if (!injectBuiltin(ScriptedHelpers::treeHelperJs(), QStringLiteral("builtin:applyTreeGeometry"))
-        || !injectBuiltin(ScriptedHelpers::lShapeHelperJs(), QStringLiteral("builtin:lShapeLayout"))
-        || !injectBuiltin(ScriptedHelpers::deckHelperJs(), QStringLiteral("builtin:deckLayout"))
-        || !injectBuiltin(ScriptedHelpers::distributeEvenlyHelperJs(), QStringLiteral("builtin:distributeEvenly"))
+    if (!injectBuiltin(ScriptedHelpers::applyTreeGeometryJs(), QStringLiteral("builtin:applyTreeGeometry"))
+        || !injectBuiltin(ScriptedHelpers::lShapeLayoutJs(), QStringLiteral("builtin:lShapeLayout"))
+        || !injectBuiltin(ScriptedHelpers::deckLayoutJs(), QStringLiteral("builtin:deckLayout"))
+        || !injectBuiltin(ScriptedHelpers::distributeEvenlyJs(), QStringLiteral("builtin:distributeEvenly"))
         || !injectBuiltin(ScriptedHelpers::distributeWithGapsJs(), QStringLiteral("builtin:distributeWithGaps"))
         || !injectBuiltin(ScriptedHelpers::distributeWithMinSizesJs(), QStringLiteral("builtin:distributeWithMinSizes"))
         || !injectBuiltin(ScriptedHelpers::solveTwoPartJs(), QStringLiteral("builtin:solveTwoPart"))
@@ -313,12 +313,11 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
         QLatin1String("PZ_MIN_ZONE_SIZE"),
         QLatin1String("PZ_MIN_SPLIT"),
         QLatin1String("PZ_MAX_SPLIT"),
-        // Helpers from ScriptedAlgorithmHelpers
+        // Helpers from ScriptedAlgorithmJsBuiltins
         QLatin1String("applyTreeGeometry"),
         QLatin1String("lShapeLayout"),
         QLatin1String("deckLayout"),
         QLatin1String("distributeEvenly"),
-        // Helpers from ScriptedAlgorithmJsBuiltins
         QLatin1String("distributeWithGaps"),
         QLatin1String("distributeWithMinSizes"),
         QLatin1String("solveTwoPart"),

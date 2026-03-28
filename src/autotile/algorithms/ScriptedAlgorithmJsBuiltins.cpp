@@ -111,5 +111,29 @@ QString masterStackLayoutJs()
     return s;
 }
 
+QString applyTreeGeometryJs()
+{
+    static const QString s = loadBuiltinJs(QStringLiteral("applyTreeGeometry.js"));
+    return s;
+}
+
+QString lShapeLayoutJs()
+{
+    static const QString s = loadBuiltinJs(QStringLiteral("lShapeLayout.js"));
+    return s;
+}
+
+QString deckLayoutJs()
+{
+    static const QString s = loadBuiltinJs(QStringLiteral("deckLayout.js"));
+    return s;
+}
+
+QString distributeEvenlyJs()
+{
+    static const QString s = loadBuiltinJs(QStringLiteral("distributeEvenly.js"));
+    return s;
+}
+
 } // namespace ScriptedHelpers
 } // namespace PlasmaZones

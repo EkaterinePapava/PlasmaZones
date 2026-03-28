@@ -9,7 +9,7 @@
  */
 function distributeWithGaps(total, count, gap) {
     if (count <= 0) return [];
-    if (total <= 0) return Array(count).fill(1);
+    if (total <= 0) return [];
     if (count === 1) return [total];
     const totalGaps = (count - 1) * gap;
     const available = Math.max(count, total - totalGaps);

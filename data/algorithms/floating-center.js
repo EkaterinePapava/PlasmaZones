@@ -11,6 +11,7 @@
 // @defaultMaxWindows 6
 // @minimumWindows 1
 // @zoneNumberDisplay all
+// @masterZoneIndex 0
 // @supportsMemory false
 
 /**

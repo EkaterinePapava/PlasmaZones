@@ -126,5 +126,41 @@ QString fillAreaJs();
  */
 QString masterStackLayoutJs();
 
+/**
+ * @brief JS source for applyTreeGeometry(node, rect, gap, _depth) built-in helper
+ *
+ * Recursively computes zone rectangles from a binary split tree.
+ * Depth-limited to MAX_TREE_DEPTH (must match AutotileDefaults::MaxRuntimeTreeDepth).
+ * Loaded from Qt resource :/builtins/applyTreeGeometry.js
+ */
+QString applyTreeGeometryJs();
+
+/**
+ * @brief JS source for lShapeLayout(area, count, gap, splitRatio, distribute, bottomWidth, rightHeight) helper
+ *
+ * L-shaped tiling with master in top-left and secondary zones along right/bottom edges.
+ * Uses injected PZ_MIN_SPLIT/PZ_MAX_SPLIT globals.
+ * Loaded from Qt resource :/builtins/lShapeLayout.js
+ */
+QString lShapeLayoutJs();
+
+/**
+ * @brief JS source for deckLayout(area, count, focusedFraction, horizontal) built-in helper
+ *
+ * Deck (monocle-with-peek) layout where the focused window takes a large
+ * fraction and background windows peek from the remainder.
+ * Loaded from Qt resource :/builtins/deckLayout.js
+ */
+QString deckLayoutJs();
+
+/**
+ * @brief JS source for distributeEvenly(start, total, count, gap) built-in helper
+ *
+ * Distributes items evenly along a 1D axis with gaps. Returns array of
+ * {pos, size} objects with the last item absorbing rounding remainder.
+ * Loaded from Qt resource :/builtins/distributeEvenly.js
+ */
+QString distributeEvenlyJs();
+
 } // namespace ScriptedHelpers
 } // namespace PlasmaZones

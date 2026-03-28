@@ -13,5 +13,9 @@
     <file alias="extractRegionMaxMin.js">builtins/extractRegionMaxMin.js</file>
     <file alias="fillArea.js">builtins/fillArea.js</file>
     <file alias="masterStackLayout.js">builtins/masterStackLayout.js</file>
+    <file alias="applyTreeGeometry.js">builtins/applyTreeGeometry.js</file>
+    <file alias="lShapeLayout.js">builtins/lShapeLayout.js</file>
+    <file alias="deckLayout.js">builtins/deckLayout.js</file>
+    <file alias="distributeEvenly.js">builtins/distributeEvenly.js</file>
 </qresource>
 </RCC>
