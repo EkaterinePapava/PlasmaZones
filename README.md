@@ -249,8 +249,11 @@ Standalone settings app (`plasmazones-settings`) with sidebar navigation:
 - **Layouts** — Create, duplicate, import/export zone layouts with 26 templates
 - **Snapping** — Activation, zone appearance (colors, opacity, borders, blur, shaders), animations, zone selector, per-monitor/desktop/activity assignments
 - **Tiling** — Per-screen algorithm selection, master ratio/count, gaps, title bar hiding, insertion order, focus behavior, per-monitor/desktop/activity assignments
-- **General** — OSD style, layout switch notifications, global behavior, editor shortcuts
+- **App Rules** — Per-app zone assignment rules with interactive window picker
 - **Exclusions** — Window class exclusion lists with interactive picker, minimum size thresholds
+- **Editor** — Layout editor preferences and shortcut configuration
+- **General** — OSD style, layout switch notifications, global behavior
+- **About** — Version info, update checker, daemon status
 
 On KDE Plasma, a System Settings entry provides version info and a launcher to the settings app.
 
@@ -662,9 +665,9 @@ kcm/                    # System Settings module (KCM) — About page + settings
 kwin-effect/            # KWin effect plugin
 └── autotilehandler/    # Autotile event handling from KWin
 data/
-├── layouts/            # Default layout templates (12)
+├── layouts/            # Default layout templates (26) — user layouts in ~/.local/share/plasmazones/layouts/
 ├── algorithms/         # Built-in JS tiling algorithms (24) — user scripts in ~/.local/share/plasmazones/algorithms/
-└── shaders/            # Built-in GLSL shader effects (23) + shared utilities
+└── shaders/            # Built-in GLSL shader effects (23) — user shaders in ~/.local/share/plasmazones/shaders/
 packaging/
 ├── arch/               # AUR PKGBUILD (source, binary, git)
 ├── debian/             # Debian packaging
