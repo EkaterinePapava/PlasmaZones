@@ -16,6 +16,7 @@
 
 #include <QDBusMessage>
 #include <QFile>
+#include <QFileInfo>
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QScreen>
@@ -1687,6 +1688,45 @@ QVariantList SettingsController::generateAlgorithmPreview(const QString& algorit
     QVector<QRect> zones = algo->calculateZones({count, previewRect, &state, 0, {}});
 
     return AlgorithmRegistry::zonesToRelativeGeometry(zones, previewRect);
+}
+
+void SettingsController::openAlgorithmsFolder()
+{
+    const QString path = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+        + QStringLiteral("/plasmazones/algorithms");
+    QDir dir(path);
+    if (!dir.exists()) {
+        dir.mkpath(QStringLiteral("."));
+    }
+    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+}
+
+bool SettingsController::importAlgorithm(const QString& filePath)
+{
+    if (filePath.isEmpty())
+        return false;
+
+    const QFileInfo source(filePath);
+    if (!source.exists() || !source.isFile())
+        return false;
+
+    const QString destDir = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+        + QStringLiteral("/plasmazones/algorithms");
+    QDir dir(destDir);
+    if (!dir.exists()) {
+        dir.mkpath(QStringLiteral("."));
+    }
+
+    const QString destPath = destDir + QLatin1Char('/') + source.fileName();
+
+    // Remove existing file so QFile::copy succeeds (it won't overwrite)
+    if (QFile::exists(destPath)) {
+        QFile::remove(destPath);
+    }
+
+    const bool ok = QFile::copy(filePath, destPath);
+    // ScriptedAlgorithmLoader's QFileSystemWatcher will pick up the new file automatically
+    return ok;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
