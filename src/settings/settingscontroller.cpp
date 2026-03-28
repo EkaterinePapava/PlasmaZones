@@ -1332,16 +1332,7 @@ void SettingsController::onVirtualDesktopsChanged()
     // Prune disabled-desktop entries that reference desktops beyond the new count.
     // See start.cpp comment re: mid-range renumbering limitation.
     QStringList disabled = m_settings.disabledDesktops();
-    const int before = disabled.size();
-    disabled.removeIf([this](const QString& entry) {
-        int slashIdx = entry.lastIndexOf(QLatin1Char('/'));
-        if (slashIdx < 0)
-            return true; // malformed entry
-        bool ok = false;
-        int d = entry.mid(slashIdx + 1).toInt(&ok);
-        return !ok || d > m_virtualDesktopCount;
-    });
-    if (disabled.size() != before) {
+    if (pruneDisabledDesktopEntries(disabled, m_virtualDesktopCount)) {
         m_settings.setDisabledDesktops(disabled);
         setNeedsSave(true);
         Q_EMIT disabledDesktopsChanged();
@@ -1365,15 +1356,7 @@ void SettingsController::onActivitiesChanged()
             }
         }
         QStringList disabledActs = m_settings.disabledActivities();
-        const int before = disabledActs.size();
-        disabledActs.removeIf([&validIds](const QString& entry) {
-            int slashIdx = entry.lastIndexOf(QLatin1Char('/'));
-            if (slashIdx < 0)
-                return true; // malformed entry
-            QString actId = entry.mid(slashIdx + 1);
-            return !validIds.contains(actId);
-        });
-        if (disabledActs.size() != before) {
+        if (pruneDisabledActivityEntries(disabledActs, validIds)) {
             m_settings.setDisabledActivities(disabledActs);
             setNeedsSave(true);
             Q_EMIT disabledActivitiesChanged();

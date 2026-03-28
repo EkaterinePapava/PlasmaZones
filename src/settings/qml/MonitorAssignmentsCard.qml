@@ -388,7 +388,7 @@ SettingsCard {
 
                                     Connections {
                                         function onDisabledDesktopsChanged() {
-                                            desktopDisableCheck.checked = root.appSettings.isDesktopDisabled(monitorDelegate.screenName, desktopDisableCheck.parent.desktopNumber);
+                                            desktopDisableCheck.checked = root.appSettings.isDesktopDisabled(monitorDelegate.screenName, desktopRowContainer.desktopNumber);
                                         }
 
                                         target: root.appSettings

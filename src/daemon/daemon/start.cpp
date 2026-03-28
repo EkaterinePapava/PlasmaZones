@@ -157,16 +157,7 @@ void Daemon::connectDesktopActivity()
         // use KDE's desktop UUIDs instead of 1-based numbers.
         if (m_settings) {
             QStringList disabled = m_settings->disabledDesktops();
-            const int before = disabled.size();
-            disabled.removeIf([newCount](const QString& entry) {
-                int slashIdx = entry.lastIndexOf(QLatin1Char('/'));
-                if (slashIdx < 0)
-                    return true; // malformed entry
-                bool ok = false;
-                int d = entry.mid(slashIdx + 1).toInt(&ok);
-                return !ok || d > newCount;
-            });
-            if (disabled.size() != before) {
+            if (pruneDisabledDesktopEntries(disabled, newCount)) {
                 m_settings->setDisabledDesktops(disabled);
                 m_settings->save();
             }
@@ -218,15 +209,7 @@ void Daemon::connectDesktopActivity()
             // Prune disabled-activity entries that reference removed activities
             if (m_settings) {
                 QStringList disabled = m_settings->disabledActivities();
-                const int before = disabled.size();
-                disabled.removeIf([&validSet](const QString& entry) {
-                    int slashIdx = entry.lastIndexOf(QLatin1Char('/'));
-                    if (slashIdx < 0)
-                        return true; // malformed entry
-                    QString actId = entry.mid(slashIdx + 1);
-                    return !validSet.contains(actId);
-                });
-                if (disabled.size() != before) {
+                if (pruneDisabledActivityEntries(disabled, validSet)) {
                     m_settings->setDisabledActivities(disabled);
                     m_settings->save();
                 }

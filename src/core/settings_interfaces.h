@@ -7,6 +7,7 @@
 #include "enums.h"
 #include <QString>
 #include <QStringList>
+#include <QSet>
 #include <QColor>
 #include <QVariantList>
 #include <QVariantMap>
@@ -345,6 +346,45 @@ inline bool isContextDisabled(const IZoneVisualizationSettings* s, const QString
     if (!activity.isEmpty() && s->isActivityDisabled(screenId, activity))
         return true;
     return false;
+}
+
+/**
+ * @brief Remove disabled-desktop entries whose desktop number exceeds @p maxDesktop.
+ * @return true if any entries were removed.
+ *
+ * Composite key format: "screenId/desktopNumber". Malformed entries are also removed.
+ */
+inline bool pruneDisabledDesktopEntries(QStringList& entries, int maxDesktop)
+{
+    const int before = entries.size();
+    entries.removeIf([maxDesktop](const QString& entry) {
+        int slashIdx = entry.lastIndexOf(QLatin1Char('/'));
+        if (slashIdx < 0)
+            return true; // malformed entry
+        bool ok = false;
+        int d = entry.mid(slashIdx + 1).toInt(&ok);
+        return !ok || d > maxDesktop;
+    });
+    return entries.size() != before;
+}
+
+/**
+ * @brief Remove disabled-activity entries whose activity UUID is not in @p validActivityIds.
+ * @return true if any entries were removed.
+ *
+ * Composite key format: "screenId/activityUuid". Malformed entries are also removed.
+ */
+inline bool pruneDisabledActivityEntries(QStringList& entries, const QSet<QString>& validActivityIds)
+{
+    const int before = entries.size();
+    entries.removeIf([&validActivityIds](const QString& entry) {
+        int slashIdx = entry.lastIndexOf(QLatin1Char('/'));
+        if (slashIdx < 0)
+            return true; // malformed entry
+        QString actId = entry.mid(slashIdx + 1);
+        return !validActivityIds.contains(actId);
+    });
+    return entries.size() != before;
 }
 
 } // namespace PlasmaZones

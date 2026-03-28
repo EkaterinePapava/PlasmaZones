@@ -45,7 +45,7 @@ void Daemon::updateAutotileScreens()
     for (QScreen* screen : m_screenManager->screens()) {
         QString screenId = Utils::screenIdentifier(screen);
         // Skip screens/desktops/activities where PlasmaZones is disabled
-        if (m_settings && isContextDisabled(m_settings.get(), screenId, desktop, activity)) {
+        if (isContextDisabled(m_settings.get(), screenId, desktop, activity)) {
             continue;
         }
         QString assignmentId = m_layoutManager->assignmentIdForScreen(screenId, desktop, activity);
