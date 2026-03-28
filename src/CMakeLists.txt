@@ -353,6 +353,30 @@ install(TARGETS plasmazones_core
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Layer Shell Qt Plugin (installed to Qt's wayland-shell-integration plugin dir)
+# ═══════════════════════════════════════════════════════════════════════════════
+add_library(pz-layer-shell MODULE core/qpa/pzlayershellplugin.cpp)
+target_link_libraries(pz-layer-shell PRIVATE
+    plasmazones_core
+    Qt6::WaylandClientPrivate
+    Wayland::Client
+)
+target_include_directories(pz-layer-shell PRIVATE ${_pz_gen_dir})
+set_target_properties(pz-layer-shell PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins/wayland-shell-integration
+)
+# Install to Qt's plugin dir (query via QT6_INSTALL_PLUGINS or fallback)
+if(NOT DEFINED QT6_INSTALL_PLUGINS)
+    get_target_property(QT6_INSTALL_PLUGINS Qt6::Core QT_INSTALL_PLUGINS)
+    if(NOT QT6_INSTALL_PLUGINS)
+        set(QT6_INSTALL_PLUGINS "${KDE_INSTALL_QTPLUGINDIR}")
+    endif()
+endif()
+install(TARGETS pz-layer-shell
+    DESTINATION ${QT6_INSTALL_PLUGINS}/wayland-shell-integration
+)
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Rendering Library (ZoneShaderItem, shared between daemon and editor)
 # ═══════════════════════════════════════════════════════════════════════════════
 set(plasmazones_rendering_SRCS

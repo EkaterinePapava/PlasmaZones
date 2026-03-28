@@ -4,6 +4,7 @@
 #include "EditorController.h"
 #include "../core/constants.h"
 #include "../core/logging.h"
+#include "../core/qpa/layershellpluginloader.h"
 #include "../core/translationloader.h"
 #include "version.h"
 #include "../daemon/rendering/zoneshaderitem.h"
@@ -38,6 +39,9 @@ int main(int argc, char* argv[])
             }
         }
     }
+
+    // Register our layer-shell QPA plugin before QGuiApplication
+    PlasmaZones::registerLayerShellPlugin();
 
     QGuiApplication app(argc, argv);
     PlasmaZones::loadTranslations(&app);

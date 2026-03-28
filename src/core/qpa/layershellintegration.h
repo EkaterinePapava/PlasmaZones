@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QtWaylandClient/private/qwaylandshellintegration_p.h>
+#include "../plasmazones_export.h"
 extern "C" {
 #define namespace namespace_
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
@@ -14,7 +15,7 @@ namespace PlasmaZones {
 
 /// QPA shell integration plugin that binds zwlr_layer_shell_v1 and creates
 /// layer surfaces for windows marked with the _pz_layer_shell property.
-class LayerShellIntegration : public QtWaylandClient::QWaylandShellIntegration
+class PLASMAZONES_EXPORT LayerShellIntegration : public QtWaylandClient::QWaylandShellIntegration
 {
 public:
     LayerShellIntegration();
@@ -28,12 +29,11 @@ public:
         return m_layerShell;
     }
 
-    /// Register this integration as the active shell integration.
-    /// Must be called before QGuiApplication is created, or before any
-    /// layer-shell windows are shown.
+    /// Set QT_WAYLAND_SHELL_INTEGRATION env var to use our plugin.
+    /// Must be called before QGuiApplication is created.
     static void registerPlugin();
 
-    /// Access the singleton instance (available after initialize()).
+    /// Access the singleton instance (available after Qt loads the plugin).
     static LayerShellIntegration* instance();
 
     // Public for C callback struct initialization

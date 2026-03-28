@@ -98,8 +98,10 @@ void LayerShellIntegration::registryRemoveHandler(void* data, struct wl_registry
 
 void LayerShellIntegration::registerPlugin()
 {
-    // Set environment so Qt uses our shell integration.
-    // This must be called before QGuiApplication construction.
+    // Tell Qt to use our pz-layer-shell wayland shell integration plugin.
+    // Must be called before QGuiApplication construction.
+    // The plugin is installed as libpz-layer-shell.so in Qt's
+    // wayland-shell-integration plugin directory.
     qputenv("QT_WAYLAND_SHELL_INTEGRATION", "pz-layer-shell");
 }
 
