@@ -173,7 +173,7 @@ void OverlayService::show()
             cursorScreen = Utils::primaryScreen();
         }
         // If the cursor's screen has PlasmaZones disabled, don't show overlay at all
-        if (cursorScreen && m_settings
+        if (cursorScreen
             && isContextDisabled(m_settings, Utils::screenIdentifier(cursorScreen), m_currentVirtualDesktop,
                                  m_currentActivity)) {
             return;
@@ -198,7 +198,7 @@ void OverlayService::showAtPosition(int cursorX, int cursorY)
             cursorScreen = Utils::primaryScreen();
         }
         // If the cursor's screen has PlasmaZones disabled, don't show overlay at all
-        if (cursorScreen && m_settings
+        if (cursorScreen
             && isContextDisabled(m_settings, Utils::screenIdentifier(cursorScreen), m_currentVirtualDesktop,
                                  m_currentActivity)) {
             return;
@@ -265,30 +265,27 @@ void OverlayService::updateSettings(ISettings* settings)
     syncCavaState();
 
     // Hide overlay and zone selector on screens/desktops/activities that are now disabled
-    if (m_settings) {
-        for (auto* screen : m_overlayWindows.keys()) {
-            if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                  m_currentActivity)) {
-                if (auto* window = m_overlayWindows.value(screen)) {
-                    window->hide();
-                }
+    for (auto* screen : m_overlayWindows.keys()) {
+        if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                              m_currentActivity)) {
+            if (auto* window = m_overlayWindows.value(screen)) {
+                window->hide();
             }
         }
-        for (auto* screen : m_zoneSelectorWindows.keys()) {
-            if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                  m_currentActivity)) {
-                if (auto* window = m_zoneSelectorWindows.value(screen)) {
-                    window->hide();
-                }
+    }
+    for (auto* screen : m_zoneSelectorWindows.keys()) {
+        if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                              m_currentActivity)) {
+            if (auto* window = m_zoneSelectorWindows.value(screen)) {
+                window->hide();
             }
         }
     }
 
     if (m_visible) {
         for (auto* screen : m_overlayWindows.keys()) {
-            if (m_settings
-                && isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                     m_currentActivity)) {
+            if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                                  m_currentActivity)) {
                 continue;
             }
             updateOverlayWindow(screen);
@@ -301,9 +298,8 @@ void OverlayService::updateSettings(ISettings* settings)
     // Skip disabled screens/desktops/activities.
     if (!m_zoneSelectorWindows.isEmpty()) {
         for (auto* screen : m_zoneSelectorWindows.keys()) {
-            if (m_settings
-                && isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                     m_currentActivity)) {
+            if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                                  m_currentActivity)) {
                 continue;
             }
             updateZoneSelectorWindow(screen);
@@ -429,9 +425,8 @@ void OverlayService::assertWindowOnScreen(QWindow* window, QScreen* screen)
 void OverlayService::handleScreenAdded(QScreen* screen)
 {
     if (m_visible && screen
-        && (!m_settings
-            || !isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                  m_currentActivity))) {
+        && !isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                              m_currentActivity)) {
         createOverlayWindow(screen);
         updateOverlayWindow(screen);
         if (auto* window = m_overlayWindows.value(screen)) {

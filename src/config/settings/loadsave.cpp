@@ -90,7 +90,7 @@ void Settings::loadDisplayConfig(QSettingsConfigGroup& display)
         for (const QString& p : parts) {
             bool ok = false;
             int desktop = p.trimmed().toInt(&ok);
-            if (ok && desktop > 0)
+            if (ok && desktop > 0 && !m_disabledDesktops.contains(desktop))
                 m_disabledDesktops.append(desktop);
         }
     }

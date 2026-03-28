@@ -1327,7 +1327,8 @@ void SettingsController::onVirtualDesktopsChanged()
 {
     refreshVirtualDesktops();
 
-    // Prune disabled-desktop entries that reference desktops beyond the new count
+    // Prune disabled-desktop entries that reference desktops beyond the new count.
+    // See start.cpp comment re: mid-range renumbering limitation.
     QList<int> disabled = m_settings.disabledDesktops();
     const int before = disabled.size();
     disabled.removeIf([this](int d) {

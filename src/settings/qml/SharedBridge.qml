@@ -17,7 +17,7 @@ QtObject {
     // ─── Shortcuts ──────────────────────────────────────────────────
     // ─── External signal forwarding ─────────────────────────────────
 
-    // 0 = snapping, 1 = tiling — set by subclass
+    // 0 = snapping, 1 = tiling — overridden by subclass
     property int assignmentViewMode: -1
     readonly property bool autotileEnabled: appSettings.autotileEnabled
     readonly property string autotileAlgorithm: appSettings.autotileAlgorithm

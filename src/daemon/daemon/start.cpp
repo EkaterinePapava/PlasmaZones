@@ -149,7 +149,12 @@ void Daemon::connectDesktopActivity()
 
     // Prune stale TilingState entries and disabled-desktop numbers when desktops are removed
     connect(m_virtualDesktopManager.get(), &VirtualDesktopManager::desktopCountChanged, this, [this](int newCount) {
-        // Prune stale disabled-desktop entries (desktop numbers > newCount no longer exist)
+        // Prune stale disabled-desktop entries (desktop numbers > newCount no longer exist).
+        // NOTE: KDE Plasma renumbers desktops when one in the middle is removed (e.g.
+        // removing desktop 2 of 4 shifts 3→2 and 4→3). We only prune out-of-range
+        // entries here; mid-range renumbering would require tracking which desktop was
+        // removed (not available from desktopCountChanged). A future improvement could
+        // use KDE's desktop UUIDs instead of 1-based numbers.
         if (m_settings) {
             QList<int> disabled = m_settings->disabledDesktops();
             const int before = disabled.size();
