@@ -12,45 +12,52 @@ function solveThreeColumn(areaX, contentWidth, innerGap, splitRatio, minL, minC,
     if (contentWidth <= 0) {
         return {leftWidth:1, centerWidth:1, rightWidth:1, leftX:areaX, centerX:areaX, rightX:areaX};
     }
-    var effMinLeft = Math.max(PZ_MIN_ZONE_SIZE, minL);
-    var effMinRight = Math.max(PZ_MIN_ZONE_SIZE, minR);
-    var maxCenter = Math.min(PZ_MAX_SPLIT,
+    const effMinLeft = Math.max(PZ_MIN_ZONE_SIZE, minL);
+    const effMinRight = Math.max(PZ_MIN_ZONE_SIZE, minR);
+    const maxCenter = Math.min(PZ_MAX_SPLIT,
         1.0 - (effMinLeft + effMinRight) / contentWidth);
-    var centerRatio = Math.min(Math.max(splitRatio, PZ_MIN_SPLIT), Math.max(PZ_MIN_SPLIT, maxCenter));
+    let centerRatio = Math.min(Math.max(splitRatio, PZ_MIN_SPLIT), Math.max(PZ_MIN_SPLIT, maxCenter));
     if (minC > 0) {
-        var minCenterRatio = minC / contentWidth;
+        const minCenterRatio = minC / contentWidth;
         centerRatio = Math.max(centerRatio, Math.min(minCenterRatio, maxCenter));
     }
-    var sideRatio = (1.0 - centerRatio) / 2.0;
-    var leftWidth = Math.floor(contentWidth * sideRatio);
-    var centerWidth = Math.floor(contentWidth * centerRatio);
-    var rightWidth = contentWidth - leftWidth - centerWidth;
-    var totalColumnMin = Math.max(minL, 0) + Math.max(minC, 0) + Math.max(minR, 0);
+    const sideRatio = (1.0 - centerRatio) / 2.0;
+    let leftWidth = Math.floor(contentWidth * sideRatio);
+    let centerWidth = Math.floor(contentWidth * centerRatio);
+    let rightWidth = contentWidth - leftWidth - centerWidth;
+    const totalColumnMin = Math.max(minL, 0) + Math.max(minC, 0) + Math.max(minR, 0);
     if (totalColumnMin > contentWidth && totalColumnMin > 0) {
-        var eL = Math.max(minL, 1); var eC = Math.max(minC, 1); var eR = Math.max(minR, 1);
-        var eT = eL + eC + eR;
+        const eL = Math.max(minL, 1);
+        const eC = Math.max(minC, 1);
+        const eR = Math.max(minR, 1);
+        const eT = eL + eC + eR;
         leftWidth = Math.floor(contentWidth * eL / eT);
         centerWidth = Math.floor(contentWidth * eC / eT);
         rightWidth = contentWidth - leftWidth - centerWidth;
     } else {
         if (minL > 0 && leftWidth < minL) {
-            var deficit = minL - leftWidth; leftWidth = minL;
-            var fromCenter = Math.max(0, Math.min(deficit, centerWidth - Math.max(minC, 1)));
-            centerWidth -= fromCenter; rightWidth = contentWidth - leftWidth - centerWidth;
+            const deficit = minL - leftWidth;
+            leftWidth = minL;
+            const fromCenter = Math.max(0, Math.min(deficit, centerWidth - Math.max(minC, 1)));
+            centerWidth -= fromCenter;
+            rightWidth = contentWidth - leftWidth - centerWidth;
         }
         if (minR > 0 && rightWidth < minR) {
-            var deficit = minR - rightWidth; rightWidth = minR;
-            var fromCenter = Math.max(0, Math.min(deficit, centerWidth - Math.max(minC, 1)));
-            centerWidth -= fromCenter; leftWidth = contentWidth - rightWidth - centerWidth;
+            const deficit = minR - rightWidth;
+            rightWidth = minR;
+            const fromCenter = Math.max(0, Math.min(deficit, centerWidth - Math.max(minC, 1)));
+            centerWidth -= fromCenter;
+            leftWidth = contentWidth - rightWidth - centerWidth;
         }
         if (minC > 0 && centerWidth < minC) {
-            var deficit = minC - centerWidth; centerWidth = minC;
+            let deficit = minC - centerWidth;
+            centerWidth = minC;
             if (leftWidth >= rightWidth) {
-                var take = Math.min(deficit, leftWidth - 1);
+                const take = Math.min(deficit, leftWidth - 1);
                 leftWidth -= take; deficit -= take;
                 if (deficit > 0) rightWidth -= deficit;
             } else {
-                var take = Math.min(deficit, rightWidth - 1);
+                const take = Math.min(deficit, rightWidth - 1);
                 rightWidth -= take; deficit -= take;
                 if (deficit > 0) leftWidth -= deficit;
             }
@@ -59,9 +66,9 @@ function solveThreeColumn(areaX, contentWidth, innerGap, splitRatio, minL, minC,
     leftWidth = Math.max(1, leftWidth);
     centerWidth = Math.max(1, centerWidth);
     rightWidth = Math.max(1, rightWidth);
-    var colSum = leftWidth + centerWidth + rightWidth;
+    const colSum = leftWidth + centerWidth + rightWidth;
     if (colSum > contentWidth) {
-        var excess = colSum - contentWidth;
+        const excess = colSum - contentWidth;
         if (centerWidth >= leftWidth && centerWidth >= rightWidth) {
             centerWidth = Math.max(1, centerWidth - excess);
         } else if (leftWidth >= rightWidth) {

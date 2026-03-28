@@ -249,7 +249,9 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     m_engine->evaluate(QStringLiteral("var PZ_MAX_SPLIT = %1;").arg(MaxSplitRatio),
                        QStringLiteral("builtin:constants"));
 
-    // Inject built-in helpers from ScriptedAlgorithmHelpers
+    // Inject built-in helpers from ScriptedAlgorithmHelpers and JsBuiltins.
+    // NOTE: Each helper's exported global name(s) must also appear in the
+    // frozenGlobals[] array below — a missing entry is a sandbox escape.
     m_engine->evaluate(ScriptedHelpers::treeHelperJs(), QStringLiteral("builtin:applyTreeGeometry"));
     m_engine->evaluate(ScriptedHelpers::lShapeHelperJs(), QStringLiteral("builtin:lShapeLayout"));
     m_engine->evaluate(ScriptedHelpers::deckHelperJs(), QStringLiteral("builtin:deckLayout"));
@@ -271,32 +273,43 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     // Freeze helper globals and constants so user scripts cannot overwrite them.
     // This must happen after injection since hardenSandbox's freezeGlobal calls
     // ran before the helpers existed.
-    for (const auto& helperName : {QLatin1String("PZ_MIN_ZONE_SIZE"),
-                                   QLatin1String("PZ_MIN_SPLIT"),
-                                   QLatin1String("PZ_MAX_SPLIT"),
-                                   QLatin1String("applyTreeGeometry"),
-                                   QLatin1String("lShapeLayout"),
-                                   QLatin1String("deckLayout"),
-                                   QLatin1String("distributeEvenly"),
-                                   QLatin1String("distributeWithGaps"),
-                                   QLatin1String("distributeWithMinSizes"),
-                                   QLatin1String("solveTwoPart"),
-                                   QLatin1String("solveThreeColumn"),
-                                   QLatin1String("computeCumulativeMinDims"),
-                                   QLatin1String("appendGracefulDegradation"),
-                                   QLatin1String("dwindleLayout"),
-                                   QLatin1String("extractMinWidths"),
-                                   QLatin1String("extractMinHeights"),
-                                   QLatin1String("buildStackIsLeft"),
-                                   QLatin1String("interleaveMinWidths"),
-                                   QLatin1String("interleaveMinHeights"),
-                                   QLatin1String("assignInterleavedStacks"),
-                                   QLatin1String("applyPerWindowMinSize"),
-                                   QLatin1String("extractRegionMaxMin"),
-                                   QLatin1String("fillArea"),
-                                   QLatin1String("masterStackLayout")}) {
-        m_engine->evaluate(QStringLiteral("Object.defineProperty(this, '%1', {writable: false, configurable: false});")
-                               .arg(QLatin1String(helperName)));
+    //
+    // IMPORTANT: This list must include every global name injected above
+    // (constants + all helper functions). A missing entry is a sandbox escape —
+    // user scripts could overwrite that helper. When adding a new helper,
+    // add its exported global name(s) here.
+    static const QLatin1String frozenGlobals[] = {
+        // Injected constants
+        QLatin1String("PZ_MIN_ZONE_SIZE"),
+        QLatin1String("PZ_MIN_SPLIT"),
+        QLatin1String("PZ_MAX_SPLIT"),
+        // Helpers from ScriptedAlgorithmHelpers
+        QLatin1String("applyTreeGeometry"),
+        QLatin1String("lShapeLayout"),
+        QLatin1String("deckLayout"),
+        QLatin1String("distributeEvenly"),
+        // Helpers from ScriptedAlgorithmJsBuiltins
+        QLatin1String("distributeWithGaps"),
+        QLatin1String("distributeWithMinSizes"),
+        QLatin1String("solveTwoPart"),
+        QLatin1String("solveThreeColumn"),
+        QLatin1String("computeCumulativeMinDims"),
+        QLatin1String("appendGracefulDegradation"),
+        QLatin1String("dwindleLayout"),
+        QLatin1String("extractMinWidths"), // from extractMinDims
+        QLatin1String("extractMinHeights"), // from extractMinDims
+        QLatin1String("buildStackIsLeft"), // from interleaveStacks
+        QLatin1String("interleaveMinWidths"), // from interleaveStacks
+        QLatin1String("interleaveMinHeights"), // from interleaveStacks
+        QLatin1String("assignInterleavedStacks"), // from interleaveStacks
+        QLatin1String("applyPerWindowMinSize"),
+        QLatin1String("extractRegionMaxMin"),
+        QLatin1String("fillArea"),
+        QLatin1String("masterStackLayout"),
+    };
+    for (const auto& name : frozenGlobals) {
+        m_engine->evaluate(
+            QStringLiteral("Object.defineProperty(this, '%1', {writable: false, configurable: false});").arg(name));
     }
 
     // Use guardedCall helper for watchdog arm-evaluate-disarm-check pattern.

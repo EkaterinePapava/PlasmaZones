@@ -13,10 +13,10 @@
  */
 function extractMinWidths(minSizes, count, startIdx) {
     if (!minSizes || minSizes.length === 0) return [];
-    startIdx = startIdx || 0;
-    var result = [];
-    for (var i = 0; i < count; i++) {
-        var idx = startIdx + i;
+    if (startIdx == null) startIdx = 0;
+    const result = [];
+    for (let i = 0; i < count; i++) {
+        const idx = startIdx + i;
         result.push((idx < minSizes.length && minSizes[idx].w > 0) ? minSizes[idx].w : 0);
     }
     return result;
@@ -33,10 +33,10 @@ function extractMinWidths(minSizes, count, startIdx) {
  */
 function extractMinHeights(minSizes, count, startIdx) {
     if (!minSizes || minSizes.length === 0) return [];
-    startIdx = startIdx || 0;
-    var result = [];
-    for (var i = 0; i < count; i++) {
-        var idx = startIdx + i;
+    if (startIdx == null) startIdx = 0;
+    const result = [];
+    for (let i = 0; i < count; i++) {
+        const idx = startIdx + i;
         result.push((idx < minSizes.length && minSizes[idx].h > 0) ? minSizes[idx].h : 0);
     }
     return result;

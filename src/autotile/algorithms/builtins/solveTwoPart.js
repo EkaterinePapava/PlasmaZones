@@ -9,7 +9,7 @@
  * Port of TilingAlgorithm::solveTwoPartMinSizes.
  */
 function solveTwoPart(contentDim, firstDim, secondDim, minFirst, minSecond) {
-    var totalMin = Math.max(minFirst, 0) + Math.max(minSecond, 0);
+    const totalMin = Math.max(minFirst, 0) + Math.max(minSecond, 0);
     if (totalMin > contentDim && totalMin > 0) {
         firstDim = Math.floor(contentDim * Math.max(minFirst, 1) / totalMin);
         secondDim = contentDim - firstDim;

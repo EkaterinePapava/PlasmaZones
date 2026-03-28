@@ -10,13 +10,13 @@
  */
 function dwindleLayout(area, count, splitRatio, innerGap, minSizes) {
     splitRatio = Math.min(Math.max(splitRatio, PZ_MIN_SPLIT), PZ_MAX_SPLIT);
-    var cumMinDims = computeCumulativeMinDims(count, minSizes, innerGap);
-    var remainingMinW = cumMinDims.minW;
-    var remainingMinH = cumMinDims.minH;
-    var remaining = {x: area.x, y: area.y, width: area.width, height: area.height};
-    var splitVertical = true;
-    var zones = [];
-    for (var i = 0; i < count; i++) {
+    const cumMinDims = computeCumulativeMinDims(count, minSizes, innerGap);
+    const remainingMinW = cumMinDims.minW;
+    const remainingMinH = cumMinDims.minH;
+    let remaining = {x: area.x, y: area.y, width: area.width, height: area.height};
+    let splitVertical = true;
+    const zones = [];
+    for (let i = 0; i < count; i++) {
         if (i === count - 1 || remaining.width < PZ_MIN_ZONE_SIZE
             || remaining.height < PZ_MIN_ZONE_SIZE
             || (splitVertical && remaining.width <= innerGap)
@@ -27,8 +27,8 @@ function dwindleLayout(area, count, splitRatio, innerGap, minSizes) {
             break;
         } else {
             if (splitVertical) {
-                var contentWidth = remaining.width - innerGap;
-                var windowWidth = Math.floor(contentWidth * splitRatio);
+                const contentWidth = remaining.width - innerGap;
+                let windowWidth = Math.floor(contentWidth * splitRatio);
                 if (minSizes && minSizes.length > 0 && i < minSizes.length
                     && minSizes[i].w > 0) {
                     windowWidth = Math.max(windowWidth, minSizes[i].w);
@@ -42,8 +42,8 @@ function dwindleLayout(area, count, splitRatio, innerGap, minSizes) {
                 remaining = {x: remaining.x + windowWidth + innerGap, y: remaining.y,
                     width: contentWidth - windowWidth, height: remaining.height};
             } else {
-                var contentHeight = remaining.height - innerGap;
-                var windowHeight = Math.floor(contentHeight * splitRatio);
+                const contentHeight = remaining.height - innerGap;
+                let windowHeight = Math.floor(contentHeight * splitRatio);
                 if (minSizes && minSizes.length > 0 && i < minSizes.length
                     && minSizes[i].h > 0) {
                     windowHeight = Math.max(windowHeight, minSizes[i].h);

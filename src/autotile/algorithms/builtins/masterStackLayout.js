@@ -20,56 +20,56 @@ function masterStackLayout(area, count, gap, splitRatio, masterCount, minSizes, 
     if (count <= 0) return [];
 
     masterCount = Math.max(1, Math.min(masterCount, count));
-    var stackCount = count - masterCount;
+    const stackCount = count - masterCount;
     splitRatio = Math.max(PZ_MIN_SPLIT, Math.min(splitRatio, PZ_MAX_SPLIT));
 
     // Primary axis: the axis along which master and stack are split
     // horizontal=false: primary=width (left/right split)
     // horizontal=true: primary=height (top/bottom split)
-    var primaryAxis = horizontal ? 'h' : 'w';
-    var secondaryAxis = horizontal ? 'w' : 'h';
-    var primarySize = horizontal ? area.height : area.width;
-    var secondarySize = horizontal ? area.width : area.height;
+    const primaryAxis = horizontal ? 'h' : 'w';
+    const secondaryAxis = horizontal ? 'w' : 'h';
+    const primarySize = horizontal ? area.height : area.width;
+    const secondarySize = horizontal ? area.width : area.height;
 
     // Compute per-region max min for primary axis
-    var minMasterPrimary = extractRegionMaxMin(minSizes, 0, masterCount, primaryAxis);
-    var minStackPrimary = extractRegionMaxMin(minSizes, masterCount, count, primaryAxis);
+    const minMasterPrimary = extractRegionMaxMin(minSizes, 0, masterCount, primaryAxis);
+    const minStackPrimary = extractRegionMaxMin(minSizes, masterCount, count, primaryAxis);
 
     // Calculate master and stack primary dimensions
-    var masterPrimary, stackPrimary;
+    let masterPrimary, stackPrimary;
     if (stackCount === 0) {
         masterPrimary = primarySize;
         stackPrimary = 0;
     } else {
-        var contentPrimary = primarySize - gap;
+        const contentPrimary = primarySize - gap;
         masterPrimary = Math.floor(contentPrimary * splitRatio);
         stackPrimary = contentPrimary - masterPrimary;
-        var solved = solveTwoPart(contentPrimary, masterPrimary, stackPrimary,
-                                  minMasterPrimary, minStackPrimary);
+        const solved = solveTwoPart(contentPrimary, masterPrimary, stackPrimary,
+                                    minMasterPrimary, minStackPrimary);
         masterPrimary = solved.first;
         stackPrimary = solved.second;
     }
 
     // Extract per-window min sizes for secondary axis (the stacking direction)
-    var masterMinSec = horizontal
+    const masterMinSec = horizontal
         ? extractMinWidths(minSizes, masterCount)
         : extractMinHeights(minSizes, masterCount);
-    var stackMinSec = horizontal
+    const stackMinSec = horizontal
         ? extractMinWidths(minSizes, stackCount, masterCount)
         : extractMinHeights(minSizes, stackCount, masterCount);
 
     // Distribute secondary dimension for master zones
-    var masterSecondary = (masterMinSec.length === 0)
+    const masterSecondary = (masterMinSec.length === 0)
         ? distributeWithGaps(secondarySize, masterCount, gap)
         : distributeWithMinSizes(secondarySize, masterCount, gap, masterMinSec);
 
     // Generate master zones
-    var zones = [];
-    var primaryPos = horizontal ? area.y : area.x;
-    var secondaryPos = horizontal ? area.x : area.y;
-    var cursor = secondaryPos;
+    const zones = [];
+    const primaryPos = horizontal ? area.y : area.x;
+    const secondaryPos = horizontal ? area.x : area.y;
+    let cursor = secondaryPos;
 
-    for (var i = 0; i < masterCount; i++) {
+    for (let i = 0; i < masterCount; i++) {
         if (horizontal) {
             zones.push({x: cursor, y: primaryPos, width: masterSecondary[i], height: masterPrimary});
         } else {
@@ -80,13 +80,13 @@ function masterStackLayout(area, count, gap, splitRatio, masterCount, minSizes, 
 
     // Generate stack zones
     if (stackCount > 0) {
-        var stackSecondary = (stackMinSec.length === 0)
+        const stackSecondary = (stackMinSec.length === 0)
             ? distributeWithGaps(secondarySize, stackCount, gap)
             : distributeWithMinSizes(secondarySize, stackCount, gap, stackMinSec);
-        var stackStart = primaryPos + masterPrimary + gap;
+        const stackStart = primaryPos + masterPrimary + gap;
 
         cursor = secondaryPos;
-        for (var i = 0; i < stackCount; i++) {
+        for (let i = 0; i < stackCount; i++) {
             if (horizontal) {
                 zones.push({x: cursor, y: stackStart, width: stackSecondary[i], height: stackPrimary});
             } else {

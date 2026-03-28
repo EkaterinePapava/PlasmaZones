@@ -11,10 +11,10 @@
  * @returns {boolean[]} true = left, false = right for each stack index
  */
 function buildStackIsLeft(stackCount, leftCount, rightCount) {
-    var stackIsLeft = [];
-    var li = 0;
-    var ri = 0;
-    for (var i = 0; i < stackCount; i++) {
+    const stackIsLeft = [];
+    let li = 0;
+    let ri = 0;
+    for (let i = 0; i < stackCount; i++) {
         if (i % 2 === 0 && li < leftCount) {
             stackIsLeft.push(true);
             li++;
@@ -40,12 +40,12 @@ function buildStackIsLeft(stackCount, leftCount, rightCount) {
  * @returns {{minLeftWidth: number, minRightWidth: number}}
  */
 function interleaveMinWidths(minSizes, stackIsLeft, stackCount, masterOffset) {
-    var minLeftWidth = 0;
-    var minRightWidth = 0;
-    for (var i = 0; i < stackCount; i++) {
-        var zoneIdx = masterOffset + i;
+    let minLeftWidth = 0;
+    let minRightWidth = 0;
+    for (let i = 0; i < stackCount; i++) {
+        const zoneIdx = masterOffset + i;
         if (zoneIdx < minSizes.length) {
-            var mw = minSizes[zoneIdx].w || 0;
+            const mw = minSizes[zoneIdx].w || 0;
             if (stackIsLeft[i]) {
                 if (mw > minLeftWidth) minLeftWidth = mw;
             } else {
@@ -68,15 +68,15 @@ function interleaveMinWidths(minSizes, stackIsLeft, stackCount, masterOffset) {
  * @returns {{leftMinH: number[], rightMinH: number[]}}
  */
 function interleaveMinHeights(minSizes, stackIsLeft, stackCount, leftCount, rightCount, masterOffset) {
-    var leftMinH = [];
-    var rightMinH = [];
-    for (var i = 0; i < leftCount; i++) leftMinH.push(0);
-    for (var i = 0; i < rightCount; i++) rightMinH.push(0);
-    var li = 0;
-    var ri = 0;
-    for (var i = 0; i < stackCount; i++) {
-        var zoneIdx = masterOffset + i;
-        var mh = (zoneIdx < minSizes.length) ? (minSizes[zoneIdx].h || 0) : 0;
+    const leftMinH = [];
+    const rightMinH = [];
+    for (let i = 0; i < leftCount; i++) leftMinH.push(0);
+    for (let i = 0; i < rightCount; i++) rightMinH.push(0);
+    let li = 0;
+    let ri = 0;
+    for (let i = 0; i < stackCount; i++) {
+        const zoneIdx = masterOffset + i;
+        const mh = (zoneIdx < minSizes.length) ? (minSizes[zoneIdx].h || 0) : 0;
         if (stackIsLeft[i] && li < leftCount) {
             leftMinH[li] = mh;
             li++;
@@ -106,12 +106,12 @@ function interleaveMinHeights(minSizes, stackIsLeft, stackCount, leftCount, righ
 function assignInterleavedStacks(zones, stackIsLeft, stackCount,
                                   leftX, rightX, leftWidth, rightWidth,
                                   leftHeights, rightHeights, areaY, gap) {
-    var leftIdx = 0;
-    var rightIdx = 0;
-    var leftY = areaY;
-    var rightY = areaY;
+    let leftIdx = 0;
+    let rightIdx = 0;
+    let leftY = areaY;
+    let rightY = areaY;
 
-    for (var i = 0; i < stackCount; i++) {
+    for (let i = 0; i < stackCount; i++) {
         if (stackIsLeft[i]) {
             zones.push({x: leftX, y: leftY, width: leftWidth, height: leftHeights[leftIdx]});
             leftY += leftHeights[leftIdx] + gap;

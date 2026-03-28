@@ -11,8 +11,8 @@
  * @returns {Array<{x: number, y: number, width: number, height: number}>}
  */
 function fillArea(area, count) {
-    var zones = [];
-    for (var i = 0; i < count; i++) {
+    const zones = [];
+    for (let i = 0; i < count; i++) {
         zones.push({x: area.x, y: area.y, width: area.width, height: area.height});
     }
     return zones;

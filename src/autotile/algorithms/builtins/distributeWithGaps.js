@@ -10,13 +10,13 @@
 function distributeWithGaps(total, count, gap) {
     if (count <= 0 || total <= 0) return [];
     if (count === 1) return [total];
-    var totalGaps = (count - 1) * gap;
-    var available = Math.max(count, total - totalGaps);
-    var base = Math.floor(available / count);
-    var remainder = available % count;
-    var sizes = [];
-    for (var i = 0; i < count; i++) {
-        var s = base;
+    const totalGaps = (count - 1) * gap;
+    const available = Math.max(count, total - totalGaps);
+    const base = Math.floor(available / count);
+    let remainder = available % count;
+    const sizes = [];
+    for (let i = 0; i < count; i++) {
+        let s = base;
         if (remainder > 0) { s++; remainder--; }
         sizes.push(s);
     }
