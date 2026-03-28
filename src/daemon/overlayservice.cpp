@@ -341,54 +341,56 @@ Layout* OverlayService::resolveScreenLayout(QScreen* screen) const
     return screenLayout;
 }
 
+void OverlayService::hideDisabledAndRefresh()
+{
+    // Hide overlay/selector on screens where the current context is disabled
+    if (m_settings) {
+        for (auto* screen : m_zoneSelectorWindows.keys()) {
+            if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                                  m_currentActivity)) {
+                if (auto* window = m_zoneSelectorWindows.value(screen)) {
+                    window->hide();
+                }
+            }
+        }
+        if (m_visible) {
+            for (auto* screen : m_overlayWindows.keys()) {
+                if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                                      m_currentActivity)) {
+                    if (auto* window = m_overlayWindows.value(screen)) {
+                        window->hide();
+                    }
+                }
+            }
+        }
+    }
+
+    // Update remaining (non-disabled) zone selector windows
+    if (!m_zoneSelectorWindows.isEmpty()) {
+        for (auto* screen : m_zoneSelectorWindows.keys()) {
+            if (!isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                                   m_currentActivity)) {
+                updateZoneSelectorWindow(screen);
+            }
+        }
+    }
+    // Update remaining overlay windows when visible
+    if (m_visible && !m_overlayWindows.isEmpty()) {
+        for (auto* screen : m_overlayWindows.keys()) {
+            if (!isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                                   m_currentActivity)) {
+                updateOverlayWindow(screen);
+            }
+        }
+    }
+}
+
 void OverlayService::setCurrentVirtualDesktop(int desktop)
 {
     if (m_currentVirtualDesktop != desktop) {
         m_currentVirtualDesktop = desktop;
         qCInfo(lcOverlay) << "Virtual desktop changed to" << desktop;
-
-        // Hide overlay/selector on screens where the new desktop is disabled
-        if (m_settings) {
-            for (auto* screen : m_zoneSelectorWindows.keys()) {
-                if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                      m_currentActivity)) {
-                    if (auto* window = m_zoneSelectorWindows.value(screen)) {
-                        window->hide();
-                    }
-                }
-            }
-            if (m_visible) {
-                for (auto* screen : m_overlayWindows.keys()) {
-                    if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                          m_currentActivity)) {
-                        if (auto* window = m_overlayWindows.value(screen)) {
-                            window->hide();
-                        }
-                    }
-                }
-            }
-        }
-
-        // Update remaining zone selector windows with the new active layout for this desktop
-        if (!m_zoneSelectorWindows.isEmpty()) {
-            for (auto* screen : m_zoneSelectorWindows.keys()) {
-                if (!m_settings
-                    || !isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                          m_currentActivity)) {
-                    updateZoneSelectorWindow(screen);
-                }
-            }
-        }
-        // Also refresh overlay windows when visible (symmetry with activity; overlay shows per-desktop layout)
-        if (m_visible && !m_overlayWindows.isEmpty()) {
-            for (auto* screen : m_overlayWindows.keys()) {
-                if (!m_settings
-                    || !isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                          m_currentActivity)) {
-                    updateOverlayWindow(screen);
-                }
-            }
-        }
+        hideDisabledAndRefresh();
     }
 }
 
@@ -397,49 +399,7 @@ void OverlayService::setCurrentActivity(const QString& activityId)
     if (m_currentActivity != activityId) {
         m_currentActivity = activityId;
         qCInfo(lcOverlay) << "Activity changed activity=" << activityId;
-
-        // Hide overlay/selector on screens where the new activity is disabled
-        if (m_settings) {
-            for (auto* screen : m_zoneSelectorWindows.keys()) {
-                if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                      m_currentActivity)) {
-                    if (auto* window = m_zoneSelectorWindows.value(screen)) {
-                        window->hide();
-                    }
-                }
-            }
-            if (m_visible) {
-                for (auto* screen : m_overlayWindows.keys()) {
-                    if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                          m_currentActivity)) {
-                        if (auto* window = m_overlayWindows.value(screen)) {
-                            window->hide();
-                        }
-                    }
-                }
-            }
-        }
-
-        // Update remaining zone selector windows with the new active layout for this activity
-        if (!m_zoneSelectorWindows.isEmpty()) {
-            for (auto* screen : m_zoneSelectorWindows.keys()) {
-                if (!m_settings
-                    || !isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                          m_currentActivity)) {
-                    updateZoneSelectorWindow(screen);
-                }
-            }
-        }
-        // Also refresh overlay windows when visible (symmetry with desktop; overlay shows per-activity layout)
-        if (m_visible && !m_overlayWindows.isEmpty()) {
-            for (auto* screen : m_overlayWindows.keys()) {
-                if (!m_settings
-                    || !isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                          m_currentActivity)) {
-                    updateOverlayWindow(screen);
-                }
-            }
-        }
+        hideDisabledAndRefresh();
     }
 }
 

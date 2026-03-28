@@ -197,14 +197,30 @@ void Daemon::connectDesktopActivity()
     if (ActivityManager::isAvailable()) {
         m_activityManager->start();
 
-        // Prune stale TilingState entries when activities are added/removed
+        // Prune stale TilingState entries and disabled-activity IDs when activities are added/removed
         connect(m_activityManager.get(), &ActivityManager::activitiesChanged, this, [this]() {
-            if (!m_autotileEngine || !m_activityManager) {
+            if (!m_activityManager) {
                 return;
             }
             const QStringList activities = m_activityManager->activities();
-            m_autotileEngine->pruneStatesForActivities(activities);
             const QSet<QString> validSet(activities.begin(), activities.end());
+
+            // Prune disabled-activity entries that reference removed activities
+            if (m_settings) {
+                QStringList disabled = m_settings->disabledActivities();
+                const int before = disabled.size();
+                disabled.removeIf([&validSet](const QString& id) {
+                    return !validSet.contains(id);
+                });
+                if (disabled.size() != before) {
+                    m_settings->setDisabledActivities(disabled);
+                    m_settings->save();
+                }
+            }
+
+            if (m_autotileEngine) {
+                m_autotileEngine->pruneStatesForActivities(activities);
+            }
             pruneContextMapsForActivities(validSet);
         });
 

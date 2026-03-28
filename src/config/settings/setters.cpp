@@ -117,7 +117,7 @@ SETTINGS_SETTER(const QList<int>&, DisabledDesktops, m_disabledDesktops, disable
 
 bool Settings::isDesktopDisabled(int desktop) const
 {
-    return m_disabledDesktops.contains(desktop);
+    return desktop > 0 && m_disabledDesktops.contains(desktop);
 }
 
 SETTINGS_SETTER(const QStringList&, DisabledActivities, m_disabledActivities, disabledActivitiesChanged)

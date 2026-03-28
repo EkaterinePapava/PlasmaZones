@@ -1345,6 +1345,29 @@ void SettingsController::onVirtualDesktopsChanged()
 void SettingsController::onActivitiesChanged()
 {
     refreshActivities();
+
+    // Prune disabled-activity entries that reference removed activities
+    if (!m_activities.isEmpty()) {
+        QSet<QString> validIds;
+        for (const QVariant& v : std::as_const(m_activities)) {
+            const QVariantMap map = v.toMap();
+            const QString id = map.value(QStringLiteral("id")).toString();
+            if (!id.isEmpty()) {
+                validIds.insert(id);
+            }
+        }
+        QStringList disabledActs = m_settings.disabledActivities();
+        const int before = disabledActs.size();
+        disabledActs.removeIf([&validIds](const QString& id) {
+            return !validIds.contains(id);
+        });
+        if (disabledActs.size() != before) {
+            m_settings.setDisabledActivities(disabledActs);
+            setNeedsSave(true);
+            Q_EMIT disabledActivitiesChanged();
+        }
+    }
+
     Q_EMIT activitiesChanged();
 }
 
