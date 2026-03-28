@@ -64,8 +64,8 @@ function calculateZones(params) {
 
     // Case 2: One stack window — 2-column layout (masters left, stack right)
     if (stackCount === 1) {
-        // Degenerate: gap consumes all width — fall back to stacking
-        if (area.width <= gap) {
+        // Degenerate: gap consumes all width or height — fall back to stacking
+        if (area.width <= gap || area.height <= 0) {
             return fillArea(area, count);
         }
         const contentWidth = area.width - gap;

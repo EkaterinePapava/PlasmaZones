@@ -1685,11 +1685,13 @@ void AutotileEngine::applyTiling(const QString& screenId)
     // Build batch JSON and emit once to avoid race when effect applies many geometries.
     // Flag monocle-style layouts where all zones share identical geometry,
     // so the KWin effect can set maximize state on stacked windows.
+    // This catches both intentional monocle layouts and degenerate fillArea
+    // fallbacks (tiny screens) — maximize is appropriate in both cases since
+    // windows are stacked identically.
     // Requires >= 2 zones: a single window is just normal tiling, not monocle.
-    // This intentionally catches degenerate narrow-screen fallbacks too.
-    const bool allZonesIdentical = tileCount >= 2 && std::all_of(zones.begin() + 1, zones.end(), [&](const QRect& z) {
-                                       return z == zones[0];
-                                   });
+    const bool useMonocleMode = tileCount >= 2 && std::all_of(zones.begin() + 1, zones.end(), [&](const QRect& z) {
+                                    return z == zones[0];
+                                });
     QJsonArray arr;
     for (int i = 0; i < tileCount; ++i) {
         const QRect& geo = zones[i];
@@ -1701,7 +1703,7 @@ void AutotileEngine::applyTiling(const QString& screenId)
         obj[QLatin1String("height")] = geo.height();
         // Flag monocle entries so the effect can set KWin maximize state,
         // which makes Plasma panels recognize the window and unfloat.
-        if (allZonesIdentical) {
+        if (useMonocleMode) {
             obj[QLatin1String("monocle")] = true;
         }
         arr.append(obj);

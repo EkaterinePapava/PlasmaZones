@@ -70,6 +70,7 @@ function calculateZones(params) {
     }
 
     // Three or more windows: true three-column layout
+    const clampedRatio = Math.max(PZ_MIN_SPLIT, Math.min(splitRatio, PZ_MAX_SPLIT));
     const contentWidth = area.width - 2 * gap;
 
     if (contentWidth <= 0) {
@@ -94,7 +95,7 @@ function calculateZones(params) {
     const minLeftWidth = sideMinW.minLeftWidth;
     const minRightWidth = sideMinW.minRightWidth;
 
-    const cols = solveThreeColumn(area.x, contentWidth, gap, splitRatio,
+    const cols = solveThreeColumn(area.x, contentWidth, gap, clampedRatio,
                                 minLeftWidth, minCenterWidth, minRightWidth);
 
     const leftWidth = cols.leftWidth;

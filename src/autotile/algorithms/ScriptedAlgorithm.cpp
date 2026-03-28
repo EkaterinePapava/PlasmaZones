@@ -503,9 +503,11 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
     }
 
     // Build the JS params object
+    // Normalize innerGap to >= 0 here so every JS script doesn't need to repeat
+    // Math.max(0, params.innerGap || 0).
     QJSValue jsParams = m_engine->newObject();
     jsParams.setProperty(QStringLiteral("windowCount"), params.windowCount);
-    jsParams.setProperty(QStringLiteral("innerGap"), params.innerGap);
+    jsParams.setProperty(QStringLiteral("innerGap"), std::max(0, params.innerGap));
 
     // area sub-object
     QJSValue jsArea = m_engine->newObject();

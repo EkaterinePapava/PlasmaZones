@@ -115,6 +115,10 @@ void AlgorithmRegistry::registerAlgorithm(const QString& id, TilingAlgorithm* al
     int oldIndex = m_registrationOrder.indexOf(id);
     auto* old = removeAlgorithmInternal(id);
     if (old && old != algorithm) {
+        // Emit before delete so signal handlers can safely dereference any cached
+        // algorithm pointers without risk of use-after-free.
+        Q_EMIT algorithmUnregistered(id);
+
         // Use synchronous delete (not deleteLater) to match cleanup() semantics.
         // The old algorithm is no longer referenced — it was just removed from
         // m_algorithms — so immediate deletion is safe. Using deleteLater() here
