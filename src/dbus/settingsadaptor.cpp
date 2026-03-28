@@ -238,7 +238,8 @@ void SettingsAdaptor::initializeRegistry()
     };
     m_schemas[QStringLiteral("overlayDisplayMode")] = QStringLiteral("int");
     REGISTER_STRINGLIST_SETTING("disabledMonitors", disabledMonitors, setDisabledMonitors)
-    // DisabledDesktops: stored as QList<int>, converted from/to QVariantList over D-Bus
+    // DisabledDesktops: QList<int> requires manual QVariantList conversion (can't use REGISTER_STRINGLIST_SETTING).
+    // DisabledActivities below is QStringList and uses the macro directly.
     m_getters[QStringLiteral("disabledDesktops")] = [this]() {
         QVariantList vl;
         for (int d : m_settings->disabledDesktops())

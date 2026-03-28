@@ -412,6 +412,8 @@ SettingsCard {
             }
 
             Repeater {
+                id: desktopDisableRepeater
+
                 model: root.appSettings.virtualDesktopCount
 
                 CheckBox {
@@ -432,6 +434,40 @@ SettingsCard {
                         target: root.appSettings
                     }
 
+                }
+
+            }
+
+            Kirigami.InlineMessage {
+                Layout.fillWidth: true
+                visible: {
+                    let count = root.appSettings.virtualDesktopCount;
+                    if (count <= 1)
+                        return false;
+
+                    for (let i = 1; i <= count; i++) {
+                        if (!root.appSettings.isDesktopDisabled(i))
+                            return false;
+
+                    }
+                    return true;
+                }
+                type: Kirigami.MessageType.Warning
+                text: i18n("All desktops are disabled. PlasmaZones will not activate on any desktop.")
+
+                Connections {
+                    function onDisabledDesktopsChanged() {
+                        let count = root.appSettings.virtualDesktopCount;
+                        let allDisabled = count > 1;
+                        for (let i = 1; i <= count && allDisabled; i++) {
+                            if (!root.appSettings.isDesktopDisabled(i))
+                                allDisabled = false;
+
+                        }
+                        parent.visible = allDisabled;
+                    }
+
+                    target: root.appSettings
                 }
 
             }
