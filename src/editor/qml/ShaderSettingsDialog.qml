@@ -569,6 +569,24 @@ Kirigami.Dialog {
         root.hideShaderPreview();
         cachedShaderInfoForPreview = null;
         cachedShaderInfoId = "";
+        // Destroy dynamic menu items before the QML engine tears down.
+        // Without this, Qt's child destruction cascade hits QQmlData::destroyed
+        // on items whose context data is already partially freed.
+        if (shaderCategoryMenu._built) {
+            shaderCategoryMenu._built = false;
+            for (var i = 0; i < shaderCategoryMenu._allItems.length; i++) {
+                if (shaderCategoryMenu._allItems[i])
+                    shaderCategoryMenu._allItems[i].destroy();
+
+            }
+            shaderCategoryMenu._allItems = [];
+            for (var j = 0; j < shaderCategoryMenu._allSubMenus.length; j++) {
+                if (shaderCategoryMenu._allSubMenus[j])
+                    shaderCategoryMenu._allSubMenus[j].destroy();
+
+            }
+            shaderCategoryMenu._allSubMenus = [];
+        }
     }
     onPendingShaderIdChanged: {
         if (visible)
