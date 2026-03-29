@@ -715,7 +715,7 @@ public:
 
 private:
     QString m_defaultLayoutId;
-    QString m_renderingBackend = QStringLiteral("auto");
+    QString m_renderingBackend = ConfigDefaults::renderingBackend();
 };
 
 } // namespace PlasmaZones

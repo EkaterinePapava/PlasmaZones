@@ -384,8 +384,9 @@ add_custom_target(uninstall
 # and user-facing messages are handled by packaging (Arch .install, Debian postinst, RPM %post).
 
 # Vulkan headers are needed at build time for QVulkanInstance (Vulkan backend support).
-# REQUIRED so CMake fails clearly if headers are missing rather than a cryptic compile error.
-set_package_properties(WrapVulkanHeaders PROPERTIES TYPE REQUIRED)
+# RECOMMENDED rather than REQUIRED so PlasmaZones can still build on systems without
+# Vulkan dev packages — the Vulkan backend simply won't be available at runtime.
+set_package_properties(WrapVulkanHeaders PROPERTIES TYPE RECOMMENDED)
 
 # Feature summary (REQUIRED + OPTIONAL only; RUNTIME hidden to reduce noise)
 feature_summary(WHAT REQUIRED_PACKAGES_FOUND REQUIRED_PACKAGES_NOT_FOUND

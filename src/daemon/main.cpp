@@ -14,9 +14,9 @@
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QIcon>
+#include "vulkan_metatype.h"
 #include <QQuickWindow>
 #include <QSettings>
-#include "vulkan_fwd.h"
 #include <QThread>
 #include <QTimer>
 #include <QtQml/qqmlextensionplugin.h>
@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
     // Store instance pointer as a dynamic property so OverlayService::createQmlWindow()
     // can retrieve it and call setVulkanInstance() on each QQuickWindow.
     if (useVulkan) {
-        app.setProperty("_pz_vulkanInstance", QVariant::fromValue(&vulkanInstance));
+        app.setProperty(PzVulkanInstanceProperty, QVariant::fromValue(&vulkanInstance));
     }
     PlasmaZones::loadTranslations(&app);
 

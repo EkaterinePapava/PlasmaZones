@@ -111,12 +111,8 @@ Flickable {
                         Kirigami.FormData.label: i18n("Rendering backend:")
                         Accessible.name: i18n("Rendering backend")
                         enabled: shaderEffectsCheck.checked
-                        opacity: enabled ? 1 : 0.4
                         model: settingsController.renderingBackendOptions
-                        displayText: {
-                            var idx = settingsController.renderingBackendOptions.indexOf(currentText);
-                            return idx >= 0 ? settingsController.renderingBackendDisplayNames[idx] : currentText;
-                        }
+                        displayText: currentIndex >= 0 && currentIndex < settingsController.renderingBackendDisplayNames.length ? settingsController.renderingBackendDisplayNames[currentIndex] : currentText
                         currentIndex: Math.max(0, settingsController.renderingBackendOptions.indexOf(appSettings.renderingBackend))
                         onActivated: (index) => {
                             appSettings.renderingBackend = settingsController.renderingBackendOptions[index];

@@ -577,20 +577,48 @@ public:
         return QStringLiteral("auto");
     }
 
-    static const QStringList& validRenderingBackends()
+    struct RenderingBackendEntry
     {
-        static const QStringList backends = {
-            QStringLiteral("auto"),
-            QStringLiteral("vulkan"),
-            QStringLiteral("opengl"),
+        QString key;
+        QString displayName;
+    };
+
+    // Single source of truth for backend keys and display names.
+    // Order here determines ComboBox order in the settings UI.
+    static const QList<RenderingBackendEntry>& renderingBackendEntries()
+    {
+        static const QList<RenderingBackendEntry> entries = {
+            {QStringLiteral("auto"), QStringLiteral("Automatic")},
+            {QStringLiteral("vulkan"), QStringLiteral("Vulkan")},
+            {QStringLiteral("opengl"), QStringLiteral("OpenGL")},
         };
-        return backends;
+        return entries;
+    }
+
+    static QStringList validRenderingBackends()
+    {
+        QStringList keys;
+        for (const auto& e : renderingBackendEntries())
+            keys.append(e.key);
+        return keys;
+    }
+
+    static QStringList renderingBackendDisplayNames()
+    {
+        QStringList names;
+        for (const auto& e : renderingBackendEntries())
+            names.append(e.displayName);
+        return names;
     }
 
     static QString normalizeRenderingBackend(const QString& raw)
     {
         const QString normalized = raw.toLower().trimmed();
-        return validRenderingBackends().contains(normalized) ? normalized : renderingBackend();
+        for (const auto& e : renderingBackendEntries()) {
+            if (e.key == normalized)
+                return normalized;
+        }
+        return renderingBackend();
     }
 
     static bool enableShaderEffects()

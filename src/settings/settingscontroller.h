@@ -347,7 +347,11 @@ public:
 
     QStringList renderingBackendDisplayNames() const
     {
-        return {PzI18n::tr("Automatic"), PzI18n::tr("Vulkan"), PzI18n::tr("OpenGL")};
+        // Translate display names from ConfigDefaults (single source of truth for key<->name coupling)
+        QStringList translated;
+        for (const auto& name : PlasmaZones::ConfigDefaults::renderingBackendDisplayNames())
+            translated.append(PzI18n::tr(name.toUtf8().constData()));
+        return translated;
     }
 
     // ── Cava detection ───────────────────────────────────────────────────────
