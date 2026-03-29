@@ -107,9 +107,15 @@ void OverlayService::showSnapAssist(const QString& screenId, const QString& empt
     }
 
     // Match main overlay: full-screen anchors so zone coordinates (overlay-local) line up
-    configureLayerSurface(
-        m_snapAssistWindow, screen, LayerSurface::LayerTop, LayerSurface::KeyboardInteractivityExclusive,
-        QStringLiteral("plasmazones-snap-assist-%1").arg(Utils::screenIdentifier(screen)), LayerSurface::AnchorAll);
+    if (!configureLayerSurface(m_snapAssistWindow, screen, LayerSurface::LayerTop,
+                               LayerSurface::KeyboardInteractivityExclusive,
+                               QStringLiteral("plasmazones-snap-assist-%1").arg(Utils::screenIdentifier(screen)),
+                               LayerSurface::AnchorAll)) {
+        qCWarning(lcOverlay) << "showSnapAssist: failed to configure layer surface";
+        destroySnapAssistWindow();
+        Q_EMIT snapAssistDismissed();
+        return;
+    }
 
     assertWindowOnScreen(m_snapAssistWindow, screen);
     // Size only — position is controlled by layer-surface anchors (AnchorAll),
@@ -346,9 +352,14 @@ void OverlayService::showLayoutPicker(const QString& screenId)
     }
 
     // Full-screen layer shell with keyboard interactivity
-    configureLayerSurface(
-        m_layoutPickerWindow, screen, LayerSurface::LayerTop, LayerSurface::KeyboardInteractivityExclusive,
-        QStringLiteral("plasmazones-layout-picker-%1").arg(Utils::screenIdentifier(screen)), LayerSurface::AnchorAll);
+    if (!configureLayerSurface(m_layoutPickerWindow, screen, LayerSurface::LayerTop,
+                               LayerSurface::KeyboardInteractivityExclusive,
+                               QStringLiteral("plasmazones-layout-picker-%1").arg(Utils::screenIdentifier(screen)),
+                               LayerSurface::AnchorAll)) {
+        qCWarning(lcOverlay) << "showLayoutPicker: failed to configure layer surface";
+        destroyLayoutPickerWindow();
+        return;
+    }
 
     assertWindowOnScreen(m_layoutPickerWindow, screen);
     // Size only — position is controlled by layer-surface anchors (AnchorAll),

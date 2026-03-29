@@ -51,25 +51,29 @@ inline ZoneSelectorConfig defaultZoneSelectorConfig()
 // Pass std::nullopt for anchors to skip setting them (caller will set separately).
 // This avoids conflating AnchorNone (a valid value) with "not provided".
 // exclusiveZone defaults to -1 (overlay ignores panels); use 0 for sensors.
-inline void configureLayerSurface(QQuickWindow* window, QScreen* screen, LayerSurface::Layer layer,
-                                  LayerSurface::KeyboardInteractivity keyboardInteractivity, const QString& scope,
-                                  std::optional<LayerSurface::Anchors> anchors = std::nullopt,
-                                  int32_t exclusiveZone = -1)
+// Returns true if configuration succeeded, false if layer-shell is unavailable
+// or LayerSurface creation failed. Callers should check the return value and
+// handle the unsupported case (e.g. skip showing the overlay, or degrade gracefully).
+[[nodiscard]] inline bool configureLayerSurface(QQuickWindow* window, QScreen* screen, LayerSurface::Layer layer,
+                                                LayerSurface::KeyboardInteractivity keyboardInteractivity,
+                                                const QString& scope,
+                                                std::optional<LayerSurface::Anchors> anchors = std::nullopt,
+                                                int32_t exclusiveZone = -1)
 {
     if (!window) {
-        return;
+        return false;
     }
     if (!LayerSurface::isSupported()) {
         qCWarning(lcOverlay) << "configureLayerSurface: zwlr_layer_shell_v1 not available —"
                              << "window will be created as xdg_toplevel (wrong stacking/anchoring)."
                              << "This is expected on compositors without layer-shell support (e.g. GNOME/Mutter).";
-        return;
+        return false;
     }
     auto* layerSurface = LayerSurface::get(window);
     if (!layerSurface) {
         qCWarning(lcOverlay) << "configureLayerSurface: LayerSurface::get() returned nullptr for window"
                              << window->objectName() << "— layer surface properties will not be applied";
-        return;
+        return false;
     }
     // Batch all property changes into a single propertiesChanged() emission
     // so the QPA plugin only does one applyProperties()+commit round-trip.
@@ -82,6 +86,7 @@ inline void configureLayerSurface(QQuickWindow* window, QScreen* screen, LayerSu
     }
     layerSurface->setExclusiveZone(exclusiveZone);
     layerSurface->setScope(scope);
+    return true;
 }
 
 // Resolve target screen from a screen name/ID string with fallback to primary.

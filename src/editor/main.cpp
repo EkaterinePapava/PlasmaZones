@@ -47,6 +47,10 @@ int main(int argc, char* argv[])
     QGuiApplication app(argc, argv);
     PlasmaZones::loadTranslations(&app);
 
+    // Register metatype for QVariant storage (LayerSurface stores itself
+    // as a QWindow dynamic property via QVariant::fromValue).
+    qRegisterMetaType<PlasmaZones::LayerSurface*>();
+
     // Verify the layer-shell QPA plugin loaded successfully. If not, shader preview
     // overlays will be created as xdg_toplevel (wrong stacking/anchoring).
     if (!qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY") && !PlasmaZones::LayerSurface::isSupported()) {
