@@ -216,6 +216,22 @@ private Q_SLOTS:
         QCOMPARE(spy.count(), 3);
     }
 
+    void testPropertiesChanged_notEmittedForImmutableProps()
+    {
+        // Scope and screen are baked into zwlr_layer_shell_v1_get_layer_surface
+        // at creation time — they must NOT emit propertiesChanged because the
+        // QPA plugin cannot push these to the compositor after surface creation.
+        QWindow window;
+        auto* surface = LayerSurface::get(&window);
+        QSignalSpy spy(surface, &LayerSurface::propertiesChanged);
+
+        surface->setScope(QStringLiteral("immutable-test"));
+        QCOMPARE(spy.count(), 0);
+
+        surface->setScreen(QGuiApplication::primaryScreen());
+        QCOMPARE(spy.count(), 0);
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // BatchGuard — coalesces propertiesChanged emissions
     // ═══════════════════════════════════════════════════════════════════════════
@@ -313,6 +329,26 @@ private Q_SLOTS:
     // ═══════════════════════════════════════════════════════════════════════════
     // QWindow property propagation
     // ═══════════════════════════════════════════════════════════════════════════
+
+    void testDefaultsPropagateToWindow()
+    {
+        // Default values must be set on the QWindow at construction time so the
+        // QPA plugin reads correct initial state. Without this, setters called with
+        // the default value (e.g. setLayer(LayerTop) when m_layer is already LayerTop)
+        // hit the change-guard early return and never set the QWindow property.
+        QWindow window;
+        LayerSurface::get(&window);
+
+        QCOMPARE(window.property(LayerSurfaceProps::Layer).toInt(), 2); // LayerTop
+        QCOMPARE(window.property(LayerSurfaceProps::Anchors).toInt(), 0); // AnchorNone
+        QCOMPARE(window.property(LayerSurfaceProps::ExclusiveZone).toInt(), -1);
+        QCOMPARE(window.property(LayerSurfaceProps::Keyboard).toInt(), 0); // None
+        QCOMPARE(window.property(LayerSurfaceProps::Scope).toString(), QStringLiteral("plasmazones"));
+        QCOMPARE(window.property(LayerSurfaceProps::MarginsLeft).toInt(), 0);
+        QCOMPARE(window.property(LayerSurfaceProps::MarginsTop).toInt(), 0);
+        QCOMPARE(window.property(LayerSurfaceProps::MarginsRight).toInt(), 0);
+        QCOMPARE(window.property(LayerSurfaceProps::MarginsBottom).toInt(), 0);
+    }
 
     void testPropertiesPropagateToWindow()
     {

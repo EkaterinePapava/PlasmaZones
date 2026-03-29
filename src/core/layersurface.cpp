@@ -27,12 +27,21 @@ LayerSurface::LayerSurface(QWindow* window)
     // instead of an xdg_toplevel when the platform window is created.
     window->setProperty(LayerSurfaceProps::IsLayerShell, true);
     window->setProperty(LayerSurfaceProps::Surface, QVariant::fromValue(this));
-    // Set default scope so the QPA plugin always has a non-empty value.
-    // Prevents compositor quirks with empty scope strings.
+
+    // Propagate ALL default values to QWindow dynamic properties so the QPA plugin
+    // reads correct initial state when the platform window is created (during show()).
+    // Without this, setters that are called with the default value (e.g. setLayer(LayerTop)
+    // when m_layer is already LayerTop) hit the change-guard early return and never set
+    // the QWindow property, causing the QPA plugin to read 0 (LayerBackground) instead.
+    window->setProperty(LayerSurfaceProps::Layer, static_cast<int>(m_layer));
+    window->setProperty(LayerSurfaceProps::Anchors, static_cast<int>(m_anchors));
+    window->setProperty(LayerSurfaceProps::ExclusiveZone, m_exclusiveZone);
+    window->setProperty(LayerSurfaceProps::Keyboard, static_cast<int>(m_keyboard));
     window->setProperty(LayerSurfaceProps::Scope, m_scope);
-    // No QObject::destroyed connection needed — LayerSurface is parented to
-    // the window, so ~LayerSurface runs (and removes from s_surfaces) before
-    // the parent window finishes destruction.
+    window->setProperty(LayerSurfaceProps::MarginsLeft, 0);
+    window->setProperty(LayerSurfaceProps::MarginsTop, 0);
+    window->setProperty(LayerSurfaceProps::MarginsRight, 0);
+    window->setProperty(LayerSurfaceProps::MarginsBottom, 0);
 }
 
 LayerSurface::~LayerSurface()
@@ -165,7 +174,6 @@ void LayerSurface::setScope(const QString& scope)
     // No emitPropertiesChanged() — scope is only read at surface creation time by
     // the QPA plugin (baked into zwlr_layer_shell_v1_get_layer_surface), so pushing
     // a protocol update would be meaningless. Same rationale applies to setScreen().
-    emitPropertiesChanged();
 }
 
 QString LayerSurface::scope() const

@@ -75,6 +75,9 @@ LayerShellWindow::LayerShellWindow(LayerShellIntegration* integration, QtWayland
                 if (m_wlSurface) {
                     wl_surface_commit(m_wlSurface);
                 }
+                // Recalculate position when anchors/margins change (e.g. zone selector
+                // position update, OSD centering) so mapFromGlobal stays accurate.
+                updatePosition();
             }
         });
     }
@@ -103,11 +106,24 @@ bool LayerShellWindow::isExposed() const
 
 void LayerShellWindow::applyConfigure()
 {
-    // Re-read properties in case they changed since creation
+    // Called by QWaylandWindow::applyConfigure() during Qt's configure cycle.
+    // Use the same compositor-controlled-axis logic as handleConfigure.
+    if (m_pendingWidth > 0 && m_pendingHeight > 0) {
+        QWindow* qwindow = m_waylandWindow->window();
+        if (qwindow) {
+            int anchors = qwindow->property(LayerSurfaceProps::Anchors).toInt();
+            bool compositorControlsW = (anchors & LayerSurface::AnchorLeft) && (anchors & LayerSurface::AnchorRight);
+            bool compositorControlsH = (anchors & LayerSurface::AnchorTop) && (anchors & LayerSurface::AnchorBottom);
+            int newW = compositorControlsW ? static_cast<int>(m_pendingWidth) : qwindow->width();
+            int newH = compositorControlsH ? static_cast<int>(m_pendingHeight) : qwindow->height();
+            if (newW != qwindow->width() || newH != qwindow->height()) {
+                qwindow->resize(newW, newH);
+            }
+        }
+    }
+
     applyProperties();
 
-    // Commit so the compositor sees the updated properties.
-    // Layer-shell property changes are double-buffered and require a commit.
     if (m_wlSurface) {
         wl_surface_commit(m_wlSurface);
     }
@@ -159,6 +175,66 @@ void LayerShellWindow::applyProperties()
     zwlr_layer_surface_v1_set_size(m_layerSurface, w, h);
 }
 
+void LayerShellWindow::updatePosition()
+{
+    // Layer-shell surfaces are positioned by the compositor based on anchors, margins,
+    // and the output geometry. Qt's QWindow doesn't know this position, so
+    // mapFromGlobal() returns wrong local coordinates (assumes 0,0).
+    //
+    // Calculate the expected position and set it via repositionFromApplyConfigure()
+    // which updates Qt's internal geometry without triggering a protocol roundtrip.
+    QWindow* qwindow = m_waylandWindow->window();
+    if (!qwindow) {
+        return;
+    }
+    QScreen* screen = qwindow->screen();
+    if (!screen) {
+        return;
+    }
+
+    const QRect screenGeom = screen->geometry();
+    int anchors = qwindow->property(LayerSurfaceProps::Anchors).toInt();
+    int mLeft = qwindow->property(LayerSurfaceProps::MarginsLeft).toInt();
+    int mTop = qwindow->property(LayerSurfaceProps::MarginsTop).toInt();
+    int mRight = qwindow->property(LayerSurfaceProps::MarginsRight).toInt();
+    int mBottom = qwindow->property(LayerSurfaceProps::MarginsBottom).toInt();
+    int winW = qwindow->width();
+    int winH = qwindow->height();
+
+    bool anchorL = anchors & LayerSurface::AnchorLeft;
+    bool anchorR = anchors & LayerSurface::AnchorRight;
+    bool anchorT = anchors & LayerSurface::AnchorTop;
+    bool anchorB = anchors & LayerSurface::AnchorBottom;
+
+    // X position: the compositor places the surface based on horizontal anchors + margins.
+    int x;
+    if (anchorL && anchorR) {
+        // Anchored both sides — surface starts at left margin
+        x = screenGeom.x() + mLeft;
+    } else if (anchorL) {
+        x = screenGeom.x() + mLeft;
+    } else if (anchorR) {
+        x = screenGeom.x() + screenGeom.width() - winW - mRight;
+    } else {
+        // No horizontal anchor — centered
+        x = screenGeom.x() + (screenGeom.width() - winW) / 2;
+    }
+
+    // Y position: same logic for vertical anchors.
+    int y;
+    if (anchorT && anchorB) {
+        y = screenGeom.y() + mTop;
+    } else if (anchorT) {
+        y = screenGeom.y() + mTop;
+    } else if (anchorB) {
+        y = screenGeom.y() + screenGeom.height() - winH - mBottom;
+    } else {
+        y = screenGeom.y() + (screenGeom.height() - winH) / 2;
+    }
+
+    m_waylandWindow->repositionFromApplyConfigure(QPoint(x, y));
+}
+
 void LayerShellWindow::handleConfigure(void* data, struct zwlr_layer_surface_v1* surface, uint32_t serial,
                                        uint32_t width, uint32_t height)
 {
@@ -169,33 +245,50 @@ void LayerShellWindow::handleConfigure(void* data, struct zwlr_layer_surface_v1*
 
     zwlr_layer_surface_v1_ack_configure(surface, serial);
 
-    // Resize the Qt window to the compositor-assigned size.
-    // The configure event sends surface-local coordinates (logical pixels).
-    // QWindow::resize() also works in logical (device-independent) pixels, so
-    // we pass the values through directly — no DPR division needed.
-    // Qt's Wayland platform plugin handles the logical→buffer scaling internally
-    // (via wl_surface.set_buffer_scale or wp_fractional_scale_v1).
+    // Resize the Qt window to the compositor-assigned size, but ONLY for axes
+    // where the compositor controls the size (anchored to both opposing edges).
     //
-    // Note: calling resize() from within a Wayland protocol callback is safe here
-    // because Qt's Wayland backend defers the actual wl_surface.commit until the
-    // next event loop iteration — it does not re-enter the Wayland dispatch.
+    // Layer-shell sizing contract:
+    //   - Axis anchored to both edges (e.g. Left+Right): client sent set_size(0,_),
+    //     compositor decides the width → we MUST accept the configure width.
+    //   - Axis NOT doubly-anchored: client sent an explicit size → the configure
+    //     echoes it back. We keep the app-specified size to avoid overwriting
+    //     carefully calculated OSD/popup dimensions.
+    //
+    // This matters because compositors may send sizes that differ from the screen
+    // geometry (e.g. KDE subtracts panel areas even with exclusiveZone=-1).
+    // Blindly resizing to the configure breaks overlays that assume screen-sized windows.
     QWindow* qwindow = self->m_waylandWindow->window();
-    if (width > 0 && height > 0 && qwindow) {
-        qwindow->resize(static_cast<int>(width), static_cast<int>(height));
+    if (qwindow && width > 0 && height > 0) {
+        int anchors = qwindow->property(LayerSurfaceProps::Anchors).toInt();
+        bool compositorControlsW = (anchors & LayerSurface::AnchorLeft) && (anchors & LayerSurface::AnchorRight);
+        bool compositorControlsH = (anchors & LayerSurface::AnchorTop) && (anchors & LayerSurface::AnchorBottom);
+
+        int newW = compositorControlsW ? static_cast<int>(width) : qwindow->width();
+        int newH = compositorControlsH ? static_cast<int>(height) : qwindow->height();
+        if (newW != qwindow->width() || newH != qwindow->height()) {
+            qwindow->resize(newW, newH);
+        }
     }
 
     // Re-apply current properties and commit so the compositor sees
-    // up-to-date anchors/margins/size immediately after the configure,
-    // rather than waiting for the next Qt-driven applyConfigure() cycle.
+    // up-to-date anchors/margins/size immediately after the configure.
     self->applyProperties();
     if (self->m_wlSurface) {
         wl_surface_commit(self->m_wlSurface);
     }
 
-    // Trigger exposure so Qt starts rendering
-    if (qwindow) {
-        qwindow->requestUpdate();
-    }
+    // Calculate the window's screen position from anchors/margins/output so
+    // QWindow::mapFromGlobal() returns correct local coordinates for hit testing.
+    self->updatePosition();
+
+    // Trigger Qt's exposure state update. QWaylandWindow::calculateExposure()
+    // checks mShellSurface->isExposed() which returns m_configured (now true).
+    // updateExposure() transitions QWaylandWindow::mExposed from false→true
+    // and sends the expose event that starts Qt's rendering pipeline.
+    // Without this call, the layer surface exists at the Wayland level but Qt
+    // never paints it — mExposed stays false and isExposed() returns false.
+    self->m_waylandWindow->updateExposure();
 
     qCDebug(lcLayerShellWindow) << "Configured:" << width << "x" << height;
 }

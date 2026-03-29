@@ -9,6 +9,7 @@
 #include <QLoggingCategory>
 #include <QtWaylandClient/private/qwaylanddisplay_p.h>
 #include <QtWaylandClient/private/qwaylandwindow_p.h>
+#include <QtWaylandClient/private/qwaylandshellintegrationfactory_p.h>
 
 Q_LOGGING_CATEGORY(lcLayerShellIntegration, "plasmazones.qpa.layershell")
 
@@ -45,6 +46,8 @@ LayerShellIntegration::~LayerShellIntegration()
 
 bool LayerShellIntegration::initialize(QtWaylandClient::QWaylandDisplay* display)
 {
+    m_display = display;
+
     // Get wl_display and do a registry roundtrip to bind zwlr_layer_shell_v1
     struct wl_display* wlDisplay = display->wl_display();
     m_registry = wl_display_get_registry(wlDisplay);
@@ -72,8 +75,21 @@ LayerShellIntegration::createShellSurface(QtWaylandClient::QWaylandWindow* windo
     // Only create layer surfaces for windows we've marked
     QWindow* qwindow = window->window();
     if (!qwindow || !qwindow->property(LayerSurfaceProps::IsLayerShell).toBool()) {
-        // Not a layer-shell window — return nullptr so Qt falls back
-        // to the default shell integration (xdg_toplevel).
+        // Not a layer-shell window — delegate to xdg-shell so the window gets
+        // a proper xdg_toplevel or xdg_popup role. Without this, the window has
+        // no shell role and is invisible (Qt logs "Could not create a shell surface object").
+        if (!m_xdgShell && m_display) {
+            m_xdgShell.reset(
+                QtWaylandClient::QWaylandShellIntegrationFactory::create(QStringLiteral("xdg-shell"), m_display));
+            if (m_xdgShell) {
+                qCDebug(lcLayerShellIntegration) << "Loaded xdg-shell fallback for regular windows";
+            } else {
+                qCWarning(lcLayerShellIntegration) << "Failed to load xdg-shell fallback";
+            }
+        }
+        if (m_xdgShell) {
+            return m_xdgShell->createShellSurface(window);
+        }
         return nullptr;
     }
 

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <memory>
 #include <QtWaylandClient/private/qwaylandshellintegration_p.h>
 #include "../plasmazones_export.h"
 #include "wlr_layer_shell_protocol.h"
@@ -11,6 +12,8 @@ namespace PlasmaZones {
 
 /// QPA shell integration plugin that binds zwlr_layer_shell_v1 and creates
 /// layer surfaces for windows marked with the _pz_layer_shell property.
+/// For regular (non-layer-shell) windows, delegates to Qt's built-in xdg-shell
+/// integration so they get proper xdg_toplevel/xdg_popup roles.
 class PLASMAZONES_EXPORT LayerShellIntegration : public QtWaylandClient::QWaylandShellIntegration
 {
 public:
@@ -34,6 +37,11 @@ public:
     static void registryRemoveHandler(void* data, struct wl_registry* registry, uint32_t id);
 
 private:
+    /// Fallback xdg-shell integration for regular (non-layer-shell) windows.
+    /// Loaded lazily on first use via Qt's shell integration factory.
+    std::unique_ptr<QtWaylandClient::QWaylandShellIntegration> m_xdgShell;
+    QtWaylandClient::QWaylandDisplay* m_display = nullptr;
+
     struct zwlr_layer_shell_v1* m_layerShell = nullptr;
     struct wl_registry* m_registry = nullptr;
     uint32_t m_layerShellId = 0;

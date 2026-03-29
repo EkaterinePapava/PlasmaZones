@@ -29,6 +29,10 @@ public:
     // Apply current properties from LayerSurface → protocol
     void applyProperties();
 
+    // Calculate and set the window's screen position from anchors/margins/output
+    // so QWindow::mapFromGlobal() returns correct local coordinates.
+    void updatePosition();
+
     // Public for C callback struct initialization
     static void handleConfigure(void* data, struct zwlr_layer_surface_v1* surface, uint32_t serial, uint32_t width,
                                 uint32_t height);
