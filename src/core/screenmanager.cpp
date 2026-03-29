@@ -155,7 +155,7 @@ void ScreenManager::createGeometrySensor(QScreen* screen)
     sensor->setScreen(screen);
     sensor->setFlag(Qt::FramelessWindowHint);
     sensor->setFlag(Qt::BypassWindowManagerHint);
-    sensor->setObjectName(QStringLiteral("GeometrySensor-%1").arg(screen->name()));
+    sensor->setObjectName(QStringLiteral("GeometrySensor-%1").arg(Utils::screenIdentifier(screen)));
 
     auto* layerSurface = LayerSurface::get(sensor);
     if (!layerSurface) {
