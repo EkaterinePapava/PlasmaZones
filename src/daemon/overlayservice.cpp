@@ -153,10 +153,17 @@ QQuickWindow* OverlayService::createQmlWindow(const QUrl& qmlUrl, QScreen* scree
     // When the Vulkan backend is active, each QQuickWindow needs a QVulkanInstance
     // set before it can create a Vulkan surface. The instance is stored as a dynamic
     // property on QGuiApplication by main.cpp.
+#if QT_CONFIG(vulkan)
     auto* vulkanInstance = qApp->property(PzVulkanInstanceProperty).value<QVulkanInstance*>();
     if (vulkanInstance) {
         window->setVulkanInstance(vulkanInstance);
+    } else if (QQuickWindow::graphicsApi() == QSGRendererInterface::Vulkan) {
+        qCCritical(lcOverlay) << "Vulkan graphics API is active but no QVulkanInstance was provided."
+                              << "This can happen when backend is 'auto' and Qt chose Vulkan."
+                              << "Overlay windows may fail to render. Set RenderingBackend=vulkan"
+                              << "explicitly in plasmazonesrc [Shaders] to enable proper Vulkan support.";
     }
+#endif
 
     // Set the screen before the QPA plugin creates the LayerSurface
     window->setScreen(screen);

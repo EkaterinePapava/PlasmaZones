@@ -51,7 +51,9 @@ int main(int argc, char* argv[])
     // vulkanInstance is declared BEFORE app so C++ destruction order guarantees
     // it outlives QGuiApplication (and all QQuickWindows that reference it).
     bool useVulkan = false;
+#if QT_CONFIG(vulkan)
     QVulkanInstance vulkanInstance;
+#endif
     {
         QSettings cfg(PlasmaZones::ConfigDefaults::configFilePath(), QSettings::IniFormat);
         cfg.beginGroup(QStringLiteral("Shaders"));
@@ -60,7 +62,12 @@ int main(int argc, char* argv[])
         cfg.endGroup();
 
         if (backend == QLatin1String("vulkan")) {
+#if QT_CONFIG(vulkan)
             // Probe Vulkan availability before committing to the API.
+            // Note: QVulkanInstance::create() before QGuiApplication means Vulkan
+            // validation layers set via VK_INSTANCE_LAYERS may not be picked up
+            // (Qt reads some env settings after app construction). This is
+            // intentional — setGraphicsApi() must be called before the app exists.
             vulkanInstance.setApiVersion(QVersionNumber(1, 1));
             if (vulkanInstance.create()) {
                 QQuickWindow::setGraphicsApi(QSGRendererInterface::Vulkan);
@@ -71,6 +78,11 @@ int main(int argc, char* argv[])
                     << "Check that Vulkan drivers are installed (vulkan-icd-loader, mesa-vulkan-drivers, etc.)";
                 QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
             }
+#else
+            qCWarning(PlasmaZones::lcDaemon)
+                << "Vulkan backend requested but Qt was built without Vulkan support — falling back to OpenGL.";
+            QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+#endif
         } else if (backend == QLatin1String("opengl")) {
             QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
         }
@@ -86,9 +98,11 @@ int main(int argc, char* argv[])
 
     // Store instance pointer as a dynamic property so OverlayService::createQmlWindow()
     // can retrieve it and call setVulkanInstance() on each QQuickWindow.
+#if QT_CONFIG(vulkan)
     if (useVulkan) {
         app.setProperty(PzVulkanInstanceProperty, QVariant::fromValue(&vulkanInstance));
     }
+#endif
     PlasmaZones::loadTranslations(&app);
 
     // Register metatype for QVariant storage (LayerSurface stores itself

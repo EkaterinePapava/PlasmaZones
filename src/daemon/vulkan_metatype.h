@@ -3,9 +3,12 @@
 
 #pragma once
 
-#include <QVulkanInstance>
-Q_DECLARE_METATYPE(QVulkanInstance*)
-
 // Shared property name for passing the QVulkanInstance* between main.cpp and OverlayService.
 // Using a constant avoids silent nullptr from typos on either side.
-constexpr const char* PzVulkanInstanceProperty = "_pz_vulkanInstance";
+// inline constexpr ensures a single definition across all TUs (C++17).
+inline constexpr const char* PzVulkanInstanceProperty = "_pz_vulkanInstance";
+
+#if QT_CONFIG(vulkan)
+#include <QVulkanInstance>
+Q_DECLARE_METATYPE(QVulkanInstance*)
+#endif
