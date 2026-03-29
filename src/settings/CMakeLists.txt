@@ -92,6 +92,8 @@ qt_add_qml_module(plasmazones-settings
         qml/SettingsSwitch.qml
         qml/SettingsButtonGroup.qml
         qml/ColorSwatchRow.qml
+        qml/NewLayoutDialog.qml
+        qml/NewAlgorithmDialog.qml
     NO_PLUGIN
 )
 

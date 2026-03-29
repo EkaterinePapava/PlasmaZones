@@ -10,6 +10,7 @@
 #include "../autotile/AlgorithmRegistry.h"
 #include "../autotile/TilingAlgorithm.h"
 #include "../autotile/TilingState.h"
+#include "../autotile/algorithms/ScriptedAlgorithm.h"
 #include "../autotile/algorithms/ScriptedAlgorithmLoader.h"
 
 #include "../config/configdefaults.h"
@@ -28,6 +29,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QStandardPaths>
 #include <QSettings>
 #include <QTimer>
@@ -358,6 +360,34 @@ void SettingsController::createNewLayout()
         QString newLayoutId = reply.arguments().first().toString();
         if (!newLayoutId.isEmpty()) {
             editLayout(newLayoutId);
+            m_pendingSelectLayoutId = newLayoutId;
+        }
+    }
+    scheduleLayoutLoad();
+}
+
+void SettingsController::createNewLayout(const QString& name, const QString& type, int aspectRatioClass,
+                                         bool openInEditor)
+{
+    QString sanitizedName = name.trimmed();
+    if (sanitizedName.isEmpty())
+        sanitizedName = QStringLiteral("New Layout");
+
+    const QString layoutType = type.isEmpty() ? QStringLiteral("custom") : type;
+
+    QDBusMessage reply = DaemonDBus::callDaemon(QString(DBus::Interface::LayoutManager), QStringLiteral("createLayout"),
+                                                {sanitizedName, layoutType});
+
+    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+        QString newLayoutId = reply.arguments().first().toString();
+        if (!newLayoutId.isEmpty()) {
+            if (aspectRatioClass >= 0) {
+                DaemonDBus::callDaemon(QString(DBus::Interface::LayoutManager),
+                                       QStringLiteral("setLayoutAspectRatioClass"), {newLayoutId, aspectRatioClass});
+            }
+            if (openInEditor) {
+                editLayout(newLayoutId);
+            }
             m_pendingSelectLayoutId = newLayoutId;
         }
     }
@@ -1798,6 +1828,252 @@ bool SettingsController::importAlgorithm(const QString& filePath)
     const bool ok = QFile::copy(filePath, destPath);
     // ScriptedAlgorithmLoader's QFileSystemWatcher will pick up the new file automatically
     return ok;
+}
+
+bool SettingsController::deleteAlgorithm(const QString& algorithmId)
+{
+    if (algorithmId.isEmpty())
+        return false;
+
+    auto* registry = AlgorithmRegistry::instance();
+    TilingAlgorithm* algo = registry->algorithm(algorithmId);
+    if (!algo || !algo->isUserScript()) {
+        qCWarning(lcCore) << "Cannot delete algorithm — not a user script:" << algorithmId;
+        return false;
+    }
+
+    // Find the file path from the algorithm's source (ScriptedAlgorithm only)
+    auto* scripted = qobject_cast<ScriptedAlgorithm*>(algo);
+    if (!scripted)
+        return false;
+    const QString filePath = scripted->filePath();
+    if (filePath.isEmpty() || !QFile::exists(filePath)) {
+        qCWarning(lcCore) << "Algorithm file not found:" << filePath;
+        return false;
+    }
+
+    // Only allow deleting from the user algorithms directory
+    const QString userDir = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+        + QStringLiteral("/plasmazones/algorithms/");
+    if (!filePath.startsWith(userDir)) {
+        qCWarning(lcCore) << "Refusing to delete non-user algorithm file:" << filePath;
+        return false;
+    }
+
+    const bool ok = QFile::remove(filePath);
+    if (!ok) {
+        qCWarning(lcCore) << "Failed to delete algorithm file:" << filePath;
+    }
+    // QFileSystemWatcher will pick up the deletion and trigger a refresh
+    return ok;
+}
+
+bool SettingsController::duplicateAlgorithm(const QString& algorithmId)
+{
+    if (algorithmId.isEmpty())
+        return false;
+
+    auto* registry = AlgorithmRegistry::instance();
+    TilingAlgorithm* algo = registry->algorithm(algorithmId);
+    if (!algo)
+        return false;
+
+    auto* scripted = qobject_cast<ScriptedAlgorithm*>(algo);
+    if (!scripted)
+        return false;
+    const QString sourcePath = scripted->filePath();
+    if (sourcePath.isEmpty() || !QFile::exists(sourcePath))
+        return false;
+
+    const QString destDir = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+        + QStringLiteral("/plasmazones/algorithms/");
+    QDir dir(destDir);
+    if (!dir.exists())
+        dir.mkpath(QStringLiteral("."));
+
+    // Generate unique filename: algorithmId-copy.js, algorithmId-copy-2.js, etc.
+    QString baseName = algorithmId + QStringLiteral("-copy");
+    QString destPath = destDir + baseName + QStringLiteral(".js");
+    for (int i = 2; QFile::exists(destPath) && i <= 99; ++i) {
+        destPath = destDir + baseName + QStringLiteral("-") + QString::number(i) + QStringLiteral(".js");
+    }
+
+    // Read source, update metadata, write copy
+    QFile sourceFile(sourcePath);
+    if (!sourceFile.open(QIODevice::ReadOnly | QIODevice::Text))
+        return false;
+    QString content = QString::fromUtf8(sourceFile.readAll());
+    sourceFile.close();
+
+    // Update @name and @builtinId in the copy
+    const QString newFilename = QFileInfo(destPath).completeBaseName();
+    const QString newName = algo->name() + QStringLiteral(" (Copy)");
+    static const QRegularExpression nameRe(QStringLiteral("// @name .+"));
+    static const QRegularExpression idRe(QStringLiteral("// @builtinId .+"));
+    content.replace(nameRe, QStringLiteral("// @name ") + newName);
+    content.replace(idRe, QStringLiteral("// @builtinId ") + newFilename);
+
+    QFile destFile(destPath);
+    if (!destFile.open(QIODevice::WriteOnly | QIODevice::Text))
+        return false;
+    destFile.write(content.toUtf8());
+    destFile.close();
+
+    return true;
+}
+
+bool SettingsController::exportAlgorithm(const QString& algorithmId, const QString& destPath)
+{
+    if (algorithmId.isEmpty() || destPath.isEmpty())
+        return false;
+
+    auto* registry = AlgorithmRegistry::instance();
+    TilingAlgorithm* algo = registry->algorithm(algorithmId);
+    if (!algo)
+        return false;
+
+    auto* scriptedExport = qobject_cast<ScriptedAlgorithm*>(algo);
+    if (!scriptedExport)
+        return false;
+    const QString sourcePath = scriptedExport->filePath();
+    if (sourcePath.isEmpty() || !QFile::exists(sourcePath))
+        return false;
+
+    // Remove existing destination so QFile::copy succeeds
+    if (QFile::exists(destPath))
+        QFile::remove(destPath);
+
+    return QFile::copy(sourcePath, destPath);
+}
+
+QString SettingsController::createNewAlgorithm(const QString& name, const QString& baseTemplate,
+                                               bool supportsMasterCount, bool supportsSplitRatio,
+                                               bool producesOverlappingZones, bool supportsMemory)
+{
+    // Sanitize name to a filename: lowercase, replace non-alphanumeric (except hyphens) with
+    // hyphens, collapse multiple hyphens, strip leading/trailing hyphens
+    QString filename = name.trimmed().toLower();
+    static const QRegularExpression nonAlnum(QStringLiteral("[^a-z0-9-]"));
+    filename.replace(nonAlnum, QStringLiteral("-"));
+    static const QRegularExpression multiHyphen(QStringLiteral("-{2,}"));
+    filename.replace(multiHyphen, QStringLiteral("-"));
+    static const QRegularExpression leadTrailHyphen(QStringLiteral("^-|-$"));
+    filename.replace(leadTrailHyphen, QString());
+    if (filename.isEmpty())
+        filename = QStringLiteral("untitled-algorithm");
+
+    // Build destination path
+    const QString destDir = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+        + QStringLiteral("/plasmazones/algorithms/");
+    QDir dir(destDir);
+    if (!dir.exists()) {
+        dir.mkpath(QStringLiteral("."));
+    }
+
+    QString destPath = destDir + filename + QStringLiteral(".js");
+    if (QFile::exists(destPath)) {
+        for (int i = 2; i <= 99; ++i) {
+            destPath = destDir + filename + QStringLiteral("-") + QString::number(i) + QStringLiteral(".js");
+            if (!QFile::exists(destPath))
+                break;
+        }
+        // Update filename to match the final path
+        filename = QFileInfo(destPath).completeBaseName();
+    }
+
+    // Build JS content
+    QString content;
+
+    // SPDX header
+    content += QStringLiteral("// SPDX-FileCopyrightText: 2026 fuddlesworth\n");
+    content += QStringLiteral("// SPDX-License-Identifier: GPL-3.0-or-later\n\n");
+
+    // Metadata annotations
+    content += QStringLiteral("// @name ") + name.trimmed() + QStringLiteral("\n");
+    content += QStringLiteral("// @builtinId ") + filename + QStringLiteral("\n");
+    content += QStringLiteral("// @description Custom tiling algorithm\n");
+    content += QStringLiteral("// @producesOverlappingZones ")
+        + (producesOverlappingZones ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n");
+    content += QStringLiteral("// @supportsMasterCount ")
+        + (supportsMasterCount ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n");
+    content += QStringLiteral("// @supportsSplitRatio ")
+        + (supportsSplitRatio ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n");
+    content += QStringLiteral("// @defaultSplitRatio 0.5\n");
+    content += QStringLiteral("// @defaultMaxWindows 6\n");
+    content += QStringLiteral("// @minimumWindows 1\n");
+    content += QStringLiteral("// @zoneNumberDisplay all\n");
+    content += QStringLiteral("// @supportsMemory ")
+        + (supportsMemory ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n\n");
+
+    // Try to read base template body from system algorithm dirs
+    bool foundTemplate = false;
+    if (baseTemplate != QLatin1String("blank") && !baseTemplate.isEmpty()) {
+        const QString templateFile =
+            QStandardPaths::locate(QStandardPaths::GenericDataLocation,
+                                   QStringLiteral("plasmazones/algorithms/") + baseTemplate + QStringLiteral(".js"));
+
+        if (!templateFile.isEmpty()) {
+            QFile file(templateFile);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                const QString templateContent = QString::fromUtf8(file.readAll());
+                file.close();
+
+                // Skip metadata block (lines starting with // at the top)
+                const QStringList lines = templateContent.split(QLatin1Char('\n'));
+                int bodyStart = 0;
+                for (int i = 0; i < lines.size(); ++i) {
+                    const QString trimmed = lines[i].trimmed();
+                    if (trimmed.isEmpty())
+                        continue;
+                    if (trimmed.startsWith(QLatin1String("//"))) {
+                        bodyStart = i + 1;
+                        continue;
+                    }
+                    break;
+                }
+
+                // Append everything from bodyStart onwards
+                if (bodyStart < lines.size()) {
+                    for (int i = bodyStart; i < lines.size(); ++i) {
+                        content += lines[i];
+                        if (i < lines.size() - 1)
+                            content += QLatin1Char('\n');
+                    }
+                    foundTemplate = true;
+                }
+            }
+        }
+    }
+
+    if (!foundTemplate) {
+        content += QStringLiteral(
+            "/**\n"
+            " * Custom tiling algorithm.\n"
+            " *\n"
+            " * @param {Object} params - Tiling parameters\n"
+            " * @returns {Array<{x: number, y: number, width: number, height: number}>}\n"
+            " */\n"
+            "function calculateZones(params) {\n"
+            "    if (params.windowCount <= 0) return [];\n"
+            "    return fillArea(params.area, params.windowCount);\n"
+            "}\n");
+    }
+
+    // Write the file
+    QFile outFile(destPath);
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qCWarning(lcCore) << "Failed to write algorithm file:" << destPath;
+        return QString();
+    }
+    outFile.write(content.toUtf8());
+    outFile.close();
+
+    // Notify after a short delay to let QFileSystemWatcher pick up the change
+    QTimer::singleShot(600, this, [this, filename]() {
+        Q_EMIT algorithmCreated(filename);
+    });
+
+    return filename;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

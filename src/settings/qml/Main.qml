@@ -1263,7 +1263,7 @@ ApplicationWindow {
                     onTriggered: settingsController.setLayoutAspectRatio(layoutContextMenu.layoutId, 4)
                 }
 
-                // -- Manage --
+                // -- Manage (snapping layouts) --
                 MenuSeparator {
                     visible: layoutContextMenu.viewMode === 0 && !layoutContextMenu.isAutotile
                 }
@@ -1290,6 +1290,39 @@ ApplicationWindow {
                     text: i18n("Delete")
                     icon.name: "edit-delete"
                     visible: layoutContextMenu.viewMode === 0 && layoutContextMenu.layout && !layoutContextMenu.layout.isSystem && !layoutContextMenu.isAutotile
+                    onTriggered: layoutContextMenu.deleteRequested(layoutContextMenu.layout)
+                }
+
+                // -- Manage (algorithms) --
+                MenuSeparator {
+                    visible: layoutContextMenu.isAutotile
+                }
+
+                MenuItem {
+                    text: i18n("Duplicate")
+                    icon.name: "edit-copy"
+                    visible: layoutContextMenu.isAutotile
+                    onTriggered: {
+                        let algoId = layoutContextMenu.layoutId.replace("autotile:", "");
+                        settingsController.duplicateAlgorithm(algoId);
+                    }
+                }
+
+                MenuItem {
+                    text: i18n("Export")
+                    icon.name: "document-export"
+                    visible: layoutContextMenu.isAutotile
+                    onTriggered: layoutContextMenu.exportRequested(layoutContextMenu.layoutId)
+                }
+
+                MenuSeparator {
+                    visible: layoutContextMenu.isAutotile && layoutContextMenu.layout && !layoutContextMenu.layout.isSystem
+                }
+
+                MenuItem {
+                    text: i18n("Delete")
+                    icon.name: "edit-delete"
+                    visible: layoutContextMenu.isAutotile && layoutContextMenu.layout && !layoutContextMenu.layout.isSystem
                     onTriggered: layoutContextMenu.deleteRequested(layoutContextMenu.layout)
                 }
 

@@ -48,7 +48,8 @@ ColumnLayout {
         Layout.bottomMargin: Kirigami.Units.smallSpacing
         appSettings: root.settingsBridge
         viewMode: root.viewMode
-        onRequestCreateNewLayout: settingsController.createNewLayout()
+        onRequestCreateNewLayout: newLayoutDialog.open()
+        onRequestCreateNewAlgorithm: newAlgorithmDialog.open()
         onRequestImportLayout: importDialog.open()
         onRequestImportFromKZones: settingsController.importFromKZones()
         onRequestImportKZonesFile: kzonesFileDialog.open()
@@ -381,20 +382,74 @@ ColumnLayout {
         }
 
         function onExportRequested(layoutId) {
-            exportDialog.layoutId = layoutId;
-            exportDialog.open();
+            if (layoutId.startsWith("autotile:")) {
+                algorithmExportDialog.algorithmId = layoutId.replace("autotile:", "");
+                algorithmExportDialog.open();
+            } else {
+                exportDialog.layoutId = layoutId;
+                exportDialog.open();
+            }
         }
 
         target: window.layoutContextMenu
     }
 
-    // Delete confirmation dialog
+    // New Layout wizard dialog
+    NewLayoutDialog {
+        id: newLayoutDialog
+
+        appSettings: root.settingsBridge
+    }
+
+    // New Algorithm wizard dialog
+    NewAlgorithmDialog {
+        id: newAlgorithmDialog
+
+        appSettings: root.settingsBridge
+        onAlgorithmCreated: (algorithmId) => {
+            if (root.viewMode !== 1) {
+                root.viewMode = 1;
+                layoutGrid.rebuildModel();
+            }
+            layoutGrid.selectedLayoutId = "autotile:" + algorithmId;
+        }
+    }
+
+    // Algorithm created signal from C++ (delayed after file watcher picks up)
+    Connections {
+        function onAlgorithmCreated(algorithmId) {
+            if (root.viewMode !== 1)
+                root.viewMode = 1;
+
+            layoutGrid.rebuildModel();
+            layoutGrid.selectedLayoutId = "autotile:" + algorithmId;
+        }
+
+        target: settingsController
+    }
+
+    // Algorithm export file dialog
+    FileDialog {
+        id: algorithmExportDialog
+
+        property string algorithmId: ""
+
+        title: i18n("Export Algorithm")
+        nameFilters: [i18n("JavaScript files (*.js)")]
+        fileMode: FileDialog.SaveFile
+        onAccepted: {
+            settingsController.exportAlgorithm(algorithmExportDialog.algorithmId, root.filePathFromUrl(selectedFile));
+        }
+    }
+
+    // Delete confirmation dialog (handles both layouts and algorithms)
     Kirigami.PromptDialog {
         id: deleteConfirmDialog
 
         property var layoutToDelete: null
+        readonly property bool isAlgorithm: layoutToDelete && layoutToDelete.isAutotile === true
 
-        title: i18n("Delete Layout")
+        title: isAlgorithm ? i18n("Delete Algorithm") : i18n("Delete Layout")
         subtitle: layoutToDelete ? i18n("Are you sure you want to delete \"%1\"?", layoutToDelete.name || "") : ""
         standardButtons: Kirigami.Dialog.NoButton
         onRejected: layoutToDelete = null
@@ -405,7 +460,12 @@ ColumnLayout {
                 icon.name: "edit-delete"
                 onTriggered: {
                     if (deleteConfirmDialog.layoutToDelete) {
-                        settingsController.deleteLayout(deleteConfirmDialog.layoutToDelete.id);
+                        if (deleteConfirmDialog.isAlgorithm) {
+                            let algoId = deleteConfirmDialog.layoutToDelete.id.replace("autotile:", "");
+                            settingsController.deleteAlgorithm(algoId);
+                        } else {
+                            settingsController.deleteLayout(deleteConfirmDialog.layoutToDelete.id);
+                        }
                         deleteConfirmDialog.layoutToDelete = null;
                     }
                     deleteConfirmDialog.close();
