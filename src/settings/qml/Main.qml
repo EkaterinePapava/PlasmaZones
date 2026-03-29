@@ -1166,7 +1166,7 @@ ApplicationWindow {
                             _screenItems.push(item);
                         }
                     }
-                    screenSeparator.visible = true;
+                    screenSeparator.visible = _screenItems.length > 0;
                     layoutContextMenu.popup();
                 }
 
@@ -1187,7 +1187,7 @@ ApplicationWindow {
                 // -- Open in Editor (external text editor) --
                 MenuItem {
                     text: i18n("Open in Text Editor")
-                    icon.name: "document-edit"
+                    icon.name: "document-open"
                     onTriggered: {
                         if (layoutContextMenu.isAutotile)
                             settingsController.openAlgorithm(settingsController.algorithmIdFromLayoutId(layoutContextMenu.layoutId));

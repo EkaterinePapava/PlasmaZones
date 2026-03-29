@@ -1917,9 +1917,10 @@ void SettingsController::openLayoutFile(const QString& layoutId)
     if (layoutId.isEmpty())
         return;
     // Layout files use UUID without braces as the filename
-    const QString bareId = QUuid(layoutId).toString(QUuid::WithoutBraces);
-    if (bareId.isEmpty())
+    const QUuid uuid(layoutId);
+    if (uuid.isNull())
         return;
+    const QString bareId = uuid.toString(QUuid::WithoutBraces);
     const QString filename = bareId + QStringLiteral(".json");
     // Search user dir first, then all system dirs
     const QString located =
@@ -1949,10 +1950,13 @@ bool SettingsController::deleteAlgorithm(const QString& algorithmId)
         return false;
     }
 
-    // Only allow deleting from the user algorithms directory (canonicalize to defeat symlinks)
-    const QString userDir = QFileInfo(userAlgorithmsDir()).canonicalFilePath() + QLatin1Char('/');
+    // Only allow deleting from the user algorithms directory (canonicalize to defeat symlinks).
+    // If the user dir doesn't exist yet, canonicalFilePath() returns empty — guard against
+    // that becoming "/" which would match any absolute path.
+    const QString rawUserDir = QFileInfo(userAlgorithmsDir()).canonicalFilePath();
+    const QString userDir = rawUserDir + QLatin1Char('/');
     const QString canonicalPath = QFileInfo(filePath).canonicalFilePath();
-    if (userDir.isEmpty() || canonicalPath.isEmpty() || !canonicalPath.startsWith(userDir)) {
+    if (rawUserDir.isEmpty() || canonicalPath.isEmpty() || !canonicalPath.startsWith(userDir)) {
         qCWarning(lcCore) << "Refusing to delete non-user algorithm file:" << filePath;
         return false;
     }

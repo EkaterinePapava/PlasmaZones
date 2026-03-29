@@ -16,7 +16,8 @@ import org.plasmazones.common as QFZCommon
 Kirigami.Dialog {
     id: root
 
-    required property var appSettings
+    required property var appSettings // Settings object (settingsBridge)
+    required property var controller // SettingsController — CRUD + signals
     property int currentStep: 0
     property string selectedType: "custom"
     property int selectedAspectRatio: -1
@@ -448,7 +449,7 @@ Kirigami.Dialog {
             wizardFooter.errorText = reason;
         }
 
-        target: settingsController
+        target: root.controller
     }
 
     footer: WizardFooter {
@@ -461,7 +462,7 @@ Kirigami.Dialog {
         onNextClicked: root.currentStep = 1
         onCreateClicked: {
             wizardFooter.errorText = "";
-            if (settingsController.createNewLayout(nameField.text.trim(), root.selectedType, root.selectedAspectRatio, root.openInEditor))
+            if (root.controller.createNewLayout(nameField.text.trim(), root.selectedType, root.selectedAspectRatio, root.openInEditor))
                 root.close();
 
         }

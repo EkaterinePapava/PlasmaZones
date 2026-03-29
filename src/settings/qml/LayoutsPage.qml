@@ -399,6 +399,7 @@ ColumnLayout {
         id: newLayoutDialog
 
         appSettings: root.settingsBridge
+        controller: settingsController
     }
 
     // New Algorithm wizard dialog

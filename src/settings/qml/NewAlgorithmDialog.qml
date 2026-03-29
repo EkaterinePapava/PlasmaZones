@@ -15,7 +15,7 @@ import org.kde.kirigami as Kirigami
 Kirigami.Dialog {
     id: root
 
-    required property var appSettings
+    required property var appSettings // SettingsController — provides generateAlgorithmPreview + CRUD methods
     property int currentStep: 0
     property string baseTemplate: "blank"
     property bool supportsMasterCount: false
@@ -414,7 +414,7 @@ Kirigami.Dialog {
             wizardFooter.errorText = reason;
         }
 
-        target: settingsController
+        target: root.appSettings
     }
 
     footer: WizardFooter {
@@ -427,10 +427,10 @@ Kirigami.Dialog {
         onNextClicked: root.currentStep = 1
         onCreateClicked: {
             wizardFooter.errorText = "";
-            let result = settingsController.createNewAlgorithm(nameField.text.trim(), root.baseTemplate, root.supportsMasterCount, root.supportsSplitRatio, root.producesOverlappingZones, root.supportsMemory);
+            let result = root.appSettings.createNewAlgorithm(nameField.text.trim(), root.baseTemplate, root.supportsMasterCount, root.supportsSplitRatio, root.producesOverlappingZones, root.supportsMemory);
             if (result.length > 0) {
                 if (root.openInEditor)
-                    settingsController.openAlgorithm(result);
+                    root.appSettings.openAlgorithm(result);
 
                 root.close();
             }
