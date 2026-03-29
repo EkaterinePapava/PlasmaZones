@@ -1294,7 +1294,7 @@ ApplicationWindow {
                 MenuItem {
                     text: i18n("Export")
                     icon.name: "document-export"
-                    visible: layoutContextMenu.viewMode === 0
+                    visible: layoutContextMenu.viewMode === 0 && !layoutContextMenu.isAutotile
                     onTriggered: layoutContextMenu.exportRequested(layoutContextMenu.layoutId)
                 }
 

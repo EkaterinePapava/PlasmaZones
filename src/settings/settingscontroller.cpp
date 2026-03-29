@@ -53,7 +53,7 @@ QString findUniqueAlgorithmPath(const QString& dir, const QString& baseName)
     QString path = dir + baseName + QStringLiteral(".js");
     if (!QFile::exists(path))
         return path;
-    for (int i = 2; i <= 99; ++i) {
+    for (int i = 2; i <= 999; ++i) {
         path = dir + baseName + QStringLiteral("-") + QString::number(i) + QStringLiteral(".js");
         if (!QFile::exists(path))
             return path;
@@ -2078,10 +2078,17 @@ bool SettingsController::duplicateAlgorithm(const QString& algorithmId)
     // Sanitize newlines to prevent annotation injection (parity with createNewAlgorithm)
     newName.replace(QLatin1Char('\n'), QLatin1Char(' '));
     newName.replace(QLatin1Char('\r'), QLatin1Char(' '));
+    // Replace only the FIRST @name and @builtinId annotations — using replace(QRegularExpression)
+    // would replace ALL matches, corrupting any matching patterns in the algorithm body.
     static const QRegularExpression nameRe(QStringLiteral("^// @name .+"), QRegularExpression::MultilineOption);
     static const QRegularExpression idRe(QStringLiteral("^// @builtinId .+"), QRegularExpression::MultilineOption);
-    content.replace(nameRe, QStringLiteral("// @name ") + newName);
-    content.replace(idRe, QStringLiteral("// @builtinId ") + newFilename);
+    QRegularExpressionMatch nameMatch = nameRe.match(content);
+    if (nameMatch.hasMatch())
+        content.replace(nameMatch.capturedStart(), nameMatch.capturedLength(), QStringLiteral("// @name ") + newName);
+    QRegularExpressionMatch idMatch = idRe.match(content);
+    if (idMatch.hasMatch())
+        content.replace(idMatch.capturedStart(), idMatch.capturedLength(),
+                        QStringLiteral("// @builtinId ") + newFilename);
 
     QFile destFile(destPath);
     if (!destFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
@@ -2142,7 +2149,8 @@ bool SettingsController::exportAlgorithm(const QString& algorithmId, const QStri
             Q_EMIT algorithmOperationFailed(PzI18n::tr("Could not write to export destination."));
             return false;
         }
-        QFile::remove(tmpPath);
+        if (!QFile::remove(tmpPath))
+            qCWarning(lcCore) << "Failed to clean up temporary export file:" << tmpPath;
     }
     return true;
 }
@@ -2172,7 +2180,7 @@ QString SettingsController::createNewAlgorithm(const QString& name, const QStrin
 
     const QString destPath = findUniqueAlgorithmPath(destDir, filename);
     if (destPath.isEmpty()) {
-        qCWarning(lcCore) << "Could not find unique filename for algorithm:" << filename << "— all 99 slots exhausted";
+        qCWarning(lcCore) << "Could not find unique filename for algorithm:" << filename << "— all 999 slots exhausted";
         Q_EMIT algorithmOperationFailed(
             PzI18n::tr("Could not create algorithm — too many files with the same name. "
                        "Please rename or delete existing algorithms."));
@@ -2251,7 +2259,9 @@ QString SettingsController::createNewAlgorithm(const QString& name, const QStrin
                         continue;
                     }
                     // Block comment opening in the header — only skip if we haven't
-                    // yet passed into the body (avoids stripping doc-comments after metadata)
+                    // yet passed into the body (avoids stripping doc-comments after metadata).
+                    // NOTE: this also matches /** JSDoc */ style comments. We assume bundled
+                    // templates do not place JSDoc between metadata annotations.
                     if (trimmed.startsWith(QLatin1String("/*"))) {
                         bodyStart = i + 1;
                         if (!trimmed.contains(QLatin1String("*/")))

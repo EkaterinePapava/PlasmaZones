@@ -28,6 +28,8 @@ Kirigami.Dialog {
     readonly property color _subtleBg: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.03)
     readonly property color _subtleBorder: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.08)
     readonly property color _accentBorder: Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.3)
+    readonly property color _badgeBg: Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.2)
+    readonly property color _badgeBorder: Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.4)
     // Re-evaluated on open so it picks up the correct screen.
     // Clamped to [1.0, 3.6] to keep the preview usable on extreme aspect ratios (e.g. 32:9).
     property real screenAspectRatio: 16 / 9
@@ -247,9 +249,9 @@ Kirigami.Dialog {
                         width: algoBadgeLabel.implicitWidth + Kirigami.Units.largeSpacing * 2
                         height: algoBadgeLabel.implicitHeight + Kirigami.Units.smallSpacing * 2
                         radius: height / 2
-                        color: Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.2)
+                        color: root._badgeBg
                         border.width: Math.round(Kirigami.Units.devicePixelRatio)
-                        border.color: Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.4)
+                        border.color: root._badgeBorder
 
                         Label {
                             id: algoBadgeLabel
@@ -437,7 +439,7 @@ Kirigami.Dialog {
         onCreateClicked: {
             wizardFooter.errorText = "";
             let result = root.controller.createNewAlgorithm(nameField.text.trim(), root.baseTemplate, root.supportsMasterCount, root.supportsSplitRatio, root.producesOverlappingZones, root.supportsMemory);
-            if (result.length > 0) {
+            if (result && result.length > 0) {
                 if (root.openInEditor)
                     root.controller.openAlgorithm(result);
 
