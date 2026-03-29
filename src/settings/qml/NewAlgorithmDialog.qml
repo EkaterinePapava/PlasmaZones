@@ -15,7 +15,7 @@ import org.kde.kirigami as Kirigami
 Kirigami.Dialog {
     id: root
 
-    required property var appSettings // SettingsController — provides generateAlgorithmPreview + CRUD methods
+    required property var controller // SettingsController — provides generateAlgorithmPreview + CRUD methods
     property int currentStep: 0
     property string baseTemplate: "blank"
     property bool supportsMasterCount: false
@@ -152,7 +152,7 @@ Kirigami.Dialog {
                                 algorithmId: templateDelegate.modelData.id
                                 windowCount: 4
                                 showLabel: false
-                                appSettings: root.appSettings
+                                appSettings: root.controller
                             }
 
                             Kirigami.Icon {
@@ -208,7 +208,7 @@ Kirigami.Dialog {
                         anchors.bottomMargin: Kirigami.Units.largeSpacing * 2
                         visible: root.baseTemplate !== "blank"
                         algorithmId: root.baseTemplate
-                        appSettings: root.appSettings
+                        appSettings: root.controller
                         windowCount: 6
                         showLabel: false
                     }
@@ -414,7 +414,7 @@ Kirigami.Dialog {
             wizardFooter.errorText = reason;
         }
 
-        target: root.appSettings
+        target: root.controller
     }
 
     footer: WizardFooter {
@@ -427,10 +427,10 @@ Kirigami.Dialog {
         onNextClicked: root.currentStep = 1
         onCreateClicked: {
             wizardFooter.errorText = "";
-            let result = root.appSettings.createNewAlgorithm(nameField.text.trim(), root.baseTemplate, root.supportsMasterCount, root.supportsSplitRatio, root.producesOverlappingZones, root.supportsMemory);
+            let result = root.controller.createNewAlgorithm(nameField.text.trim(), root.baseTemplate, root.supportsMasterCount, root.supportsSplitRatio, root.producesOverlappingZones, root.supportsMemory);
             if (result.length > 0) {
                 if (root.openInEditor)
-                    root.appSettings.openAlgorithm(result);
+                    root.controller.openAlgorithm(result);
 
                 root.close();
             }

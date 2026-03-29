@@ -1955,19 +1955,23 @@ void SettingsController::openLayoutFile(const QString& layoutId)
 
 bool SettingsController::deleteAlgorithm(const QString& algorithmId)
 {
-    if (algorithmId.isEmpty())
+    if (algorithmId.isEmpty()) {
+        Q_EMIT algorithmOperationFailed(PzI18n::tr("Cannot delete algorithm — no algorithm selected."));
         return false;
+    }
 
     auto* registry = AlgorithmRegistry::instance();
     TilingAlgorithm* algo = registry->algorithm(algorithmId);
     if (!algo || !algo->isUserScript()) {
         qCWarning(lcCore) << "Cannot delete algorithm — not a user script:" << algorithmId;
+        Q_EMIT algorithmOperationFailed(PzI18n::tr("Only user-created algorithms can be deleted."));
         return false;
     }
 
     const QString filePath = scriptedFilePath(algorithmId);
     if (filePath.isEmpty()) {
         qCWarning(lcCore) << "Algorithm file not found for:" << algorithmId;
+        Q_EMIT algorithmOperationFailed(PzI18n::tr("Algorithm file not found."));
         return false;
     }
 
@@ -1979,6 +1983,7 @@ bool SettingsController::deleteAlgorithm(const QString& algorithmId)
     const QString canonicalPath = QFileInfo(filePath).canonicalFilePath();
     if (rawUserDir.isEmpty() || canonicalPath.isEmpty() || !canonicalPath.startsWith(userDir)) {
         qCWarning(lcCore) << "Refusing to delete non-user algorithm file:" << filePath;
+        Q_EMIT algorithmOperationFailed(PzI18n::tr("Cannot delete — file is outside the user algorithms directory."));
         return false;
     }
 
@@ -1994,13 +1999,17 @@ bool SettingsController::deleteAlgorithm(const QString& algorithmId)
 bool SettingsController::duplicateAlgorithm(const QString& algorithmId)
 {
     const QString sourcePath = scriptedFilePath(algorithmId);
-    if (sourcePath.isEmpty())
+    if (sourcePath.isEmpty()) {
+        Q_EMIT algorithmOperationFailed(PzI18n::tr("Cannot duplicate — algorithm file not found."));
         return false;
+    }
 
     auto* registry = AlgorithmRegistry::instance();
     TilingAlgorithm* algo = registry->algorithm(algorithmId);
-    if (!algo)
+    if (!algo) {
+        Q_EMIT algorithmOperationFailed(PzI18n::tr("Cannot duplicate — algorithm is no longer registered."));
         return false;
+    }
 
     const QString destDir = userAlgorithmsDir();
     QDir dir(destDir);
@@ -2012,7 +2021,7 @@ bool SettingsController::duplicateAlgorithm(const QString& algorithmId)
     const QString destPath = findUniqueAlgorithmPath(destDir, baseName);
     if (destPath.isEmpty()) {
         qCWarning(lcCore) << "Could not find unique filename for duplicate:" << baseName;
-        Q_EMIT algorithmCreationFailed(
+        Q_EMIT algorithmOperationFailed(
             PzI18n::tr("Could not duplicate algorithm — too many copies exist. "
                        "Please rename or delete existing copies."));
         return false;
@@ -2020,8 +2029,10 @@ bool SettingsController::duplicateAlgorithm(const QString& algorithmId)
 
     // Read source, update metadata, write copy
     QFile sourceFile(sourcePath);
-    if (!sourceFile.open(QIODevice::ReadOnly | QIODevice::Text))
+    if (!sourceFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        Q_EMIT algorithmOperationFailed(PzI18n::tr("Could not read source algorithm file."));
         return false;
+    }
     QString content = QString::fromUtf8(sourceFile.readAll());
     sourceFile.close();
 
@@ -2043,8 +2054,15 @@ bool SettingsController::duplicateAlgorithm(const QString& algorithmId)
             PzI18n::tr("Could not write duplicate algorithm file. Check disk space and permissions."));
         return false;
     }
-    destFile.write(content.toUtf8());
+    const qint64 written = destFile.write(content.toUtf8());
     destFile.close();
+    if (written < 0) {
+        qCWarning(lcCore) << "Failed to write duplicate algorithm content:" << destPath;
+        QFile::remove(destPath);
+        Q_EMIT algorithmOperationFailed(
+            PzI18n::tr("Could not write duplicate algorithm file. Check disk space and permissions."));
+        return false;
+    }
 
     // Watch for registry pickup and emit algorithmCreated (issue #2: duplicate didn't fire signal)
     watchForAlgorithmRegistration(newFilename);
@@ -2053,22 +2071,29 @@ bool SettingsController::duplicateAlgorithm(const QString& algorithmId)
 
 bool SettingsController::exportAlgorithm(const QString& algorithmId, const QString& destPath)
 {
-    if (destPath.isEmpty())
+    if (destPath.isEmpty()) {
+        Q_EMIT algorithmOperationFailed(PzI18n::tr("No export destination specified."));
         return false;
+    }
 
     const QString sourcePath = scriptedFilePath(algorithmId);
-    if (sourcePath.isEmpty())
+    if (sourcePath.isEmpty()) {
+        Q_EMIT algorithmOperationFailed(PzI18n::tr("Cannot export — algorithm file not found."));
         return false;
+    }
 
     // Write to a temp file first, then rename — if copy fails the existing file is preserved
     const QString tmpPath = destPath + QStringLiteral(".tmp");
     if (QFile::exists(tmpPath))
         QFile::remove(tmpPath);
-    if (!QFile::copy(sourcePath, tmpPath))
+    if (!QFile::copy(sourcePath, tmpPath)) {
+        Q_EMIT algorithmOperationFailed(PzI18n::tr("Could not copy algorithm file for export."));
         return false;
+    }
     if (QFile::exists(destPath)) {
         if (!QFile::remove(destPath)) {
             QFile::remove(tmpPath);
+            Q_EMIT algorithmOperationFailed(PzI18n::tr("Could not replace existing file at export destination."));
             return false;
         }
     }
@@ -2076,6 +2101,7 @@ bool SettingsController::exportAlgorithm(const QString& algorithmId, const QStri
         // rename() fails across filesystems — fall back to copy+remove
         if (!QFile::copy(tmpPath, destPath)) {
             QFile::remove(tmpPath);
+            Q_EMIT algorithmOperationFailed(PzI18n::tr("Could not write to export destination."));
             return false;
         }
         QFile::remove(tmpPath);
@@ -2227,8 +2253,14 @@ QString SettingsController::createNewAlgorithm(const QString& name, const QStrin
         Q_EMIT algorithmCreationFailed(PzI18n::tr("Could not write algorithm file. Check disk space and permissions."));
         return QString();
     }
-    outFile.write(content.toUtf8());
+    const qint64 written = outFile.write(content.toUtf8());
     outFile.close();
+    if (written < 0) {
+        qCWarning(lcCore) << "Failed to write algorithm content:" << destPath;
+        QFile::remove(destPath);
+        Q_EMIT algorithmCreationFailed(PzI18n::tr("Could not write algorithm file. Check disk space and permissions."));
+        return QString();
+    }
 
     watchForAlgorithmRegistration(filename);
     return filename;

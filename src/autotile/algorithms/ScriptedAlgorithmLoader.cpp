@@ -218,11 +218,12 @@ void ScriptedAlgorithmLoader::loadFromDirectory(const QString& dir, bool isUserD
             } else {
                 qCWarning(lcAutotile) << "Duplicate system script for algorithm:" << scriptId << "from=" << fullPath
                                       << "— skipping (first registration wins)";
-                // Still track the existing registration so the stale-removal pass
-                // in scanAndRegister() does not unregister it. On refresh,
-                // m_scriptIdToPath is cleared before re-scanning, so without this
-                // line every already-registered system algorithm would be treated
-                // as stale and removed.
+                // Defensive: ensure scriptId is tracked so the stale-removal pass
+                // in scanAndRegister() does not unregister it. In normal operation
+                // the first directory scan already populated m_scriptIdToPath, so
+                // this guard is a no-op — it only fires if a future code path
+                // clears the map between individual directory scans within a single
+                // refresh cycle.
                 if (!m_scriptIdToPath.contains(scriptId)) {
                     m_scriptIdToPath[scriptId] = fullPath;
                 }

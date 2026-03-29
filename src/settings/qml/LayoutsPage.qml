@@ -406,7 +406,7 @@ ColumnLayout {
     NewAlgorithmDialog {
         id: newAlgorithmDialog
 
-        appSettings: settingsController
+        controller: settingsController
     }
 
     // Algorithm created/failed signals from C++ (fires after AlgorithmRegistry picks up the new file)
@@ -448,11 +448,7 @@ ColumnLayout {
         nameFilters: ["JavaScript files (*.js)"]
         fileMode: FileDialog.SaveFile
         onAccepted: {
-            if (!settingsController.exportAlgorithm(algorithmExportDialog.algorithmId, root.filePathFromUrl(selectedFile))) {
-                if (window && window.showToast)
-                    window.showToast(i18n("Failed to export algorithm"));
-
-            }
+            settingsController.exportAlgorithm(algorithmExportDialog.algorithmId, root.filePathFromUrl(selectedFile));
         }
     }
 

@@ -22,69 +22,75 @@ Item {
     signal createClicked()
     signal cancelClicked()
 
-    implicitHeight: footerLayout.implicitHeight + Kirigami.Units.largeSpacing * 2
+    implicitHeight: footerColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
-    Label {
-        anchors.bottom: footerLayout.top
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottomMargin: Kirigami.Units.smallSpacing
-        visible: root.errorText.length > 0
-        text: root.errorText
-        color: Kirigami.Theme.negativeTextColor
-        font: Kirigami.Theme.smallFont
-    }
-
-    RowLayout {
-        id: footerLayout
+    ColumnLayout {
+        id: footerColumn
 
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: Kirigami.Units.largeSpacing
-        anchors.rightMargin: Kirigami.Units.largeSpacing
-        spacing: Kirigami.Units.largeSpacing
+        spacing: Kirigami.Units.smallSpacing
 
-        Item {
+        Label {
+            Layout.alignment: Qt.AlignHCenter
+            visible: root.errorText.length > 0
+            text: root.errorText
+            color: Kirigami.Theme.negativeTextColor
+            font: Kirigami.Theme.smallFont
+        }
+
+        RowLayout {
+            id: footerLayout
+
             Layout.fillWidth: true
-        }
+            Layout.leftMargin: Kirigami.Units.largeSpacing
+            Layout.rightMargin: Kirigami.Units.largeSpacing
+            spacing: Kirigami.Units.largeSpacing
 
-        Button {
-            visible: root.currentStep > 0
-            text: i18n("Back")
-            icon.name: "go-previous"
-            Accessible.name: text
-            onClicked: root.backClicked()
-        }
+            Item {
+                Layout.fillWidth: true
+            }
 
-        Button {
-            visible: root.currentStep === 0
-            text: i18n("Next")
-            icon.name: "go-next"
-            highlighted: true
-            Accessible.name: text
-            onClicked: root.nextClicked()
-        }
+            Button {
+                visible: root.currentStep > 0
+                text: i18n("Back")
+                icon.name: "go-previous"
+                Accessible.name: text
+                onClicked: root.backClicked()
+            }
 
-        Button {
-            id: createButton
+            Button {
+                visible: root.currentStep === 0
+                text: i18n("Next")
+                icon.name: "go-next"
+                highlighted: true
+                Accessible.name: text
+                onClicked: root.nextClicked()
+            }
 
-            visible: root.currentStep === 1
-            text: root.createText
-            icon.name: "list-add"
-            enabled: root.createEnabled
-            highlighted: true
-            Accessible.name: text
-            onClicked: root.createClicked()
-        }
+            Button {
+                id: createButton
 
-        Button {
-            text: i18n("Cancel")
-            Accessible.name: text
-            onClicked: root.cancelClicked()
-        }
+                visible: root.currentStep === 1
+                text: root.createText
+                icon.name: "list-add"
+                enabled: root.createEnabled
+                highlighted: true
+                Accessible.name: text
+                onClicked: root.createClicked()
+            }
 
-        Item {
-            Layout.fillWidth: true
+            Button {
+                text: i18n("Cancel")
+                Accessible.name: text
+                onClicked: root.cancelClicked()
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
         }
 
     }
