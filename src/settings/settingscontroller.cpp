@@ -1889,6 +1889,8 @@ void SettingsController::watchForAlgorithmRegistration(const QString& expectedId
                             Q_EMIT algorithmCreated(expectedId);
                         }
                     });
+    // The context object (this) ensures the lambda is not invoked if SettingsController
+    // is destroyed before the timer fires — QTimer::singleShot with a context guarantees this.
     QTimer::singleShot(10000, this, [this, conn, expectedId]() {
         if (*conn) {
             disconnect(*conn);
@@ -1929,6 +1931,7 @@ bool SettingsController::deleteAlgorithm(const QString& algorithmId)
     const bool ok = QFile::remove(filePath);
     if (!ok) {
         qCWarning(lcCore) << "Failed to delete algorithm file:" << filePath;
+        Q_EMIT algorithmCreationFailed(PzI18n::tr("Could not delete algorithm file. Check file permissions."));
     }
     // QFileSystemWatcher will pick up the deletion and trigger a refresh
     return ok;
@@ -2163,6 +2166,7 @@ QString SettingsController::createNewAlgorithm(const QString& name, const QStrin
     QFile outFile(destPath);
     if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         qCWarning(lcCore) << "Failed to write algorithm file:" << destPath;
+        Q_EMIT algorithmCreationFailed(PzI18n::tr("Could not write algorithm file. Check disk space and permissions."));
         return QString();
     }
     outFile.write(content.toUtf8());

@@ -15,6 +15,7 @@ Item {
     required property int currentStep
     required property string createText
     required property bool createEnabled
+    property string errorText: ""
 
     signal backClicked()
     signal nextClicked()
@@ -22,6 +23,16 @@ Item {
     signal cancelClicked()
 
     implicitHeight: footerLayout.implicitHeight + Kirigami.Units.largeSpacing * 2
+
+    Label {
+        anchors.bottom: footerLayout.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottomMargin: Kirigami.Units.smallSpacing
+        visible: root.errorText.length > 0
+        text: root.errorText
+        color: Kirigami.Theme.negativeTextColor
+        font: Kirigami.Theme.smallFont
+    }
 
     RowLayout {
         id: footerLayout

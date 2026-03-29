@@ -23,7 +23,8 @@ Kirigami.Dialog {
     property bool producesOverlappingZones: false
     property bool supportsMemory: false
     property string _previousAutoName: ""
-    // Re-evaluated on open so it picks up the correct screen
+    // Re-evaluated on open so it picks up the correct screen.
+    // Clamped to [1.0, 3.6] to keep the preview usable on extreme aspect ratios (e.g. 32:9).
     property real screenAspectRatio: 16 / 9
     readonly property var baseTemplates: [{
         "name": i18n("Blank"),
@@ -67,9 +68,9 @@ Kirigami.Dialog {
         root.producesOverlappingZones = false;
         root.supportsMemory = false;
         if (nameField.text === "" || nameField.text === root._previousAutoName) {
-            let auto_name = i18n("My %1", templateData.name);
-            nameField.text = auto_name;
-            root._previousAutoName = auto_name;
+            let autoName = i18n("My %1", templateData.name);
+            nameField.text = autoName;
+            root._previousAutoName = autoName;
         }
     }
 
@@ -86,7 +87,7 @@ Kirigami.Dialog {
         root.supportsSplitRatio = false;
         root.producesOverlappingZones = false;
         root.supportsMemory = false;
-        root.screenAspectRatio = (Screen.width > 0 && Screen.height > 0) ? (Screen.width / Screen.height) : (16 / 9);
+        root.screenAspectRatio = (Screen.width > 0 && Screen.height > 0) ? Math.max(1, Math.min(3.6, Screen.width / Screen.height)) : (16 / 9);
     }
 
     ColumnLayout {
@@ -396,8 +397,7 @@ Kirigami.Dialog {
 
     Connections {
         function onAlgorithmCreationFailed(reason) {
-            errorLabel.text = reason;
-            errorLabel.visible = true;
+            wizardFooter.errorText = reason;
         }
 
         target: settingsController
@@ -412,25 +412,13 @@ Kirigami.Dialog {
         onBackClicked: root.currentStep = 0
         onNextClicked: root.currentStep = 1
         onCreateClicked: {
-            errorLabel.visible = false;
+            wizardFooter.errorText = "";
             let result = settingsController.createNewAlgorithm(nameField.text.trim(), root.baseTemplate, root.supportsMasterCount, root.supportsSplitRatio, root.producesOverlappingZones, root.supportsMemory);
             if (result.length > 0)
                 root.close();
 
         }
         onCancelClicked: root.close()
-
-        Label {
-            id: errorLabel
-
-            anchors.bottom: parent.top
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottomMargin: Kirigami.Units.smallSpacing
-            visible: false
-            color: Kirigami.Theme.negativeTextColor
-            font: Kirigami.Theme.smallFont
-        }
-
     }
 
 }

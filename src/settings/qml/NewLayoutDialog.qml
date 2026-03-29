@@ -25,6 +25,7 @@ Kirigami.Dialog {
     // Match the user's primary monitor aspect ratio for the preview.
     // Re-evaluated on open so it picks up the correct screen even if the
     // dialog is constructed before the window is shown on a display.
+    // Clamped to [1.0, 3.6] to keep the preview usable on extreme aspect ratios (e.g. 32:9).
     property real screenAspectRatio: 16 / 9
     // Template previews match TemplateService strategies exactly
     // (see src/editor/services/TemplateService.cpp and core/constants.h)
@@ -192,9 +193,9 @@ Kirigami.Dialog {
     function selectTemplate(templateData) {
         root.selectedType = templateData.type;
         if (nameField.text === "" || nameField.text === root._previousAutoName) {
-            let auto_name = i18n("My %1 Layout", templateData.name);
-            nameField.text = auto_name;
-            root._previousAutoName = auto_name;
+            let autoName = i18n("My %1 Layout", templateData.name);
+            nameField.text = autoName;
+            root._previousAutoName = autoName;
         }
     }
 
@@ -209,7 +210,7 @@ Kirigami.Dialog {
         root.openInEditor = true;
         nameField.text = "";
         root._previousAutoName = "";
-        root.screenAspectRatio = (Screen.width > 0 && Screen.height > 0) ? (Screen.width / Screen.height) : (16 / 9);
+        root.screenAspectRatio = (Screen.width > 0 && Screen.height > 0) ? Math.max(1, Math.min(3.6, Screen.width / Screen.height)) : (16 / 9);
     }
 
     ColumnLayout {
@@ -441,8 +442,7 @@ Kirigami.Dialog {
 
     Connections {
         function onLayoutCreationFailed(reason) {
-            layoutErrorLabel.text = reason;
-            layoutErrorLabel.visible = true;
+            wizardFooter.errorText = reason;
         }
 
         target: settingsController
@@ -457,24 +457,12 @@ Kirigami.Dialog {
         onBackClicked: root.currentStep = 0
         onNextClicked: root.currentStep = 1
         onCreateClicked: {
-            layoutErrorLabel.visible = false;
+            wizardFooter.errorText = "";
             if (settingsController.createNewLayout(nameField.text.trim(), root.selectedType, root.selectedAspectRatio, root.openInEditor))
                 root.close();
 
         }
         onCancelClicked: root.close()
-
-        Label {
-            id: layoutErrorLabel
-
-            anchors.bottom: parent.top
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottomMargin: Kirigami.Units.smallSpacing
-            visible: false
-            color: Kirigami.Theme.negativeTextColor
-            font: Kirigami.Theme.smallFont
-        }
-
     }
 
 }

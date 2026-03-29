@@ -408,7 +408,7 @@ ColumnLayout {
         appSettings: root.settingsBridge
     }
 
-    // Algorithm created signal from C++ (fires after AlgorithmRegistry picks up the new file)
+    // Algorithm created/failed signals from C++ (fires after AlgorithmRegistry picks up the new file)
     Connections {
         function onAlgorithmCreated(algorithmId) {
             // Always rebuild so the new algorithm is available; only switch view
@@ -417,6 +417,14 @@ ColumnLayout {
             layoutGrid.rebuildModel();
             if (root.viewMode === 1)
                 layoutGrid.selectedLayoutId = "autotile:" + algorithmId;
+
+        }
+
+        function onAlgorithmCreationFailed(reason) {
+            // Surface errors that arrive after the wizard dialog has closed
+            // (e.g. 10s registry timeout)
+            if (window && window.showToast)
+                window.showToast(reason);
 
         }
 
