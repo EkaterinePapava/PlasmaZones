@@ -62,6 +62,19 @@ QString findUniqueAlgorithmPath(const QString& dir, const QString& baseName)
 }
 } // anonymous namespace
 
+SettingsController::~SettingsController()
+{
+    // Disconnect all pending algorithm registration watchers — AlgorithmRegistry
+    // is a singleton that outlives this object, so dangling connections would fire
+    // into a destroyed SettingsController.
+    for (auto it = m_algorithmWatchers.begin(); it != m_algorithmWatchers.end(); ++it) {
+        const auto& connPtr = it.value();
+        if (connPtr && *connPtr)
+            disconnect(*connPtr);
+    }
+    m_algorithmWatchers.clear();
+}
+
 SettingsController::SettingsController(QObject* parent)
     : QObject(parent)
     , m_screenHelper(&m_settings, this)

@@ -1311,6 +1311,9 @@ ApplicationWindow {
 
                 // -- Algorithms: Manage --
                 MenuSeparator {
+                    // Only show if at least one item below is visible (Duplicate/Export always
+                    // are, so this fires for any autotile entry — but keeps the separator hidden
+                    // when !isAutotile, avoiding a dangling line for snapping layouts).
                     visible: layoutContextMenu.isAutotile
                 }
 

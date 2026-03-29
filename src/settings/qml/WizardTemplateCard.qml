@@ -36,6 +36,11 @@ Item {
     Accessible.name: root.templateName
     Accessible.description: root.templateDesc
     Accessible.role: Accessible.Button
+    Accessible.focusable: true
+    activeFocusOnTab: true
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+    Keys.onSpacePressed: root.clicked()
 
     HoverHandler {
         onHoveredChanged: root.isHovered = hovered
@@ -55,8 +60,8 @@ Item {
         anchors.fill: parent
         radius: Kirigami.Units.smallSpacing * 2
         color: root.selected ? root._highlightBg : root.isHovered ? root._hoverBg : root._defaultBg
-        border.width: root.selected ? Math.round(Kirigami.Units.devicePixelRatio * 2) : Math.round(Kirigami.Units.devicePixelRatio)
-        border.color: root.selected ? root._selectedBorder : root.isHovered ? root._hoverBorder : root._defaultBorder
+        border.width: root.activeFocus ? Math.round(Kirigami.Units.devicePixelRatio * 2) : root.selected ? Math.round(Kirigami.Units.devicePixelRatio * 2) : Math.round(Kirigami.Units.devicePixelRatio)
+        border.color: root.activeFocus ? Kirigami.Theme.highlightColor : root.selected ? root._selectedBorder : root.isHovered ? root._hoverBorder : root._defaultBorder
         transform: [
             Scale {
                 origin.x: templateCard.width / 2

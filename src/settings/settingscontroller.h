@@ -124,7 +124,7 @@ class SettingsController : public QObject
 
 public:
     explicit SettingsController(QObject* parent = nullptr);
-    ~SettingsController() override = default;
+    ~SettingsController() override;
 
     QString activePage() const
     {
