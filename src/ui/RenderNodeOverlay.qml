@@ -100,7 +100,8 @@ Window {
         zoneShaderRenderer.loadShader();
     }
 
-    // Window flags - LayerShellQt handles the overlay behavior on Wayland
+    // Window flags - QPA layer-shell plugin handles the overlay behavior on Wayland
+    Accessible.name: i18n("Zone overlay")
     flags: Qt.FramelessWindowHint | Qt.WindowDoesNotAcceptFocus
     color: "transparent"
     visible: false
@@ -221,6 +222,7 @@ Window {
             Text {
                 id: shaderErrorText
 
+                Accessible.name: i18n("Shader error details")
                 anchors.centerIn: parent
                 text: zoneShaderRenderer.errorLog || i18n("Shader error")
                 color: Kirigami.Theme.textColor

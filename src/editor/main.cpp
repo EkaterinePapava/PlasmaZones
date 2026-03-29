@@ -4,6 +4,8 @@
 #include "EditorController.h"
 #include "../core/constants.h"
 #include "../core/logging.h"
+#include "../core/qpa/layershellpluginloader.h"
+#include "../core/layersurface.h"
 #include "../core/translationloader.h"
 #include "version.h"
 #include "../daemon/rendering/zoneshaderitem.h"
@@ -39,8 +41,24 @@ int main(int argc, char* argv[])
         }
     }
 
+    // Register our layer-shell QPA plugin before QGuiApplication
+    PlasmaZones::registerLayerShellPlugin();
+
     QGuiApplication app(argc, argv);
     PlasmaZones::loadTranslations(&app);
+
+    // Register metatype for QVariant storage (LayerSurface stores itself
+    // as a QWindow dynamic property via QVariant::fromValue).
+    qRegisterMetaType<PlasmaZones::LayerSurface*>();
+
+    // Verify the layer-shell QPA plugin loaded successfully. If not, shader preview
+    // overlays will be created as xdg_toplevel (wrong stacking/anchoring).
+    if (!qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY") && !PlasmaZones::LayerSurface::isSupported()) {
+        qCCritical(lcEditor) << "Layer-shell QPA plugin did not initialize —"
+                             << "shader preview overlays will use xdg_toplevel (wrong stacking)."
+                             << "Check that pz-layer-shell.so is installed to Qt's"
+                             << "wayland-shell-integration plugin directory.";
+    }
 
     app.setApplicationName(QStringLiteral("plasmazones-editor"));
     app.setApplicationVersion(PlasmaZones::VERSION_STRING);

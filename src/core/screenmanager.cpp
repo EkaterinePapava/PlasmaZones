@@ -19,8 +19,7 @@
 #include <QDBusServiceWatcher>
 #include <QRegularExpression>
 
-#include <LayerShellQt/Window>
-#include <LayerShellQt/Shell>
+#include "layersurface.h"
 
 namespace PlasmaZones {
 
@@ -156,23 +155,24 @@ void ScreenManager::createGeometrySensor(QScreen* screen)
     sensor->setScreen(screen);
     sensor->setFlag(Qt::FramelessWindowHint);
     sensor->setFlag(Qt::BypassWindowManagerHint);
-    sensor->setObjectName(QStringLiteral("GeometrySensor-%1").arg(screen->name()));
+    sensor->setObjectName(QStringLiteral("GeometrySensor-%1").arg(Utils::screenIdentifier(screen)));
 
-    auto* layerWindow = LayerShellQt::Window::get(sensor);
-    if (!layerWindow) {
-        qCWarning(lcScreen) << "Failed to get LayerShellQt window handle for sensor";
+    auto* layerSurface = LayerSurface::get(sensor);
+    if (!layerSurface) {
+        qCWarning(lcScreen) << "Failed to create layer surface for sensor";
         delete sensor;
         return;
     }
 
-    layerWindow->setScreen(screen);
-    layerWindow->setLayer(LayerShellQt::Window::LayerBackground);
-    layerWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
-    layerWindow->setAnchors(
-        LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop | LayerShellQt::Window::AnchorBottom
-                                      | LayerShellQt::Window::AnchorLeft | LayerShellQt::Window::AnchorRight));
-    layerWindow->setExclusiveZone(0);
-    layerWindow->setScope(QStringLiteral("plasmazones-sensor-%1").arg(screen->name()));
+    // Batch all property changes into a single propertiesChanged() emission
+    // so the QPA plugin only does one applyProperties()+commit round-trip.
+    LayerSurface::BatchGuard guard(layerSurface);
+    layerSurface->setScreen(screen);
+    layerSurface->setLayer(LayerSurface::LayerBackground);
+    layerSurface->setKeyboardInteractivity(LayerSurface::KeyboardInteractivityNone);
+    layerSurface->setAnchors(LayerSurface::AnchorAll);
+    layerSurface->setExclusiveZone(0);
+    layerSurface->setScope(QStringLiteral("plasmazones-sensor-%1").arg(Utils::screenIdentifier(screen)));
     // Do NOT call sensor->setOpacity(0.0): on Wayland, Qt's QWaylandWindow does not implement
     // QWindow::setOpacity(), so it logs "This plugin does not support setting window opacity".
     // The sensor is in LayerBackground with no content; it does not need explicit transparency.

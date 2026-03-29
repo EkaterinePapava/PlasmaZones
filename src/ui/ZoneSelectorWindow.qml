@@ -120,7 +120,7 @@ Window {
         }
     }
 
-    // Window configuration for overlay - LayerShellQt handles layering on Wayland
+    // Window configuration for overlay - QPA layer-shell plugin handles layering on Wayland
     flags: Qt.FramelessWindowHint | Qt.Tool
     color: "transparent"
 
@@ -509,7 +509,7 @@ Window {
                                 source: "object-locked"
                                 width: Math.min(parent.width, parent.height) * 0.3
                                 height: width
-                                color: "white"
+                                color: Kirigami.Theme.highlightedTextColor
                             }
 
                             MouseArea {

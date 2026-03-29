@@ -3,6 +3,8 @@
 
 #include "daemon.h"
 #include "../core/logging.h"
+#include "../core/qpa/layershellpluginloader.h"
+#include "../core/layersurface.h"
 #include "../core/translationloader.h"
 #include "version.h"
 #include "rendering/zoneshaderitem.h"
@@ -35,8 +37,27 @@ void signalHandler(int /*signal*/)
 
 int main(int argc, char* argv[])
 {
+    // Register our layer-shell QPA plugin before QGuiApplication
+    PlasmaZones::registerLayerShellPlugin();
+
     QGuiApplication app(argc, argv);
     PlasmaZones::loadTranslations(&app);
+
+    // Register metatype for QVariant storage (LayerSurface stores itself
+    // as a QWindow dynamic property via QVariant::fromValue).
+    qRegisterMetaType<PlasmaZones::LayerSurface*>();
+
+    // Verify the layer-shell QPA plugin loaded successfully. If not, overlays will
+    // be created as xdg_toplevel (wrong stacking/anchoring) — warn loudly.
+    if (!qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY") && !PlasmaZones::LayerSurface::isSupported()) {
+        qCCritical(lcDaemon) << "Layer-shell QPA plugin did not initialize —"
+                             << "overlays will use xdg_toplevel (wrong stacking/anchoring)."
+                             << "Zone overlays will appear as regular windows (visible in taskbar,"
+                             << "wrong z-order, no keyboard grab). This compositor may not support"
+                             << "zwlr_layer_shell_v1 (e.g. GNOME/Mutter)."
+                             << "Check that pz-layer-shell.so is installed to Qt's"
+                             << "wayland-shell-integration plugin directory.";
+    }
 
     // Daemon must survive monitor power-off (DP disconnect destroys all overlay
     // windows; without this, Qt sees zero windows and calls quit()).
