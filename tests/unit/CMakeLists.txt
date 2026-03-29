@@ -162,6 +162,18 @@ pz_add_test(test_layoutmanager_cycling core/test_layoutmanager_cycling.cpp)
 pz_add_test(test_layoutmanager_assignment core/test_layoutmanager_assignment.cpp)
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# core/ — LayerSurface + computeLayerSize Tests
+# ═══════════════════════════════════════════════════════════════════════════════
+add_executable(test_layersurface core/test_layersurface.cpp)
+target_link_libraries(test_layersurface PRIVATE Qt6::Test Qt6::Core Qt6::Gui Qt6::WaylandClientPrivate Wayland::Client plasmazones_core)
+# QPA integration header includes generated protocol headers and the export header
+target_include_directories(test_layersurface PRIVATE
+    ${CMAKE_BINARY_DIR}/src            # plasmazones_export.h
+    ${CMAKE_BINARY_DIR}/src/generated-protocols  # wlr-layer-shell protocol header
+)
+add_test(NAME test_layersurface COMMAND test_layersurface)
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # core/ — Zone Detection Tests (layout, service)
 # ═══════════════════════════════════════════════════════════════════════════════
 pz_add_test(test_zone_detection_layout core/test_zone_detection_layout.cpp)
@@ -196,10 +208,10 @@ target_link_libraries(test_zone_shader_item PRIVATE Qt6::Test Qt6::Core Qt6::Qui
 add_test(NAME test_zone_shader_item COMMAND test_zone_shader_item)
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ui/ — Overlay Helpers Tests — need Qt6::Quick + LayerShellQt + QGuiApplication
+# ui/ — Overlay Helpers Tests — need Qt6::Quick + QGuiApplication
 # ═══════════════════════════════════════════════════════════════════════════════
 add_executable(test_overlay_helpers ui/test_overlay_helpers.cpp)
-target_link_libraries(test_overlay_helpers PRIVATE Qt6::Test Qt6::Core Qt6::Quick LayerShellQt::Interface plasmazones_core)
+target_link_libraries(test_overlay_helpers PRIVATE Qt6::Test Qt6::Core Qt6::Quick plasmazones_core)
 add_test(NAME test_overlay_helpers COMMAND test_overlay_helpers)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -245,6 +257,7 @@ set(_all_tests
     test_configdefaults
     test_layout_core test_layout_zones
     test_layoutmanager_persistence test_layoutmanager_cycling test_layoutmanager_assignment
+    test_layersurface
     test_zone_detection_layout test_zone_detector_overlap test_zone_detection_service
     test_per_screen_config test_navigation_controller test_settings_bridge
     test_zone_shader_item test_overlay_helpers

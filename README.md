@@ -269,9 +269,10 @@ On KDE Plasma, a System Settings entry provides version info and a launcher to t
 
 - Any Wayland compositor with layer-shell support
 - Qt 6.6+
-- LayerShellQt 6.6+
+- qt6-wayland / Wayland::Client
 - CMake 3.16+
 - C++20 compiler
+- wayland-scanner (build-time only)
 
 Optional (for full KDE integration):
 - KDE Frameworks 6.6+ (KWin effect, System Settings, KGlobalAccel shortcuts)

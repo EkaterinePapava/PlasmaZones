@@ -7,6 +7,23 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Replaced LayerShellQt dependency with custom QPA layer-shell plugin (`pz-layer-shell`)
+- PlasmaZones now works on any Wayland compositor with `zwlr_layer_shell_v1` support (Hyprland, Sway, Wayfire, niri, COSMIC, river, labwc)
+
+### Added
+- `LayerSurface` API — drop-in replacement for `LayerShellQt::Window`
+- `pz-layer-shell` QPA shell integration plugin
+- Multi-compositor support documentation
+
+### Removed
+- `LayerShellQt` dependency — no longer required
+
+### Migration Notes (Packagers)
+- Drop `layer-shell-qt` / `liblayershellqtinterface-dev` build dependency
+- Add `qt6-wayland` / `qt6-wayland-dev` build dependency
+- Add `wayland-scanner` build dependency (usually in `wayland-devel`)
+
 ## [2.4.7] - 2026-03-27
 
 ### Added
@@ -24,7 +41,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Plasma Sigil shader**: Animated energy sigil based on the PlasmaZones icon with glowing rune effects.
 
 ### Fixed
-- **System Settings crash when opening PlasmaZones KCM**: The KCM linked the entire `plasmazones_core` library (with LayerShellQt, PlasmaActivities, 21 static initializers) just to read a version string. When the daemon was not running this caused heap corruption and SIGABRT during QML binding creation. Replaced with a compile-time version define — the KCM no longer loads the core library at all.
+- **System Settings crash when opening PlasmaZones KCM**: The KCM linked the entire `plasmazones_core` library (with layer-shell QPA plugin, PlasmaActivities, 21 static initializers) just to read a version string. When the daemon was not running this caused heap corruption and SIGABRT during QML binding creation. Replaced with a compile-time version define — the KCM no longer loads the core library at all.
 - **Editor context menu crash on zone updates**: Use shared context menu to prevent QQmlData use-after-free crash when zones update while the menu is open.
 
 ## [2.4.5] - 2026-03-26
@@ -526,7 +543,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 - **Reapply timing**: Reapply runs after every geometry batch (0ms delay). Removed redundant 1100ms/450ms reapply path; delayed panel requery still triggers the same debounce → processPendingGeometryUpdates → reapply flow.
 - **Daemon**: Reapply timer stopped in `stop()`; named constants for geometry and panel delays.
-- **Nix**: Build asserts LayerShellQt 6.6 and fails with a clear message when nixpkgs provides the 6.5 stack. Nix CI and release Nix build/artifact disabled until nixpkgs has Plasma 6.6.
+- **Nix**: Build asserts layer-shell QPA plugin compatibility and fails with a clear message when nixpkgs provides the 6.5 stack. Nix CI and release Nix build/artifact disabled until nixpkgs has Plasma 6.6.
 
 ## [1.11.8] - 2026-02-16
 

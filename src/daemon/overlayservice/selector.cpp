@@ -17,7 +17,7 @@
 #include <QQuickWindow>
 #include <QQuickItem>
 #include <QQmlEngine>
-#include <LayerShellQt/Window>
+#include "../../core/layersurface.h"
 
 namespace PlasmaZones {
 
@@ -241,15 +241,13 @@ void OverlayService::createZoneSelectorWindow(QScreen* screen)
         : defaultZoneSelectorConfig();
     const auto pos = static_cast<ZoneSelectorPosition>(config.position);
 
-    // Configure LayerShellQt for zone selector (LayerTop for pointer input)
-    if (auto* layerWindow = LayerShellQt::Window::get(window)) {
-        layerWindow->setScreen(screen);
-        layerWindow->setLayer(LayerShellQt::Window::LayerTop);
-        layerWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
-
-        layerWindow->setAnchors(getAnchorsForPosition(pos));
-        layerWindow->setExclusiveZone(-1);
-        layerWindow->setScope(QStringLiteral("plasmazones-selector-%1").arg(screen->name()));
+    // Configure layer surface for zone selector (LayerTop for pointer input)
+    if (!configureLayerSurface(window, screen, LayerSurface::LayerTop, LayerSurface::KeyboardInteractivityNone,
+                               QStringLiteral("plasmazones-selector-%1").arg(Utils::screenIdentifier(screen)),
+                               getAnchorsForPosition(pos))) {
+        qCWarning(lcOverlay) << "Failed to configure layer surface for zone selector on" << screen->name();
+        delete window;
+        return;
     }
 
     // Set screen properties for layout preview scaling
@@ -288,6 +286,8 @@ void OverlayService::createZoneSelectorWindow(QScreen* screen)
 void OverlayService::destroyZoneSelectorWindow(QScreen* screen)
 {
     if (auto* window = m_zoneSelectorWindows.take(screen)) {
+        // Disconnect so no signals (e.g. geometryChanged) are delivered to a window we're destroying
+        disconnect(screen, nullptr, window, nullptr);
         window->close();
         window->deleteLater();
     }

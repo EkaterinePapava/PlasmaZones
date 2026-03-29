@@ -13,6 +13,33 @@ qt_policy(SET QTP0004 NEW)
 # ═══════════════════════════════════════════════════════════════════════════════
 add_subdirectory(shared)
 
+# Generate wlr-layer-shell Wayland protocol client code
+set(_pz_proto_dir ${CMAKE_CURRENT_SOURCE_DIR}/core/protocols)
+set(_pz_gen_dir ${CMAKE_CURRENT_BINARY_DIR}/generated-protocols)
+file(MAKE_DIRECTORY ${_pz_gen_dir})
+
+add_custom_command(
+    OUTPUT ${_pz_gen_dir}/wlr-layer-shell-unstable-v1-client-protocol.h
+           ${_pz_gen_dir}/wlr-layer-shell-unstable-v1-protocol.c
+    COMMAND ${WAYLAND_SCANNER} client-header
+            ${_pz_proto_dir}/wlr-layer-shell-unstable-v1.xml
+            ${_pz_gen_dir}/wlr-layer-shell-unstable-v1-client-protocol.h
+    COMMAND ${WAYLAND_SCANNER} private-code
+            ${_pz_proto_dir}/wlr-layer-shell-unstable-v1.xml
+            ${_pz_gen_dir}/wlr-layer-shell-unstable-v1-protocol.c
+    DEPENDS ${_pz_proto_dir}/wlr-layer-shell-unstable-v1.xml
+    COMMENT "Generating wlr-layer-shell Wayland protocol code"
+)
+
+# Generated protocol C code: skip PCH and unity build since it's plain C
+set_source_files_properties(
+    ${_pz_gen_dir}/wlr-layer-shell-unstable-v1-protocol.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/qpa/xdg_popup_stub.c
+    PROPERTIES
+        SKIP_PRECOMPILE_HEADERS ON
+        SKIP_UNITY_BUILD_INCLUSION ON
+)
+
 # Core library sources
 set(plasmazones_core_SRCS
     pz_qml_i18n.h
@@ -60,6 +87,8 @@ set(plasmazones_core_SRCS
     core/layoututils.cpp
     core/layoututils.h
     core/shaderregistry/params.cpp
+    core/layersurface.cpp
+    core/layersurface.h
     core/screenmanager.cpp
     core/screenmanager/panels.cpp
     core/screenmanager.h
@@ -180,7 +209,23 @@ generate_export_header(plasmazones_core
     EXPORT_MACRO_NAME PLASMAZONES_EXPORT
 )
 
-# LayerShellQt is required - no conditional needed
+# Layer-shell: our QPA plugin (no LayerShellQt)
+# QPA files are excluded from unity build to avoid include conflicts
+# with Qt Wayland private headers and the wayland-scanner-generated protocol header.
+target_sources(plasmazones_core PRIVATE
+    core/qpa/layershellintegration.cpp
+    core/qpa/layershellintegration.h
+    core/qpa/layershellwindow.cpp
+    core/qpa/layershellwindow.h
+    core/qpa/xdg_popup_stub.c
+    ${_pz_gen_dir}/wlr-layer-shell-unstable-v1-protocol.c
+)
+set_source_files_properties(
+    core/qpa/layershellintegration.cpp
+    core/qpa/layershellwindow.cpp
+    PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+)
+target_include_directories(plasmazones_core PRIVATE ${_pz_gen_dir})
 
 target_link_libraries(plasmazones_core
     PUBLIC
@@ -190,6 +235,9 @@ target_link_libraries(plasmazones_core
         Qt6::Quick
         Qt6::Gui
         Qt6::DBus
+    PRIVATE
+        Wayland::Client
+        Qt6::WaylandClientPrivate
 )
 
 # KDE-specific link dependencies (only when building with KDE Frameworks)
@@ -230,12 +278,6 @@ if(PlasmaActivities_FOUND)
     endif()
 endif()
 
-# Link LayerShellQt (used internally by ScreenManager only)
-target_link_libraries(plasmazones_core
-    PRIVATE
-        LayerShellQt::Interface
-)
-
 target_include_directories(plasmazones_core
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -273,6 +315,35 @@ install(TARGETS plasmazones_core
     EXPORT PlasmaZonesTargets
     LIBRARY DESTINATION ${KDE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${KDE_INSTALL_LIBDIR}
+)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Layer Shell Qt Plugin (installed to Qt's wayland-shell-integration plugin dir)
+# ═══════════════════════════════════════════════════════════════════════════════
+add_library(pz-layer-shell MODULE core/qpa/pzlayershellplugin.cpp)
+target_link_libraries(pz-layer-shell PRIVATE
+    plasmazones_core
+    Qt6::WaylandClientPrivate
+    Wayland::Client
+)
+target_include_directories(pz-layer-shell PRIVATE ${_pz_gen_dir})
+set_target_properties(pz-layer-shell PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins/wayland-shell-integration
+    INSTALL_RPATH "$ORIGIN/../../${CMAKE_INSTALL_LIBDIR}"
+)
+# Install to Qt's plugin dir (query via QT6_INSTALL_PLUGINS or fallback)
+if(NOT DEFINED QT6_INSTALL_PLUGINS)
+    get_target_property(QT6_INSTALL_PLUGINS Qt6::Core QT_INSTALL_PLUGINS)
+    if(NOT QT6_INSTALL_PLUGINS)
+        set(QT6_INSTALL_PLUGINS "${KDE_INSTALL_QTPLUGINDIR}")
+    endif()
+    if(NOT QT6_INSTALL_PLUGINS)
+        message(FATAL_ERROR "Cannot determine Qt plugin install directory. "
+            "Set QT6_INSTALL_PLUGINS or ensure ECM/KDE_INSTALL_QTPLUGINDIR is available.")
+    endif()
+endif()
+install(TARGETS pz-layer-shell
+    DESTINATION ${QT6_INSTALL_PLUGINS}/wayland-shell-integration
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -370,8 +441,6 @@ qt_add_resources(plasmazones_daemon_SRCS daemon/resources.qrc)
 
 add_executable(plasmazonesd ${plasmazones_daemon_SRCS})
 
-# LayerShellQt is required - no conditional needed
-
 target_link_libraries(plasmazonesd
     PRIVATE
         plasmazones_core
@@ -387,12 +456,6 @@ target_link_libraries(plasmazonesd
 
 # Qt6::GuiPrivate (QRhi) for daemon's include of zoneshadernoderhi.h (warmShaderBakeCacheForPaths)
 target_link_libraries(plasmazonesd PRIVATE Qt6::GuiPrivate Qt6::ShaderToolsPrivate)
-
-# Link LayerShellQt (required)
-target_link_libraries(plasmazonesd
-    PRIVATE
-        LayerShellQt::Interface
-)
 
 install(TARGETS plasmazonesd DESTINATION ${KDE_INSTALL_BINDIR})
 
@@ -597,12 +660,6 @@ target_link_libraries(plasmazones-editor
 
 # Qt6::GuiPrivate and Qt6::ShaderToolsPrivate for ZoneShaderItem (shader preview)
 target_link_libraries(plasmazones-editor PRIVATE Qt6::GuiPrivate Qt6::ShaderToolsPrivate)
-
-# Link LayerShellQt (required)
-target_link_libraries(plasmazones-editor
-    PRIVATE
-        LayerShellQt::Interface
-)
 
 install(TARGETS plasmazones-editor DESTINATION ${KDE_INSTALL_BINDIR})
 
