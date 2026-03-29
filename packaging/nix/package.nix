@@ -83,6 +83,8 @@ stdenv.mkDerivation {
     qt6.qtsvg            # Svg (SVG icon rendering)
     qt6.qtwayland        # WaylandClient (layer-shell QPA plugin)
     wayland              # Wayland::Client (libwayland-client for direct protocol usage)
+    vulkan-headers       # Vulkan headers for QVulkanInstance (backend selection)
+    vulkan-loader        # libvulkan.so (runtime Vulkan instance creation)
   ] ++ (with kdePackages; [
     # KDE Frameworks 6 (6.6+ for Plasma 6.6)
     kcmutils
