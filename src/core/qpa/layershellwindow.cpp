@@ -267,6 +267,13 @@ void LayerShellWindow::updatePosition()
         return;
     }
 
+    // Note: we use screen->geometry() (full output rect) here. For surfaces with
+    // exclusiveZone=-1 (all PlasmaZones overlays), this is correct — they ignore
+    // other surfaces' exclusive zones and stretch to full output edges.
+    // For exclusiveZone=0 (geometry sensors), the compositor actually positions the
+    // surface within the *available* area (pushed by panels), so this calculation
+    // may be slightly off. This is acceptable because the geometry sensor is invisible
+    // and only cares about its configure size, not mapFromGlobal accuracy.
     const QRect screenGeom = screen->geometry();
     int anchors = qwindow->property(LayerSurfaceProps::Anchors).toInt();
     int mLeft = qwindow->property(LayerSurfaceProps::MarginsLeft).toInt();

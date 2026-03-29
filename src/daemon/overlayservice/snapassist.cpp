@@ -255,6 +255,10 @@ void OverlayService::destroySnapAssistWindow()
         // Disconnect visibleChanged before closing to prevent spurious snapAssistDismissed
         // when the window is being destroyed and recreated (e.g. showSnapAssist recreate cycle)
         disconnect(m_snapAssistWindow, &QWindow::visibleChanged, this, nullptr);
+        // Disconnect screen signals so no geometryChanged etc. are delivered during teardown
+        if (m_snapAssistScreen) {
+            disconnect(m_snapAssistScreen, nullptr, m_snapAssistWindow, nullptr);
+        }
         m_snapAssistWindow->close();
         m_snapAssistWindow->deleteLater();
         m_snapAssistWindow = nullptr;
@@ -414,6 +418,10 @@ void OverlayService::destroyLayoutPickerWindow()
 {
     if (m_layoutPickerWindow) {
         disconnect(m_layoutPickerWindow, &QWindow::visibleChanged, this, nullptr);
+        // Disconnect screen signals so no geometryChanged etc. are delivered during teardown
+        if (auto* screen = m_layoutPickerWindow->screen()) {
+            disconnect(screen, nullptr, m_layoutPickerWindow, nullptr);
+        }
         m_layoutPickerWindow->close();
         m_layoutPickerWindow->deleteLater();
         m_layoutPickerWindow = nullptr;

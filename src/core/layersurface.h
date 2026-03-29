@@ -81,6 +81,10 @@ public:
     // ── Mutable properties (can be changed after show()) ──────────────
     // These push protocol updates to the compositor via propertiesChanged().
 
+    /// Set the layer (z-depth) for this surface.
+    /// Note: runtime layer changes require compositor support for zwlr_layer_shell_v1 v2+.
+    /// On v1 compositors, the initial layer (set before show()) takes effect, but
+    /// subsequent setLayer() calls after show() are silently ignored by the compositor.
     void setLayer(Layer layer);
     Layer layer() const;
 

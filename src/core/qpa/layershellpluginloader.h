@@ -33,11 +33,15 @@ inline void registerLayerShellPlugin()
         if (!qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) {
             qputenv("QT_WAYLAND_SHELL_INTEGRATION", "pz-layer-shell");
         } else {
-            // Fallback: check for the default Wayland socket
+            // Fallback: check for common Wayland sockets. Compositors may use any
+            // socket name (wayland-0, wayland-1 for nested sessions, or custom names).
+            // We check the two most common defaults. COSMIC and some socket-activation
+            // setups may not set WAYLAND_DISPLAY but the socket still exists.
             const QByteArray runtimeDir = qgetenv("XDG_RUNTIME_DIR");
             if (!runtimeDir.isEmpty()) {
-                const QString defaultSocket = QString::fromUtf8(runtimeDir) + QStringLiteral("/wayland-0");
-                if (QFile::exists(defaultSocket)) {
+                const QString runtimePath = QString::fromUtf8(runtimeDir);
+                if (QFile::exists(runtimePath + QStringLiteral("/wayland-0"))
+                    || QFile::exists(runtimePath + QStringLiteral("/wayland-1"))) {
                     qputenv("QT_WAYLAND_SHELL_INTEGRATION", "pz-layer-shell");
                 }
             }
