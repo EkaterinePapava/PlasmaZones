@@ -164,6 +164,9 @@ echo ""
 # KWin effect plugin
 %{_libdir}/qt6/plugins/kwin/effects/plugins/kwin_effect_plasmazones.so
 
+# Layer-shell QPA plugin
+%{_libdir}/qt6/plugins/wayland-shell-integration/pz-layer-shell.so
+
 # KCM sub-modules (System Settings)
 %{_libdir}/qt6/plugins/plasma/kcms/systemsettings/kcm_plasmazones_*.so
 

@@ -18,6 +18,7 @@ depends=(
     'kconfigwidgets'
     'kcmutils'
     'kglobalaccel'
+    'kirigami'
     'qt6-wayland'
 )
 makedepends=(

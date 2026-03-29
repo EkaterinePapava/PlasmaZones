@@ -20,6 +20,8 @@ namespace PlasmaZones {
 class PLASMAZONES_EXPORT LayerShellIntegration : public QtWaylandClient::QWaylandShellIntegration
 {
 public:
+    Q_DISABLE_COPY_MOVE(LayerShellIntegration)
+
     LayerShellIntegration();
     ~LayerShellIntegration() override;
 

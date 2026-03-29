@@ -33,14 +33,7 @@ void OverlayService::initializeOverlay(QScreen* cursorScreen)
 
     // Initialize shader timing (shared across all monitors for synchronized effects)
     // Only start timer if invalid - preserves iTime across show/hide for less predictable animations
-    {
-        QMutexLocker locker(&m_shaderTimerMutex);
-        if (!m_shaderTimer.isValid()) {
-            m_shaderTimer.start();
-            m_lastFrameTime.store(0);
-            m_frameCount.store(0);
-        }
-    }
+    ensureShaderTimerStarted(m_shaderTimer, m_shaderTimerMutex, m_lastFrameTime, m_frameCount);
     m_zoneDataDirty = true; // Rebuild zone data on next frame
 
     // When single-monitor mode, hide overlay on screens we're switching away from (#136)
@@ -152,14 +145,7 @@ void OverlayService::updateLayout(Layout* layout)
         // to ensure shader animations work regardless of flash setting
         if (anyScreenUsesShader()) {
             // Ensure shader timing + updates continue after layout switch
-            {
-                QMutexLocker locker(&m_shaderTimerMutex);
-                if (!m_shaderTimer.isValid()) {
-                    m_shaderTimer.start();
-                    m_lastFrameTime.store(0);
-                    m_frameCount.store(0);
-                }
-            }
+            ensureShaderTimerStarted(m_shaderTimer, m_shaderTimerMutex, m_lastFrameTime, m_frameCount);
             m_zoneDataDirty = true;
             updateZonesForAllWindows();
             if (!m_shaderUpdateTimer || !m_shaderUpdateTimer->isActive()) {
@@ -175,6 +161,14 @@ void OverlayService::updateGeometries()
 {
     for (auto* screen : m_overlayWindows.keys()) {
         updateOverlayWindow(screen);
+    }
+    // Bump zone data version once after all per-screen updates complete,
+    // then broadcast to all windows so shaders see the new version atomically.
+    ++m_zoneDataVersion;
+    for (auto* w : std::as_const(m_overlayWindows)) {
+        if (w) {
+            writeQmlProperty(w, QStringLiteral("zoneDataVersion"), m_zoneDataVersion);
+        }
     }
 }
 
@@ -426,14 +420,8 @@ void OverlayService::updateOverlayWindow(QScreen* screen)
         }
         writeQmlProperty(window, QStringLiteral("zoneCount"), patched.size());
         writeQmlProperty(window, QStringLiteral("highlightedCount"), highlightedCount);
-        ++m_zoneDataVersion;
-
         updateLabelsTextureForWindow(window, patched, screen, screenLayout);
-        for (auto* w : std::as_const(m_overlayWindows)) {
-            if (w) {
-                writeQmlProperty(w, QStringLiteral("zoneDataVersion"), m_zoneDataVersion);
-            }
-        }
+        writeQmlProperty(window, QStringLiteral("zoneDataVersion"), m_zoneDataVersion);
     }
 }
 

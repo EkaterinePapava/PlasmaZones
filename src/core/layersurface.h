@@ -124,7 +124,7 @@ public:
 
     /// Compute layer-shell size: 0 for axes anchored to both edges, clamped otherwise.
     /// Pure static helper shared between QPA plugin and tests.
-    static std::pair<uint32_t, uint32_t> computeLayerSize(int anchors, const QSize& windowSize);
+    static std::pair<uint32_t, uint32_t> computeLayerSize(Anchors anchors, const QSize& windowSize);
 
 Q_SIGNALS:
     void layerChanged();
@@ -171,6 +171,7 @@ public:
             : m_surface(std::exchange(other.m_surface, nullptr))
         {
         }
+        // Move-assign deleted: guards are stack-scoped, reassignment would lose the original surface.
         BatchGuard& operator=(BatchGuard&&) = delete;
 
     private:

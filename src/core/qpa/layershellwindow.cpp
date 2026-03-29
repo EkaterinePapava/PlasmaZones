@@ -48,23 +48,24 @@ LayerShellWindow::LayerShellWindow(LayerShellIntegration* integration, QtWayland
         return;
     }
 
-    // Resolve wl_output from QScreen just-in-time (not cached in constructor).
-    // This minimizes the window where a hot-unplugged screen could yield a
-    // dangling wl_output*. If the screen was unplugged between LayerSurface::get()
-    // and now, screen() returns nullptr and we pass NULL to the compositor
-    // (which then chooses the output — usually primary).
+    // Resolve wl_output locally — only needed for zwlr_layer_shell_v1_get_layer_surface().
+    // Not stored as a member since it is not referenced after construction.
+    // If the screen was hot-unplugged between LayerSurface::get() and now,
+    // screen() returns nullptr and we pass NULL to the compositor (which then
+    // chooses the output — usually primary).
+    struct wl_output* output = nullptr;
     QScreen* targetScreen = qwindow->screen();
     if (targetScreen) {
         auto* waylandScreen = dynamic_cast<QtWaylandClient::QWaylandScreen*>(targetScreen->handle());
         if (waylandScreen) {
-            m_output = waylandScreen->output();
+            output = waylandScreen->output();
         }
     }
 
     // Keep the QByteArray alive for the duration of the call — constData() returns
     // a pointer into the QByteArray, which must not be a dangling temporary.
     const QByteArray scopeUtf8 = scope.toUtf8();
-    m_layerSurface = zwlr_layer_shell_v1_get_layer_surface(shell, m_wlSurface, m_output, static_cast<uint32_t>(layer),
+    m_layerSurface = zwlr_layer_shell_v1_get_layer_surface(shell, m_wlSurface, output, static_cast<uint32_t>(layer),
                                                            scopeUtf8.constData());
 
     zwlr_layer_surface_v1_add_listener(m_layerSurface, &s_layerSurfaceListener, this);
@@ -91,8 +92,11 @@ LayerShellWindow::LayerShellWindow(LayerShellIntegration* integration, QtWayland
     // issuing protocol requests on our now-stale zwlr_layer_surface_v1.
     // Store the callback ID so we can deregister in the destructor to prevent UAF.
     m_globalRemovedCallbackId = integration->addGlobalRemovedCallback([this]() {
-        qCWarning(lcLayerShellWindow) << "Layer-shell global removed — nulling stale surface";
-        m_layerSurface = nullptr;
+        qCWarning(lcLayerShellWindow) << "Layer-shell global removed — destroying stale surface";
+        if (m_layerSurface) {
+            zwlr_layer_surface_v1_destroy(m_layerSurface);
+            m_layerSurface = nullptr;
+        }
     });
 
     // Apply all properties
@@ -148,9 +152,12 @@ void LayerShellWindow::applyConfigure()
 
 void LayerShellWindow::setWindowGeometry(const QRect& rect)
 {
+    if (!m_waylandWindow || !m_waylandWindow->window()) {
+        return;
+    }
     if (m_layerSurface) {
         QWindow* qwindow = m_waylandWindow->window();
-        int anchors = qwindow->property(LayerSurfaceProps::Anchors).toInt();
+        auto anchors = LayerSurface::Anchors::fromInt(qwindow->property(LayerSurfaceProps::Anchors).toInt());
         auto [w, h] = LayerSurface::computeLayerSize(anchors, rect.size());
         zwlr_layer_surface_v1_set_size(m_layerSurface, w, h);
 
@@ -163,6 +170,9 @@ void LayerShellWindow::setWindowGeometry(const QRect& rect)
 void LayerShellWindow::applyProperties()
 {
     if (!m_layerSurface) {
+        return;
+    }
+    if (!m_waylandWindow || !m_waylandWindow->window()) {
         return;
     }
 
@@ -202,7 +212,7 @@ void LayerShellWindow::applyProperties()
     zwlr_layer_surface_v1_set_margin(m_layerSurface, marginTop, marginRight, marginBottom, marginLeft);
 
     // Size — use 0 for axes anchored to both edges; clamp to avoid uint32_t wrap on negative
-    auto [w, h] = LayerSurface::computeLayerSize(anchors, qwindow->size());
+    auto [w, h] = LayerSurface::computeLayerSize(LayerSurface::Anchors::fromInt(anchors), qwindow->size());
     zwlr_layer_surface_v1_set_size(m_layerSurface, w, h);
 }
 
@@ -239,6 +249,9 @@ QSize LayerShellWindow::computeConfigureSize(uint32_t width, uint32_t height) co
 
 void LayerShellWindow::updatePosition()
 {
+    if (!m_waylandWindow) {
+        return;
+    }
     // Layer-shell surfaces are positioned by the compositor based on anchors, margins,
     // and the output geometry. Qt's QWindow doesn't know this position, so
     // mapFromGlobal() returns wrong local coordinates (assumes 0,0).
@@ -294,7 +307,13 @@ void LayerShellWindow::updatePosition()
         y = screenGeom.y() + (screenGeom.height() - winH) / 2;
     }
 
+    // repositionFromApplyConfigure() was introduced in Qt 6.5.0.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     m_waylandWindow->repositionFromApplyConfigure(QPoint(x, y));
+#else
+    Q_UNUSED(x)
+    Q_UNUSED(y)
+#endif
 }
 
 void LayerShellWindow::handleConfigure(void* data, struct zwlr_layer_surface_v1* surface, uint32_t serial,
@@ -303,6 +322,9 @@ void LayerShellWindow::handleConfigure(void* data, struct zwlr_layer_surface_v1*
     auto* self = static_cast<LayerShellWindow*>(data);
     if (!self->m_layerSurface) {
         return; // Surface was invalidated (global removed)
+    }
+    if (!self->m_waylandWindow) {
+        return;
     }
     self->m_configured = true;
     self->m_pendingWidth = width;
@@ -353,6 +375,9 @@ void LayerShellWindow::handleClosed(void* data, struct zwlr_layer_surface_v1* su
         zwlr_layer_surface_v1_destroy(self->m_layerSurface);
         self->m_layerSurface = nullptr;
     }
+    // Null the wl_surface to prevent dangling commits from property-change
+    // signals that may fire during qwindow->close() teardown.
+    self->m_wlSurface = nullptr;
     QWindow* qwindow = self->m_waylandWindow->window();
     if (qwindow) {
         qwindow->close();

@@ -461,7 +461,7 @@ private Q_SLOTS:
     void testComputeLayerSize_noAnchors_explicitSize()
     {
         // No anchors: full explicit size
-        auto [w, h] = LayerSurface::computeLayerSize(0, QSize(400, 200));
+        auto [w, h] = LayerSurface::computeLayerSize(LayerSurface::Anchors(), QSize(400, 200));
         QCOMPARE(w, uint32_t(400));
         QCOMPARE(h, uint32_t(200));
     }
@@ -478,7 +478,7 @@ private Q_SLOTS:
     void testComputeLayerSize_negativeSize_clampedToZero()
     {
         // Negative dimensions are clamped to 0 before uint32_t cast
-        auto [w, h] = LayerSurface::computeLayerSize(0, QSize(-10, -5));
+        auto [w, h] = LayerSurface::computeLayerSize(LayerSurface::Anchors(), QSize(-10, -5));
         QCOMPARE(w, uint32_t(0));
         QCOMPARE(h, uint32_t(0));
     }
@@ -609,6 +609,50 @@ private Q_SLOTS:
         // Trigger removal — callback must NOT fire
         LayerShellIntegration::registryRemoveHandler(&integration, nullptr, 0);
         QVERIFY(!called);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // isSupported — offscreen platform returns false
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void testIsSupported_offscreen_returnsFalse()
+    {
+        QVERIFY(!LayerSurface::isSupported());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Window destruction cascade-deletes surface
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void testWindowDestruction_cascadeDeletesSurface()
+    {
+        auto* window = new QWindow;
+        auto* surface = LayerSurface::get(window);
+        QVERIFY(surface);
+        QPointer<LayerSurface> weak = surface;
+        delete window;
+        QVERIFY(weak.isNull());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // setScreen(nullptr) falls back to primary
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void testSetScreen_null_fallsToPrimary()
+    {
+        QWindow window;
+        auto* surface = LayerSurface::get(&window);
+        QVERIFY(surface);
+        auto* primary = QGuiApplication::primaryScreen();
+        if (!primary) {
+            QSKIP("No primary screen available");
+        }
+        surface->setScreen(primary);
+        QCOMPARE(surface->screen(), primary);
+        surface->setScreen(nullptr);
+        // After setting nullptr, should fall back to primary
+        QCOMPARE(surface->screen(), primary);
+        cleanupSurface(&window);
     }
 };
 

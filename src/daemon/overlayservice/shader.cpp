@@ -339,14 +339,7 @@ void OverlayService::showShaderPreview(int x, int y, int width, int height, cons
 
     // Start iTime animation for preview (shared timer with main overlay)
     // Must start m_shaderTimer - updateShaderUniforms() uses it and returns early if invalid
-    {
-        QMutexLocker locker(&m_shaderTimerMutex);
-        if (!m_shaderTimer.isValid()) {
-            m_shaderTimer.start();
-            m_lastFrameTime.store(0);
-            m_frameCount.store(0);
-        }
-    }
+    ensureShaderTimerStarted(m_shaderTimer, m_shaderTimerMutex, m_lastFrameTime, m_frameCount);
     startShaderAnimation();
 
     m_shaderPreviewWindow->show();

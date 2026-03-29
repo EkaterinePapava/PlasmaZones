@@ -282,6 +282,8 @@ void OverlayService::createZoneSelectorWindow(QScreen* screen)
 void OverlayService::destroyZoneSelectorWindow(QScreen* screen)
 {
     if (auto* window = m_zoneSelectorWindows.take(screen)) {
+        // Disconnect so no signals (e.g. geometryChanged) are delivered to a window we're destroying
+        disconnect(screen, nullptr, window, nullptr);
         window->close();
         window->deleteLater();
     }

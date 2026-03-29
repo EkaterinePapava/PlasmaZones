@@ -48,7 +48,6 @@ void OverlayService::showSnapAssist(const QString& screenId, const QString& empt
     }
 
     m_snapAssistScreen = screen;
-    m_snapAssistWindow->setScreen(screen);
 
     // Parse JSON using shared helper (same format: array of objects)
     const QVariantList zonesList = parseZonesJson(emptyZonesJson, "showSnapAssist:");
@@ -293,8 +292,6 @@ void OverlayService::showLayoutPicker(const QString& screenId)
     if (!m_layoutPickerWindow) {
         return;
     }
-
-    m_layoutPickerWindow->setScreen(screen);
 
     // Build layouts list
     const QString resolvedScreenId = Utils::screenIdentifier(screen);

@@ -43,13 +43,25 @@ LayerSurface::LayerSurface(QWindow* window)
     window->setProperty(LayerSurfaceProps::MarginsTop, 0);
     window->setProperty(LayerSurfaceProps::MarginsRight, 0);
     window->setProperty(LayerSurfaceProps::MarginsBottom, 0);
+
+    // Proactively remove from registry when the QWindow is destroyed.
+    // We capture a raw pointer because QPointer will be null by the time
+    // the destroyed signal fires (QObject clears QPointers in its dtor).
+    QWindow* rawWindow = window;
+    connect(window, &QObject::destroyed, this, [rawWindow]() {
+        if (!s_surfaces.isDestroyed()) {
+            s_surfaces->remove(rawWindow);
+        }
+    });
 }
 
 LayerSurface::~LayerSurface()
 {
     Q_ASSERT_X(!qApp || QThread::currentThread() == qApp->thread(), "LayerSurface::~LayerSurface",
                "must be destroyed from the GUI thread");
-    s_surfaces->remove(m_window);
+    if (!s_surfaces.isDestroyed() && m_window) {
+        s_surfaces->remove(m_window.data());
+    }
 }
 
 LayerSurface* LayerSurface::get(QWindow* window)
@@ -64,6 +76,15 @@ LayerSurface* LayerSurface::get(QWindow* window)
     auto it = s_surfaces->find(window);
     if (it != s_surfaces->end()) {
         return *it;
+    }
+
+    // Guard against double-create: if a previous LayerSurface was explicitly deleted
+    // but the window still carries the marker property, creating a new one is unsafe.
+    if (window->property(LayerSurfaceProps::IsLayerShell).toBool()) {
+        qCWarning(lcLayerSurface) << "LayerSurface::get() called on a window that already had a"
+                                  << "LayerSurface which was explicitly deleted — refusing to"
+                                  << "create a replacement (platform window state is inconsistent)";
+        return nullptr;
     }
 
     if (window->isVisible()) {
@@ -96,6 +117,12 @@ void LayerSurface::emitPropertiesChanged()
 
 void LayerSurface::setLayer(Layer layer)
 {
+    if (static_cast<int>(layer) < static_cast<int>(LayerBackground)
+        || static_cast<int>(layer) > static_cast<int>(LayerOverlay)) {
+        qCWarning(lcLayerSurface) << "setLayer() called with out-of-range value" << static_cast<int>(layer)
+                                  << "— ignoring";
+        return;
+    }
     if (m_layer == layer) {
         return;
     }
@@ -150,6 +177,12 @@ int32_t LayerSurface::exclusiveZone() const
 
 void LayerSurface::setKeyboardInteractivity(KeyboardInteractivity interactivity)
 {
+    if (static_cast<int>(interactivity) < static_cast<int>(KeyboardInteractivityNone)
+        || static_cast<int>(interactivity) > static_cast<int>(KeyboardInteractivityOnDemand)) {
+        qCWarning(lcLayerSurface) << "setKeyboardInteractivity() called with out-of-range value"
+                                  << static_cast<int>(interactivity) << "— ignoring";
+        return;
+    }
     if (m_keyboard == interactivity) {
         return;
     }
@@ -202,7 +235,12 @@ void LayerSurface::setScreen(QScreen* screen)
                                   << "— the layer surface remains on the original screen";
         return;
     }
-    m_screen = screen;
+    if (screen) {
+        m_screen = screen;
+    } else {
+        QScreen* primary = QGuiApplication::primaryScreen();
+        m_screen = primary; // fallback so screen() returns what the window actually uses
+    }
     if (m_window) {
         if (screen) {
             m_window->setScreen(screen);
@@ -249,7 +287,7 @@ QMargins LayerSurface::margins() const
     return m_margins;
 }
 
-std::pair<uint32_t, uint32_t> LayerSurface::computeLayerSize(int anchors, const QSize& windowSize)
+std::pair<uint32_t, uint32_t> LayerSurface::computeLayerSize(Anchors anchors, const QSize& windowSize)
 {
     // windowSize is in logical (device-independent) pixels from QWindow::size().
     // zwlr_layer_surface_v1_set_size expects logical pixels — Qt's Wayland backend

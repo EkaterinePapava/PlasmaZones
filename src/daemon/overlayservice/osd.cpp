@@ -274,6 +274,8 @@ void OverlayService::createLayoutOsdWindow(QScreen* screen)
 void OverlayService::destroyLayoutOsdWindow(QScreen* screen)
 {
     if (auto* window = m_layoutOsdWindows.take(screen)) {
+        // Disconnect so no signals (e.g. geometryChanged) are delivered to a window we're destroying
+        disconnect(screen, nullptr, window, nullptr);
         window->close();
         window->deleteLater();
     }
@@ -445,6 +447,8 @@ void OverlayService::createNavigationOsdWindow(QScreen* screen)
 void OverlayService::destroyNavigationOsdWindow(QScreen* screen)
 {
     if (auto* window = m_navigationOsdWindows.take(screen)) {
+        // Disconnect so no signals (e.g. geometryChanged) are delivered to a window we're destroying
+        disconnect(screen, nullptr, window, nullptr);
         window->close();
         window->deleteLater();
     }

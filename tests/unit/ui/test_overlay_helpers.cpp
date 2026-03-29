@@ -342,6 +342,12 @@ private Q_SLOTS:
         QVERIFY2(!anchors.testFlag(PlasmaZones::LayerSurface::AnchorTop), "BottomRight must not have AnchorTop");
     }
 
+    void testGetAnchorsForPosition_center()
+    {
+        auto anchors = getAnchorsForPosition(ZoneSelectorPosition::Center);
+        QCOMPARE(anchors, PlasmaZones::LayerSurface::AnchorAll);
+    }
+
     void testGetAnchorsForPosition_defaultFallback()
     {
         // Invalid enum value should fall through to default (Top anchors)
@@ -349,6 +355,24 @@ private Q_SLOTS:
         QVERIFY(def.testFlag(PlasmaZones::LayerSurface::AnchorTop));
         QVERIFY(def.testFlag(PlasmaZones::LayerSurface::AnchorLeft));
         QVERIFY(def.testFlag(PlasmaZones::LayerSurface::AnchorRight));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // P1: parseZonesJson — additional edge cases
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void testParseZonesJson_mixedArray_skipsNonObjects()
+    {
+        QString json = QStringLiteral("[1, \"string\", null, {\"id\": \"z1\"}]");
+        QVariantList result = parseZonesJson(json, "test:");
+        QCOMPARE(result.size(), 1);
+        QCOMPARE(result[0].toMap().value(QLatin1String("id")).toString(), QStringLiteral("z1"));
+    }
+
+    void testParseZonesJson_emptyArray_returnsEmpty()
+    {
+        QVariantList result = parseZonesJson(QStringLiteral("[]"), "test:");
+        QVERIFY(result.isEmpty());
     }
 };
 
