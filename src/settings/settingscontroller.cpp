@@ -412,15 +412,15 @@ bool SettingsController::createNewLayout(const QString& name, const QString& typ
             return true;
         }
         // Daemon returned a reply but with an empty layout ID
-        Q_EMIT layoutCreationFailed(PzI18n::tr("Could not create layout — daemon returned an empty layout ID."));
+        Q_EMIT layoutOperationFailed(PzI18n::tr("Could not create layout — daemon returned an empty layout ID."));
         scheduleLayoutLoad();
         return false;
     }
     if (reply.type() == QDBusMessage::ErrorMessage) {
         qCWarning(lcCore) << "createNewLayout failed:" << reply.errorMessage();
-        Q_EMIT layoutCreationFailed(reply.errorMessage());
+        Q_EMIT layoutOperationFailed(reply.errorMessage());
     } else {
-        Q_EMIT layoutCreationFailed(PzI18n::tr("Could not create layout — the daemon may not be running."));
+        Q_EMIT layoutOperationFailed(PzI18n::tr("Could not create layout — the daemon may not be running."));
     }
     // Still refresh — the daemon may have partially processed the request
     scheduleLayoutLoad();
@@ -1896,8 +1896,8 @@ void SettingsController::cancelAlgorithmWatcher(const QString& expectedId)
 {
     auto it = m_algorithmWatchers.find(expectedId);
     if (it != m_algorithmWatchers.end()) {
-        if (*it->get())
-            disconnect(*it->get());
+        if (*it.value())
+            disconnect(*it.value());
         m_algorithmWatchers.erase(it);
     }
 }
@@ -1915,7 +1915,7 @@ void SettingsController::watchForAlgorithmRegistration(const QString& expectedId
                         if (registeredId == expectedId) {
                             auto it = m_algorithmWatchers.find(expectedId);
                             if (it != m_algorithmWatchers.end()) {
-                                disconnect(*it->get());
+                                disconnect(*it.value());
                                 m_algorithmWatchers.erase(it);
                             }
                             Q_EMIT algorithmCreated(expectedId);
@@ -1926,11 +1926,11 @@ void SettingsController::watchForAlgorithmRegistration(const QString& expectedId
     QTimer::singleShot(10000, this, [this, expectedId]() {
         auto it = m_algorithmWatchers.find(expectedId);
         if (it != m_algorithmWatchers.end()) {
-            if (*it->get())
-                disconnect(*it->get());
+            if (*it.value())
+                disconnect(*it.value());
             m_algorithmWatchers.erase(it);
             qCWarning(lcCore) << "Algorithm registration timed out for:" << expectedId;
-            Q_EMIT algorithmCreationFailed(
+            Q_EMIT algorithmOperationFailed(
                 PzI18n::tr("Algorithm was created but not picked up by the registry. "
                            "Try refreshing or restarting the application."));
         }
@@ -2004,9 +2004,15 @@ bool SettingsController::deleteAlgorithm(const QString& algorithmId)
         return false;
     }
 
-    const bool ok = QFile::remove(filePath);
+    // Cancel any pending registration watcher for this algorithm — otherwise
+    // the 10s timeout fires algorithmOperationFailed for a deliberately deleted file.
+    cancelAlgorithmWatcher(algorithmId);
+
+    // Use the canonical path for removal to ensure we delete the actual file,
+    // not a symlink pointing into the user dir.
+    const bool ok = QFile::remove(canonicalPath);
     if (!ok) {
-        qCWarning(lcCore) << "Failed to delete algorithm file:" << filePath;
+        qCWarning(lcCore) << "Failed to delete algorithm file:" << canonicalPath;
         Q_EMIT algorithmOperationFailed(PzI18n::tr("Could not delete algorithm file. Check file permissions."));
     }
     // QFileSystemWatcher will pick up the deletion and trigger a refresh
@@ -2154,7 +2160,7 @@ QString SettingsController::createNewAlgorithm(const QString& name, const QStrin
     const QString destPath = findUniqueAlgorithmPath(destDir, filename);
     if (destPath.isEmpty()) {
         qCWarning(lcCore) << "Could not find unique filename for algorithm:" << filename << "— all 99 slots exhausted";
-        Q_EMIT algorithmCreationFailed(
+        Q_EMIT algorithmOperationFailed(
             PzI18n::tr("Could not create algorithm — too many files with the same name. "
                        "Please rename or delete existing algorithms."));
         return QString();
@@ -2278,7 +2284,8 @@ QString SettingsController::createNewAlgorithm(const QString& name, const QStrin
     QFile outFile(destPath);
     if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         qCWarning(lcCore) << "Failed to write algorithm file:" << destPath;
-        Q_EMIT algorithmCreationFailed(PzI18n::tr("Could not write algorithm file. Check disk space and permissions."));
+        Q_EMIT algorithmOperationFailed(
+            PzI18n::tr("Could not write algorithm file. Check disk space and permissions."));
         return QString();
     }
     const QByteArray encoded = content.toUtf8();
@@ -2288,7 +2295,8 @@ QString SettingsController::createNewAlgorithm(const QString& name, const QStrin
         qCWarning(lcCore) << "Failed to write algorithm content:" << destPath << "written=" << written
                           << "expected=" << encoded.size();
         QFile::remove(destPath);
-        Q_EMIT algorithmCreationFailed(PzI18n::tr("Could not write algorithm file. Check disk space and permissions."));
+        Q_EMIT algorithmOperationFailed(
+            PzI18n::tr("Could not write algorithm file. Check disk space and permissions."));
         return QString();
     }
 

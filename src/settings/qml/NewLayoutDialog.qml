@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "WizardUtils.js" as WizardUtils
 import org.kde.kirigami as Kirigami
 import org.plasmazones.common as QFZCommon
 
@@ -194,10 +195,6 @@ Kirigami.Dialog {
         return templates[0];
     }
 
-    function clampedScreenAspectRatio() {
-        return (Screen.width > 0 && Screen.height > 0) ? Math.max(1, Math.min(3.6, Screen.width / Screen.height)) : (16 / 9);
-    }
-
     function selectTemplate(templateData) {
         root.selectedType = templateData.type;
         if (nameField.text === "" || nameField.text === root._previousAutoName) {
@@ -218,7 +215,8 @@ Kirigami.Dialog {
         root.openInEditor = true;
         nameField.text = "";
         root._previousAutoName = "";
-        root.screenAspectRatio = root.clampedScreenAspectRatio();
+        root.screenAspectRatio = WizardUtils.clampedScreenAspectRatio(Screen.width, Screen.height);
+        wizardFooter.errorText = "";
     }
 
     ColumnLayout {
@@ -452,8 +450,10 @@ Kirigami.Dialog {
     }
 
     Connections {
-        function onLayoutCreationFailed(reason) {
-            wizardFooter.errorText = reason;
+        function onLayoutOperationFailed(reason) {
+            if (root.opened)
+                wizardFooter.errorText = reason;
+
         }
 
         target: root.controller

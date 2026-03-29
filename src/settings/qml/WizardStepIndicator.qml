@@ -79,11 +79,13 @@ RowLayout {
             }
 
             Rectangle {
+                readonly property bool completed: root.currentStep > stepIndicator.index
+
                 visible: stepIndicator.index < root.stepLabels.length - 1
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 3
                 Layout.preferredHeight: Math.round(Kirigami.Units.devicePixelRatio * 2)
                 radius: height / 2
-                color: root.currentStep > stepIndicator.index ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.4) : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15)
+                color: completed ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.4) : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15)
 
                 Behavior on color {
                     ColorAnimation {

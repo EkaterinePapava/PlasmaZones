@@ -421,16 +421,10 @@ ColumnLayout {
 
         }
 
-        function onAlgorithmCreationFailed(reason) {
+        function onAlgorithmOperationFailed(reason) {
             // Only show toast when the wizard dialog is closed — if the dialog
             // is open, it shows the error inline via its own Connections block
             if (!newAlgorithmDialog.opened && window && window.showToast)
-                window.showToast(reason);
-
-        }
-
-        function onAlgorithmOperationFailed(reason) {
-            if (window && window.showToast)
                 window.showToast(reason);
 
         }
