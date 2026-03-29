@@ -185,7 +185,7 @@ jobs:
             'cmake(KF6KCMUtils)' \
             'cmake(KF6GlobalAccel)' \
             'cmake(KF6WindowSystem)' \
-            kwin6-devel wayland-devel 'cmake(Qt6WaylandClient)' 'cmake(PlasmaActivities)' \
+            kwin6-devel wayland-devel 'cmake(Qt6WaylandClient)' 'cmake(Qt6WaylandClientPrivate)' 'cmake(PlasmaActivities)' \
             'pkgconfig(systemd)'
 
       - name: Setup rpmbuild
@@ -353,6 +353,7 @@ jobs:
               'qt6-base' 'qt6-declarative'
               'kconfig' 'kconfigwidgets'
               'kcmutils' 'kglobalaccel'
+              'kirigami'
           )
           makedepends=('cmake' 'extra-cmake-modules' 'qt6-tools' 'ninja')
           optdepends=('plasma-activities: activity-based layouts')

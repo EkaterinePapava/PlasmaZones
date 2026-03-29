@@ -329,6 +329,7 @@ target_link_libraries(pz-layer-shell PRIVATE
 target_include_directories(pz-layer-shell PRIVATE ${_pz_gen_dir})
 set_target_properties(pz-layer-shell PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins/wayland-shell-integration
+    INSTALL_RPATH "$ORIGIN/../../${CMAKE_INSTALL_LIBDIR}"
 )
 # Install to Qt's plugin dir (query via QT6_INSTALL_PLUGINS or fallback)
 if(NOT DEFINED QT6_INSTALL_PLUGINS)

@@ -662,6 +662,142 @@ private Q_SLOTS:
         // After setting nullptr, should fall back to primary
         QCOMPARE(surface->screen(), primary);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // find() — read-only lookup (never creates)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void testFind_null_returnsNull()
+    {
+        QCOMPARE(LayerSurface::find(nullptr), nullptr);
+    }
+
+    void testFind_noSurface_returnsNull()
+    {
+        QWindow window;
+        QCOMPARE(LayerSurface::find(&window), nullptr);
+    }
+
+    void testFind_existingSurface_returnsIt()
+    {
+        QWindow window;
+        SurfaceGuard guard(window);
+        auto* surface = LayerSurface::get(&window);
+        QVERIFY(surface != nullptr);
+        QCOMPARE(LayerSurface::find(&window), surface);
+    }
+
+    void testFind_afterDelete_returnsNull()
+    {
+        auto* window = new QWindow;
+        auto* surface = LayerSurface::get(window);
+        QVERIFY(surface != nullptr);
+        QCOMPARE(LayerSurface::find(window), surface);
+        // Explicitly delete the surface (removes from registry)
+        delete surface;
+        QCOMPARE(LayerSurface::find(window), nullptr);
+        delete window;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Input validation — out-of-range enum values
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void testSetLayer_outOfRange_ignored()
+    {
+        QWindow window;
+        SurfaceGuard guard(window);
+        auto* surface = LayerSurface::get(&window);
+        QSignalSpy spy(surface, &LayerSurface::layerChanged);
+
+        const auto originalLayer = surface->layer();
+        QTest::ignoreMessage(QtWarningMsg,
+                             QRegularExpression(QStringLiteral("setLayer\\(\\) called with out-of-range value")));
+        surface->setLayer(static_cast<LayerSurface::Layer>(99));
+        QCOMPARE(spy.count(), 0);
+        QCOMPARE(surface->layer(), originalLayer);
+    }
+
+    void testSetKeyboardInteractivity_outOfRange_ignored()
+    {
+        QWindow window;
+        SurfaceGuard guard(window);
+        auto* surface = LayerSurface::get(&window);
+        QSignalSpy spy(surface, &LayerSurface::keyboardInteractivityChanged);
+
+        const auto original = surface->keyboardInteractivity();
+        QTest::ignoreMessage(
+            QtWarningMsg,
+            QRegularExpression(QStringLiteral("setKeyboardInteractivity\\(\\) called with out-of-range value")));
+        surface->setKeyboardInteractivity(static_cast<LayerSurface::KeyboardInteractivity>(5));
+        QCOMPARE(spy.count(), 0);
+        QCOMPARE(surface->keyboardInteractivity(), original);
+    }
+
+    void testSetAnchors_undefinedBits_masked()
+    {
+        QWindow window;
+        SurfaceGuard guard(window);
+        auto* surface = LayerSurface::get(&window);
+        QSignalSpy spy(surface, &LayerSurface::anchorsChanged);
+
+        QTest::ignoreMessage(QtWarningMsg,
+                             QRegularExpression(QStringLiteral("setAnchors\\(\\) called with undefined bits set")));
+        surface->setAnchors(LayerSurface::Anchors(0xFF));
+        // 0xFF masked to 0x0F = AnchorAll
+        QCOMPARE(spy.count(), 1);
+        QCOMPARE(surface->anchors(), LayerSurface::AnchorAll);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // get() — refuses to recreate after explicit delete
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void testGet_afterExplicitDelete_returnsNull()
+    {
+        auto* window = new QWindow;
+        auto* surface = LayerSurface::get(window);
+        QVERIFY(surface != nullptr);
+
+        // Explicitly delete the LayerSurface — removes from registry but the
+        // QWindow still carries the _pz_layer_shell property.
+        delete surface;
+
+        // get() should detect the stale marker property and refuse to create.
+        QTest::ignoreMessage(
+            QtWarningMsg,
+            QRegularExpression(QStringLiteral("LayerSurface::get\\(\\) called on a window that already had a")));
+        auto* again = LayerSurface::get(window);
+        QCOMPARE(again, nullptr);
+
+        delete window;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // setScreen(nullptr) — no emission when already on primary
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void testSetScreen_null_noEmitWhenAlreadyPrimary()
+    {
+        QScreen* primary = QGuiApplication::primaryScreen();
+        if (!primary) {
+            QSKIP("No primary screen available on this platform");
+        }
+
+        QWindow window;
+        SurfaceGuard guard(window);
+        auto* surface = LayerSurface::get(&window);
+
+        // Set to primary first
+        surface->setScreen(primary);
+        QCOMPARE(surface->screen(), primary);
+
+        QSignalSpy spy(surface, &LayerSurface::screenChanged);
+        // nullptr resolves to primary, which is already set — no change, no emission
+        surface->setScreen(nullptr);
+        QCOMPARE(spy.count(), 0);
+        QCOMPARE(surface->screen(), primary);
+    }
 };
 
 int main(int argc, char* argv[])

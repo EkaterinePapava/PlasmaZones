@@ -74,6 +74,10 @@ LayerShellWindow::LayerShellWindow(LayerShellIntegration* integration, QtWayland
     // made after show() are immediately pushed to the compositor.
     QVariant surfaceVar = qwindow->property(LayerSurfaceProps::Surface);
     auto* layerSurface = surfaceVar.value<LayerSurface*>();
+    if (!layerSurface && surfaceVar.isValid()) {
+        qCWarning(lcLayerShellWindow) << "LayerSurface property is set but extracted pointer is null —"
+                                      << "possible metatype registration failure for LayerSurface*";
+    }
     if (layerSurface) {
         connect(layerSurface, &LayerSurface::propertiesChanged, this, [this]() {
             if (m_layerSurface && m_configured) {
@@ -289,24 +293,20 @@ void LayerShellWindow::updatePosition()
     bool anchorB = anchors & LayerSurface::AnchorBottom;
 
     // X position: the compositor places the surface based on horizontal anchors + margins.
+    // anchorL && anchorR produces the same position as anchorL alone (left margin),
+    // so we only need to check anchorL first.
     int x;
-    if (anchorL && anchorR) {
-        // Anchored both sides — surface starts at left margin
-        x = screenGeom.x() + mLeft;
-    } else if (anchorL) {
+    if (anchorL) {
         x = screenGeom.x() + mLeft;
     } else if (anchorR) {
         x = screenGeom.x() + screenGeom.width() - winW - mRight;
     } else {
-        // No horizontal anchor — centered
         x = screenGeom.x() + (screenGeom.width() - winW) / 2;
     }
 
-    // Y position: same logic for vertical anchors.
+    // Y position: same simplification for vertical anchors.
     int y;
-    if (anchorT && anchorB) {
-        y = screenGeom.y() + mTop;
-    } else if (anchorT) {
+    if (anchorT) {
         y = screenGeom.y() + mTop;
     } else if (anchorB) {
         y = screenGeom.y() + screenGeom.height() - winH - mBottom;
@@ -337,10 +337,10 @@ void LayerShellWindow::handleConfigure(void* data, struct zwlr_layer_surface_v1*
     self->m_pendingWidth = width;
     self->m_pendingHeight = height;
 
-    zwlr_layer_surface_v1_ack_configure(surface, serial);
-
     // Resize the Qt window to the compositor-assigned size, respecting
     // compositor-controlled axes (see computeConfigureSize for details).
+    // Resize BEFORE ack_configure to avoid a re-entrant paint committing
+    // a stale-size buffer after ack but before our explicit commit.
     QWindow* qwindow = self->m_waylandWindow->window();
     if (qwindow && width > 0 && height > 0) {
         const QSize newSize = self->computeConfigureSize(width, height);
@@ -349,9 +349,13 @@ void LayerShellWindow::handleConfigure(void* data, struct zwlr_layer_surface_v1*
         }
     }
 
-    // Re-apply current properties and commit so the compositor sees
-    // up-to-date anchors/margins/size immediately after the configure.
+    // Re-apply current properties so the compositor sees up-to-date
+    // anchors/margins/size immediately after the configure.
     self->applyProperties();
+
+    // Ack + commit in the same frame: the protocol requires the client to
+    // ack the configure and commit a buffer with the new size atomically.
+    zwlr_layer_surface_v1_ack_configure(surface, serial);
     if (self->m_wlSurface) {
         wl_surface_commit(self->m_wlSurface);
     }
@@ -391,6 +395,10 @@ void LayerShellWindow::handleClosed(void* data, struct zwlr_layer_surface_v1* su
     if (qwindow) {
         qwindow->close();
     }
+    // Prevent stale access to the QWaylandWindow during Qt teardown —
+    // signal cascades from close() may reference m_waylandWindow after
+    // the underlying object is deleted.
+    self->m_waylandWindow = nullptr;
 }
 
 } // namespace PlasmaZones

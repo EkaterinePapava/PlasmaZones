@@ -22,12 +22,6 @@ namespace Platform {
  */
 PLASMAZONES_EXPORT bool isWayland();
 
-/**
- * @brief Check if the platform is supported
- * @return true if running on Wayland (required for PlasmaZones)
- */
-PLASMAZONES_EXPORT bool isSupported();
-
 } // namespace Platform
 
 } // namespace PlasmaZones

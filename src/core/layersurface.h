@@ -5,6 +5,7 @@
 
 #include <utility>
 
+#include <QLoggingCategory>
 #include <QMargins>
 #include <QObject>
 #include <QPointer>
@@ -12,6 +13,8 @@
 #include <QWindow>
 
 #include "plasmazones_export.h"
+
+Q_DECLARE_LOGGING_CATEGORY(lcLayerSurface)
 
 namespace PlasmaZones {
 
@@ -108,7 +111,8 @@ public:
     QString scope() const;
 
     void setScreen(QScreen* screen);
-    /// Returns the target screen, or nullptr if unset / screen was unplugged.
+    /// Returns the target screen. If set to nullptr, resolves to the primary screen.
+    /// Returns nullptr only if no screens are available.
     /// After hot-unplug, QPointer ensures this returns nullptr rather than dangling.
     /// Note: the layer surface itself remains bound to the (now-gone) wl_output —
     /// the compositor will either close the surface or leave it on the remaining output.
@@ -208,6 +212,7 @@ private:
     QString m_scope;
     QPointer<QScreen> m_screen;
     QMargins m_margins;
+    QMetaObject::Connection m_destroyedConnection;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(LayerSurface::Anchors)

@@ -11,7 +11,6 @@
 #include "../../core/utils.h"
 #include "../../core/screenmanager.h"
 #include "../../core/shaderregistry.h"
-#include "../../core/platform.h"
 #include <QQuickWindow>
 #include <QScreen>
 #include <QQmlEngine>
@@ -307,10 +306,6 @@ void OverlayService::createOverlayWindow(QScreen* screen)
         qCWarning(lcOverlay) << "Failed to configure layer surface for overlay on" << screen->name();
         delete window;
         return;
-    }
-
-    if (!Platform::isSupported()) {
-        qCWarning(lcOverlay) << "Platform: not supported, requires Wayland";
     }
 
     window->setVisible(false);

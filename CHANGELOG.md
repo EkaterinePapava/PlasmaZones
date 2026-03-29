@@ -8,7 +8,21 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Changed
-- Replace LayerShellQt dependency with custom QPA layer-shell plugin (`pz-layer-shell`) for direct `zwlr_layer_shell_v1` support — enables PlasmaZones on any wlr-layer-shell compositor (Hyprland, Sway, Wayfire, niri, COSMIC, river, labwc)
+- Replaced LayerShellQt dependency with custom QPA layer-shell plugin (`pz-layer-shell`)
+- PlasmaZones now works on any Wayland compositor with `zwlr_layer_shell_v1` support (Hyprland, Sway, Wayfire, niri, COSMIC, river, labwc)
+
+### Added
+- `LayerSurface` API — drop-in replacement for `LayerShellQt::Window`
+- `pz-layer-shell` QPA shell integration plugin
+- Multi-compositor support documentation
+
+### Removed
+- `LayerShellQt` dependency — no longer required
+
+### Migration Notes (Packagers)
+- Drop `layer-shell-qt` / `liblayershellqtinterface-dev` build dependency
+- Add `qt6-wayland` / `qt6-wayland-dev` build dependency
+- Add `wayland-scanner` build dependency (usually in `wayland-devel`)
 
 ## [2.4.7] - 2026-03-27
 

@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <QCoreApplication>
+#include <QThread>
 #include <QtWaylandClient/private/qwaylandshellintegration_p.h>
 #include "../plasmazones_export.h"
 #include "wlr_layer_shell_protocol.h"
@@ -44,7 +46,12 @@ public:
     }
 
     /// Access the singleton instance (available after Qt loads the plugin).
-    static LayerShellIntegration* instance();
+    /// Must only be called from the GUI thread.
+    static LayerShellIntegration* instance()
+    {
+        Q_ASSERT(QThread::currentThread() == qApp->thread());
+        return s_instance;
+    }
 
     // Public for C callback struct initialization
     static void registryHandler(void* data, struct wl_registry* registry, uint32_t id, const char* interface,
@@ -60,20 +67,8 @@ public:
     /// Note: if the global has already been removed (m_globalAvailable == false),
     /// the callback will never fire. Callers registering after removal should
     /// check layerShell() == nullptr and handle the "already gone" case directly.
-    CallbackId addGlobalRemovedCallback(GlobalRemovedCallback cb)
-    {
-        CallbackId id = m_nextCallbackId++;
-        m_globalRemovedCallbacks.push_back({id, std::move(cb)});
-        return id;
-    }
-    void removeGlobalRemovedCallback(CallbackId id)
-    {
-        m_globalRemovedCallbacks.erase(std::remove_if(m_globalRemovedCallbacks.begin(), m_globalRemovedCallbacks.end(),
-                                                      [id](const auto& entry) {
-                                                          return entry.first == id;
-                                                      }),
-                                       m_globalRemovedCallbacks.end());
-    }
+    CallbackId addGlobalRemovedCallback(GlobalRemovedCallback cb);
+    void removeGlobalRemovedCallback(CallbackId id);
 
 private:
     /// Fallback xdg-shell integration for regular (non-layer-shell) windows.

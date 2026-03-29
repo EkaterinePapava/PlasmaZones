@@ -24,6 +24,7 @@ Source0:        %{url}/archive/refs/tags/v%{version}/%{name}-%{version}.tar.gz
 ExclusiveArch:  x86_64 aarch64
 
 # Build tools
+BuildRequires:  /usr/bin/wayland-scanner
 BuildRequires:  cmake >= 3.16
 BuildRequires:  extra-cmake-modules >= 6.6.0
 BuildRequires:  gcc-c++

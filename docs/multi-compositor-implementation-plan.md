@@ -464,7 +464,7 @@ compositor. Rough sketch:
 
 ```
 src/bridges/
-  icompositorbride.h            — interface
+  icompositorbridge.h            — interface
   kwin/kwinbridge.cpp           — existing KWin effect (refactored)
   hyprland/hyprlandbridge.cpp   — Hyprland IPC client
   sway/swaybridge.cpp           — i3-compatible IPC client

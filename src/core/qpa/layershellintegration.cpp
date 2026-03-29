@@ -5,6 +5,7 @@
 #include "layershellwindow.h"
 #include "../layersurface.h"
 
+#include <algorithm>
 #include <cstring>
 #include <utility>
 #include <QLoggingCategory>
@@ -172,9 +173,20 @@ void LayerShellIntegration::registryRemoveHandler(void* data, struct wl_registry
     }
 }
 
-LayerShellIntegration* LayerShellIntegration::instance()
+LayerShellIntegration::CallbackId LayerShellIntegration::addGlobalRemovedCallback(GlobalRemovedCallback cb)
 {
-    return s_instance;
+    CallbackId id = m_nextCallbackId++;
+    m_globalRemovedCallbacks.push_back({id, std::move(cb)});
+    return id;
+}
+
+void LayerShellIntegration::removeGlobalRemovedCallback(CallbackId id)
+{
+    m_globalRemovedCallbacks.erase(std::remove_if(m_globalRemovedCallbacks.begin(), m_globalRemovedCallbacks.end(),
+                                                  [id](const auto& entry) {
+                                                      return entry.first == id;
+                                                  }),
+                                   m_globalRemovedCallbacks.end());
 }
 
 } // namespace PlasmaZones

@@ -47,8 +47,11 @@ LayerSurface::LayerSurface(QWindow* window)
     // Proactively remove from registry when the QWindow is destroyed.
     // We capture a raw pointer because QPointer will be null by the time
     // the destroyed signal fires (QObject clears QPointers in its dtor).
+    // Store the connection handle so we can disconnect in the destructor
+    // BEFORE removing from the registry — prevents a stale lambda from
+    // removing a new entry if the same memory address is reused.
     QWindow* rawWindow = window;
-    connect(window, &QObject::destroyed, this, [rawWindow]() {
+    m_destroyedConnection = connect(window, &QObject::destroyed, this, [rawWindow]() {
         if (!s_surfaces.isDestroyed()) {
             s_surfaces->remove(rawWindow);
         }
@@ -59,6 +62,10 @@ LayerSurface::~LayerSurface()
 {
     Q_ASSERT_X(!qApp || QThread::currentThread() == qApp->thread(), "LayerSurface::~LayerSurface",
                "must be destroyed from the GUI thread");
+    // Disconnect the destroyed-signal lambda BEFORE removing from the registry.
+    // This prevents the stale lambda from firing later if a new LayerSurface is
+    // created at the same QWindow memory address (address reuse after delete).
+    disconnect(m_destroyedConnection);
     if (!s_surfaces.isDestroyed() && m_window) {
         s_surfaces->remove(m_window.data());
     }
@@ -102,6 +109,9 @@ LayerSurface* LayerSurface::get(QWindow* window)
 
 LayerSurface* LayerSurface::find(QWindow* window)
 {
+    Q_ASSERT_X(!qApp || QThread::currentThread() == qApp->thread(), "LayerSurface::find",
+               "must be called from the GUI thread");
+
     if (!window) {
         return nullptr;
     }

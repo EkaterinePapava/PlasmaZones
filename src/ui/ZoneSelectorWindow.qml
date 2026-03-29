@@ -509,7 +509,7 @@ Window {
                                 source: "object-locked"
                                 width: Math.min(parent.width, parent.height) * 0.3
                                 height: width
-                                color: "white"
+                                color: Kirigami.Theme.highlightedTextColor
                             }
 
                             MouseArea {
