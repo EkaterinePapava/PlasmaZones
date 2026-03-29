@@ -94,49 +94,6 @@ Flickable {
                         onToggled: appSettings.enableShaderEffects = checked
                     }
 
-                    ComboBox {
-                        id: renderingBackendCombo
-
-                        // Snapshot of the backend value when this page was created.
-                        // Note: if the user changes, saves, closes, and re-opens settings
-                        // without restarting the daemon, this re-snapshots the saved value
-                        // so the "restart required" message won't re-appear. Tracking the
-                        // daemon's active backend would require a D-Bus query (future work).
-                        property string initialBackend: ""
-
-                        function syncIndex() {
-                            currentIndex = Math.max(0, settingsController.renderingBackendOptions.indexOf(appSettings.renderingBackend));
-                        }
-
-                        Kirigami.FormData.label: i18n("Rendering backend:")
-                        Accessible.name: i18n("Rendering backend")
-                        enabled: shaderEffectsCheck.checked
-                        model: settingsController.renderingBackendDisplayNames
-                        currentIndex: Math.max(0, settingsController.renderingBackendOptions.indexOf(appSettings.renderingBackend))
-                        onActivated: (index) => {
-                            if (index >= 0 && index < settingsController.renderingBackendOptions.length)
-                                appSettings.renderingBackend = settingsController.renderingBackendOptions[index];
-
-                        }
-                        Component.onCompleted: initialBackend = appSettings.renderingBackend
-
-                        Connections {
-                            function onRenderingBackendChanged() {
-                                renderingBackendCombo.syncIndex();
-                            }
-
-                            target: appSettings
-                        }
-
-                    }
-
-                    Kirigami.InlineMessage {
-                        Layout.fillWidth: true
-                        type: Kirigami.MessageType.Information
-                        text: i18n("Rendering backend changes take effect after restarting the daemon.")
-                        visible: shaderEffectsCheck.checked && appSettings.renderingBackend !== renderingBackendCombo.initialBackend
-                    }
-
                     SettingsSlider {
                         formLabel: i18n("Frame rate:")
                         enabled: shaderEffectsCheck.checked
