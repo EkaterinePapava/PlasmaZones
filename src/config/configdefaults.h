@@ -599,7 +599,7 @@ public:
     {
         return false;
     }
-    static QString autotileAlgorithm()
+    static QString defaultAutotileAlgorithm()
     {
         return QStringLiteral("bsp");
     }
