@@ -8,6 +8,7 @@
 #pragma once
 
 #include "../config/configdefaults.h"
+#include "../pz_i18n.h"
 #include "../config/settings.h"
 #include "../config/updatechecker.h"
 #include "../common/daemoncontroller.h"
@@ -83,6 +84,7 @@ class SettingsController : public QObject
 
     // Rendering backend info
     Q_PROPERTY(QStringList renderingBackendOptions READ renderingBackendOptions CONSTANT)
+    Q_PROPERTY(QStringList renderingBackendDisplayNames READ renderingBackendDisplayNames CONSTANT)
 
     // Cava detection
     Q_PROPERTY(bool cavaAvailable READ cavaAvailable CONSTANT)
@@ -341,6 +343,11 @@ public:
     QStringList renderingBackendOptions() const
     {
         return PlasmaZones::ConfigDefaults::validRenderingBackends();
+    }
+
+    QStringList renderingBackendDisplayNames() const
+    {
+        return {PzI18n::tr("Automatic"), PzI18n::tr("Vulkan"), PzI18n::tr("OpenGL")};
     }
 
     // ── Cava detection ───────────────────────────────────────────────────────

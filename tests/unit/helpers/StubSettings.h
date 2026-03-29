@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "config/configdefaults.h"
 #include "core/interfaces.h"
 
 namespace PlasmaZones {
@@ -290,8 +291,9 @@ public:
     }
     void setRenderingBackend(const QString& backend) override
     {
-        if (m_renderingBackend != backend) {
-            m_renderingBackend = backend;
+        const QString value = ConfigDefaults::normalizeRenderingBackend(backend);
+        if (m_renderingBackend != value) {
+            m_renderingBackend = value;
             Q_EMIT renderingBackendChanged();
             Q_EMIT settingsChanged();
         }

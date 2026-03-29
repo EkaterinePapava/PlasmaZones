@@ -114,16 +114,8 @@ Flickable {
                         opacity: enabled ? 1 : 0.4
                         model: settingsController.renderingBackendOptions
                         displayText: {
-                            switch (currentText) {
-                            case "auto":
-                                return i18n("Automatic");
-                            case "vulkan":
-                                return i18n("Vulkan");
-                            case "opengl":
-                                return i18n("OpenGL");
-                            default:
-                                return currentText;
-                            }
+                            var idx = settingsController.renderingBackendOptions.indexOf(currentText);
+                            return idx >= 0 ? settingsController.renderingBackendDisplayNames[idx] : currentText;
                         }
                         currentIndex: Math.max(0, settingsController.renderingBackendOptions.indexOf(appSettings.renderingBackend))
                         onActivated: (index) => {
