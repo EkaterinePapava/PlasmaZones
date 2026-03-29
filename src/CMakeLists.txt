@@ -31,11 +31,6 @@ add_custom_command(
     COMMENT "Generating wlr-layer-shell Wayland protocol code"
 )
 
-set(LAYER_SHELL_GENERATED_SRCS
-    ${_pz_gen_dir}/wlr-layer-shell-unstable-v1-client-protocol.h
-    ${_pz_gen_dir}/wlr-layer-shell-unstable-v1-protocol.c
-)
-
 # Generated protocol C code: skip PCH and unity build since it's plain C
 set_source_files_properties(
     ${_pz_gen_dir}/wlr-layer-shell-unstable-v1-protocol.c

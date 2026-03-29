@@ -112,10 +112,16 @@ void LayerShellIntegration::registryHandler(void* data, struct wl_registry* regi
             qCDebug(lcLayerShellIntegration) << "Ignoring duplicate zwlr_layer_shell_v1 global (id" << id << ")";
             return;
         }
-        // Bind version 4 max (supports on_demand keyboard interactivity, added in v4).
-        // The vendored protocol XML is v5 (includes set_exclusive_edge), but we don't
-        // use v5 features. Capping at v4 avoids negotiation issues with older compositors.
-        uint32_t bindVersion = qMin(version, 4u);
+        // Maximum protocol version we bind:
+        //   v1: base protocol
+        //   v2: set_layer (runtime layer changes)
+        //   v3: destroy request
+        //   v4: on_demand keyboard interactivity — we use this
+        //   v5: set_exclusive_edge — we do NOT use this
+        // Capping at v4 avoids negotiation issues with older compositors
+        // while supporting all features PlasmaZones needs.
+        static constexpr uint32_t kMaxBindVersion = 4;
+        uint32_t bindVersion = qMin(version, kMaxBindVersion);
         self->m_layerShell = static_cast<struct zwlr_layer_shell_v1*>(
             wl_registry_bind(registry, id, &zwlr_layer_shell_v1_interface, bindVersion));
         self->m_layerShellId = id;
@@ -144,6 +150,14 @@ void LayerShellIntegration::registryRemoveHandler(void* data, struct wl_registry
         // so the destructor can properly clean up the wl_proxy binding.
         self->m_globalAvailable = false;
         self->m_layerShellId = 0;
+
+        // Notify any active LayerShellWindow instances that the global is gone.
+        // Their zwlr_layer_surface_v1 objects are now stale — the compositor will
+        // send closed events, but nulling m_layerSurface proactively prevents us
+        // from issuing protocol requests on dead objects in the interim.
+        for (const auto& cb : self->m_globalRemovedCallbacks) {
+            cb();
+        }
     }
 }
 

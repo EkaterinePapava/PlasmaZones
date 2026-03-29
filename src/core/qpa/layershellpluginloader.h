@@ -12,6 +12,12 @@ namespace PlasmaZones {
 /// Lightweight header — does not pull in Qt Wayland private headers.
 /// Respects any existing QT_WAYLAND_SHELL_INTEGRATION value (e.g. for debugging).
 /// Only sets the env var when WAYLAND_DISPLAY is set (proves a compositor is running).
+///
+/// Note: if the daemon is started before the compositor sets WAYLAND_DISPLAY
+/// (e.g. early systemd unit ordering), this will not register the plugin and
+/// overlays will fall back to xdg_toplevel. Ensure the daemon's systemd unit
+/// has After=graphical-session.target or equivalent to guarantee the compositor
+/// is running before the daemon starts.
 inline void registerLayerShellPlugin()
 {
     if (qEnvironmentVariableIsEmpty("QT_WAYLAND_SHELL_INTEGRATION")) {

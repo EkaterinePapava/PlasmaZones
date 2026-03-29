@@ -3,7 +3,9 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
+#include <vector>
 #include <QtWaylandClient/private/qwaylandshellintegration_p.h>
 #include "../plasmazones_export.h"
 #include "wlr_layer_shell_protocol.h"
@@ -36,6 +38,14 @@ public:
                                 uint32_t version);
     static void registryRemoveHandler(void* data, struct wl_registry* registry, uint32_t id);
 
+    /// Register a callback invoked when the compositor removes the
+    /// zwlr_layer_shell_v1 global (compositor crash/restart).
+    using GlobalRemovedCallback = std::function<void()>;
+    void addGlobalRemovedCallback(GlobalRemovedCallback cb)
+    {
+        m_globalRemovedCallbacks.push_back(std::move(cb));
+    }
+
 private:
     /// Fallback xdg-shell integration for regular (non-layer-shell) windows.
     /// Loaded lazily on first use via Qt's shell integration factory.
@@ -52,6 +62,10 @@ private:
     // (avoids leaking the wl_proxy when the global is removed at runtime).
     bool m_globalAvailable = false;
 
+    std::vector<GlobalRemovedCallback> m_globalRemovedCallbacks;
+
+    // GUI-thread-only singleton. All access (initialize(), instance(), destructor)
+    // happens on Qt's main thread. Do NOT access from worker threads.
     static LayerShellIntegration* s_instance;
 };
 

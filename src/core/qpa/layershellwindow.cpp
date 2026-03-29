@@ -82,6 +82,13 @@ LayerShellWindow::LayerShellWindow(LayerShellIntegration* integration, QtWayland
         });
     }
 
+    // If the compositor removes the layer-shell global (crash/restart), stop
+    // issuing protocol requests on our now-stale zwlr_layer_surface_v1.
+    integration->addGlobalRemovedCallback([this]() {
+        qCWarning(lcLayerShellWindow) << "Layer-shell global removed — nulling stale surface";
+        m_layerSurface = nullptr;
+    });
+
     // Apply all properties
     applyProperties();
 
@@ -258,6 +265,8 @@ void LayerShellWindow::handleConfigure(void* data, struct zwlr_layer_surface_v1*
     // This matters because compositors may send sizes that differ from the screen
     // geometry (e.g. KDE subtracts panel areas even with exclusiveZone=-1).
     // Blindly resizing to the configure breaks overlays that assume screen-sized windows.
+    // A configure with width=0 or height=0 means "client decides" (per protocol spec).
+    // In that case we keep the app-specified size unchanged.
     QWindow* qwindow = self->m_waylandWindow->window();
     if (qwindow && width > 0 && height > 0) {
         int anchors = qwindow->property(LayerSurfaceProps::Anchors).toInt();

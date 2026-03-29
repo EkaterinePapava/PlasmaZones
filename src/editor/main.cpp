@@ -50,10 +50,10 @@ int main(int argc, char* argv[])
     // Verify the layer-shell QPA plugin loaded successfully. If not, shader preview
     // overlays will be created as xdg_toplevel (wrong stacking/anchoring).
     if (!qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY") && !PlasmaZones::LayerSurface::isSupported()) {
-        qCWarning(lcEditor) << "Layer-shell QPA plugin did not initialize —"
-                            << "shader preview overlays may not stack correctly."
-                            << "Check that pz-layer-shell.so is installed to Qt's"
-                            << "wayland-shell-integration plugin directory.";
+        qCCritical(lcEditor) << "Layer-shell QPA plugin did not initialize —"
+                             << "shader preview overlays will use xdg_toplevel (wrong stacking)."
+                             << "Check that pz-layer-shell.so is installed to Qt's"
+                             << "wayland-shell-integration plugin directory.";
     }
 
     app.setApplicationName(QStringLiteral("plasmazones-editor"));

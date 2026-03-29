@@ -16,6 +16,7 @@
 //
 // Weak attribute prevents duplicate symbol errors if another linked library
 // (e.g. Qt's own Wayland modules) also defines xdg_popup_interface.
+// This stub is Linux/Wayland-only — MSVC/Windows is not a target platform.
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
 #endif
