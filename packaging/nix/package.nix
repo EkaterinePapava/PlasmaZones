@@ -24,6 +24,8 @@
   pkg-config,
   wayland,
   wayland-scanner,
+  vulkan-headers,
+  vulkan-loader,
   src,
   qt6,
   kdePackages,
