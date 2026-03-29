@@ -1279,17 +1279,6 @@ Kirigami.Dialog {
 
                     anchors.fill: parent
                     active: root.previewShaderConfig !== null
-                    onLoaded: {
-                        // Apply QImage properties after item creation — can't use
-                        // bindings because there's no valid QML null-QImage literal.
-                        var cfg = previewBackground.cfg;
-                        if (item && cfg.labelsTexture !== undefined && cfg.labelsTexture !== null)
-                            item.labelsTexture = cfg.labelsTexture;
-
-                        if (item && cfg.wallpaperTexture !== undefined && cfg.wallpaperTexture !== null)
-                            item.wallpaperTexture = cfg.wallpaperTexture;
-
-                    }
 
                     sourceComponent: ZoneShaderItem {
                         // Render to a private layer FBO so multipass shaders' beginPass(rt)
@@ -1319,6 +1308,24 @@ Kirigami.Dialog {
                         audioSpectrum: editorController ? editorController.audioSpectrum : []
                     }
 
+                }
+
+                // Reactive QImage bindings — Binding elements update labelsTexture
+                // and wallpaperTexture whenever the config changes, not just on
+                // initial Loader creation. The `when` guard prevents assigning
+                // undefined/null to the C++ setter (which expects a valid QImage).
+                Binding {
+                    target: shaderPreviewLoader.item
+                    property: "labelsTexture"
+                    value: previewBackground.cfg.labelsTexture
+                    when: shaderPreviewLoader.item !== null && previewBackground.cfg.labelsTexture !== undefined && previewBackground.cfg.labelsTexture !== null
+                }
+
+                Binding {
+                    target: shaderPreviewLoader.item
+                    property: "wallpaperTexture"
+                    value: previewBackground.cfg.wallpaperTexture
+                    when: shaderPreviewLoader.item !== null && previewBackground.cfg.wallpaperTexture !== undefined && previewBackground.cfg.wallpaperTexture !== null
                 }
 
                 // Fallback message when no shader is rendering
