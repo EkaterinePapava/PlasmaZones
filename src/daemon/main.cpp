@@ -17,6 +17,7 @@
 #include <QQuickWindow>
 #include <QSettings>
 #include <QVulkanInstance>
+Q_DECLARE_METATYPE(QVulkanInstance*)
 #include <QThread>
 #include <QTimer>
 #include <QtQml/qqmlextensionplugin.h>
@@ -73,9 +74,11 @@ int main(int argc, char* argv[])
             QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
         }
         // "auto" → let Qt choose (default behavior)
-        qCInfo(PlasmaZones::lcDaemon) << "Rendering backend:" << backend
-                                      << (useVulkan ? "(Vulkan active)"
-                                                    : (backend == QLatin1String("auto") ? "(Qt default)" : "(OpenGL)"));
+        const char* detail = useVulkan             ? "(Vulkan active)"
+            : (backend == QLatin1String("vulkan")) ? "(Vulkan failed, OpenGL fallback)"
+            : (backend == QLatin1String("auto"))   ? "(Qt default)"
+                                                   : "(OpenGL)";
+        qCInfo(PlasmaZones::lcDaemon) << "Rendering backend:" << backend << detail;
     }
 
     QGuiApplication app(argc, argv);

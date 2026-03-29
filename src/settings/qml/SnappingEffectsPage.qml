@@ -99,6 +99,10 @@ Flickable {
 
                         property string initialBackend: ""
 
+                        function syncIndex() {
+                            currentIndex = Math.max(0, settingsController.renderingBackendOptions.indexOf(appSettings.renderingBackend));
+                        }
+
                         Kirigami.FormData.label: i18n("Rendering backend:")
                         Accessible.name: i18n("Rendering backend")
                         enabled: shaderEffectsCheck.checked
@@ -121,6 +125,15 @@ Flickable {
                             appSettings.renderingBackend = settingsController.renderingBackendOptions[index];
                         }
                         Component.onCompleted: initialBackend = appSettings.renderingBackend
+
+                        Connections {
+                            function onRenderingBackendChanged() {
+                                renderingBackendCombo.syncIndex();
+                            }
+
+                            target: appSettings
+                        }
+
                     }
 
                     Kirigami.InlineMessage {
