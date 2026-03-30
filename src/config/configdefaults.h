@@ -11,6 +11,8 @@
 #include <QtCore/qnamespace.h>
 
 #include "../core/constants.h"
+#include "../core/enums.h"
+#include "configkeys.h"
 #include "plasmazones_export.h"
 
 namespace PlasmaZones {
@@ -25,36 +27,24 @@ namespace PlasmaZones {
  *   int cols = ConfigDefaults::gridColumns();  // Returns 5
  *   int rows = ConfigDefaults::maxRows();      // Returns 4
  */
-class ConfigDefaults
+class ConfigDefaults : public ConfigKeys
 {
 public:
     // ═══════════════════════════════════════════════════════════════════════════
     // Activation Settings
     // ═══════════════════════════════════════════════════════════════════════════
 
-    static int dragActivationModifier()
-    {
-        return 3;
-    }
-    static int dragActivationMouseButton()
-    {
-        return 0;
-    }
     static QVariantList dragActivationTriggers()
     {
         // Default: single trigger with Alt modifier, no mouse button
         QVariantMap trigger;
-        trigger[QStringLiteral("modifier")] = dragActivationModifier();
-        trigger[QStringLiteral("mouseButton")] = dragActivationMouseButton();
+        trigger[ConfigKeys::triggerModifierField()] = static_cast<int>(DragModifier::Alt);
+        trigger[ConfigKeys::triggerMouseButtonField()] = 0;
         return {trigger};
     }
     static bool toggleActivation()
     {
         return false;
-    }
-    static constexpr int mouseButtonMax()
-    {
-        return 128;
     }
     static bool snappingEnabled()
     {
@@ -71,8 +61,8 @@ public:
     static QVariantList zoneSpanTriggers()
     {
         QVariantMap trigger;
-        trigger[QStringLiteral("modifier")] = zoneSpanModifier();
-        trigger[QStringLiteral("mouseButton")] = 0;
+        trigger[ConfigKeys::triggerModifierField()] = zoneSpanModifier();
+        trigger[ConfigKeys::triggerMouseButtonField()] = 0;
         return {trigger};
     }
 
@@ -428,8 +418,8 @@ public:
     {
         // Default: Middle mouse
         QVariantMap trigger;
-        trigger[QStringLiteral("modifier")] = 0;
-        trigger[QStringLiteral("mouseButton")] = static_cast<int>(Qt::MiddleButton);
+        trigger[ConfigKeys::triggerModifierField()] = static_cast<int>(DragModifier::Disabled);
+        trigger[ConfigKeys::triggerMouseButtonField()] = static_cast<int>(Qt::MiddleButton);
         return {trigger};
     }
 
@@ -549,19 +539,6 @@ public:
     static constexpr int gridColumnsMax()
     {
         return 10;
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Config Keys
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    static QString generalGroup()
-    {
-        return QStringLiteral("General");
-    }
-    static QString renderingBackendKey()
-    {
-        return QStringLiteral("RenderingBackend");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -702,30 +679,6 @@ public:
         return AutotileDefaults::MinMasterCount;
     }
     static constexpr int autotileMasterCountMax()
-    {
-        return AutotileDefaults::MaxMasterCount;
-    }
-    static double autotileCenteredMasterSplitRatio()
-    {
-        return 0.5;
-    }
-    static constexpr qreal autotileCenteredMasterSplitRatioMin()
-    {
-        return AutotileDefaults::MinSplitRatio;
-    }
-    static constexpr qreal autotileCenteredMasterSplitRatioMax()
-    {
-        return AutotileDefaults::MaxSplitRatio;
-    }
-    static int autotileCenteredMasterMasterCount()
-    {
-        return 1;
-    }
-    static constexpr int autotileCenteredMasterMasterCountMin()
-    {
-        return AutotileDefaults::MinMasterCount;
-    }
-    static constexpr int autotileCenteredMasterMasterCountMax()
     {
         return AutotileDefaults::MaxMasterCount;
     }

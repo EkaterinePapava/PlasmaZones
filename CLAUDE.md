@@ -79,10 +79,22 @@ PlasmaZones: window tiling + zone management for KDE Plasma. Qt6, KF6, Kirigami,
 - Editor settings: separate, in `EditorController` (separate process)
 
 ### Adding a Setting
-1. `configdefaults.h` — static accessor with default
+1. `configdefaults.h` — static default accessor + `xxxKey()` accessor for the config key string
 2. `interfaces.h` — signal in ISettings
 3. `settings.h` — Q_PROPERTY + getter + setter + member
 4. `settings.cpp` — setter (check changed, emit), load/save/reset using `ConfigDefaults::xxx()`
+
+### Config Key Strings
+- ALL config group names and key strings MUST use `ConfigDefaults::` accessors — never inline `QStringLiteral("...")`
+- Group accessors: `ConfigDefaults::activationGroup()`, key accessors: `ConfigDefaults::snappingEnabledKey()`
+
+### No Backwards Compatibility / Legacy Migration
+- NEVER add migration code for old config keys, renamed settings, or deprecated formats
+- If a setting is renamed or restructured, just use the new key — old values are silently dropped
+- Users get the default value if their config doesn't have the current key; this is acceptable
+- NEVER write empty strings to "clear" obsolete keys on save
+- NEVER read from a fallback/legacy group when the primary group is empty
+- Rationale: migration code is write-once, test-forever complexity that rots and never gets removed
 
 ### Shortcuts
 - `IShortcutBackend` (KGlobalAccel / XDG Portal / D-Bus fallback) — never use KGlobalAccel directly
