@@ -241,11 +241,11 @@ void SettingsController::setActivePage(const QString& page)
 bool SettingsController::registerDBusService()
 {
     auto bus = QDBusConnection::sessionBus();
-    if (!bus.registerService(QStringLiteral("org.plasmazones.Settings.App"))) {
+    if (!bus.registerService(DBus::SettingsApp::ServiceName)) {
         return false;
     }
-    // Export only raise() and setActivePage() via ExportScriptableSlots
-    bus.registerObject(QStringLiteral("/SettingsApp"), this, QDBusConnection::ExportScriptableSlots);
+    // Exports all Q_SCRIPTABLE methods (currently raise + setActivePage)
+    bus.registerObject(DBus::SettingsApp::ObjectPath, this, QDBusConnection::ExportScriptableSlots);
     return true;
 }
 
@@ -253,6 +253,8 @@ void SettingsController::raise()
 {
     const auto windows = QGuiApplication::allWindows();
     for (auto* w : windows) {
+        if (w->type() != Qt::Window)
+            continue;
         w->show();
         w->raise();
         w->requestActivate();

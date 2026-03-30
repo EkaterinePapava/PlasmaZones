@@ -8,6 +8,8 @@
 #include "pz_i18n.h"
 #include "pz_qml_i18n.h"
 
+#include "../core/constants.h"
+
 #include <QGuiApplication>
 #include <QCommandLineParser>
 #include <QDBusConnection>
@@ -28,12 +30,12 @@ bool activateRunningInstance(const QString& page)
     if (!bus.isConnected())
         return false;
 
-    QDBusInterface iface(QStringLiteral("org.plasmazones.Settings.App"), QStringLiteral("/SettingsApp"),
-                         QString(), // use all exported interfaces
-                         bus);
+    QDBusInterface iface(PlasmaZones::DBus::SettingsApp::ServiceName, PlasmaZones::DBus::SettingsApp::ObjectPath,
+                         QString(), bus);
     if (!iface.isValid())
         return false;
 
+    iface.setTimeout(3000); // 3s timeout — avoid long hang if existing instance is frozen
     if (!page.isEmpty()) {
         iface.call(QStringLiteral("setActivePage"), page);
     }
@@ -84,7 +86,9 @@ int main(int argc, char* argv[])
     PlasmaZones::SettingsController controller;
 
     // Register D-Bus service so future launches can forward to us
-    controller.registerDBusService();
+    if (!controller.registerDBusService()) {
+        qCWarning(PlasmaZones::lcCore) << "Failed to register D-Bus service; single-instance forwarding disabled";
+    }
 
     QQmlApplicationEngine engine;
 
