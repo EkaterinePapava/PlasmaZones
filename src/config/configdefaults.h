@@ -900,6 +900,10 @@ public:
     {
         return true;
     }
+    static int autotileStickyWindowHandling()
+    {
+        return 0;
+    }
     static QStringList lockedScreens()
     {
         return {};

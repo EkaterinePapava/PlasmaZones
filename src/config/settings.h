@@ -220,6 +220,8 @@ public:
                    NOTIFY autotileInactiveBorderColorChanged)
     Q_PROPERTY(bool autotileUseSystemBorderColors READ autotileUseSystemBorderColors WRITE
                    setAutotileUseSystemBorderColors NOTIFY autotileUseSystemBorderColorsChanged)
+    Q_PROPERTY(int autotileStickyWindowHandling READ autotileStickyWindowHandlingInt WRITE
+                   setAutotileStickyWindowHandlingInt NOTIFY autotileStickyWindowHandlingChanged)
     // Autotile Shortcuts
     Q_PROPERTY(QString autotileToggleShortcut READ autotileToggleShortcut WRITE setAutotileToggleShortcut NOTIFY
                    autotileToggleShortcutChanged)
@@ -1075,6 +1077,17 @@ public:
     }
     void setAutotileUseSystemBorderColors(bool use) override;
 
+    StickyWindowHandling autotileStickyWindowHandling() const override
+    {
+        return m_autotileStickyWindowHandling;
+    }
+    void setAutotileStickyWindowHandling(StickyWindowHandling handling) override;
+    int autotileStickyWindowHandlingInt() const
+    {
+        return static_cast<int>(m_autotileStickyWindowHandling);
+    }
+    void setAutotileStickyWindowHandlingInt(int handling);
+
     QStringList lockedScreens() const override
     {
         return m_lockedScreens;
@@ -1673,6 +1686,7 @@ private:
     QColor m_autotileBorderColor = QColor(0, 120, 212, 128); // #800078D4 — same as highlightColor
     QColor m_autotileInactiveBorderColor = QColor(128, 128, 128, 64); // #40808080 — same as inactiveColor
     bool m_autotileUseSystemBorderColors = ConfigDefaults::autotileUseSystemBorderColors();
+    StickyWindowHandling m_autotileStickyWindowHandling = StickyWindowHandling::TreatAsNormal;
     QStringList m_lockedScreens;
     // Autotile Shortcuts (defaults from ConfigDefaults, canonical source)
     QString m_autotileToggleShortcut = ConfigDefaults::autotileToggleShortcut();

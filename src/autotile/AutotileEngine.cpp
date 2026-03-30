@@ -20,6 +20,7 @@
 #include "PerScreenConfigResolver.h"
 #include "SettingsBridge.h"
 #include "TilingAlgorithm.h"
+#include "config/settings.h"
 // DwindleMemoryAlgorithm.h no longer needed — prepareTilingState() is virtual on TilingAlgorithm
 #include "TilingState.h"
 #include "core/constants.h"
@@ -1741,6 +1742,22 @@ bool AutotileEngine::shouldTileWindow(const QString& windowId) const
 {
     if (windowId.isEmpty()) {
         return false;
+    }
+
+    // Respect autotile-specific sticky window handling setting.
+    // IgnoreAll: sticky windows are never autotiled.
+    // RestoreOnly: sticky windows are not auto-managed (autotiling is active management).
+    // TreatAsNormal: sticky windows are tiled like any other window.
+    if (m_windowTracker && m_windowTracker->isWindowSticky(windowId)) {
+        Settings* settings = m_settingsBridge ? m_settingsBridge->settings() : nullptr;
+        if (settings) {
+            auto handling = settings->autotileStickyWindowHandling();
+            if (handling == StickyWindowHandling::IgnoreAll || handling == StickyWindowHandling::RestoreOnly) {
+                qCDebug(lcAutotile) << "Window" << windowId << "is sticky, handling=" << static_cast<int>(handling)
+                                    << ", skipping tile";
+                return false;
+            }
+        }
     }
 
     // Check if window is floating in any screen's TilingState
