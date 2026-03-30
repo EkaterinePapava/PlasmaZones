@@ -134,10 +134,14 @@ ColumnLayout {
                     for (let key in groups) {
                         groups[key].items.sort((a, b) => {
                             let cmp;
-                            if (sortIdx === 1)
+                            if (sortIdx === 1) {
                                 cmp = (a.zoneCount || 0) - (b.zoneCount || 0);
-                            else
+                                if (cmp === 0)
+                                    cmp = (a.name || "").localeCompare(b.name || "");
+
+                            } else {
                                 cmp = (a.name || "").localeCompare(b.name || "");
+                            }
                             return ascending ? cmp : -cmp;
                         });
                     }
@@ -217,7 +221,7 @@ ColumnLayout {
                     } else {
                         // Tiling: source filter (algorithms don't have hasSystemOrigin)
                         filtered = filtered.filter((item) => {
-                            if (item.isSystem && !filterBar.showSystemAlgorithms)
+                            if (item.isSystem && !filterBar.showBuiltInAlgorithms)
                                 return false;
 
                             if (!item.isSystem && !filterBar.showUserAlgorithms)
@@ -249,13 +253,17 @@ ColumnLayout {
                 }
 
                 function buildGroups(filtered, groupIdx) {
+                    // Source (built-in vs user scripts)
+                    // Persistent (stateful vs stateless)
+                    // None
+                    // Auto / Manual
+                    // Source (built-in vs user-created)
+                    // Note: snapping layouts use hasSystemOrigin; algorithms do not
+                    // None
+
                     let groups = {
                     };
                     if (root.viewMode === 1) {
-                        // Source (built-in vs user scripts)
-                        // Persistent (stateful vs stateless)
-                        // None
-
                         // ── Tiling grouping ──────────────────────────────────
                         if (groupIdx === 0) {
                             // Capability (algorithms can appear in multiple groups)
@@ -323,11 +331,6 @@ ColumnLayout {
                             "label": ""
                         };
                     } else {
-                        // Auto / Manual
-                        // Source (built-in vs user-created)
-                        // Note: snapping layouts use hasSystemOrigin; algorithms do not
-                        // None
-
                         // ── Snapping grouping ────────────────────────────────
                         if (groupIdx === 0) {
                             // Aspect ratio (data-driven from C++)
@@ -343,15 +346,15 @@ ColumnLayout {
                                 groups[key].items.push(filtered[i]);
                             }
                         } else if (groupIdx === 1) {
-                            // Zone count
+                            // Zone count (0 or undefined → "Unknown" group at the end)
                             for (let i = 0; i < filtered.length; i++) {
                                 let count = filtered[i].zoneCount || 0;
-                                let key = "zones-" + count;
+                                let key = count > 0 ? "zones-" + count : "zones-unknown";
                                 if (!groups[key])
                                     groups[key] = {
                                     "items": [],
-                                    "order": count,
-                                    "label": i18np("%1 zone", "%1 zones", count)
+                                    "order": count > 0 ? count : 9999,
+                                    "label": count > 0 ? i18np("%1 zone", "%1 zones", count) : i18n("Unknown")
                                 };
 
                                 groups[key].items.push(filtered[i]);
@@ -434,9 +437,15 @@ ColumnLayout {
                         return root.viewMode === 1 ? i18n("No autotile algorithms available") : i18n("No layouts available");
                     }
                     explanation: {
-                        if (filterBar.hasActiveFilters)
-                            return i18n("Try adjusting your filters or search terms");
+                        if (filterBar.hasActiveFilters) {
+                            if (root.viewMode === 0 && !filterBar.showBuiltInLayouts && !filterBar.showUserLayouts)
+                                return i18n("Both Built-in and User layout sources are hidden");
 
+                            if (root.viewMode === 1 && !filterBar.showBuiltInAlgorithms && !filterBar.showUserAlgorithms)
+                                return i18n("Both Built-in and User algorithm sources are hidden");
+
+                            return i18n("Try adjusting your filters or search terms");
+                        }
                         return root.viewMode === 1 ? i18n("Enable autotiling to use tiling algorithms") : i18n("Start the PlasmaZones daemon or create a new layout");
                     }
 

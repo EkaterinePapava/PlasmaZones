@@ -32,7 +32,7 @@ RowLayout {
     property bool showBuiltInLayouts: true
     property bool showUserLayouts: true
     // ── Exposed state: tiling filters ───────────────────────────────────────
-    property bool showSystemAlgorithms: true
+    property bool showBuiltInAlgorithms: true
     property bool showUserAlgorithms: true
     property bool onlyMasterCount: false
     property bool onlySplitRatio: false
@@ -46,18 +46,25 @@ RowLayout {
         if (root.viewMode === 0)
             return !showAspectAny || !showAspectStandard || !showAspectUltrawide || !showAspectSuperUltrawide || !showAspectPortrait || showHidden || showAutoAssignOnly || !showBuiltInLayouts || !showUserLayouts;
         else
-            return !showSystemAlgorithms || !showUserAlgorithms || showHidden || onlyMasterCount || onlySplitRatio || onlyOverlapping || onlyPersistent;
+            return !showBuiltInAlgorithms || !showUserAlgorithms || showHidden || onlyMasterCount || onlySplitRatio || onlyOverlapping || onlyPersistent;
     }
     // Static ComboBox models (avoids inline array recreation that resets currentIndex)
     readonly property var snappingGroupModel: [i18n("Aspect Ratio"), i18n("Zone Count"), i18n("Auto / Manual"), i18n("Source"), i18n("None")]
     readonly property var tilingGroupModel: [i18n("Capability"), i18n("Source"), i18n("Persistent"), i18n("None")]
     readonly property var sortModel: [i18n("Name"), i18n("Zone Count")]
+    // Guard to suppress redundant filterSettingsChanged during batch resets
+    property bool _resetting: false
 
     signal filterSettingsChanged()
 
+    // Resets filter and search state to defaults.
+    // Group-by and sort-by are intentionally preserved — they are visible in
+    // the toolbar and easy to change directly; "Reset Filters" targets the
+    // hidden dropdown state only.
     function resetFilters() {
-        filterText = "";
+        _resetting = true;
         searchField.clear();
+        filterText = "";
         showHidden = false;
         showAspectAny = true;
         showAspectStandard = true;
@@ -67,12 +74,13 @@ RowLayout {
         showAutoAssignOnly = false;
         showBuiltInLayouts = true;
         showUserLayouts = true;
-        showSystemAlgorithms = true;
+        showBuiltInAlgorithms = true;
         showUserAlgorithms = true;
         onlyMasterCount = false;
         onlySplitRatio = false;
         onlyOverlapping = false;
         onlyPersistent = false;
+        _resetting = false;
     }
 
     spacing: Kirigami.Units.smallSpacing
@@ -133,7 +141,7 @@ RowLayout {
             root.sortAscending = !root.sortAscending;
             root.filterSettingsChanged();
         }
-        Accessible.name: i18n("Toggle sort direction")
+        Accessible.name: root.sortAscending ? i18n("Sort ascending") : i18n("Sort descending")
         ToolTip.visible: hovered
         ToolTip.text: root.sortAscending ? i18n("Ascending") : i18n("Descending")
     }
@@ -152,7 +160,9 @@ RowLayout {
         rightPadding: clearButton.visible ? clearButton.width + Kirigami.Units.smallSpacing : undefined
         onTextChanged: {
             root.filterText = text;
-            root.filterSettingsChanged();
+            if (!root._resetting)
+                root.filterSettingsChanged();
+
         }
 
         ToolButton {
@@ -171,6 +181,7 @@ RowLayout {
     }
 
     // ── Filter Button ───────────────────────────────────────────────────────
+    // checked is driven by binding, not user toggle — checkable intentionally omitted
     ToolButton {
         id: filterButton
 
@@ -193,116 +204,73 @@ RowLayout {
 
         title: i18n("Filter Layouts")
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Built-in")
-            checkable: true
+            filterProperty: "showBuiltInLayouts"
             checked: root.showBuiltInLayouts
-            onToggled: {
-                root.showBuiltInLayouts = checked;
-                root.filterSettingsChanged();
-            }
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("User Layouts")
-            checkable: true
+            filterProperty: "showUserLayouts"
             checked: root.showUserLayouts
-            onToggled: {
-                root.showUserLayouts = checked;
-                root.filterSettingsChanged();
-            }
         }
 
         MenuSeparator {
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("All Monitors")
-            checkable: true
+            filterProperty: "showAspectAny"
             checked: root.showAspectAny
-            onToggled: {
-                root.showAspectAny = checked;
-                root.filterSettingsChanged();
-            }
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Standard (16:9)")
-            checkable: true
+            filterProperty: "showAspectStandard"
             checked: root.showAspectStandard
-            onToggled: {
-                root.showAspectStandard = checked;
-                root.filterSettingsChanged();
-            }
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Ultrawide (21:9)")
-            checkable: true
+            filterProperty: "showAspectUltrawide"
             checked: root.showAspectUltrawide
-            onToggled: {
-                root.showAspectUltrawide = checked;
-                root.filterSettingsChanged();
-            }
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Super-Ultrawide (32:9)")
-            checkable: true
+            filterProperty: "showAspectSuperUltrawide"
             checked: root.showAspectSuperUltrawide
-            onToggled: {
-                root.showAspectSuperUltrawide = checked;
-                root.filterSettingsChanged();
-            }
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Portrait (9:16)")
-            checkable: true
+            filterProperty: "showAspectPortrait"
             checked: root.showAspectPortrait
-            onToggled: {
-                root.showAspectPortrait = checked;
-                root.filterSettingsChanged();
-            }
         }
 
         MenuSeparator {
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Auto Only")
-            checkable: true
+            filterProperty: "showAutoAssignOnly"
             checked: root.showAutoAssignOnly
-            onToggled: {
-                root.showAutoAssignOnly = checked;
-                root.filterSettingsChanged();
-            }
         }
 
         MenuSeparator {
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Show Hidden Layouts")
-            checkable: true
+            filterProperty: "showHidden"
             checked: root.showHidden
-            onToggled: {
-                root.showHidden = checked;
-                root.filterSettingsChanged();
-            }
         }
 
         MenuSeparator {
         }
 
-        MenuItem {
-            text: i18n("Reset Filters")
-            icon.name: "edit-reset"
-            enabled: root.hasActiveFilters
-            onTriggered: {
-                root.resetFilters();
-                root.filterSettingsChanged();
-            }
+        ResetMenuItem {
         }
 
     }
@@ -313,24 +281,16 @@ RowLayout {
 
         title: i18n("Filter Algorithms")
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Built-in")
-            checkable: true
-            checked: root.showSystemAlgorithms
-            onToggled: {
-                root.showSystemAlgorithms = checked;
-                root.filterSettingsChanged();
-            }
+            filterProperty: "showBuiltInAlgorithms"
+            checked: root.showBuiltInAlgorithms
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("User Scripts")
-            checkable: true
+            filterProperty: "showUserAlgorithms"
             checked: root.showUserAlgorithms
-            onToggled: {
-                root.showUserAlgorithms = checked;
-                root.filterSettingsChanged();
-            }
         }
 
         MenuSeparator {
@@ -341,72 +301,67 @@ RowLayout {
             enabled: false
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Master Count")
-            checkable: true
+            filterProperty: "onlyMasterCount"
             checked: root.onlyMasterCount
-            onToggled: {
-                root.onlyMasterCount = checked;
-                root.filterSettingsChanged();
-            }
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Split Ratio")
-            checkable: true
+            filterProperty: "onlySplitRatio"
             checked: root.onlySplitRatio
-            onToggled: {
-                root.onlySplitRatio = checked;
-                root.filterSettingsChanged();
-            }
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Overlapping Zones")
-            checkable: true
+            filterProperty: "onlyOverlapping"
             checked: root.onlyOverlapping
-            onToggled: {
-                root.onlyOverlapping = checked;
-                root.filterSettingsChanged();
-            }
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Persistent (Memory)")
-            checkable: true
+            filterProperty: "onlyPersistent"
             checked: root.onlyPersistent
-            onToggled: {
-                root.onlyPersistent = checked;
-                root.filterSettingsChanged();
-            }
         }
 
         MenuSeparator {
         }
 
-        MenuItem {
+        FilterMenuItem {
             text: i18n("Show Hidden Algorithms")
-            checkable: true
+            filterProperty: "showHidden"
             checked: root.showHidden
-            onToggled: {
-                root.showHidden = checked;
-                root.filterSettingsChanged();
-            }
         }
 
         MenuSeparator {
         }
 
-        MenuItem {
-            text: i18n("Reset Filters")
-            icon.name: "edit-reset"
-            enabled: root.hasActiveFilters
-            onTriggered: {
-                root.resetFilters();
-                root.filterSettingsChanged();
-            }
+        ResetMenuItem {
         }
 
+    }
+
+    // Checkable menu item that writes back to a named root filter property
+    component FilterMenuItem: MenuItem {
+        required property string filterProperty
+
+        checkable: true
+        onToggled: {
+            root[filterProperty] = checked;
+            root.filterSettingsChanged();
+        }
+    }
+
+    // Shared "Reset Filters" action used by both filter menus
+    component ResetMenuItem: MenuItem {
+        text: i18n("Reset Filters")
+        icon.name: "edit-reset"
+        enabled: root.hasActiveFilters
+        onTriggered: {
+            root.resetFilters();
+            root.filterSettingsChanged();
+        }
     }
 
 }
