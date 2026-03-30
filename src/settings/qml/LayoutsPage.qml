@@ -64,6 +64,29 @@ ColumnLayout {
         }
     }
 
+    Kirigami.Separator {
+        Layout.fillWidth: true
+        Layout.topMargin: Kirigami.Units.smallSpacing
+        Layout.bottomMargin: Kirigami.Units.smallSpacing
+    }
+
+    // ─── Filter / Group / Sort bar ──────────────────────────────────────
+    LayoutFilterBar {
+        id: filterBar
+
+        Layout.fillWidth: true
+        Layout.topMargin: Kirigami.Units.smallSpacing
+        Layout.bottomMargin: Kirigami.Units.smallSpacing
+        viewMode: root.viewMode
+        onFilterSettingsChanged: layoutGrid.rebuildModel()
+    }
+
+    Kirigami.Separator {
+        Layout.fillWidth: true
+        Layout.topMargin: Kirigami.Units.smallSpacing
+        Layout.bottomMargin: Kirigami.Units.smallSpacing
+    }
+
     // ─── Scrollable content ──────────────────────────────────────────────
     Flickable {
         Layout.fillWidth: true
@@ -92,7 +115,7 @@ ColumnLayout {
 
                 function rebuildModel() {
                     let allLayouts = settingsController.layouts;
-                    // Filter by view mode
+                    // ── Step 1: filter by view mode ──────────────────────────
                     let filtered = [];
                     for (let i = 0; i < allLayouts.length; i++) {
                         let isAutotile = allLayouts[i].isAutotile === true;
@@ -101,87 +124,298 @@ ColumnLayout {
                         else if (root.viewMode === 1 && isAutotile)
                             filtered.push(allLayouts[i]);
                     }
+                    // ── Step 2: apply filters ────────────────────────────────
+                    // Text search
+                    let search = filterBar.filterText.toLowerCase();
+                    if (search.length > 0)
+                        filtered = filtered.filter((item) => {
+                            return (item.name || "").toLowerCase().includes(search) || (item.description || "").toLowerCase().includes(search);
+                        });
+
+                    // Hidden filter (applies to both modes)
+                    if (!filterBar.showHidden)
+                        filtered = filtered.filter((item) => {
+                            return item.hiddenFromSelector !== true;
+                        });
+
+                    if (root.viewMode === 0) {
+                        // Snapping: aspect-ratio class filter
+                        let arMap = {
+                            "any": filterBar.showAspectAny,
+                            "standard": filterBar.showAspectStandard,
+                            "ultrawide": filterBar.showAspectUltrawide,
+                            "super-ultrawide": filterBar.showAspectSuperUltrawide,
+                            "portrait": filterBar.showAspectPortrait
+                        };
+                        filtered = filtered.filter((item) => {
+                            let cls = item.aspectRatioClass || "any";
+                            return arMap[cls] !== false;
+                        });
+                        // Source filter (built-in vs user)
+                        filtered = filtered.filter((item) => {
+                            if ((item.isSystem || item.hasSystemOrigin) && !filterBar.showBuiltInLayouts)
+                                return false;
+
+                            if (!item.isSystem && !item.hasSystemOrigin && !filterBar.showUserLayouts)
+                                return false;
+
+                            return true;
+                        });
+                        // Auto-assign filter
+                        if (filterBar.showAutoAssignOnly)
+                            filtered = filtered.filter((item) => {
+                                return item.autoAssign === true;
+                            });
+
+                    } else {
+                        // Tiling: source filter
+                        filtered = filtered.filter((item) => {
+                            if (item.isSystem && !filterBar.showSystemAlgorithms)
+                                return false;
+
+                            if (!item.isSystem && !filterBar.showUserAlgorithms)
+                                return false;
+
+                            return true;
+                        });
+                        // Capability filter (positive: if any checked, show only matching)
+                        let hasCapFilter = filterBar.onlyMasterCount || filterBar.onlySplitRatio || filterBar.onlyOverlapping || filterBar.onlyPersistent;
+                        if (hasCapFilter)
+                            filtered = filtered.filter((item) => {
+                                if (filterBar.onlyMasterCount && item.supportsMasterCount === true)
+                                    return true;
+
+                                if (filterBar.onlySplitRatio && item.supportsSplitRatio === true)
+                                    return true;
+
+                                if (filterBar.onlyOverlapping && item.producesOverlappingZones === true)
+                                    return true;
+
+                                if (filterBar.onlyPersistent && item.memory === true)
+                                    return true;
+
+                                return false;
+                            });
+
+                    }
+                    // ── Step 3: group ────────────────────────────────────────
                     let groups = {
                     };
+                    let groupIdx = filterBar.groupByIndex;
                     if (root.viewMode === 1) {
-                        // Tiling view: group by capability (algorithms can appear in multiple groups)
-                        let capGroups = [{
-                            "key": "masterCount",
-                            "label": i18n("Master Count"),
-                            "order": 0,
-                            "test": (a) => {
-                                return a.supportsMasterCount === true;
-                            }
-                        }, {
-                            "key": "overlapping",
-                            "label": i18n("Overlapping Zones"),
-                            "order": 1,
-                            "test": (a) => {
-                                return a.producesOverlappingZones === true;
-                            }
-                        }, {
-                            "key": "splitRatio",
-                            "label": i18n("Split Ratio"),
-                            "order": 2,
-                            "test": (a) => {
-                                return a.supportsSplitRatio === true;
-                            }
-                        }];
-                        for (let g = 0; g < capGroups.length; g++) {
-                            let cap = capGroups[g];
-                            groups[cap.key] = {
-                                "items": [],
-                                "order": cap.order,
-                                "label": cap.label
-                            };
-                        }
-                        for (let i = 0; i < filtered.length; i++) {
-                            let placed = false;
+                        // ── Tiling grouping ──────────────────────────────────
+                        if (groupIdx === 0) {
+                            // Capability (algorithms can appear in multiple groups)
+                            let capGroups = [{
+                                "key": "masterCount",
+                                "label": i18n("Master Count"),
+                                "order": 0,
+                                "test": (a) => {
+                                    return a.supportsMasterCount === true;
+                                }
+                            }, {
+                                "key": "overlapping",
+                                "label": i18n("Overlapping Zones"),
+                                "order": 1,
+                                "test": (a) => {
+                                    return a.producesOverlappingZones === true;
+                                }
+                            }, {
+                                "key": "splitRatio",
+                                "label": i18n("Split Ratio"),
+                                "order": 2,
+                                "test": (a) => {
+                                    return a.supportsSplitRatio === true;
+                                }
+                            }];
                             for (let g = 0; g < capGroups.length; g++) {
-                                if (capGroups[g].test(filtered[i])) {
-                                    groups[capGroups[g].key].items.push(filtered[i]);
-                                    placed = true;
+                                let cap = capGroups[g];
+                                groups[cap.key] = {
+                                    "items": [],
+                                    "order": cap.order,
+                                    "label": cap.label
+                                };
+                            }
+                            for (let i = 0; i < filtered.length; i++) {
+                                let placed = false;
+                                for (let g = 0; g < capGroups.length; g++) {
+                                    if (capGroups[g].test(filtered[i])) {
+                                        groups[capGroups[g].key].items.push(filtered[i]);
+                                        placed = true;
+                                    }
+                                }
+                                if (!placed) {
+                                    if (!groups["other"])
+                                        groups["other"] = {
+                                        "items": [],
+                                        "order": 99,
+                                        "label": i18n("Other")
+                                    };
+
+                                    groups["other"].items.push(filtered[i]);
                                 }
                             }
-                            // Algorithms with no capabilities still appear
-                            if (!placed) {
-                                if (!groups["other"])
-                                    groups["other"] = {
+                        } else if (groupIdx === 1) {
+                            // Source (built-in vs user scripts)
+                            for (let i = 0; i < filtered.length; i++) {
+                                let item = filtered[i];
+                                let key, label, order;
+                                if (item.isSystem) {
+                                    key = "builtin";
+                                    label = i18n("Built-in");
+                                    order = 0;
+                                } else {
+                                    key = "user";
+                                    label = i18n("User Scripts");
+                                    order = 1;
+                                }
+                                if (!groups[key])
+                                    groups[key] = {
                                     "items": [],
-                                    "order": 99,
-                                    "label": i18n("Other")
+                                    "order": order,
+                                    "label": label
                                 };
 
-                                groups["other"].items.push(filtered[i]);
+                                groups[key].items.push(item);
                             }
+                        } else if (groupIdx === 2) {
+                            // Persistent (stateful vs stateless)
+                            for (let i = 0; i < filtered.length; i++) {
+                                let item = filtered[i];
+                                let key, label, order;
+                                if (item.memory === true) {
+                                    key = "persistent";
+                                    label = i18n("Persistent");
+                                    order = 0;
+                                } else {
+                                    key = "stateless";
+                                    label = i18n("Stateless");
+                                    order = 1;
+                                }
+                                if (!groups[key])
+                                    groups[key] = {
+                                    "items": [],
+                                    "order": order,
+                                    "label": label
+                                };
+
+                                groups[key].items.push(item);
+                            }
+                        } else {
+                            // None
+                            groups["all"] = {
+                                "items": filtered,
+                                "order": 0,
+                                "label": ""
+                            };
                         }
                     } else {
-                        // Snapping view: group by sectionKey (aspect ratio, data-driven from C++)
-                        for (let i = 0; i < filtered.length; i++) {
-                            let key = filtered[i].sectionKey || "default";
-                            if (!groups[key])
-                                groups[key] = {
-                                "items": [],
-                                "order": filtered[i].sectionOrder !== undefined ? filtered[i].sectionOrder : 0,
-                                "label": filtered[i].sectionLabel || ""
-                            };
+                        // ── Snapping grouping ────────────────────────────────
+                        if (groupIdx === 0) {
+                            // Aspect ratio (data-driven from C++)
+                            for (let i = 0; i < filtered.length; i++) {
+                                let key = filtered[i].sectionKey || "default";
+                                if (!groups[key])
+                                    groups[key] = {
+                                    "items": [],
+                                    "order": filtered[i].sectionOrder !== undefined ? filtered[i].sectionOrder : 0,
+                                    "label": filtered[i].sectionLabel || ""
+                                };
 
-                            groups[key].items.push(filtered[i]);
+                                groups[key].items.push(filtered[i]);
+                            }
+                        } else if (groupIdx === 1) {
+                            // Zone count
+                            for (let i = 0; i < filtered.length; i++) {
+                                let count = filtered[i].zoneCount || 0;
+                                let key = "zones-" + count;
+                                if (!groups[key])
+                                    groups[key] = {
+                                    "items": [],
+                                    "order": count,
+                                    "label": i18n("%1 zones", count)
+                                };
+
+                                groups[key].items.push(filtered[i]);
+                            }
+                        } else if (groupIdx === 2) {
+                            // Auto / Manual
+                            for (let i = 0; i < filtered.length; i++) {
+                                let item = filtered[i];
+                                let key, label, order;
+                                if (item.autoAssign === true) {
+                                    key = "auto";
+                                    label = i18n("Auto");
+                                    order = 0;
+                                } else {
+                                    key = "manual";
+                                    label = i18n("Manual");
+                                    order = 1;
+                                }
+                                if (!groups[key])
+                                    groups[key] = {
+                                    "items": [],
+                                    "order": order,
+                                    "label": label
+                                };
+
+                                groups[key].items.push(item);
+                            }
+                        } else if (groupIdx === 3) {
+                            // Source (built-in vs user-created)
+                            for (let i = 0; i < filtered.length; i++) {
+                                let item = filtered[i];
+                                let key, label, order;
+                                if (item.isSystem || item.hasSystemOrigin) {
+                                    key = "builtin";
+                                    label = i18n("Built-in");
+                                    order = 0;
+                                } else {
+                                    key = "user";
+                                    label = i18n("User Layouts");
+                                    order = 1;
+                                }
+                                if (!groups[key])
+                                    groups[key] = {
+                                    "items": [],
+                                    "order": order,
+                                    "label": label
+                                };
+
+                                groups[key].items.push(item);
+                            }
+                        } else {
+                            // None
+                            groups["all"] = {
+                                "items": filtered,
+                                "order": 0,
+                                "label": ""
+                            };
                         }
                     }
-                    // Sort items within each group alphabetically
+                    // ── Step 4: sort items within each group ─────────────────
+                    let ascending = filterBar.sortAscending;
+                    let sortIdx = filterBar.sortByIndex;
                     for (let key in groups) {
                         groups[key].items.sort((a, b) => {
-                            return (a.name || "").localeCompare(b.name || "");
+                            let cmp;
+                            if (sortIdx === 1)
+                                cmp = (a.zoneCount || 0) - (b.zoneCount || 0);
+                            else
+                                cmp = (a.name || "").localeCompare(b.name || "");
+                            return ascending ? cmp : -cmp;
                         });
                     }
-                    // Sort groups by order, then build section model
+                    // ── Step 5: sort groups and build model ──────────────────
                     let sorted = Object.values(groups).sort((a, b) => {
                         return a.order - b.order;
                     });
                     let nonEmpty = sorted.filter((g) => {
                         return g.items.length > 0;
                     });
+                    // Force ListView to detect the change (JS arrays of the
+                    // same length can be silently deduplicated by the model diff)
+                    model = null;
                     model = nonEmpty.map((g) => {
                         return ({
                             "label": nonEmpty.length > 1 ? g.label : "",
@@ -204,6 +438,7 @@ ColumnLayout {
                     return layoutId !== "";
                 }
 
+                Layout.topMargin: Kirigami.Units.largeSpacing
                 Accessible.name: i18n("Layout grid")
                 Layout.fillWidth: true
                 Layout.leftMargin: Kirigami.Units.smallSpacing
