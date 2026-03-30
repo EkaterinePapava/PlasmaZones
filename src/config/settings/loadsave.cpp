@@ -6,7 +6,6 @@
 #include "../../core/constants.h"
 #include "../../core/logging.h"
 #include "../../core/utils.h"
-#include "../../autotile/AlgorithmRegistry.h"
 #include "../../autotile/AutotileConfig.h"
 
 #include <QJsonDocument>
@@ -351,20 +350,10 @@ void Settings::loadAutotilingConfig(QSettingsConfigBackend* backend)
     m_defaultAutotileAlgorithm = autotiling->readString(ConfigDefaults::defaultAutotileAlgorithmKey(),
                                                         ConfigDefaults::defaultAutotileAlgorithm());
 
-    // Validate saved algorithm ID against registry. Scripted algorithms may not be
-    // registered yet at Settings::load() time (they load later in Daemon::init()),
-    // so this only catches clearly invalid built-in IDs. The engine's syncFromSettings
-    // performs a second check after scripted algorithms are registered.
-    // Script algorithms are registered asynchronously — skip validation
-    // to prevent resetting the user's selection on daemon restart.
-    if (!m_defaultAutotileAlgorithm.startsWith(QLatin1String("script:"))) {
-        if (!m_defaultAutotileAlgorithm.isEmpty()
-            && !AlgorithmRegistry::instance()->algorithm(m_defaultAutotileAlgorithm)) {
-            qCWarning(lcConfig) << "Saved algorithm" << m_defaultAutotileAlgorithm
-                                << "not found in registry, falling back to default";
-            m_defaultAutotileAlgorithm = ConfigDefaults::defaultAutotileAlgorithm();
-        }
-    }
+    // Do NOT validate the saved algorithm ID here — scripted algorithms
+    // (including those with @builtinId) are not registered until
+    // ScriptedAlgorithmLoader::scanAndRegister() runs later in Daemon::init().
+    // The engine's syncFromSettings() validates after all algorithms are loaded.
 
     qreal splitRatio =
         autotiling->readDouble(ConfigDefaults::autotileSplitRatioKey(), ConfigDefaults::autotileSplitRatio());
