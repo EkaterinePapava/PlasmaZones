@@ -549,8 +549,12 @@ All configurable in **System Settings → Shortcuts → PlasmaZones** (KDE) or i
 Open the settings app:
 
 ```bash
-plasmazones-settings
+plasmazones-settings                    # opens on overview page
+plasmazones-settings -p layouts         # opens directly to layouts page
+plasmazones-settings --page tiling-behavior  # opens to tiling behavior page
 ```
+
+The app is single-instance — launching it again while running raises the existing window and switches to the requested page.
 
 Settings stored in `~/.config/plasmazonesrc`. Layouts stored as JSON in `~/.local/share/plasmazones/layouts/`.
 
@@ -598,6 +602,8 @@ systemctl --user restart plasmazones.service
 
 PlasmaZones exposes 10 D-Bus interfaces for scripting and integration:
 
+### Daemon (`org.plasmazones` on `/PlasmaZones`)
+
 | Interface | Purpose |
 |-----------|---------|
 | `Autotile` | Autotiling engine control, algorithm selection, window float/unfloat |
@@ -628,6 +634,24 @@ qdbus6 org.plasmazones /PlasmaZones org.plasmazones.Overlay.hideOverlay
 # Get all screens
 qdbus6 org.plasmazones /PlasmaZones org.plasmazones.Screen.getScreens
 ```
+
+### Settings App (`org.plasmazones.Settings.App` on `/SettingsApp`)
+
+The settings app is single-instance. Launching it while already running forwards the request via D-Bus and raises the existing window.
+
+```bash
+# Open settings to a specific page
+plasmazones-settings --page layouts
+plasmazones-settings -p snapping-behavior
+
+# If already running, switch page via D-Bus
+qdbus6 org.plasmazones.Settings.App /SettingsApp setActivePage "tiling-algorithm"
+
+# Raise the settings window
+qdbus6 org.plasmazones.Settings.App /SettingsApp raise
+```
+
+Available page names: `overview`, `layouts`, `snapping-appearance`, `snapping-behavior`, `snapping-zoneselector`, `snapping-effects`, `snapping-assignments`, `snapping-shortcuts`, `tiling-appearance`, `tiling-behavior`, `tiling-algorithm`, `tiling-assignments`, `tiling-shortcuts`, `apprules`, `exclusions`, `editor`, `general`, `about` (parent names `snapping` and `tiling` are also accepted and redirect to their first child page)
 
 Full API documentation: [wiki — D-Bus API](https://github.com/fuddlesworth/PlasmaZones/wiki/D-Bus-API)
 
