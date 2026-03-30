@@ -125,6 +125,52 @@ ColumnLayout {
                             filtered.push(allLayouts[i]);
                     }
                     // ── Step 2: apply filters ────────────────────────────────
+                    filtered = applyFilters(filtered);
+                    // ── Step 3: group ────────────────────────────────────────
+                    let groups = buildGroups(filtered, filterBar.groupByIndex);
+                    // ── Step 4: sort items within each group ─────────────────
+                    let ascending = filterBar.sortAscending;
+                    let sortIdx = filterBar.sortByIndex;
+                    for (let key in groups) {
+                        groups[key].items.sort((a, b) => {
+                            let cmp;
+                            if (sortIdx === 1)
+                                cmp = (a.zoneCount || 0) - (b.zoneCount || 0);
+                            else
+                                cmp = (a.name || "").localeCompare(b.name || "");
+                            return ascending ? cmp : -cmp;
+                        });
+                    }
+                    // ── Step 5: sort groups and build model ──────────────────
+                    let sorted = Object.values(groups).sort((a, b) => {
+                        return a.order - b.order;
+                    });
+                    let nonEmpty = sorted.filter((g) => {
+                        return g.items.length > 0;
+                    });
+                    model = nonEmpty.map((g) => {
+                        return ({
+                            "label": nonEmpty.length > 1 ? g.label : "",
+                            "layouts": g.items
+                        });
+                    });
+                }
+
+                function selectDefaultLayout(mode) {
+                    let defaultId = (mode === 1) ? ("autotile:" + root.settingsBridge.defaultAutotileAlgorithm) : root.settingsBridge.defaultLayoutId;
+                    if (defaultId)
+                        selectedLayoutId = defaultId;
+
+                }
+
+                function selectLayoutById(layoutId) {
+                    if (layoutId)
+                        selectedLayoutId = layoutId;
+
+                    return layoutId !== "";
+                }
+
+                function applyFilters(filtered) {
                     // Text search
                     let search = filterBar.filterText.toLowerCase();
                     if (search.length > 0)
@@ -199,11 +245,17 @@ ColumnLayout {
                         });
 
                     }
-                    // ── Step 3: group ────────────────────────────────────────
+                    return filtered;
+                }
+
+                function buildGroups(filtered, groupIdx) {
                     let groups = {
                     };
-                    let groupIdx = filterBar.groupByIndex;
                     if (root.viewMode === 1) {
+                        // Source (built-in vs user scripts)
+                        // Persistent (stateful vs stateless)
+                        // None
+
                         // ── Tiling grouping ──────────────────────────────────
                         if (groupIdx === 0) {
                             // Capability (algorithms can appear in multiple groups)
@@ -257,23 +309,25 @@ ColumnLayout {
                                 }
                             }
                         } else if (groupIdx === 1)
-                            // Source (built-in vs user scripts)
                             groups = groupByBoolKey(filtered, (item) => {
-                                return item.isSystem;
-                            }, "builtin", i18n("Built-in"), "user", i18n("User Scripts"));
+                            return item.isSystem;
+                        }, "builtin", i18n("Built-in"), "user", i18n("User Scripts"));
                         else if (groupIdx === 2)
-                            // Persistent (stateful vs stateless)
                             groups = groupByBoolKey(filtered, (item) => {
-                                return item.memory === true;
-                            }, "persistent", i18n("Persistent"), "stateless", i18n("Stateless"));
+                            return item.memory === true;
+                        }, "persistent", i18n("Persistent"), "stateless", i18n("Stateless"));
                         else
-                            // None
                             groups["all"] = {
-                                "items": filtered,
-                                "order": 0,
-                                "label": ""
-                            };
+                            "items": filtered,
+                            "order": 0,
+                            "label": ""
+                        };
                     } else {
+                        // Auto / Manual
+                        // Source (built-in vs user-created)
+                        // Note: snapping layouts use hasSystemOrigin; algorithms do not
+                        // None
+
                         // ── Snapping grouping ────────────────────────────────
                         if (groupIdx === 0) {
                             // Aspect ratio (data-driven from C++)
@@ -303,64 +357,21 @@ ColumnLayout {
                                 groups[key].items.push(filtered[i]);
                             }
                         } else if (groupIdx === 2)
-                            // Auto / Manual
                             groups = groupByBoolKey(filtered, (item) => {
-                                return item.autoAssign === true;
-                            }, "auto", i18n("Auto"), "manual", i18n("Manual"));
+                            return item.autoAssign === true;
+                        }, "auto", i18n("Auto"), "manual", i18n("Manual"));
                         else if (groupIdx === 3)
-                            // Source (built-in vs user-created)
-                            // Note: snapping layouts use hasSystemOrigin; algorithms do not
                             groups = groupByBoolKey(filtered, (item) => {
-                                return item.isSystem || item.hasSystemOrigin;
-                            }, "builtin", i18n("Built-in"), "user", i18n("User Layouts"));
+                            return item.isSystem || item.hasSystemOrigin;
+                        }, "builtin", i18n("Built-in"), "user", i18n("User Layouts"));
                         else
-                            // None
                             groups["all"] = {
-                                "items": filtered,
-                                "order": 0,
-                                "label": ""
-                            };
+                            "items": filtered,
+                            "order": 0,
+                            "label": ""
+                        };
                     }
-                    // ── Step 4: sort items within each group ─────────────────
-                    let ascending = filterBar.sortAscending;
-                    let sortIdx = filterBar.sortByIndex;
-                    for (let key in groups) {
-                        groups[key].items.sort((a, b) => {
-                            let cmp;
-                            if (sortIdx === 1)
-                                cmp = (a.zoneCount || 0) - (b.zoneCount || 0);
-                            else
-                                cmp = (a.name || "").localeCompare(b.name || "");
-                            return ascending ? cmp : -cmp;
-                        });
-                    }
-                    // ── Step 5: sort groups and build model ──────────────────
-                    let sorted = Object.values(groups).sort((a, b) => {
-                        return a.order - b.order;
-                    });
-                    let nonEmpty = sorted.filter((g) => {
-                        return g.items.length > 0;
-                    });
-                    model = nonEmpty.map((g) => {
-                        return ({
-                            "label": nonEmpty.length > 1 ? g.label : "",
-                            "layouts": g.items
-                        });
-                    });
-                }
-
-                function selectDefaultLayout(mode) {
-                    let defaultId = (mode === 1) ? ("autotile:" + root.settingsBridge.defaultAutotileAlgorithm) : root.settingsBridge.defaultLayoutId;
-                    if (defaultId)
-                        selectedLayoutId = defaultId;
-
-                }
-
-                function selectLayoutById(layoutId) {
-                    if (layoutId)
-                        selectedLayoutId = layoutId;
-
-                    return layoutId !== "";
+                    return groups;
                 }
 
                 function groupByBoolKey(items, testFn, trueKey, trueLabel, falseKey, falseLabel) {
@@ -417,20 +428,20 @@ ColumnLayout {
                     width: parent.width - Kirigami.Units.gridUnit * 4
                     visible: layoutGrid.count === 0
                     text: {
-                        if (filterBar.hasActiveFilters || filterBar.filterText.length > 0)
+                        if (filterBar.hasActiveFilters)
                             return root.viewMode === 1 ? i18n("No matching algorithms") : i18n("No matching layouts");
 
                         return root.viewMode === 1 ? i18n("No autotile algorithms available") : i18n("No layouts available");
                     }
                     explanation: {
-                        if (filterBar.hasActiveFilters || filterBar.filterText.length > 0)
+                        if (filterBar.hasActiveFilters)
                             return i18n("Try adjusting your filters or search terms");
 
                         return root.viewMode === 1 ? i18n("Enable autotiling to use tiling algorithms") : i18n("Start the PlasmaZones daemon or create a new layout");
                     }
 
                     helpfulAction: Kirigami.Action {
-                        visible: filterBar.hasActiveFilters || filterBar.filterText.length > 0
+                        visible: filterBar.hasActiveFilters
                         text: i18n("Reset Filters")
                         icon.name: "edit-reset"
                         onTriggered: {

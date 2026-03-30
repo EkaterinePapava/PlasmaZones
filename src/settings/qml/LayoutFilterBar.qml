@@ -40,6 +40,9 @@ RowLayout {
     property bool onlyPersistent: false
     // Whether any non-default filter is active (drives badge visibility)
     readonly property bool hasActiveFilters: {
+        if (filterText.length > 0)
+            return true;
+
         if (root.viewMode === 0)
             return !showAspectAny || !showAspectStandard || !showAspectUltrawide || !showAspectSuperUltrawide || !showAspectPortrait || showHidden || showAutoAssignOnly || !showBuiltInLayouts || !showUserLayouts;
         else
@@ -179,7 +182,7 @@ RowLayout {
             else
                 tilingFilterMenu.popup();
         }
-        Accessible.name: i18n("Filter")
+        Accessible.name: root.hasActiveFilters ? i18n("Filter (active)") : i18n("Filter")
         ToolTip.visible: hovered
         ToolTip.text: root.hasActiveFilters ? i18n("Filters active \u2014 click to change") : i18n("Filter")
     }
