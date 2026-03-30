@@ -427,6 +427,12 @@ void OverlayService::updateOverlayWindow(QScreen* screen)
         writeQmlProperty(window, QStringLiteral("bufferFeedback"), false);
         writeQmlProperty(window, QStringLiteral("bufferScale"), 1.0);
         writeQmlProperty(window, QStringLiteral("bufferWrap"), QStringLiteral("clamp"));
+        writeQmlProperty(window, QStringLiteral("bufferWraps"), QStringList());
+        writeQmlProperty(window, QStringLiteral("bufferFilter"), QStringLiteral("linear"));
+        writeQmlProperty(window, QStringLiteral("bufferFilters"), QStringList());
+        writeQmlProperty(window, QStringLiteral("useDepthBuffer"), false);
+        writeQmlProperty(window, QStringLiteral("computeShaderPath"), QString());
+        writeQmlProperty(window, QStringLiteral("particleCount"), 0);
         writeQmlProperty(window, QStringLiteral("shaderParams"), QVariantMap());
     }
 
