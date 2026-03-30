@@ -1468,7 +1468,7 @@ private:
      * @param settingName Human-readable name for warning messages
      * @return Validated integer value
      */
-    int readValidatedInt(QSettingsConfigGroup& group, const char* key, int defaultValue, int min, int max,
+    int readValidatedInt(QSettingsConfigGroup& group, const QString& key, int defaultValue, int min, int max,
                          const char* settingName);
 
     /**
@@ -1479,7 +1479,7 @@ private:
      * @param settingName Human-readable name for warning messages
      * @return Validated QColor value
      */
-    QColor readValidatedColor(QSettingsConfigGroup& group, const char* key, const QColor& defaultValue,
+    QColor readValidatedColor(QSettingsConfigGroup& group, const QString& key, const QColor& defaultValue,
                               const char* settingName);
 
     /**
@@ -1498,17 +1498,6 @@ private:
      * @return Parsed list (capped at MaxTriggersPerAction), or std::nullopt if empty/invalid
      */
     static std::optional<QVariantList> parseTriggerListJson(const QString& json);
-
-    /**
-     * @brief Load a trigger list from config JSON, with error handling and cap-at-4
-     * @param group QSettingsConfigGroup to read from
-     * @param key Config key for the JSON trigger list
-     * @param legacyModifier Fallback modifier enum value if no JSON exists
-     * @param legacyMouseButton Fallback mouse button if no JSON exists
-     * @return Parsed trigger list (capped at 4 entries)
-     */
-    static QVariantList loadTriggerList(QSettingsConfigGroup& group, const QString& key, int legacyModifier,
-                                        int legacyMouseButton);
 
     /**
      * @brief Save a trigger list to config as compact JSON
