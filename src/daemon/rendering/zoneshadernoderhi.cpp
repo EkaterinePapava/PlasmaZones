@@ -62,8 +62,9 @@ static QByteArray shaderCacheKey(const QString& vertPath, qint64 vertMtime, cons
 const QList<QShaderBaker::GeneratedShader>& detail::bakeTargets()
 {
     static const QList<QShaderBaker::GeneratedShader> targets = {
-        // SPIR-V 1.3: QShaderVersion encodes as major*100 + minor*10 (same as GLSL),
-        // so 1.3 → 130. This matches the Vulkan 1.1 API version set on QVulkanInstance.
+        // SPIR-V 1.3 for Vulkan 1.1. QShaderVersion uses the same major*100 + minor*10
+        // encoding as GLSL versions, so SPIR-V 1.3 is represented as 130 (not 13).
+        // Vulkan 1.1 guarantees SPIR-V 1.3 support per the Vulkan spec appendix.
         {QShader::SpirvShader, QShaderVersion(130)},
         {QShader::GlslShader, QShaderVersion(330)},
         {QShader::GlslShader, QShaderVersion(300, QShaderVersion::GlslEs)},

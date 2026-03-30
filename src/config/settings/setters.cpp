@@ -576,7 +576,9 @@ void Settings::setLockedScreens(const QStringList& screens)
     }
 }
 
-// Shader Effects
+// ═══════════════════════════════════════════════════════════════════════════════
+// Rendering
+// ═══════════════════════════════════════════════════════════════════════════════
 
 void Settings::setRenderingBackend(const QString& backend)
 {
@@ -587,6 +589,10 @@ void Settings::setRenderingBackend(const QString& backend)
         Q_EMIT settingsChanged();
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Shader Effects
+// ═══════════════════════════════════════════════════════════════════════════════
 
 SETTINGS_SETTER(bool, EnableShaderEffects, m_enableShaderEffects, enableShaderEffectsChanged)
 SETTINGS_SETTER_CLAMPED(ShaderFrameRate, m_shaderFrameRate, shaderFrameRateChanged,

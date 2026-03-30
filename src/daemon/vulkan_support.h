@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <QtCore/qglobal.h> // Ensure QT_CONFIG is defined regardless of include order
+
 #if QT_CONFIG(vulkan)
 #include <QVulkanInstance>
 Q_DECLARE_METATYPE(QVulkanInstance*)

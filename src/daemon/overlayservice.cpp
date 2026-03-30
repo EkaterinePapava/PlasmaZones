@@ -163,6 +163,9 @@ QQuickWindow* OverlayService::createQmlWindow(const QUrl& qmlUrl, QScreen* scree
     // When the Vulkan backend is active, each QQuickWindow needs a QVulkanInstance
     // set before it can create a Vulkan surface. The instance is stored as a dynamic
     // property on QGuiApplication by main.cpp.
+    // IMPORTANT: setVulkanInstance() must be called before the window is shown or
+    // the scene graph is initialized. This is safe here because the window starts
+    // with visible: false and show() is called separately after createQmlWindow().
 #if QT_CONFIG(vulkan)
     auto* vulkanInstance = qApp->property(PlasmaZones::PzVulkanInstanceProperty).value<QVulkanInstance*>();
     if (vulkanInstance) {

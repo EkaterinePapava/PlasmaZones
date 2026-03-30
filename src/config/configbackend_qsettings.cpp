@@ -153,9 +153,9 @@ bool QSettingsConfigGroup::readBool(const QString& key, bool defaultValue) const
     if (val.typeId() == QMetaType::Bool)
         return val.toBool();
     const QString s = val.toString().toLower().trimmed();
-    if (s == QLatin1String("true") || s == QLatin1String("1"))
+    if (s == QLatin1String("true") || s == QLatin1String("1") || s == QLatin1String("yes") || s == QLatin1String("on"))
         return true;
-    if (s == QLatin1String("false") || s == QLatin1String("0"))
+    if (s == QLatin1String("false") || s == QLatin1String("0") || s == QLatin1String("no") || s == QLatin1String("off"))
         return false;
     return defaultValue;
 }

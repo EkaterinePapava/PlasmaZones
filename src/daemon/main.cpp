@@ -76,9 +76,12 @@ int main(int argc, char* argv[])
             // NOTE: this only guards against a missing loader library; a broken
             // ICD manifest (pointing to a non-existent driver .so) can still
             // crash inside vkCreateInstance. No portable way to catch that.
-            bool vulkanLibAvailable = QLibrary(QStringLiteral("vulkan"), 1).load();
-            if (!vulkanLibAvailable)
-                vulkanLibAvailable = QLibrary(QStringLiteral("vulkan")).load();
+            QLibrary vulkanLib(QStringLiteral("vulkan"), 1);
+            bool vulkanLibAvailable = vulkanLib.load();
+            if (!vulkanLibAvailable) {
+                vulkanLib.setFileName(QStringLiteral("vulkan"));
+                vulkanLibAvailable = vulkanLib.load();
+            }
 
             if (vulkanLibAvailable) {
                 vulkanInstance.setApiVersion(QVersionNumber(1, 1));
