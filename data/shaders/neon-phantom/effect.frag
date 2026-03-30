@@ -93,9 +93,9 @@ vec3 sampleBloom(vec2 fc, float radius,
                  vec3 cyanCol, vec3 pinkCol, vec3 purpleCol, float midsShift) {
     vec3 bloom = vec3(0.0);
     float totalW = 0.0;
-    for (int dy = -2; dy <= 2; dy++) {
-        for (int dx = -2; dx <= 2; dx++) {
-            float gw = exp(-float(dx * dx + dy * dy) * 0.35);
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            float gw = exp(-float(dx * dx + dy * dy) * 0.5);
             vec2 sc = fc + vec2(float(dx), float(dy)) * radius;
             vec4 s = texture(iChannel0, channelUv(0, sc));
             float intensity = s.r + s.g * 2.0;
@@ -113,8 +113,9 @@ vec4 renderPhantomZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCol
                        vec4 params, bool isHighlighted,
                        vec3 cyanCol, vec3 pinkCol, vec3 purpleCol,
                        float bass, float mids, float treble, bool hasAudio) {
-    float borderRadius = max(params.x, 8.0);
-    float borderWidth  = max(params.y, 2.0);
+    float px = pxScale();
+    float borderRadius = max(params.x, 8.0) * px;
+    float borderWidth  = max(params.y, 2.0) * px;
     float fillOpacity  = getFillOpacity();
     float bloomStr     = getBloomStrength();
     float zoneTint     = getZoneTint();
@@ -143,7 +144,7 @@ vec4 renderPhantomZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCol
         ? smoothstep(radialPos - 0.15, radialPos, fract(iTime * 1.5))
           * exp(-fract(iTime * 1.5) * 2.5) * bassEnv
         : 0.0;
-    float chromaPx = getChromaStrength() * (1.0 + cascadeSignal * 6.0);
+    float chromaPx = getChromaStrength() * px * (1.0 + cascadeSignal * 6.0);
     float caAngle = iTime * 0.5 + sin(iTime * 3.0) * 0.3; // neon_phantom pulsing CA
 
     // ── Zone resonance ──────────────────────────────────────────────────
@@ -157,7 +158,7 @@ vec4 renderPhantomZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCol
         vec3 col = sampleChromatic(fragCoord, chromaPx * vitalityScale(0.5, 1.5, vitality),
                                    caAngle, cyanCol, pinkCol, purpleCol, midsShift);
 
-        vec3 bloom = sampleBloom(fragCoord, 2.5, cyanCol, pinkCol, purpleCol, midsShift);
+        vec3 bloom = sampleBloom(fragCoord, 2.5 * px, cyanCol, pinkCol, purpleCol, midsShift);
         col = mix(col, bloom, bloomStr * 0.6);
         col += bloom * bloomStr * 0.35;
 
@@ -169,7 +170,7 @@ vec4 renderPhantomZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCol
 
         // ── Inner phantom glow ──────────────────────────────────────────
         float innerDist = -d;
-        float bevelGlow = exp(-innerDist / 18.0);
+        float bevelGlow = exp(-innerDist / (18.0 * px));
         float radialGlow = max(0.0, 1.0 - radialPos);
         float combinedGlow = mix(bevelGlow, radialGlow, 0.35);
 
@@ -195,11 +196,11 @@ vec4 renderPhantomZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCol
         col += finalGlowClr * innerGlow;
 
         // ── Cyberpunk scanlines ─────────────────────────────────────────
-        float scanline = sin(fragCoord.y * 1.0 - iTime * 2.0);
+        float scanline = sin(fragCoord.y * (1.0 / px) - iTime * 2.0);
         col *= 1.0 - scanlineStr * scanline;
 
         // ── Holographic interference ────────────────────────────────────
-        float interference = sin(fragCoord.y * 0.15 + iTime * 5.0);
+        float interference = sin(fragCoord.y * (0.15 / px) + iTime * 5.0);
         col += vec3(0.005, 0.008, 0.012) * interference;
 
         // ── Glitch effect ───────────────────────────────────────────────
@@ -253,7 +254,7 @@ vec4 renderPhantomZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCol
         }
 
         // Scanline on border
-        float borderScan = sin(fragCoord.y * 1.0 - iTime * 2.0);
+        float borderScan = sin(fragCoord.y * (1.0 / px) - iTime * 2.0);
         borderFlow *= 1.0 - getScanlineStr() * borderScan * 0.5;
 
         float borderAlpha = border * vitalityScale(0.8, 0.95, vitality);
@@ -262,21 +263,21 @@ vec4 renderPhantomZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCol
     }
 
     // ── Outer glow: neon phantom aura ───────────────────────────────────
-    if (d > 0.0 && d < 24.0) {
-        float glowRadius = vitalityScale(5.0, 10.0, vitality);
+    if (d > 0.0 && d < 24.0 * px) {
+        float glowRadius = vitalityScale(5.0, 10.0, vitality) * px;
         float glowFalloff = vitalityScale(0.3, 0.55, vitality);
 
         if (hasAudio) {
             float waveCycle = fract(iTime * 1.0);
-            float waveRadius = waveCycle * 18.0;
-            float waveBand = exp(-abs(d - waveRadius) * 0.5) * (1.0 - waveCycle);
-            glowRadius += waveBand * bassEnv * 6.0;
+            float waveRadius = waveCycle * 18.0 * px;
+            float waveBand = exp(-abs(d - waveRadius) * (0.5 / px)) * (1.0 - waveCycle);
+            glowRadius += waveBand * bassEnv * 6.0 * px;
             glowFalloff += waveBand * bass * 0.3;
 
             float waveCycle2 = fract(iTime * 1.0 + 0.5);
-            float waveRadius2 = waveCycle2 * 18.0;
-            float waveBand2 = exp(-abs(d - waveRadius2) * 0.5) * (1.0 - waveCycle2);
-            glowRadius += waveBand2 * bassEnv * 3.0;
+            float waveRadius2 = waveCycle2 * 18.0 * px;
+            float waveBand2 = exp(-abs(d - waveRadius2) * (0.5 / px)) * (1.0 - waveCycle2);
+            glowRadius += waveBand2 * bassEnv * 3.0 * px;
         }
 
         float glow = expGlow(d, glowRadius, glowFalloff);
@@ -286,9 +287,9 @@ vec4 renderPhantomZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderCol
         // Neon chromatic glow (RGB-split outer aura)
         vec3 glowColor = mix(purpleCol, cyanCol, 0.5);
         vec3 outerGlowCol = vec3(
-            expGlow(d - 1.0, glowRadius, glowFalloff),
+            expGlow(d - 1.0 * px, glowRadius, glowFalloff),
             glow,
-            expGlow(d + 1.0, glowRadius, glowFalloff)
+            expGlow(d + 1.0 * px, glowRadius, glowFalloff)
         ) * glowColor;
 
         result.rgb += outerGlowCol;
@@ -337,15 +338,17 @@ vec4 compositePhantomLabels(vec4 color, vec2 fragCoord,
     float gCh = labels.a;
     float bCh = texture(uZoneLabels, uv - caDir * caAmount).a;
 
-    // Gaussian halo
+    // Gaussian halo (3x3)
     float halo = 0.0;
-    for (int dy = -2; dy <= 2; dy++) {
-        for (int dx = -2; dx <= 2; dx++) {
-            float w = exp(-float(dx * dx + dy * dy) * 0.3);
+    float haloW = 0.0;
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            float w = exp(-float(dx * dx + dy * dy) * 0.5);
             halo += texture(uZoneLabels, uv + vec2(float(dx), float(dy)) * px * glowSpread).a * w;
+            haloW += w;
         }
     }
-    halo /= 9.51;
+    halo /= haloW;
 
     // Neon-colored glow halo
     if (halo > 0.003) {

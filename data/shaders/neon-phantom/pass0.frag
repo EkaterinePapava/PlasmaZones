@@ -83,7 +83,7 @@ vec2 fbmCurl(vec2 p, float t, int octaves) {
     float freq = 1.0;
     float c = cos(0.45), s = sin(0.45);
     mat2 rot = mat2(c, -s, s, c);
-    for (int i = 0; i < octaves; i++) {
+    for (int i = 0; i < octaves && i < 4; i++) {
         flow += curlNoise(p * freq, t * (0.7 + float(i) * 0.25)) * amp;
         p = rot * p;
         freq *= 2.1;
@@ -146,6 +146,7 @@ float zoneEdgeSDF(vec2 fragCoord) {
         vec2 center = pos + sz * 0.5;
         float d = sdRoundedBox(fragCoord - center, sz * 0.5, radius);
         minDist = min(minDist, abs(d));
+        if (minDist < 1.0) break;
     }
     return minDist;
 }
@@ -163,6 +164,8 @@ void main() {
     vec2 px = 1.0 / res;
     float aspect = res.x / res.y;
 
+    float pxs = pxScale();
+
     // ── First frame: seed initial state ─────────────────────────────────────
     if (iFrame == 0) {
         float energy = 0.0;
@@ -171,7 +174,7 @@ void main() {
         energy += smoothstep(0.4, 0.15, hex.x) * 0.3;
         // Zone edge seeding
         float edgeDist = zoneEdgeSDF(fragCoord);
-        energy += smoothstep(30.0, 0.0, edgeDist) * 0.25;
+        energy += smoothstep(30.0 * pxs, 0.0, edgeDist) * 0.25;
         energy = clamp(energy, 0.0, 1.0);
         fragColor = vec4(energy, energy, 0.5, 1.0);
         return;
@@ -220,8 +223,8 @@ void main() {
     vec2 advP = (uv - 0.5) * noiseScl * 0.8;
     advP.x *= aspect;
 
-    int curlOctaves = 4;
-    if (hasAudio && treble > 0.06) curlOctaves = 5;
+    int curlOctaves = 3;
+    if (hasAudio && treble > 0.06) curlOctaves = 4;
 
     vec2 flow = fbmCurl(advP, t * driftSpd, curlOctaves);
 
@@ -293,6 +296,7 @@ void main() {
 
     float edgeDist = zoneEdgeSDF(fragCoord);
     float edgeEmit = 0.0;
+    edgeGlowW *= pxs;
 
     if (edgeDist < edgeGlowW * 2.0) {
         float falloff = exp(-edgeDist / max(edgeGlowW, 1.0));
@@ -322,7 +326,7 @@ void main() {
     patternUv = rotate2d(patternUv, t * 0.1);
 
     float phantom = phantomPattern(patternUv, t, hexScl * 0.6);
-    float fbm = fbmNoise(patternUv * 1.2, t * 0.35, 4);
+    float fbm = fbmNoise(patternUv * 1.2, t * 0.35, 3);
 
     float phantomInject = (phantom * 0.6 + fbm * 0.4);
     phantomInject *= phantomInject;

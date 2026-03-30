@@ -61,7 +61,7 @@ vec2 fbmCurl(vec2 p, float t, int octaves) {
     float freq = 1.0;
     float c = cos(0.45), s = sin(0.45);
     mat2 rot = mat2(c, -s, s, c);
-    for (int i = 0; i < octaves; i++) {
+    for (int i = 0; i < octaves && i < 4; i++) {
         flow += curlNoise(p * freq, t * (0.7 + float(i) * 0.25)) * amp;
         p = rot * p;
         freq *= 2.1;
@@ -108,9 +108,9 @@ float zoneEdgeSDF(vec2 fragCoord) {
         vec2 sz  = zoneRectSize(zoneRects[i]);
         float radius = zoneParams[i].x;
         vec2 center = pos + sz * 0.5;
-        vec2 halfSz = sz * 0.5;
-        float d = sdRoundedBox(fragCoord - center, halfSz, radius);
+        float d = sdRoundedBox(fragCoord - center, sz * 0.5, radius);
         minDist = min(minDist, abs(d));
+        if (minDist < 1.0) break; // close enough — won't change meaningfully
     }
     return minDist;
 }
@@ -130,6 +130,8 @@ void main() {
     vec2 px = 1.0 / res;
     float aspect = res.x / res.y;
 
+    float pxs = pxScale();
+
     // ── First frame: seed initial state ─────────────────────────────────────
     if (iFrame == 0) {
         // Sparse seed points to kick-start accumulation
@@ -143,7 +145,7 @@ void main() {
         }
         // Light zone-edge seeding on first frame
         float edgeDist = zoneEdgeSDF(fragCoord);
-        energy += smoothstep(30.0, 0.0, edgeDist) * 0.2;
+        energy += smoothstep(30.0 * pxs, 0.0, edgeDist) * 0.2;
         energy = clamp(energy, 0.0, 1.0);
         fragColor = vec4(energy, energy, 0.0, 1.0);
         return;
@@ -193,10 +195,10 @@ void main() {
     vec2 advP = (uv - 0.5) * driftScl;
     advP.x *= aspect;
 
-    int curlOctaves = 4;
-    // Treble adds extra high-frequency curl octaves for turbulent mixing
+    int curlOctaves = 3;
+    // Treble adds extra high-frequency curl octave for turbulent mixing
     if (hasAudio && treble > 0.06) {
-        curlOctaves = 5;
+        curlOctaves = 4;
     }
 
     vec2 flow = fbmCurl(advP, t * driftSpd, curlOctaves);
@@ -277,6 +279,7 @@ void main() {
 
     float edgeDist = zoneEdgeSDF(fragCoord);
     float edgeFire = 0.0;
+    edgeFireW *= pxs;
 
     if (edgeDist < edgeFireW * 2.0) {
         // Base exponential falloff from edge
@@ -310,7 +313,7 @@ void main() {
     plasmaUv = rotate2d(plasmaUv, t * 0.12);
 
     float plasma = plasmaPattern(plasmaUv, t);
-    float fbm = fbmNoise(plasmaUv * 1.5, t * 0.4, 4);
+    float fbm = fbmNoise(plasmaUv * 1.5, t * 0.4, 3);
 
     // Combine plasma + fbm — visible per-frame contribution (feedback accumulates it)
     float plasmaInject = (plasma * 0.5 + fbm * 0.5);

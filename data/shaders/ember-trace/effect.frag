@@ -96,16 +96,14 @@ vec3 sampleChromatic(vec2 fc, float chromaPx, float caAngle,
 
 vec3 sampleBloom(vec2 fc, float radius,
                  vec3 hotCol, vec3 warmCol, vec3 coolCol, float midsShift) {
-    // Scale radius by resolution for consistent visual size across DPI
-    float scaledRadius = radius * max(iResolution.y, 1.0) / 1080.0;
+    float scaledRadius = radius * pxScale();
     vec3 bloom = vec3(0.0);
     float totalW = 0.0;
-    for (int dy = -2; dy <= 2; dy++) {
-        for (int dx = -2; dx <= 2; dx++) {
-            float gw = exp(-float(dx * dx + dy * dy) * 0.35);
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            float gw = exp(-float(dx * dx + dy * dy) * 0.5);
             vec2 sc = fc + vec2(float(dx), float(dy)) * scaledRadius;
             vec4 s = texture(iChannel0, channelUv(0, sc));
-            // Intensity-weight: reaction-active samples contribute more
             float intensity = s.g + s.b * 2.0;
             float w = gw * (0.3 + intensity);
             bloom += fireColor(s.g, s.b, s.r, hotCol, warmCol, coolCol, midsShift) * w;
@@ -121,16 +119,18 @@ vec4 renderEmberZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
                      vec4 params, bool isHighlighted,
                      vec3 hotCol, vec3 warmCol, vec3 coolCol,
                      float bass, float mids, float treble, bool hasAudio) {
+    float px = pxScale();
+
     // Early bounding-box rejection: skip fragments beyond outer glow range
     vec2 rectPos  = zoneRectPos(rect);
     vec2 rectSize = zoneRectSize(rect);
     vec2 center   = rectPos + rectSize * 0.5;
     vec2 p        = fragCoord - center;
-    float borderRadius = max(params.x, 8.0);
+    float borderRadius = max(params.x, 8.0) * px;
     float d = sdRoundedBox(p, rectSize * 0.5, borderRadius);
-    if (d > 30.0) return vec4(0.0); // beyond 24px glow + margin
+    if (d > 30.0 * px) return vec4(0.0); // beyond glow + margin
 
-    float borderWidth  = max(params.y, 2.0);
+    float borderWidth  = max(params.y, 2.0) * px;
     float fillOpacity  = getFillOpacity();
     float bloomStr     = getBloomStrength();
     float zoneTint     = getZoneTint();
@@ -155,7 +155,7 @@ vec4 renderEmberZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
         ? smoothstep(radialPos - 0.15, radialPos, fract(iTime * 1.8))
           * exp(-fract(iTime * 1.8) * 2.5) * bassEnv
         : 0.0;
-    float chromaPx = getChromaStrength() * (1.0 + cascadeSignal * 8.0);
+    float chromaPx = getChromaStrength() * px * (1.0 + cascadeSignal * 8.0);
     float caAngle = iTime * 0.5;
 
     // ── Zone resonance frequency ─────────────────────────────────────────
@@ -185,7 +185,7 @@ vec4 renderEmberZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
 
         // ── Inner glow with exponential bevel from edge inward ──────────
         float innerDist = -d;
-        float bevelGlow = exp(-innerDist / 16.0);
+        float bevelGlow = exp(-innerDist / (16.0 * px));
         float radialGlow = max(0.0, 1.0 - radialPos);
         float combinedGlow = mix(bevelGlow, radialGlow, 0.4);
 
@@ -269,23 +269,23 @@ vec4 renderEmberZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
     }
 
     // ── Outer glow with expanding bass wavefronts ───────────────────────
-    if (d > 0.0 && d < 24.0) {
-        float glowRadius = vitalityScale(5.0, 10.0, vitality);
+    if (d > 0.0 && d < 24.0 * px) {
+        float glowRadius = vitalityScale(5.0, 10.0, vitality) * px;
         float glowFalloff = vitalityScale(0.3, 0.6, vitality);
 
         // Bass: expanding ring wavefronts radiating from edge
         if (hasAudio) {
             float waveCycle = fract(iTime * 1.2);
-            float waveRadius = waveCycle * 18.0;
-            float waveBand = exp(-abs(d - waveRadius) * 0.5) * (1.0 - waveCycle);
-            glowRadius += waveBand * bassEnv * 8.0;
+            float waveRadius = waveCycle * 18.0 * px;
+            float waveBand = exp(-abs(d - waveRadius) * (0.5 / px)) * (1.0 - waveCycle);
+            glowRadius += waveBand * bassEnv * 8.0 * px;
             glowFalloff += waveBand * bass * 0.4;
 
             // Second wavefront offset in time
             float waveCycle2 = fract(iTime * 1.2 + 0.5);
-            float waveRadius2 = waveCycle2 * 18.0;
-            float waveBand2 = exp(-abs(d - waveRadius2) * 0.5) * (1.0 - waveCycle2);
-            glowRadius += waveBand2 * bassEnv * 4.0;
+            float waveRadius2 = waveCycle2 * 18.0 * px;
+            float waveBand2 = exp(-abs(d - waveRadius2) * (0.5 / px)) * (1.0 - waveCycle2);
+            glowRadius += waveBand2 * bassEnv * 4.0 * px;
         }
 
         float glow = expGlow(d, glowRadius, glowFalloff);
@@ -297,9 +297,9 @@ vec4 renderEmberZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor
         vec3 glowColor = mix(warmCol, borderClr, 0.5);
         // Chromatic glow: slight color split in the outer glow
         vec3 outerGlowCol = vec3(
-            expGlow(d - 1.0, glowRadius, glowFalloff),
+            expGlow(d - 1.0 * px, glowRadius, glowFalloff),
             glow,
-            expGlow(d + 1.0, glowRadius, glowFalloff)
+            expGlow(d + 1.0 * px, glowRadius, glowFalloff)
         ) * glowColor;
 
         result.rgb += outerGlowCol;
@@ -354,12 +354,12 @@ vec4 compositeEmberLabels(vec4 color, vec2 fragCoord,
     float gCh = labels.a;
     float bCh = texture(uZoneLabels, uv - caDir * caAmount).a;
 
-    // Gaussian halo (5x5 kernel)
+    // Gaussian halo (3x3 kernel)
     float halo = 0.0;
     float haloW = 0.0;
-    for (int dy = -2; dy <= 2; dy++) {
-        for (int dx = -2; dx <= 2; dx++) {
-            float w = exp(-float(dx * dx + dy * dy) * 0.3);
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            float w = exp(-float(dx * dx + dy * dy) * 0.5);
             halo += texture(uZoneLabels, uv + vec2(float(dx), float(dy)) * px * glowSpread).a * w;
             haloW += w;
         }
