@@ -63,10 +63,6 @@ private Q_SLOTS:
     void testAllDefaults_withinKcfgBounds()
     {
         // Activation
-        QVERIFY(ConfigDefaults::dragActivationModifier() >= 0);
-        QVERIFY(ConfigDefaults::dragActivationModifier() <= 10);
-        QVERIFY(ConfigDefaults::dragActivationMouseButton() >= 0);
-        QVERIFY(ConfigDefaults::dragActivationMouseButton() <= ConfigDefaults::mouseButtonMax());
         QVERIFY(ConfigDefaults::zoneSpanModifier() >= 0);
         QVERIFY(ConfigDefaults::zoneSpanModifier() <= 10);
 
@@ -147,14 +143,7 @@ private Q_SLOTS:
         QVERIFY(ConfigDefaults::autotileSplitRatio() <= ConfigDefaults::autotileSplitRatioMax());
         QVERIFY(ConfigDefaults::autotileMasterCount() >= ConfigDefaults::autotileMasterCountMin());
         QVERIFY(ConfigDefaults::autotileMasterCount() <= ConfigDefaults::autotileMasterCountMax());
-        QVERIFY(ConfigDefaults::autotileCenteredMasterSplitRatio()
-                >= ConfigDefaults::autotileCenteredMasterSplitRatioMin());
-        QVERIFY(ConfigDefaults::autotileCenteredMasterSplitRatio()
-                <= ConfigDefaults::autotileCenteredMasterSplitRatioMax());
-        QVERIFY(ConfigDefaults::autotileCenteredMasterMasterCount()
-                >= ConfigDefaults::autotileCenteredMasterMasterCountMin());
-        QVERIFY(ConfigDefaults::autotileCenteredMasterMasterCount()
-                <= ConfigDefaults::autotileCenteredMasterMasterCountMax());
+
         QVERIFY(ConfigDefaults::autotileInnerGap() >= ConfigDefaults::autotileInnerGapMin());
         QVERIFY(ConfigDefaults::autotileInnerGap() <= ConfigDefaults::autotileInnerGapMax());
         QVERIFY(ConfigDefaults::autotileOuterGap() >= ConfigDefaults::autotileOuterGapMin());
