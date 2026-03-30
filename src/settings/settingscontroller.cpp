@@ -22,6 +22,7 @@
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QScreen>
+#include <QWindow>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
 #include <QDesktopServices>
@@ -234,6 +235,27 @@ void SettingsController::setActivePage(const QString& page)
     if (m_activePage != page) {
         m_activePage = page;
         Q_EMIT activePageChanged();
+    }
+}
+
+bool SettingsController::registerDBusService()
+{
+    auto bus = QDBusConnection::sessionBus();
+    if (!bus.registerService(QStringLiteral("org.plasmazones.Settings.App"))) {
+        return false;
+    }
+    // Export only raise() and setActivePage() via ExportScriptableSlots
+    bus.registerObject(QStringLiteral("/SettingsApp"), this, QDBusConnection::ExportScriptableSlots);
+    return true;
+}
+
+void SettingsController::raise()
+{
+    const auto windows = QGuiApplication::allWindows();
+    for (auto* w : windows) {
+        w->show();
+        w->raise();
+        w->requestActivate();
     }
 }
 

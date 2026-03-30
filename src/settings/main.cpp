@@ -10,10 +10,38 @@
 
 #include <QGuiApplication>
 #include <QCommandLineParser>
+#include <QDBusConnection>
+#include <QDBusInterface>
+#include <QDBusReply>
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+
+namespace {
+
+/// Try to forward a --page request to an already-running instance.
+/// Returns true if the running instance handled it (caller should exit).
+bool activateRunningInstance(const QString& page)
+{
+    auto bus = QDBusConnection::sessionBus();
+    if (!bus.isConnected())
+        return false;
+
+    QDBusInterface iface(QStringLiteral("org.plasmazones.Settings.App"), QStringLiteral("/SettingsApp"),
+                         QString(), // use all exported interfaces
+                         bus);
+    if (!iface.isValid())
+        return false;
+
+    if (!page.isEmpty()) {
+        iface.call(QStringLiteral("setActivePage"), page);
+    }
+    iface.call(QStringLiteral("raise"));
+    return true;
+}
+
+} // anonymous namespace
 
 int main(int argc, char* argv[])
 {
@@ -37,6 +65,13 @@ int main(int argc, char* argv[])
     parser.addOption(pageOption);
     parser.process(app);
 
+    const QString requestedPage = parser.isSet(pageOption) ? parser.value(pageOption) : QString();
+
+    // Single-instance: if another instance is running, forward the page request and exit
+    if (activateRunningInstance(requestedPage)) {
+        return 0;
+    }
+
     if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE")) {
         const QString desktop = qEnvironmentVariable("XDG_CURRENT_DESKTOP").toLower();
         if (desktop.contains(QLatin1String("kde")) || desktop.contains(QLatin1String("plasma"))) {
@@ -47,6 +82,10 @@ int main(int argc, char* argv[])
     }
 
     PlasmaZones::SettingsController controller;
+
+    // Register D-Bus service so future launches can forward to us
+    controller.registerDBusService();
+
     QQmlApplicationEngine engine;
 
     auto* localizedContext = new PzLocalizedContext(&engine);
@@ -55,8 +94,8 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("settingsController"), &controller);
     engine.rootContext()->setContextProperty(QStringLiteral("appSettings"), controller.settings());
 
-    if (parser.isSet(pageOption)) {
-        controller.setActivePage(parser.value(pageOption));
+    if (!requestedPage.isEmpty()) {
+        controller.setActivePage(requestedPage);
     }
 
     engine.loadFromModule("org.plasmazones.settings", "Main");
