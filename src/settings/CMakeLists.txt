@@ -78,6 +78,8 @@ qt_add_qml_module(plasmazones-settings
         qml/ExclusionListCard.qml
         qml/LayoutGridDelegate.qml
         qml/LayoutToolbar.qml
+        qml/LayoutFilterBar.qml
+        qml/LayoutFilterLogic.js
         qml/ZoneSelectorSection.qml
         qml/EasingPreview.qml
         qml/EasingSettings.qml

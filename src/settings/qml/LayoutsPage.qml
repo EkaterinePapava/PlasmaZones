@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 fuddlesworth
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import "LayoutFilterLogic.js" as Logic
 import QtCore
 import QtQuick
 import QtQuick.Controls
@@ -59,9 +60,32 @@ ColumnLayout {
         onViewModeRequested: (mode) => {
             root.viewMode = mode;
             layoutGrid.selectedLayoutId = "";
-            layoutGrid.rebuildModel();
+            // rebuildModel() already triggered by filterBar.onViewModeChanged → loadState → filterSettingsChanged
             layoutGrid.selectDefaultLayout(mode);
         }
+    }
+
+    Kirigami.Separator {
+        Layout.fillWidth: true
+        Layout.topMargin: Kirigami.Units.smallSpacing
+        Layout.bottomMargin: Kirigami.Units.smallSpacing
+    }
+
+    // ─── Filter / Group / Sort bar ──────────────────────────────────────
+    LayoutFilterBar {
+        id: filterBar
+
+        Layout.fillWidth: true
+        Layout.topMargin: Kirigami.Units.smallSpacing
+        Layout.bottomMargin: Kirigami.Units.smallSpacing
+        viewMode: root.viewMode
+        onFilterSettingsChanged: layoutGrid.rebuildModel()
+    }
+
+    Kirigami.Separator {
+        Layout.fillWidth: true
+        Layout.topMargin: Kirigami.Units.smallSpacing
+        Layout.bottomMargin: Kirigami.Units.smallSpacing
     }
 
     // ─── Scrollable content ──────────────────────────────────────────────
@@ -89,10 +113,42 @@ ColumnLayout {
                 readonly property real cellHeight: Kirigami.Units.gridUnit * 12
                 // Selected layout tracking (across sections)
                 property string selectedLayoutId: ""
+                // Capability group definitions for tiling view — hoisted to avoid
+                // recreating on every rebuildModel() call.
+                // NOTE: items matching multiple capabilities appear in multiple groups;
+                // the same card will be highlighted in both sections simultaneously.
+                readonly property var tilingCapabilityGroups: [{
+                    "key": "masterCount",
+                    "label": i18n("Master Count"),
+                    "order": 0,
+                    "test": (a) => {
+                        return a.supportsMasterCount === true;
+                    }
+                }, {
+                    "key": "splitRatio",
+                    "label": i18n("Split Ratio"),
+                    "order": 1,
+                    "test": (a) => {
+                        return a.supportsSplitRatio === true;
+                    }
+                }, {
+                    "key": "overlapping",
+                    "label": i18n("Overlapping Zones"),
+                    "order": 2,
+                    "test": (a) => {
+                        return a.producesOverlappingZones === true;
+                    }
+                }, {
+                    "key": "persistent",
+                    "label": i18n("Persistent (Memory)"),
+                    "order": 3,
+                    "test": (a) => {
+                        return a.memory === true;
+                    }
+                }]
 
                 function rebuildModel() {
                     let allLayouts = settingsController.layouts;
-                    // Filter by view mode
                     let filtered = [];
                     for (let i = 0; i < allLayouts.length; i++) {
                         let isAutotile = allLayouts[i].isAutotile === true;
@@ -101,93 +157,14 @@ ColumnLayout {
                         else if (root.viewMode === 1 && isAutotile)
                             filtered.push(allLayouts[i]);
                     }
-                    let groups = {
-                    };
-                    if (root.viewMode === 1) {
-                        // Tiling view: group by capability (algorithms can appear in multiple groups)
-                        let capGroups = [{
-                            "key": "masterCount",
-                            "label": i18n("Master Count"),
-                            "order": 0,
-                            "test": (a) => {
-                                return a.supportsMasterCount === true;
-                            }
-                        }, {
-                            "key": "overlapping",
-                            "label": i18n("Overlapping Zones"),
-                            "order": 1,
-                            "test": (a) => {
-                                return a.producesOverlappingZones === true;
-                            }
-                        }, {
-                            "key": "splitRatio",
-                            "label": i18n("Split Ratio"),
-                            "order": 2,
-                            "test": (a) => {
-                                return a.supportsSplitRatio === true;
-                            }
-                        }];
-                        for (let g = 0; g < capGroups.length; g++) {
-                            let cap = capGroups[g];
-                            groups[cap.key] = {
-                                "items": [],
-                                "order": cap.order,
-                                "label": cap.label
-                            };
-                        }
-                        for (let i = 0; i < filtered.length; i++) {
-                            let placed = false;
-                            for (let g = 0; g < capGroups.length; g++) {
-                                if (capGroups[g].test(filtered[i])) {
-                                    groups[capGroups[g].key].items.push(filtered[i]);
-                                    placed = true;
-                                }
-                            }
-                            // Algorithms with no capabilities still appear
-                            if (!placed) {
-                                if (!groups["other"])
-                                    groups["other"] = {
-                                    "items": [],
-                                    "order": 99,
-                                    "label": i18n("Other")
-                                };
-
-                                groups["other"].items.push(filtered[i]);
-                            }
-                        }
-                    } else {
-                        // Snapping view: group by sectionKey (aspect ratio, data-driven from C++)
-                        for (let i = 0; i < filtered.length; i++) {
-                            let key = filtered[i].sectionKey || "default";
-                            if (!groups[key])
-                                groups[key] = {
-                                "items": [],
-                                "order": filtered[i].sectionOrder !== undefined ? filtered[i].sectionOrder : 0,
-                                "label": filtered[i].sectionLabel || ""
-                            };
-
-                            groups[key].items.push(filtered[i]);
-                        }
-                    }
-                    // Sort items within each group alphabetically
-                    for (let key in groups) {
-                        groups[key].items.sort((a, b) => {
-                            return (a.name || "").localeCompare(b.name || "");
-                        });
-                    }
-                    // Sort groups by order, then build section model
-                    let sorted = Object.values(groups).sort((a, b) => {
-                        return a.order - b.order;
-                    });
-                    let nonEmpty = sorted.filter((g) => {
-                        return g.items.length > 0;
-                    });
-                    model = nonEmpty.map((g) => {
-                        return ({
-                            "label": nonEmpty.length > 1 ? g.label : "",
-                            "layouts": g.items
-                        });
-                    });
+                    let search = filterBar.filterText.toLowerCase();
+                    if (root.viewMode === 0)
+                        filtered = Logic.applySnappingFilters(filtered, search, filterBar);
+                    else
+                        filtered = Logic.applyTilingFilters(filtered, search, filterBar);
+                    let groups = buildGroups(filtered, filterBar.groupByIndex);
+                    Logic.sortItems(groups, filterBar.sortByIndex, filterBar.sortAscending);
+                    model = Logic.finalizeGroups(groups);
                 }
 
                 function selectDefaultLayout(mode) {
@@ -204,6 +181,40 @@ ColumnLayout {
                     return layoutId !== "";
                 }
 
+                // Grouping — kept in QML because group labels require i18n/i18np
+                function buildGroups(filtered, groupIdx) {
+                    if (root.viewMode === 1) {
+                        if (groupIdx === filterBar.groupCapability)
+                            return Logic.groupByCapability(filtered, tilingCapabilityGroups, i18n("Other"));
+                        else if (groupIdx === filterBar.groupTilingSource)
+                            return Logic.groupByBoolKey(filtered, (item) => {
+                            return Logic.isBuiltIn(item);
+                        }, "builtin", i18n("Built-in"), "user", i18n("User Scripts"));
+                        else if (groupIdx === filterBar.groupPersistent)
+                            return Logic.groupByBoolKey(filtered, (item) => {
+                            return item.memory === true;
+                        }, "persistent", i18n("Persistent"), "stateless", i18n("Stateless"));
+                        return Logic.ungrouped(filtered);
+                    }
+                    // Snapping grouping
+                    if (groupIdx === filterBar.groupAspectRatio)
+                        return Logic.groupByAspectRatio(filtered);
+                    else if (groupIdx === filterBar.groupZoneCount)
+                        return Logic.groupByZoneCount(filtered, (count) => {
+                        return i18np("%1 zone", "%1 zones", count);
+                    }, i18n("Unknown"));
+                    else if (groupIdx === filterBar.groupAutoManual)
+                        return Logic.groupByBoolKey(filtered, (item) => {
+                        return item.autoAssign === true;
+                    }, "auto", i18n("Auto"), "manual", i18n("Manual"));
+                    else if (groupIdx === filterBar.groupSource)
+                        return Logic.groupByBoolKey(filtered, (item) => {
+                        return Logic.isBuiltIn(item);
+                    }, "builtin", i18n("Built-in"), "user", i18n("User Layouts"));
+                    return Logic.ungrouped(filtered);
+                }
+
+                Layout.topMargin: Kirigami.Units.largeSpacing
                 Accessible.name: i18n("Layout grid")
                 Layout.fillWidth: true
                 Layout.leftMargin: Kirigami.Units.smallSpacing
@@ -237,8 +248,36 @@ ColumnLayout {
                     anchors.centerIn: parent
                     width: parent.width - Kirigami.Units.gridUnit * 4
                     visible: layoutGrid.count === 0
-                    text: root.viewMode === 1 ? i18n("No autotile algorithms available") : i18n("No layouts available")
-                    explanation: root.viewMode === 1 ? i18n("Enable autotiling to use tiling algorithms") : i18n("Start the PlasmaZones daemon or create a new layout")
+                    text: {
+                        if (filterBar.hasActiveFilters)
+                            return root.viewMode === 1 ? i18n("No matching algorithms") : i18n("No matching layouts");
+
+                        return root.viewMode === 1 ? i18n("No autotile algorithms available") : i18n("No layouts available");
+                    }
+                    explanation: {
+                        if (filterBar.hasActiveFilters) {
+                            let hints = [];
+                            if (root.viewMode === 0 && !filterBar.showBuiltInLayouts && !filterBar.showUserLayouts)
+                                hints.push(i18n("Both Built-in and User layout sources are hidden"));
+
+                            if (root.viewMode === 0 && !filterBar.showAutoLayouts && !filterBar.showManualLayouts)
+                                hints.push(i18n("Both Auto and Manual layout types are hidden"));
+
+                            if (root.viewMode === 1 && !filterBar.showBuiltInAlgorithms && !filterBar.showUserAlgorithms)
+                                hints.push(i18n("Both Built-in and User algorithm sources are hidden"));
+
+                            return hints.length > 0 ? hints.join("\n") : i18n("Try adjusting your filters or search terms");
+                        }
+                        return root.viewMode === 1 ? i18n("Enable autotiling to use tiling algorithms") : i18n("Start the PlasmaZones daemon or create a new layout");
+                    }
+
+                    helpfulAction: Kirigami.Action {
+                        visible: filterBar.hasActiveFilters
+                        text: i18n("Reset Filters")
+                        icon.name: "edit-reset"
+                        onTriggered: filterBar.resetFilters()
+                    }
+
                 }
 
                 // ─── Section Delegate (header + Flow of layout cards) ────────
@@ -314,7 +353,7 @@ ColumnLayout {
         id: importDialog
 
         title: i18n("Import Layout")
-        nameFilters: [i18n("JSON files (*.json)"), i18n("All files (*)")]
+        nameFilters: [i18n("JSON files") + " (*.json)", i18n("All files") + " (*)"]
         fileMode: FileDialog.OpenFile
         onAccepted: {
             settingsController.importLayout(root.filePathFromUrl(selectedFile));
@@ -328,7 +367,7 @@ ColumnLayout {
         property string layoutId: ""
 
         title: i18n("Export Layout")
-        nameFilters: [i18n("JSON files (*.json)")]
+        nameFilters: [i18n("JSON files") + " (*.json)"]
         fileMode: FileDialog.SaveFile
         onAccepted: {
             settingsController.exportLayout(exportDialog.layoutId, root.filePathFromUrl(selectedFile));
@@ -340,7 +379,7 @@ ColumnLayout {
         id: algorithmImportDialog
 
         title: i18n("Import Tiling Algorithm")
-        nameFilters: [i18n("JavaScript files (*.js)"), i18n("All files (*)")]
+        nameFilters: [i18n("JavaScript files") + " (*.js)", i18n("All files") + " (*)"]
         fileMode: FileDialog.OpenFile
         onAccepted: {
             if (settingsController.importAlgorithm(root.filePathFromUrl(selectedFile))) {
@@ -356,7 +395,7 @@ ColumnLayout {
         id: kzonesFileDialog
 
         title: i18n("Import KZones Layout File")
-        nameFilters: [i18n("JSON files (*.json)"), i18n("All files (*)")]
+        nameFilters: [i18n("JSON files") + " (*.json)", i18n("All files") + " (*)"]
         fileMode: FileDialog.OpenFile
         onAccepted: {
             settingsController.importFromKZonesFile(root.filePathFromUrl(selectedFile));
@@ -447,7 +486,7 @@ ColumnLayout {
         property string algorithmId: ""
 
         title: i18n("Export Algorithm")
-        nameFilters: ["JavaScript files (*.js)"]
+        nameFilters: [i18n("JavaScript files") + " (*.js)"]
         fileMode: FileDialog.SaveFile
         onAccepted: {
             settingsController.exportAlgorithm(algorithmExportDialog.algorithmId, root.filePathFromUrl(selectedFile));
