@@ -60,7 +60,7 @@ RowLayout {
         onActivated: (idx) => {
             root.modifierSelected(modifierOptions[idx].value);
         }
-        ToolTip.visible: hovered
+        ToolTip.visible: hovered && root.tooltipText.length > 0
         ToolTip.text: root.tooltipText
     }
 

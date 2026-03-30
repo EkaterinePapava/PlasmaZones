@@ -42,6 +42,7 @@ Item {
         // Left side: title + description
         ColumnLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: Kirigami.Units.gridUnit * 10
             spacing: Kirigami.Units.smallSpacing / 2
 
             Label {
@@ -67,6 +68,7 @@ Item {
             id: controlContainer
 
             Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+            Layout.maximumWidth: rowLayout.width * 0.45
             spacing: Kirigami.Units.smallSpacing
         }
 
