@@ -136,6 +136,26 @@ SettingsController::SettingsController(QObject* parent)
         }
     }
 
+    // Editor and fill-on-drop settings lack Q_PROPERTY on Settings, so the
+    // meta-object loop above misses their NOTIFY signals.  Connect explicitly.
+    connect(&m_settings, &Settings::editorDuplicateShortcutChanged, this,
+            &SettingsController::onSettingsPropertyChanged);
+    connect(&m_settings, &Settings::editorSplitHorizontalShortcutChanged, this,
+            &SettingsController::onSettingsPropertyChanged);
+    connect(&m_settings, &Settings::editorSplitVerticalShortcutChanged, this,
+            &SettingsController::onSettingsPropertyChanged);
+    connect(&m_settings, &Settings::editorFillShortcutChanged, this, &SettingsController::onSettingsPropertyChanged);
+    connect(&m_settings, &Settings::editorGridSnappingEnabledChanged, this,
+            &SettingsController::onSettingsPropertyChanged);
+    connect(&m_settings, &Settings::editorEdgeSnappingEnabledChanged, this,
+            &SettingsController::onSettingsPropertyChanged);
+    connect(&m_settings, &Settings::editorSnapIntervalXChanged, this, &SettingsController::onSettingsPropertyChanged);
+    connect(&m_settings, &Settings::editorSnapIntervalYChanged, this, &SettingsController::onSettingsPropertyChanged);
+    connect(&m_settings, &Settings::editorSnapOverrideModifierChanged, this,
+            &SettingsController::onSettingsPropertyChanged);
+    connect(&m_settings, &Settings::fillOnDropEnabledChanged, this, &SettingsController::onSettingsPropertyChanged);
+    connect(&m_settings, &Settings::fillOnDropModifierChanged, this, &SettingsController::onSettingsPropertyChanged);
+
     // Screen helper signals
     m_screenHelper.connectToDaemonSignals();
     m_screenHelper.refreshScreens();
@@ -284,8 +304,18 @@ void SettingsController::setActivePage(const QString& page)
         return;
     }
     if (m_activePage != resolved) {
+        // Capture dirty state BEFORE emitting, because the QML Loader
+        // reacts synchronously to activePageChanged — new page creation
+        // may trigger NOTIFY signals that set needsSave before we return.
+        const bool wasDirty = m_needsSave;
+        m_loading = true;
         m_activePage = resolved;
         Q_EMIT activePageChanged();
+        m_loading = false;
+        // Restore the dirty state that existed before page navigation.
+        // Any NOTIFY signals that fired during page creation were suppressed
+        // by m_loading and should not mark the settings as dirty.
+        setNeedsSave(wasDirty);
     }
 }
 
@@ -316,12 +346,14 @@ void SettingsController::raise()
 
 void SettingsController::load()
 {
+    m_loading = true;
     m_settings.load();
     m_screenHelper.refreshScreens();
     scheduleLayoutLoad();
     m_stagedAssignments.clear();
     m_stagedQuickSlots.clear();
     m_stagedTilingQuickSlots.clear();
+    m_loading = false;
     setNeedsSave(false);
 }
 
@@ -394,7 +426,7 @@ void SettingsController::launchEditor()
 
 void SettingsController::onSettingsPropertyChanged()
 {
-    if (!m_saving) {
+    if (!m_saving && !m_loading) {
         setNeedsSave(true);
     }
 }

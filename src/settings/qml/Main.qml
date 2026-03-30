@@ -14,7 +14,6 @@ ApplicationWindow {
     // Responsive sidebar: collapse to icon-only below 750px
     readonly property bool sidebarCompact: window.width < Kirigami.Units.gridUnit * 50
     // Track page navigation for transitions
-    property int _previousIndex: 0
     // Shortcut overlay visibility
     property bool _showShortcuts: false
     // Close-without-save guard
@@ -567,7 +566,6 @@ ApplicationWindow {
                                 window._drillIn(name);
                                 return ;
                             }
-                            window._previousIndex = sidebar.currentIndex;
                             // If selecting an inline search result child, clear search and drill into parent
                             if (sidebarSearch.text.length > 0 && _sidebarMode === "main") {
                                 let parents = Object.keys(_childItems);
@@ -706,6 +704,50 @@ ApplicationWindow {
 
                             }
 
+                            // Unsaved changes badge
+                            Rectangle {
+                                width: Kirigami.Units.smallSpacing * 1.5
+                                height: Kirigami.Units.smallSpacing * 1.5
+                                radius: width / 2
+                                color: Kirigami.Theme.neutralTextColor
+                                visible: navDelegate.isActive && settingsController.needsSave && !navDelegate.isDivider && !navDelegate.isBackButton
+                                Layout.alignment: Qt.AlignVCenter
+
+                                SequentialAnimation {
+                                    id: dirtyBadgePulse
+
+                                    property Item target: dirtyBadgePulse.parent
+
+                                    loops: Animation.Infinite
+                                    running: navDelegate.isActive && settingsController.needsSave
+                                    onRunningChanged: {
+                                        if (!running)
+                                            target.opacity = 1;
+
+                                    }
+
+                                    NumberAnimation {
+                                        target: dirtyBadgePulse.target
+                                        property: "opacity"
+                                        from: 1
+                                        to: 0.4
+                                        duration: 1000
+                                        easing.type: Easing.InOutSine
+                                    }
+
+                                    NumberAnimation {
+                                        target: dirtyBadgePulse.target
+                                        property: "opacity"
+                                        from: 0.4
+                                        to: 1
+                                        duration: 1000
+                                        easing.type: Easing.InOutSine
+                                    }
+
+                                }
+
+                            }
+
                             // Enable/disable toggle for snapping and tiling
                             SettingsSwitch {
                                 visible: (navDelegate.name === "snapping" || navDelegate.name === "tiling") && !window.sidebarCompact
@@ -762,11 +804,22 @@ ApplicationWindow {
                             color: settingsController.daemonRunning ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor
 
                             // Pulsing glow when running
-                            SequentialAnimation on opacity {
+                            SequentialAnimation {
+                                id: daemonPulse
+
+                                property Item target: daemonPulse.parent
+
                                 loops: settingsController.daemonRunning ? Animation.Infinite : 0
                                 running: settingsController.daemonRunning
+                                onRunningChanged: {
+                                    if (!running)
+                                        target.opacity = 1;
+
+                                }
 
                                 NumberAnimation {
+                                    target: daemonPulse.target
+                                    property: "opacity"
                                     from: 1
                                     to: 0.4
                                     duration: 1500
@@ -774,6 +827,8 @@ ApplicationWindow {
                                 }
 
                                 NumberAnimation {
+                                    target: daemonPulse.target
+                                    property: "opacity"
                                     from: 0.4
                                     to: 1
                                     duration: 1500
@@ -912,35 +967,6 @@ ApplicationWindow {
                                 return window._mainItemLabel(settingsController.activePage);
                             }
                             opacity: 0.5
-                        }
-
-                    }
-
-                    // Unsaved changes indicator
-                    Label {
-                        visible: settingsController.needsSave
-                        text: "●"
-                        color: Kirigami.Theme.highlightColor
-                        font: Kirigami.Theme.smallFont
-
-                        SequentialAnimation on opacity {
-                            loops: Animation.Infinite
-                            running: settingsController.needsSave
-
-                            NumberAnimation {
-                                from: 1
-                                to: 0.4
-                                duration: 1000
-                                easing.type: Easing.InOutSine
-                            }
-
-                            NumberAnimation {
-                                from: 0.4
-                                to: 1
-                                duration: 1000
-                                easing.type: Easing.InOutSine
-                            }
-
                         }
 
                     }
@@ -1430,93 +1456,86 @@ ApplicationWindow {
 
             }
 
-            Pane {
+            // -- Unsaved changes notification bar -------------------------
+            Item {
+                id: unsavedBar
+
                 Layout.fillWidth: true
-                padding: Kirigami.Units.smallSpacing * 1.5
-                topPadding: Kirigami.Units.smallSpacing * 2
-                bottomPadding: Kirigami.Units.smallSpacing * 2
+                implicitHeight: settingsController.needsSave ? unsavedBarContent.implicitHeight : 0
+                clip: true
 
-                RowLayout {
-                    anchors.fill: parent
+                Rectangle {
+                    id: unsavedBarContent
 
-                    Button {
-                        text: i18n("Reset")
-                        icon.name: "edit-undo"
-                        enabled: settingsController.needsSave
-                        flat: true
-                        onClicked: resetConfirmDialog.open()
-                        opacity: enabled ? 1 : 0.4
+                    width: parent.width
+                    implicitHeight: unsavedBarRow.implicitHeight + Kirigami.Units.smallSpacing * 3
+                    anchors.bottom: parent.bottom
+                    color: Qt.rgba(Kirigami.Theme.neutralTextColor.r, Kirigami.Theme.neutralTextColor.g, Kirigami.Theme.neutralTextColor.b, 0.12)
 
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: 150
+                    // Top accent line
+                    Rectangle {
+                        anchors.top: parent.top
+                        width: parent.width
+                        height: Math.round(Kirigami.Units.devicePixelRatio)
+                        color: Kirigami.Theme.neutralTextColor
+                        opacity: 0.4
+                    }
+
+                    RowLayout {
+                        id: unsavedBarRow
+
+                        anchors.fill: parent
+                        anchors.leftMargin: Kirigami.Units.largeSpacing
+                        anchors.rightMargin: Kirigami.Units.largeSpacing
+                        anchors.topMargin: Kirigami.Units.smallSpacing * 1.5
+                        anchors.bottomMargin: Kirigami.Units.smallSpacing * 1.5
+                        spacing: Kirigami.Units.smallSpacing
+
+                        Kirigami.Icon {
+                            source: "dialog-information"
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                            color: Kirigami.Theme.neutralTextColor
+                        }
+
+                        Label {
+                            text: i18n("Unsaved changes")
+                            color: Kirigami.Theme.neutralTextColor
+                            Layout.fillWidth: true
+                        }
+
+                        Button {
+                            text: i18n("Defaults")
+                            icon.name: "document-revert"
+                            flat: true
+                            onClicked: defaultsConfirmDialog.open()
+                        }
+
+                        Button {
+                            text: i18n("Discard")
+                            icon.name: "edit-undo"
+                            flat: true
+                            onClicked: resetConfirmDialog.open()
+                        }
+
+                        Button {
+                            text: i18n("Save")
+                            icon.name: "document-save"
+                            highlighted: true
+                            onClicked: {
+                                settingsController.save();
+                                toast.show(i18n("Settings saved"));
                             }
-
                         }
 
                     }
 
-                    Button {
-                        text: i18n("Defaults")
-                        icon.name: "document-revert"
-                        flat: true
-                        onClicked: defaultsConfirmDialog.open()
-                        opacity: 0.7
-                    }
+                }
 
-                    Item {
-                        Layout.fillWidth: true
-                    }
-
-                    Button {
-                        id: applyButton
-
-                        text: i18n("Apply")
-                        icon.name: "dialog-ok-apply"
-                        enabled: settingsController.needsSave
-                        highlighted: settingsController.needsSave
-                        onClicked: {
-                            settingsController.save();
-                            toast.show(i18n("Settings applied"));
-                        }
-
-                        // Reset scale when not pulsing
-                        Binding {
-                            target: applyButton
-                            property: "scale"
-                            value: 1
-                            when: !settingsController.needsSave
-                            restoreMode: Binding.RestoreBinding
-                        }
-
-                        // Subtle pulsing glow when changes are pending
-                        SequentialAnimation on scale {
-                            loops: Animation.Infinite
-                            running: settingsController.needsSave
-
-                            NumberAnimation {
-                                from: 1
-                                to: 1.03
-                                duration: 800
-                                easing.type: Easing.InOutSine
-                            }
-
-                            NumberAnimation {
-                                from: 1.03
-                                to: 1
-                                duration: 800
-                                easing.type: Easing.InOutSine
-                            }
-
-                        }
-
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: 150
-                            }
-
-                        }
-
+                Behavior on implicitHeight {
+                    NumberAnimation {
+                        duration: 250
+                        easing.type: Easing.OutCubic
                     }
 
                 }
