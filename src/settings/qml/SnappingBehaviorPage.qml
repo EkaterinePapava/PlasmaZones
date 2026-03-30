@@ -52,39 +52,32 @@ Flickable {
 
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {
                         title: i18n("Hold to activate")
                         description: i18n("Hold a modifier or mouse button to show zones while dragging")
-                    }
-
-                    ModifierAndMouseCheckBoxes {
-                        id: dragActivationInput
-
-                        Layout.alignment: Qt.AlignRight
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
-                        Layout.preferredWidth: Math.min(root.sliderPreferredWidth, parent.width * 0.45)
                         enabled: !alwaysActivateSwitch.checked
                         opacity: enabled ? 1 : 0.4
-                        allowMultiple: true
-                        acceptMode: acceptModeAll
-                        triggers: settingsController.dragActivationTriggers
-                        defaultTriggers: settingsController.defaultDragActivationTriggers
-                        tooltipEnabled: false
-                        onTriggersModified: (triggers) => {
-                            settingsController.dragActivationTriggers = triggers;
+
+                        ModifierAndMouseCheckBoxes {
+                            id: dragActivationInput
+
+                            width: Math.min(root.sliderPreferredWidth, Kirigami.Units.gridUnit * 16)
+                            allowMultiple: true
+                            acceptMode: acceptModeAll
+                            triggers: settingsController.dragActivationTriggers
+                            defaultTriggers: settingsController.defaultDragActivationTriggers
+                            tooltipEnabled: false
+                            onTriggersModified: (triggers) => {
+                                settingsController.dragActivationTriggers = triggers;
+                            }
                         }
+
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {
@@ -130,26 +123,22 @@ Flickable {
                     SettingsRow {
                         title: i18n("Span modifier")
                         description: i18n("Hold a modifier or mouse button while dragging to paint across zones")
-                    }
 
-                    ModifierAndMouseCheckBoxes {
-                        Layout.alignment: Qt.AlignRight
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
-                        Layout.preferredWidth: Math.min(root.sliderPreferredWidth, parent.width * 0.45)
-                        allowMultiple: true
-                        acceptMode: acceptModeAll
-                        triggers: settingsController.zoneSpanTriggers
-                        defaultTriggers: settingsController.defaultZoneSpanTriggers
-                        tooltipEnabled: false
-                        onTriggersModified: (triggers) => {
-                            settingsController.zoneSpanTriggers = triggers;
+                        ModifierAndMouseCheckBoxes {
+                            width: Math.min(root.sliderPreferredWidth, Kirigami.Units.gridUnit * 16)
+                            allowMultiple: true
+                            acceptMode: acceptModeAll
+                            triggers: settingsController.zoneSpanTriggers
+                            defaultTriggers: settingsController.defaultZoneSpanTriggers
+                            tooltipEnabled: false
+                            onTriggersModified: (triggers) => {
+                                settingsController.zoneSpanTriggers = triggers;
+                            }
                         }
+
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {
@@ -207,10 +196,7 @@ Flickable {
 
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {
@@ -218,22 +204,19 @@ Flickable {
                         description: i18n("Hold this modifier when releasing a window to show the picker for that snap only")
                         enabled: !snapAssistAlwaysSwitch.checked
                         opacity: enabled ? 1 : 0.4
-                    }
 
-                    ModifierAndMouseCheckBoxes {
-                        Layout.alignment: Qt.AlignRight
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
-                        Layout.preferredWidth: Math.min(root.sliderPreferredWidth, parent.width * 0.45)
-                        enabled: !snapAssistAlwaysSwitch.checked
-                        opacity: enabled ? 1 : 0.4
-                        allowMultiple: true
-                        acceptMode: acceptModeAll
-                        triggers: settingsController.snapAssistTriggers
-                        defaultTriggers: settingsController.defaultSnapAssistTriggers
-                        tooltipEnabled: false
-                        onTriggersModified: (triggers) => {
-                            settingsController.snapAssistTriggers = triggers;
+                        ModifierAndMouseCheckBoxes {
+                            width: Math.min(root.sliderPreferredWidth, Kirigami.Units.gridUnit * 16)
+                            allowMultiple: true
+                            acceptMode: acceptModeAll
+                            triggers: settingsController.snapAssistTriggers
+                            defaultTriggers: settingsController.defaultSnapAssistTriggers
+                            tooltipEnabled: false
+                            onTriggersModified: (triggers) => {
+                                settingsController.snapAssistTriggers = triggers;
+                            }
                         }
+
                     }
 
                 }
@@ -271,10 +254,7 @@ Flickable {
 
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {
@@ -324,10 +304,7 @@ Flickable {
 
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {
@@ -342,10 +319,7 @@ Flickable {
 
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {
@@ -360,10 +334,7 @@ Flickable {
 
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {
@@ -378,10 +349,7 @@ Flickable {
 
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {

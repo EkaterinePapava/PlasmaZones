@@ -54,11 +54,12 @@ Item {
             Label {
                 text: root.description
                 Layout.fillWidth: true
-                elide: Text.ElideRight
                 font: Kirigami.Theme.smallFont
                 opacity: 0.6
                 visible: root.description.length > 0
                 wrapMode: Text.Wrap
+                maximumLineCount: 3
+                elide: Text.ElideRight
             }
 
         }

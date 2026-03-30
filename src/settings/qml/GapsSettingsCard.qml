@@ -50,10 +50,7 @@ SettingsCard {
 
         }
 
-        Kirigami.Separator {
-            Layout.fillWidth: true
-            Layout.leftMargin: Kirigami.Units.largeSpacing
-            Layout.rightMargin: Kirigami.Units.largeSpacing
+        SettingsSeparator {
         }
 
         SettingsRow {
@@ -184,10 +181,7 @@ SettingsCard {
 
         }
 
-        Kirigami.Separator {
-            Layout.fillWidth: true
-            Layout.leftMargin: Kirigami.Units.largeSpacing
-            Layout.rightMargin: Kirigami.Units.largeSpacing
+        SettingsSeparator {
         }
 
         SettingsRow {

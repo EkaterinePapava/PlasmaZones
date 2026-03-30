@@ -47,10 +47,7 @@ Flickable {
 
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {
@@ -65,10 +62,7 @@ Flickable {
 
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {
@@ -126,10 +120,7 @@ Flickable {
 
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {
@@ -154,10 +145,7 @@ Flickable {
                         visible: !settingsController.cavaAvailable
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {

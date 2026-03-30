@@ -44,10 +44,7 @@ Item {
 
             }
 
-            Kirigami.Separator {
-                Layout.fillWidth: true
-                Layout.leftMargin: Kirigami.Units.largeSpacing
-                Layout.rightMargin: Kirigami.Units.largeSpacing
+            SettingsSeparator {
             }
 
             SettingsRow {
@@ -62,10 +59,7 @@ Item {
 
             }
 
-            Kirigami.Separator {
-                Layout.fillWidth: true
-                Layout.leftMargin: Kirigami.Units.largeSpacing
-                Layout.rightMargin: Kirigami.Units.largeSpacing
+            SettingsSeparator {
             }
 
             SettingsRow {
@@ -89,10 +83,7 @@ Item {
 
             }
 
-            Kirigami.Separator {
-                Layout.fillWidth: true
-                Layout.leftMargin: Kirigami.Units.largeSpacing
-                Layout.rightMargin: Kirigami.Units.largeSpacing
+            SettingsSeparator {
             }
 
             SettingsRow {

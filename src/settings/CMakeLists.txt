@@ -93,6 +93,7 @@ qt_add_qml_module(plasmazones-settings
         qml/SettingsToggleRow.qml
         qml/SettingsSwitch.qml
         qml/SettingsRow.qml
+        qml/SettingsSeparator.qml
         qml/SettingsButtonGroup.qml
         qml/ColorSwatchRow.qml
         qml/NewLayoutDialog.qml

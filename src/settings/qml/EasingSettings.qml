@@ -285,10 +285,7 @@ ColumnLayout {
 
     }
 
-    Kirigami.Separator {
-        Layout.fillWidth: true
-        Layout.leftMargin: Kirigami.Units.largeSpacing
-        Layout.rightMargin: Kirigami.Units.largeSpacing
+    SettingsSeparator {
     }
 
     // ── Direction ───────────────────────────────────────────────────────────
@@ -409,10 +406,7 @@ ColumnLayout {
 
     }
 
-    Kirigami.Separator {
-        Layout.fillWidth: true
-        Layout.leftMargin: Kirigami.Units.largeSpacing
-        Layout.rightMargin: Kirigami.Units.largeSpacing
+    SettingsSeparator {
     }
 
     // ── Duration ────────────────────────────────────────────────────────────
@@ -435,10 +429,7 @@ ColumnLayout {
 
     }
 
-    Kirigami.Separator {
-        Layout.fillWidth: true
-        Layout.leftMargin: Kirigami.Units.largeSpacing
-        Layout.rightMargin: Kirigami.Units.largeSpacing
+    SettingsSeparator {
     }
 
     // ── Multiple windows ────────────────────────────────────────────────────
@@ -478,10 +469,7 @@ ColumnLayout {
 
     }
 
-    Kirigami.Separator {
-        Layout.fillWidth: true
-        Layout.leftMargin: Kirigami.Units.largeSpacing
-        Layout.rightMargin: Kirigami.Units.largeSpacing
+    SettingsSeparator {
     }
 
     // ── Minimum distance ────────────────────────────────────────────────────

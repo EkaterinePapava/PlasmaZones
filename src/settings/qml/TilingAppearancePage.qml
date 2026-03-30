@@ -10,8 +10,6 @@ import org.kde.kirigami as Kirigami
 Flickable {
     id: root
 
-    readonly property bool bordersActive: hideTitleBarsCheck.checked || showBorderCheck.checked
-
     contentHeight: content.implicitHeight
     clip: true
 
@@ -46,10 +44,7 @@ Flickable {
 
                 }
 
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.largeSpacing
-                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                SettingsSeparator {
                     visible: !useSystemColorsCheck.checked
                 }
 
@@ -58,7 +53,7 @@ Flickable {
                     title: i18n("Active border color")
                     description: i18n("Border color for the focused window")
 
-                    ColorButton {
+                    ColorSwatchRow {
                         color: appSettings.autotileBorderColor
                         onClicked: {
                             activeBorderColorDialog.selectedColor = appSettings.autotileBorderColor;
@@ -68,10 +63,7 @@ Flickable {
 
                 }
 
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.largeSpacing
-                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                SettingsSeparator {
                     visible: !useSystemColorsCheck.checked
                 }
 
@@ -80,7 +72,7 @@ Flickable {
                     title: i18n("Inactive border color")
                     description: i18n("Border color for unfocused windows")
 
-                    ColorButton {
+                    ColorSwatchRow {
                         color: appSettings.autotileInactiveBorderColor
                         onClicked: {
                             inactiveBorderColorDialog.selectedColor = appSettings.autotileInactiveBorderColor;
@@ -152,10 +144,7 @@ Flickable {
 
                 }
 
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.largeSpacing
-                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                SettingsSeparator {
                 }
 
                 SettingsRow {

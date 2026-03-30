@@ -48,10 +48,7 @@ SettingsCard {
                 spacing: 0
 
                 // Separator between items (not before the first)
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.largeSpacing
-                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                SettingsSeparator {
                     visible: slotDelegate.index > 0
                 }
 

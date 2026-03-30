@@ -160,10 +160,7 @@ ColumnLayout {
 
                 }
 
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.largeSpacing
-                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                SettingsSeparator {
                 }
 
                 // Trigger distance
@@ -254,10 +251,7 @@ ColumnLayout {
 
                 }
 
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.largeSpacing
-                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                SettingsSeparator {
                     visible: root.effectiveLayoutMode === 0
                 }
 
@@ -280,10 +274,7 @@ ColumnLayout {
 
                 }
 
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.largeSpacing
-                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                SettingsSeparator {
                     visible: root.effectiveLayoutMode === 0
                 }
 

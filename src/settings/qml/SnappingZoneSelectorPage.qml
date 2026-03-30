@@ -111,10 +111,7 @@ Flickable {
 
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
-                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    SettingsSeparator {
                     }
 
                     SettingsRow {

@@ -293,10 +293,7 @@ Flickable {
 
                 }
 
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.largeSpacing
-                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                SettingsSeparator {
                 }
 
                 // Max windows
@@ -332,10 +329,7 @@ Flickable {
                 }
 
                 // Algorithm-specific settings (master-stack, three-column, centered-master)
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.largeSpacing
-                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                SettingsSeparator {
                     visible: root.algoSupportsSplitRatio || root.algoSupportsMasterCount
                 }
 
@@ -371,10 +365,7 @@ Flickable {
 
                 }
 
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.largeSpacing
-                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                SettingsSeparator {
                     visible: root.algoSupportsMasterCount
                 }
 
