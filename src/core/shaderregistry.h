@@ -69,6 +69,8 @@ public:
         QString category; ///< Hierarchical category path (e.g. "Organic", "Audio Visualizer")
         QList<ParameterInfo> parameters;
 
+        QHash<QString, QVariantMap> presets; ///< Named parameter presets (key=name, value=param ID→value)
+
         bool isUserShader = false; ///< True for ~/.local/share shaders
         bool isMultipass = false; ///< True if multipass and bufferShader are set
         bool useWallpaper = false; ///< True if shader subscribes to desktop wallpaper texture (binding 11)
@@ -145,6 +147,25 @@ public:
      * Open user shader directory in file manager
      */
     Q_INVOKABLE void openUserShaderDirectory() const;
+
+    /**
+     * Get named preset parameter values for a shader
+     * @param shaderId Shader UUID
+     * @param presetName Name of the preset
+     * @return Parameter values (keyed by param ID), validated and filled with defaults
+     */
+    Q_INVOKABLE QVariantMap presetParams(const QString& shaderId, const QString& presetName) const;
+
+    /**
+     * Get list of preset names for a shader
+     */
+    Q_INVOKABLE QStringList shaderPresetNames(const QString& shaderId) const;
+
+    /**
+     * Get all presets for a shader as QVariantList for D-Bus/QML
+     * Each entry: {name: "Blue", params: {speed: 0.2, ...}}
+     */
+    Q_INVOKABLE QVariantList shaderPresetsVariant(const QString& shaderId) const;
 
     /**
      * Validate shader parameters against schema

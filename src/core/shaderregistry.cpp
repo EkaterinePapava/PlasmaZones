@@ -527,6 +527,19 @@ ShaderRegistry::ShaderInfo ShaderRegistry::loadShaderMetadata(const QString& sha
         }
     }
 
+    // Parse presets (named parameter configurations)
+    const QJsonObject presetsObj = root.value(QLatin1String("presets")).toObject();
+    for (auto it = presetsObj.begin(); it != presetsObj.end(); ++it) {
+        const QJsonObject values = it.value().toObject();
+        QVariantMap presetValues;
+        for (auto vit = values.begin(); vit != values.end(); ++vit) {
+            presetValues[vit.key()] = vit.value().toVariant();
+        }
+        if (!presetValues.isEmpty()) {
+            info.presets[it.key()] = presetValues;
+        }
+    }
+
     return info;
 }
 
