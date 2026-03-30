@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 fuddlesworth
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -87,16 +88,81 @@ RowLayout {
         filterSettingsChanged();
     }
 
-    spacing: Kirigami.Units.smallSpacing
-    // Reset all state when view mode changes
-    onViewModeChanged: {
-        root.groupByIndex = 0;
-        root.sortByIndex = 0;
-        root.sortAscending = true;
-        groupByCombo.currentIndex = 0;
-        sortByCombo.currentIndex = 0;
-        resetFilters();
+    function saveState(mode) {
+        if (mode === 0) {
+            persistedState.snappingGroupByIndex = groupByIndex;
+            persistedState.snappingSortByIndex = sortByIndex;
+            persistedState.snappingSortAscending = sortAscending;
+            persistedState.snappingShowHidden = showHidden;
+            persistedState.snappingShowAspectAny = showAspectAny;
+            persistedState.snappingShowAspectStandard = showAspectStandard;
+            persistedState.snappingShowAspectUltrawide = showAspectUltrawide;
+            persistedState.snappingShowAspectSuperUltrawide = showAspectSuperUltrawide;
+            persistedState.snappingShowAspectPortrait = showAspectPortrait;
+            persistedState.snappingShowAutoLayouts = showAutoLayouts;
+            persistedState.snappingShowManualLayouts = showManualLayouts;
+            persistedState.snappingShowBuiltInLayouts = showBuiltInLayouts;
+            persistedState.snappingShowUserLayouts = showUserLayouts;
+        } else {
+            persistedState.tilingGroupByIndex = groupByIndex;
+            persistedState.tilingSortByIndex = sortByIndex;
+            persistedState.tilingSortAscending = sortAscending;
+            persistedState.tilingShowHidden = showHidden;
+            persistedState.tilingShowBuiltInAlgorithms = showBuiltInAlgorithms;
+            persistedState.tilingShowUserAlgorithms = showUserAlgorithms;
+            persistedState.tilingShowMasterCount = showMasterCount;
+            persistedState.tilingShowSplitRatio = showSplitRatio;
+            persistedState.tilingShowOverlapping = showOverlapping;
+            persistedState.tilingShowPersistent = showPersistent;
+        }
     }
+
+    function loadState(mode) {
+        _resetting = true;
+        searchField.clear();
+        filterText = "";
+        if (mode === 0) {
+            let maxGroup = snappingGroupModel.length - 1;
+            let maxSort = snappingSortModel.length - 1;
+            groupByIndex = Math.min(persistedState.snappingGroupByIndex, maxGroup);
+            sortByIndex = Math.min(persistedState.snappingSortByIndex, maxSort);
+            sortAscending = persistedState.snappingSortAscending;
+            showHidden = persistedState.snappingShowHidden;
+            showAspectAny = persistedState.snappingShowAspectAny;
+            showAspectStandard = persistedState.snappingShowAspectStandard;
+            showAspectUltrawide = persistedState.snappingShowAspectUltrawide;
+            showAspectSuperUltrawide = persistedState.snappingShowAspectSuperUltrawide;
+            showAspectPortrait = persistedState.snappingShowAspectPortrait;
+            showAutoLayouts = persistedState.snappingShowAutoLayouts;
+            showManualLayouts = persistedState.snappingShowManualLayouts;
+            showBuiltInLayouts = persistedState.snappingShowBuiltInLayouts;
+            showUserLayouts = persistedState.snappingShowUserLayouts;
+        } else {
+            let maxGroup = tilingGroupModel.length - 1;
+            let maxSort = tilingSortModel.length - 1;
+            groupByIndex = Math.min(persistedState.tilingGroupByIndex, maxGroup);
+            sortByIndex = Math.min(persistedState.tilingSortByIndex, maxSort);
+            sortAscending = persistedState.tilingSortAscending;
+            showHidden = persistedState.tilingShowHidden;
+            showBuiltInAlgorithms = persistedState.tilingShowBuiltInAlgorithms;
+            showUserAlgorithms = persistedState.tilingShowUserAlgorithms;
+            showMasterCount = persistedState.tilingShowMasterCount;
+            showSplitRatio = persistedState.tilingShowSplitRatio;
+            showOverlapping = persistedState.tilingShowOverlapping;
+            showPersistent = persistedState.tilingShowPersistent;
+        }
+        _resetting = false;
+        filterSettingsChanged();
+    }
+
+    onFilterSettingsChanged: saveState(viewMode)
+    spacing: Kirigami.Units.smallSpacing
+    // Save current mode state, then load the new mode's persisted state
+    onViewModeChanged: {
+        saveState(viewMode === 0 ? 1 : 0); // save the *previous* mode
+        loadState(viewMode);
+    }
+    Component.onCompleted: loadState(viewMode)
 
     // ── Group By ────────────────────────────────────────────────────────────
     Label {
@@ -344,6 +410,39 @@ RowLayout {
         ResetMenuItem {
         }
 
+    }
+
+    // ── Persisted UI state (per view mode) ───────────────────────────────
+    Settings {
+        id: persistedState
+
+        // Snapping mode
+        property int snappingGroupByIndex: 0
+        property int snappingSortByIndex: 0
+        property bool snappingSortAscending: true
+        property bool snappingShowHidden: false
+        property bool snappingShowAspectAny: true
+        property bool snappingShowAspectStandard: true
+        property bool snappingShowAspectUltrawide: true
+        property bool snappingShowAspectSuperUltrawide: true
+        property bool snappingShowAspectPortrait: true
+        property bool snappingShowAutoLayouts: true
+        property bool snappingShowManualLayouts: true
+        property bool snappingShowBuiltInLayouts: true
+        property bool snappingShowUserLayouts: true
+        // Tiling mode
+        property int tilingGroupByIndex: 0
+        property int tilingSortByIndex: 0
+        property bool tilingSortAscending: true
+        property bool tilingShowHidden: false
+        property bool tilingShowBuiltInAlgorithms: true
+        property bool tilingShowUserAlgorithms: true
+        property bool tilingShowMasterCount: true
+        property bool tilingShowSplitRatio: true
+        property bool tilingShowOverlapping: true
+        property bool tilingShowPersistent: true
+
+        category: "LayoutFilterBar"
     }
 
     // Checkable menu item that writes back to a named root filter property

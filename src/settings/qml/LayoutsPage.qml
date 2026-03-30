@@ -179,6 +179,16 @@ ColumnLayout {
                     return item.isSystem || item.hasSystemOrigin;
                 }
 
+                function matchesCommonFilters(item, search) {
+                    if (search.length > 0 && !(item.name || "").toLowerCase().includes(search) && !(item.description || "").toLowerCase().includes(search))
+                        return false;
+
+                    if (!filterBar.showHidden && item.hiddenFromSelector === true)
+                        return false;
+
+                    return true;
+                }
+
                 function applyFilters(filtered) {
                     let search = filterBar.filterText.toLowerCase();
                     if (root.viewMode === 0) {
@@ -190,10 +200,7 @@ ColumnLayout {
                             "portrait": filterBar.showAspectPortrait
                         };
                         filtered = filtered.filter((item) => {
-                            if (search.length > 0 && !(item.name || "").toLowerCase().includes(search) && !(item.description || "").toLowerCase().includes(search))
-                                return false;
-
-                            if (!filterBar.showHidden && item.hiddenFromSelector === true)
+                            if (!matchesCommonFilters(item, search))
                                 return false;
 
                             let cls = item.aspectRatioClass || "any";
@@ -215,11 +222,10 @@ ColumnLayout {
                             return true;
                         });
                     } else {
+                        // Algorithms expose isSystem only (no hasSystemOrigin),
+                        // so isBuiltIn() is not used here.
                         filtered = filtered.filter((item) => {
-                            if (search.length > 0 && !(item.name || "").toLowerCase().includes(search) && !(item.description || "").toLowerCase().includes(search))
-                                return false;
-
-                            if (!filterBar.showHidden && item.hiddenFromSelector === true)
+                            if (!matchesCommonFilters(item, search))
                                 return false;
 
                             if (item.isSystem && !filterBar.showBuiltInAlgorithms)
