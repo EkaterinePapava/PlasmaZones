@@ -16,7 +16,6 @@ import org.kde.kirigami as Kirigami
 TextField {
     id: root
 
-    property string formLabel
     property string keySequence
     property string tooltipText
     property bool capturing: false
@@ -168,7 +167,6 @@ TextField {
     }
 
     Layout.fillWidth: true
-    Kirigami.FormData.label: formLabel
     text: capturing ? i18n("Press keys...") : (keySequence || "")
     placeholderText: "Ctrl+Shift+X"
     readOnly: true

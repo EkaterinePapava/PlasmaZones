@@ -109,7 +109,7 @@ SettingsCard {
                 from: root.gapMin
                 to: root.gapMax
                 onValueModified: root.outerGapTopModified(value)
-                Accessible.name: i18n("Top gap")
+                Accessible.name: i18nc("@label", "Top gap")
 
                 Binding on value {
                     value: root.outerGapTopValue
@@ -129,7 +129,7 @@ SettingsCard {
                 from: root.gapMin
                 to: root.gapMax
                 onValueModified: root.outerGapBottomModified(value)
-                Accessible.name: i18n("Bottom gap")
+                Accessible.name: i18nc("@label", "Bottom gap")
 
                 Binding on value {
                     value: root.outerGapBottomValue
@@ -149,7 +149,7 @@ SettingsCard {
                 from: root.gapMin
                 to: root.gapMax
                 onValueModified: root.outerGapLeftModified(value)
-                Accessible.name: i18n("Left gap")
+                Accessible.name: i18nc("@label", "Left gap")
 
                 Binding on value {
                     value: root.outerGapLeftValue
@@ -169,7 +169,7 @@ SettingsCard {
                 from: root.gapMin
                 to: root.gapMax
                 onValueModified: root.outerGapRightModified(value)
-                Accessible.name: i18n("Right gap")
+                Accessible.name: i18nc("@label", "Right gap")
 
                 Binding on value {
                     value: root.outerGapRightValue

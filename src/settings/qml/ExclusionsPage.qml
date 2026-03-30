@@ -75,16 +75,18 @@ Flickable {
                         title: i18n("Minimum window width")
                         description: appSettings.minimumWindowWidth === 0 ? i18n("Disabled — no width threshold") : i18n("Windows narrower than this are excluded")
 
-                        SpinBox {
+                        SettingsSpinBox {
                             from: 0
                             to: 1000
                             stepSize: 10
                             value: appSettings.minimumWindowWidth
-                            onValueModified: appSettings.minimumWindowWidth = value
+                            unitText: ""
+                            onValueModified: (value) => {
+                                return appSettings.minimumWindowWidth = value;
+                            }
                             textFromValue: function(value) {
                                 return value === 0 ? i18n("Off") : value + " px";
                             }
-                            Accessible.name: i18n("Minimum window width")
                         }
 
                     }
@@ -96,16 +98,18 @@ Flickable {
                         title: i18n("Minimum window height")
                         description: appSettings.minimumWindowHeight === 0 ? i18n("Disabled — no height threshold") : i18n("Windows shorter than this are excluded")
 
-                        SpinBox {
+                        SettingsSpinBox {
                             from: 0
                             to: 1000
                             stepSize: 10
                             value: appSettings.minimumWindowHeight
-                            onValueModified: appSettings.minimumWindowHeight = value
+                            unitText: ""
+                            onValueModified: (value) => {
+                                return appSettings.minimumWindowHeight = value;
+                            }
                             textFromValue: function(value) {
                                 return value === 0 ? i18n("Off") : value + " px";
                             }
-                            Accessible.name: i18n("Minimum window height")
                         }
 
                     }

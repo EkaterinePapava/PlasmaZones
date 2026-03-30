@@ -73,6 +73,7 @@ Item {
                     readonly property int osdStyleText: 1
                     readonly property int osdStylePreview: 2
 
+                    Accessible.name: i18n("OSD style")
                     enabled: osdRoot.appSettings.showOsdOnLayoutSwitch || osdRoot.appSettings.showNavigationOsd
                     currentIndex: Math.max(0, Math.min(osdRoot.appSettings.osdStyle, 2))
                     model: [i18n("None"), i18n("Text only"), i18n("Visual preview")]
@@ -91,6 +92,7 @@ Item {
                 description: i18n("How zones appear while dragging a window")
 
                 WideComboBox {
+                    Accessible.name: i18n("Overlay style")
                     currentIndex: Math.max(0, Math.min(osdRoot.appSettings.overlayDisplayMode, 1))
                     model: [i18n("Full zone highlight"), i18n("Compact preview")]
                     onActivated: (index) => {

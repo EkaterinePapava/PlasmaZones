@@ -29,6 +29,9 @@ Item {
     Layout.fillWidth: true
     implicitWidth: rowLayout.implicitWidth
     implicitHeight: rowLayout.implicitHeight
+    Accessible.name: root.title
+    Accessible.description: root.description
+    Accessible.role: Accessible.Row
 
     RowLayout {
         id: rowLayout
@@ -55,7 +58,7 @@ Item {
                 text: root.description
                 Layout.fillWidth: true
                 font: Kirigami.Theme.smallFont
-                opacity: 0.6
+                color: Kirigami.Theme.disabledTextColor
                 visible: root.description.length > 0
                 wrapMode: Text.Wrap
                 maximumLineCount: 3

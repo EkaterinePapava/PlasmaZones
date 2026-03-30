@@ -322,7 +322,7 @@ ColumnLayout {
                 // Live preview - centered
                 Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: root.effectivePreviewHeight + 50
+                    Layout.preferredHeight: root.effectivePreviewHeight + Kirigami.Units.gridUnit * 3
 
                     // Preview container
                     Item {

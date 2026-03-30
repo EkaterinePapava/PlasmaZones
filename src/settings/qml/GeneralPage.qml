@@ -55,7 +55,7 @@ Flickable {
                         id: easingPreview
 
                         Layout.fillWidth: true
-                        Layout.maximumWidth: 500
+                        Layout.maximumWidth: Kirigami.Units.gridUnit * 28
                         Layout.alignment: Qt.AlignHCenter
                         curve: appSettings.animationEasingCurve
                         animationDuration: appSettings.animationDuration
@@ -66,8 +66,7 @@ Flickable {
                         }
                     }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
+                    SettingsSeparator {
                     }
 
                     // Easing controls (extracted component)

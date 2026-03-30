@@ -35,6 +35,7 @@ Flickable {
 
                     ComboBox {
                         Layout.fillWidth: false
+                        Accessible.name: i18n("New window placement")
                         textRole: "text"
                         valueRole: "value"
                         model: [{

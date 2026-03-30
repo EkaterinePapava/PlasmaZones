@@ -363,6 +363,7 @@ Flickable {
                         WideComboBox {
                             id: stickyHandlingCombo
 
+                            Accessible.name: i18n("Sticky windows")
                             textRole: "text"
                             valueRole: "value"
                             model: [{

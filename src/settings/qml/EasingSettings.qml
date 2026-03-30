@@ -438,6 +438,7 @@ ColumnLayout {
         description: i18n("How to animate when moving several windows at once")
 
         WideComboBox {
+            Accessible.name: i18n("Multiple windows")
             enabled: easingRoot.animationsEnabled
             model: [i18n("All at once"), i18n("One by one")]
             currentIndex: easingRoot.appSettings.animationSequenceMode

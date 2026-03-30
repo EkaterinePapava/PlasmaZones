@@ -139,6 +139,9 @@ Flickable {
 
                     }
 
+                    SettingsSeparator {
+                    }
+
                     SettingsRow {
                         title: i18n("Per-side outer gaps")
                         description: perSideSwitch.checked ? i18n("Set different gap sizes for each screen edge") : i18n("Use a single outer gap value for all edges")

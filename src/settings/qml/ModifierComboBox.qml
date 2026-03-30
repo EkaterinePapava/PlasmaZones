@@ -16,12 +16,10 @@ RowLayout {
     id: root
 
     property int modifierValue: 0
-    property string formLabel
     property string tooltipText
 
     signal modifierSelected(int value)
 
-    Kirigami.FormData.label: formLabel
     spacing: Kirigami.Units.smallSpacing
 
     ComboBox {

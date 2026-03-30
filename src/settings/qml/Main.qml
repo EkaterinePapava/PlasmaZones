@@ -14,7 +14,6 @@ ApplicationWindow {
     // Responsive sidebar: collapse to icon-only below 750px
     readonly property bool sidebarCompact: window.width < Kirigami.Units.gridUnit * 50
     // Track page navigation for transitions
-    property int _previousIndex: 0
     // Shortcut overlay visibility
     property bool _showShortcuts: false
     // Close-without-save guard
@@ -567,7 +566,6 @@ ApplicationWindow {
                                 window._drillIn(name);
                                 return ;
                             }
-                            window._previousIndex = sidebar.currentIndex;
                             // If selecting an inline search result child, clear search and drill into parent
                             if (sidebarSearch.text.length > 0 && _sidebarMode === "main") {
                                 let parents = Object.keys(_childItems);
@@ -715,11 +713,22 @@ ApplicationWindow {
                                 visible: navDelegate.isActive && settingsController.needsSave && !navDelegate.isDivider && !navDelegate.isBackButton
                                 Layout.alignment: Qt.AlignVCenter
 
-                                SequentialAnimation on opacity {
+                                SequentialAnimation {
+                                    id: dirtyBadgePulse
+
+                                    property Item target: dirtyBadgePulse.parent
+
                                     loops: Animation.Infinite
                                     running: navDelegate.isActive && settingsController.needsSave
+                                    onRunningChanged: {
+                                        if (!running)
+                                            target.opacity = 1;
+
+                                    }
 
                                     NumberAnimation {
+                                        target: dirtyBadgePulse.target
+                                        property: "opacity"
                                         from: 1
                                         to: 0.4
                                         duration: 1000
@@ -727,6 +736,8 @@ ApplicationWindow {
                                     }
 
                                     NumberAnimation {
+                                        target: dirtyBadgePulse.target
+                                        property: "opacity"
                                         from: 0.4
                                         to: 1
                                         duration: 1000
@@ -793,11 +804,22 @@ ApplicationWindow {
                             color: settingsController.daemonRunning ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor
 
                             // Pulsing glow when running
-                            SequentialAnimation on opacity {
+                            SequentialAnimation {
+                                id: daemonPulse
+
+                                property Item target: daemonPulse.parent
+
                                 loops: settingsController.daemonRunning ? Animation.Infinite : 0
                                 running: settingsController.daemonRunning
+                                onRunningChanged: {
+                                    if (!running)
+                                        target.opacity = 1;
+
+                                }
 
                                 NumberAnimation {
+                                    target: daemonPulse.target
+                                    property: "opacity"
                                     from: 1
                                     to: 0.4
                                     duration: 1500
@@ -805,6 +827,8 @@ ApplicationWindow {
                                 }
 
                                 NumberAnimation {
+                                    target: daemonPulse.target
+                                    property: "opacity"
                                     from: 0.4
                                     to: 1
                                     duration: 1500

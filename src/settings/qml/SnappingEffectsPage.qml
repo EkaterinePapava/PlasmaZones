@@ -154,7 +154,6 @@ Flickable {
                         title: i18n("Spectrum bars")
                         description: i18n("Number of frequency bands in the audio visualization")
                         enabled: audioVizSwitch.checked && settingsController.cavaAvailable
-                        opacity: enabled ? 1 : 0.4
 
                         SettingsSlider {
                             from: settingsController.audioSpectrumBarCountMin
