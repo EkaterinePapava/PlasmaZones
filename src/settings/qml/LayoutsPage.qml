@@ -129,14 +129,14 @@ ColumnLayout {
                     let search = filterBar.filterText.toLowerCase();
                     if (search.length > 0)
                         filtered = filtered.filter((item) => {
-                            return (item.name || "").toLowerCase().includes(search) || (item.description || "").toLowerCase().includes(search);
-                        });
+                        return (item.name || "").toLowerCase().includes(search) || (item.description || "").toLowerCase().includes(search);
+                    });
 
                     // Hidden filter (applies to both modes)
                     if (!filterBar.showHidden)
                         filtered = filtered.filter((item) => {
-                            return item.hiddenFromSelector !== true;
-                        });
+                        return item.hiddenFromSelector !== true;
+                    });
 
                     if (root.viewMode === 0) {
                         // Snapping: aspect-ratio class filter
@@ -149,6 +149,7 @@ ColumnLayout {
                         };
                         filtered = filtered.filter((item) => {
                             let cls = item.aspectRatioClass || "any";
+                            // Unknown classes pass through (arMap[cls] is undefined, not false)
                             return arMap[cls] !== false;
                         });
                         // Source filter (built-in vs user)
@@ -164,11 +165,11 @@ ColumnLayout {
                         // Auto-assign filter
                         if (filterBar.showAutoAssignOnly)
                             filtered = filtered.filter((item) => {
-                                return item.autoAssign === true;
-                            });
+                            return item.autoAssign === true;
+                        });
 
                     } else {
-                        // Tiling: source filter
+                        // Tiling: source filter (algorithms don't have hasSystemOrigin)
                         filtered = filtered.filter((item) => {
                             if (item.isSystem && !filterBar.showSystemAlgorithms)
                                 return false;
@@ -182,20 +183,20 @@ ColumnLayout {
                         let hasCapFilter = filterBar.onlyMasterCount || filterBar.onlySplitRatio || filterBar.onlyOverlapping || filterBar.onlyPersistent;
                         if (hasCapFilter)
                             filtered = filtered.filter((item) => {
-                                if (filterBar.onlyMasterCount && item.supportsMasterCount === true)
-                                    return true;
+                            if (filterBar.onlyMasterCount && item.supportsMasterCount === true)
+                                return true;
 
-                                if (filterBar.onlySplitRatio && item.supportsSplitRatio === true)
-                                    return true;
+                            if (filterBar.onlySplitRatio && item.supportsSplitRatio === true)
+                                return true;
 
-                                if (filterBar.onlyOverlapping && item.producesOverlappingZones === true)
-                                    return true;
+                            if (filterBar.onlyOverlapping && item.producesOverlappingZones === true)
+                                return true;
 
-                                if (filterBar.onlyPersistent && item.memory === true)
-                                    return true;
+                            if (filterBar.onlyPersistent && item.memory === true)
+                                return true;
 
-                                return false;
-                            });
+                            return false;
+                        });
 
                     }
                     // ── Step 3: group ────────────────────────────────────────
@@ -255,60 +256,23 @@ ColumnLayout {
                                     groups["other"].items.push(filtered[i]);
                                 }
                             }
-                        } else if (groupIdx === 1) {
+                        } else if (groupIdx === 1)
                             // Source (built-in vs user scripts)
-                            for (let i = 0; i < filtered.length; i++) {
-                                let item = filtered[i];
-                                let key, label, order;
-                                if (item.isSystem) {
-                                    key = "builtin";
-                                    label = i18n("Built-in");
-                                    order = 0;
-                                } else {
-                                    key = "user";
-                                    label = i18n("User Scripts");
-                                    order = 1;
-                                }
-                                if (!groups[key])
-                                    groups[key] = {
-                                    "items": [],
-                                    "order": order,
-                                    "label": label
-                                };
-
-                                groups[key].items.push(item);
-                            }
-                        } else if (groupIdx === 2) {
+                            groups = groupByBoolKey(filtered, (item) => {
+                                return item.isSystem;
+                            }, "builtin", i18n("Built-in"), "user", i18n("User Scripts"));
+                        else if (groupIdx === 2)
                             // Persistent (stateful vs stateless)
-                            for (let i = 0; i < filtered.length; i++) {
-                                let item = filtered[i];
-                                let key, label, order;
-                                if (item.memory === true) {
-                                    key = "persistent";
-                                    label = i18n("Persistent");
-                                    order = 0;
-                                } else {
-                                    key = "stateless";
-                                    label = i18n("Stateless");
-                                    order = 1;
-                                }
-                                if (!groups[key])
-                                    groups[key] = {
-                                    "items": [],
-                                    "order": order,
-                                    "label": label
-                                };
-
-                                groups[key].items.push(item);
-                            }
-                        } else {
+                            groups = groupByBoolKey(filtered, (item) => {
+                                return item.memory === true;
+                            }, "persistent", i18n("Persistent"), "stateless", i18n("Stateless"));
+                        else
                             // None
                             groups["all"] = {
                                 "items": filtered,
                                 "order": 0,
                                 "label": ""
                             };
-                        }
                     } else {
                         // ── Snapping grouping ────────────────────────────────
                         if (groupIdx === 0) {
@@ -333,65 +297,29 @@ ColumnLayout {
                                     groups[key] = {
                                     "items": [],
                                     "order": count,
-                                    "label": i18n("%1 zones", count)
+                                    "label": i18np("%1 zone", "%1 zones", count)
                                 };
 
                                 groups[key].items.push(filtered[i]);
                             }
-                        } else if (groupIdx === 2) {
+                        } else if (groupIdx === 2)
                             // Auto / Manual
-                            for (let i = 0; i < filtered.length; i++) {
-                                let item = filtered[i];
-                                let key, label, order;
-                                if (item.autoAssign === true) {
-                                    key = "auto";
-                                    label = i18n("Auto");
-                                    order = 0;
-                                } else {
-                                    key = "manual";
-                                    label = i18n("Manual");
-                                    order = 1;
-                                }
-                                if (!groups[key])
-                                    groups[key] = {
-                                    "items": [],
-                                    "order": order,
-                                    "label": label
-                                };
-
-                                groups[key].items.push(item);
-                            }
-                        } else if (groupIdx === 3) {
+                            groups = groupByBoolKey(filtered, (item) => {
+                                return item.autoAssign === true;
+                            }, "auto", i18n("Auto"), "manual", i18n("Manual"));
+                        else if (groupIdx === 3)
                             // Source (built-in vs user-created)
-                            for (let i = 0; i < filtered.length; i++) {
-                                let item = filtered[i];
-                                let key, label, order;
-                                if (item.isSystem || item.hasSystemOrigin) {
-                                    key = "builtin";
-                                    label = i18n("Built-in");
-                                    order = 0;
-                                } else {
-                                    key = "user";
-                                    label = i18n("User Layouts");
-                                    order = 1;
-                                }
-                                if (!groups[key])
-                                    groups[key] = {
-                                    "items": [],
-                                    "order": order,
-                                    "label": label
-                                };
-
-                                groups[key].items.push(item);
-                            }
-                        } else {
+                            // Note: snapping layouts use hasSystemOrigin; algorithms do not
+                            groups = groupByBoolKey(filtered, (item) => {
+                                return item.isSystem || item.hasSystemOrigin;
+                            }, "builtin", i18n("Built-in"), "user", i18n("User Layouts"));
+                        else
                             // None
                             groups["all"] = {
                                 "items": filtered,
                                 "order": 0,
                                 "label": ""
                             };
-                        }
                     }
                     // ── Step 4: sort items within each group ─────────────────
                     let ascending = filterBar.sortAscending;
@@ -413,9 +341,6 @@ ColumnLayout {
                     let nonEmpty = sorted.filter((g) => {
                         return g.items.length > 0;
                     });
-                    // Force ListView to detect the change (JS arrays of the
-                    // same length can be silently deduplicated by the model diff)
-                    model = null;
                     model = nonEmpty.map((g) => {
                         return ({
                             "label": nonEmpty.length > 1 ? g.label : "",
@@ -436,6 +361,25 @@ ColumnLayout {
                         selectedLayoutId = layoutId;
 
                     return layoutId !== "";
+                }
+
+                function groupByBoolKey(items, testFn, trueKey, trueLabel, falseKey, falseLabel) {
+                    let groups = {
+                    };
+                    for (let i = 0; i < items.length; i++) {
+                        let item = items[i];
+                        let match = testFn(item);
+                        let key = match ? trueKey : falseKey;
+                        if (!groups[key])
+                            groups[key] = {
+                            "items": [],
+                            "order": match ? 0 : 1,
+                            "label": match ? trueLabel : falseLabel
+                        };
+
+                        groups[key].items.push(item);
+                    }
+                    return groups;
                 }
 
                 Layout.topMargin: Kirigami.Units.largeSpacing
@@ -472,8 +416,29 @@ ColumnLayout {
                     anchors.centerIn: parent
                     width: parent.width - Kirigami.Units.gridUnit * 4
                     visible: layoutGrid.count === 0
-                    text: root.viewMode === 1 ? i18n("No autotile algorithms available") : i18n("No layouts available")
-                    explanation: root.viewMode === 1 ? i18n("Enable autotiling to use tiling algorithms") : i18n("Start the PlasmaZones daemon or create a new layout")
+                    text: {
+                        if (filterBar.hasActiveFilters || filterBar.filterText.length > 0)
+                            return root.viewMode === 1 ? i18n("No matching algorithms") : i18n("No matching layouts");
+
+                        return root.viewMode === 1 ? i18n("No autotile algorithms available") : i18n("No layouts available");
+                    }
+                    explanation: {
+                        if (filterBar.hasActiveFilters || filterBar.filterText.length > 0)
+                            return i18n("Try adjusting your filters or search terms");
+
+                        return root.viewMode === 1 ? i18n("Enable autotiling to use tiling algorithms") : i18n("Start the PlasmaZones daemon or create a new layout");
+                    }
+
+                    helpfulAction: Kirigami.Action {
+                        visible: filterBar.hasActiveFilters || filterBar.filterText.length > 0
+                        text: i18n("Reset Filters")
+                        icon.name: "edit-reset"
+                        onTriggered: {
+                            filterBar.resetFilters();
+                            layoutGrid.rebuildModel();
+                        }
+                    }
+
                 }
 
                 // ─── Section Delegate (header + Flow of layout cards) ────────

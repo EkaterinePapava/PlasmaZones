@@ -48,12 +48,13 @@ RowLayout {
     // Static ComboBox models (avoids inline array recreation that resets currentIndex)
     readonly property var snappingGroupModel: [i18n("Aspect Ratio"), i18n("Zone Count"), i18n("Auto / Manual"), i18n("Source"), i18n("None")]
     readonly property var tilingGroupModel: [i18n("Capability"), i18n("Source"), i18n("Persistent"), i18n("None")]
-    readonly property var snappingSortModel: [i18n("Name"), i18n("Zone Count")]
-    readonly property var tilingSortModel: [i18n("Name"), i18n("Zone Count")]
+    readonly property var sortModel: [i18n("Name"), i18n("Zone Count")]
 
     signal filterSettingsChanged()
 
     function resetFilters() {
+        filterText = "";
+        searchField.clear();
         showHidden = false;
         showAspectAny = true;
         showAspectStandard = true;
@@ -77,8 +78,10 @@ RowLayout {
         root.groupByIndex = 0;
         root.sortByIndex = 0;
         root.sortAscending = true;
-        searchField.clear();
         resetFilters();
+        groupByCombo.currentIndex = 0;
+        sortByCombo.currentIndex = 0;
+        root.filterSettingsChanged();
     }
 
     // ── Group By ────────────────────────────────────────────────────────────
@@ -111,7 +114,7 @@ RowLayout {
         id: sortByCombo
 
         Layout.preferredWidth: Kirigami.Units.gridUnit * 8
-        model: root.viewMode === 0 ? root.snappingSortModel : root.tilingSortModel
+        model: root.sortModel
         currentIndex: root.sortByIndex
         onActivated: (index) => {
             root.sortByIndex = index;
@@ -328,6 +331,11 @@ RowLayout {
         }
 
         MenuSeparator {
+        }
+
+        MenuItem {
+            text: i18n("Capabilities (any match):")
+            enabled: false
         }
 
         MenuItem {
