@@ -186,7 +186,6 @@ Flickable {
         SettingsCard {
             Layout.fillWidth: true
             headerText: i18n("Algorithm")
-            showAccent: true
             collapsible: true
 
             contentItem: ColumnLayout {

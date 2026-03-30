@@ -35,7 +35,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Colors")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {
@@ -185,7 +184,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Opacity")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {
@@ -245,7 +243,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Border")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {
@@ -305,7 +302,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Zone Labels")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {

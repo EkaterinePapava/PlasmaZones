@@ -27,7 +27,6 @@ Item {
 
         anchors.fill: parent
         headerText: i18n("On-Screen Display")
-        showAccent: true
         collapsible: true
 
         contentItem: ColumnLayout {

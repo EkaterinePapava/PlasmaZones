@@ -33,7 +33,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Triggers")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {
@@ -120,7 +119,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Zone Span")
-                showAccent: true
                 showToggle: true
                 toggleChecked: appSettings.zoneSpanEnabled
                 collapsible: true
@@ -187,7 +185,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Snap Assist")
-                showAccent: true
                 showToggle: true
                 toggleChecked: appSettings.snapAssistFeatureEnabled
                 collapsible: true
@@ -257,7 +254,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Display")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {
@@ -311,7 +307,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Window Handling")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {

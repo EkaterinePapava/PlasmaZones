@@ -89,7 +89,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Gaps")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {

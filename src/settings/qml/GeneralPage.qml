@@ -40,7 +40,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Animations")
-                showAccent: true
                 showToggle: true
                 toggleChecked: appSettings.animationsEnabled
                 onToggleChanged: appSettings.animationsEnabled = toggleChecked
@@ -97,7 +96,6 @@ Flickable {
         // =====================================================================
         SettingsCard {
             headerText: i18n("Rendering")
-            showAccent: true
             collapsible: true
 
             contentItem: ColumnLayout {

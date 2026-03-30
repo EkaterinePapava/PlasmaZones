@@ -30,7 +30,6 @@ SettingsCard {
     signal smartGapsToggled(bool checked)
 
     headerText: i18n("Gaps")
-    showAccent: true
     collapsible: true
 
     contentItem: ColumnLayout {

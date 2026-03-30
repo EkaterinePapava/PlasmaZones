@@ -123,7 +123,6 @@ ColumnLayout {
             anchors.fill: parent
             enabled: appSettings.zoneSelectorEnabled
             headerText: i18n("Position & Trigger")
-            showAccent: true
             collapsible: true
 
             contentItem: ColumnLayout {
@@ -223,7 +222,6 @@ ColumnLayout {
             anchors.fill: parent
             enabled: appSettings.zoneSelectorEnabled
             headerText: i18n("Layout Arrangement")
-            showAccent: true
             collapsible: true
 
             contentItem: ColumnLayout {
@@ -325,7 +323,6 @@ ColumnLayout {
             anchors.fill: parent
             enabled: appSettings.zoneSelectorEnabled
             headerText: i18n("Preview Size")
-            showAccent: true
             collapsible: true
 
             contentItem: ColumnLayout {

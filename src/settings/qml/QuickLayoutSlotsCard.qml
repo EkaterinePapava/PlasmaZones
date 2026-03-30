@@ -28,7 +28,6 @@ SettingsCard {
     }
 
     headerText: root.viewMode === 1 ? i18n("Tiling Quick Shortcuts") : i18n("Quick Layout Shortcuts")
-    showAccent: true
     collapsible: true
 
     contentItem: ColumnLayout {

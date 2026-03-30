@@ -27,7 +27,6 @@ Flickable {
         SettingsCard {
             Layout.fillWidth: true
             headerText: i18n("Colors")
-            showAccent: true
             collapsible: true
 
             contentItem: ColumnLayout {
@@ -101,7 +100,6 @@ Flickable {
         SettingsCard {
             Layout.fillWidth: true
             headerText: i18n("Decorations")
-            showAccent: true
             collapsible: true
 
             contentItem: ColumnLayout {
@@ -131,7 +129,6 @@ Flickable {
         SettingsCard {
             Layout.fillWidth: true
             headerText: i18n("Borders")
-            showAccent: true
             showToggle: true
             toggleChecked: appSettings.autotileShowBorder
             onToggleChanged: appSettings.autotileShowBorder = toggleChecked

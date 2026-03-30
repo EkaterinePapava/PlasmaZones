@@ -51,7 +51,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Window Filtering")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {

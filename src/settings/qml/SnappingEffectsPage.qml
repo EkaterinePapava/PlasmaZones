@@ -30,7 +30,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Effects")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {
@@ -102,7 +101,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Shader Effects")
-                showAccent: true
                 showToggle: true
                 toggleChecked: appSettings.enableShaderEffects
                 collapsible: true

@@ -36,7 +36,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Keyboard Shortcuts")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {
@@ -160,7 +159,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Snapping")
-                showAccent: true
                 collapsible: true
 
                 contentItem: ColumnLayout {
@@ -290,7 +288,6 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Fill on Drop")
-                showAccent: true
                 showToggle: true
                 toggleChecked: root.settingsBridge.fillOnDropEnabled
                 onToggleChanged: root.settingsBridge.fillOnDropEnabled = toggleChecked

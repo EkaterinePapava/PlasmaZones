@@ -24,7 +24,6 @@ Flickable {
         SettingsCard {
             Layout.fillWidth: true
             headerText: i18n("Behavior")
-            showAccent: true
             collapsible: true
 
             contentItem: ColumnLayout {
