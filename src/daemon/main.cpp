@@ -15,6 +15,7 @@
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QIcon>
+#include <QLibrary>
 #include <QQuickWindow>
 #include <QSettings>
 #include <QThread>
@@ -55,6 +56,11 @@ int main(int argc, char* argv[])
     QVulkanInstance vulkanInstance;
 #endif
     {
+        // QSettings::IniFormat is used intentionally — it maps top-level keys (before
+        // any [section] header) into the "General" group automatically, so it reads
+        // both the legacy ungrouped key and the proper [General] key correctly.
+        // The custom kconfigIniFormat cannot be used here because it requires the
+        // QCoreApplication event loop for QConfFile caching, which doesn't exist yet.
         QSettings cfg(PlasmaZones::ConfigDefaults::configFilePath(), QSettings::IniFormat);
         cfg.beginGroup(QStringLiteral("General"));
         const QString backend = PlasmaZones::ConfigDefaults::normalizeRenderingBackend(
@@ -64,18 +70,27 @@ int main(int argc, char* argv[])
         if (backend == QLatin1String("vulkan")) {
 #if QT_CONFIG(vulkan)
             // Probe Vulkan availability before committing to the API.
-            // Note: QVulkanInstance::create() before QGuiApplication means Vulkan
-            // validation layers set via VK_INSTANCE_LAYERS may not be picked up
-            // (Qt reads some env settings after app construction). This is
-            // intentional — setGraphicsApi() must be called before the app exists.
-            vulkanInstance.setApiVersion(QVersionNumber(1, 1));
-            if (vulkanInstance.create()) {
-                QQuickWindow::setGraphicsApi(QSGRendererInterface::Vulkan);
-                useVulkan = true;
+            // QVulkanInstance::create() calls ensureVulkan() which dlopens
+            // libvulkan — this can SEGFAULT if the Vulkan ICD or loader is
+            // broken. Guard with a QLibrary pre-check so we fail gracefully.
+            bool vulkanLibAvailable = QLibrary(QStringLiteral("vulkan"), 1).load();
+            if (!vulkanLibAvailable)
+                vulkanLibAvailable = QLibrary(QStringLiteral("vulkan")).load();
+
+            if (vulkanLibAvailable) {
+                vulkanInstance.setApiVersion(QVersionNumber(1, 1));
+                if (vulkanInstance.create()) {
+                    QQuickWindow::setGraphicsApi(QSGRendererInterface::Vulkan);
+                    useVulkan = true;
+                } else {
+                    qCCritical(PlasmaZones::lcDaemon)
+                        << "Failed to create Vulkan instance — falling back to OpenGL."
+                        << "Check that Vulkan drivers are installed (vulkan-icd-loader, mesa-vulkan-drivers, etc.)";
+                    QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+                }
             } else {
-                qCCritical(PlasmaZones::lcDaemon)
-                    << "Failed to create Vulkan instance — falling back to OpenGL."
-                    << "Check that Vulkan drivers are installed (vulkan-icd-loader, mesa-vulkan-drivers, etc.)";
+                qCCritical(PlasmaZones::lcDaemon) << "Vulkan library not found — falling back to OpenGL."
+                                                  << "Install vulkan-icd-loader or equivalent for your distro.";
                 QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
             }
 #else

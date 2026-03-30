@@ -41,6 +41,12 @@ void OverlayService::setSettings(ISettings* settings)
             };
             connect(m_settings, &ISettings::settingsChanged, this, refreshZoneSelectors);
 
+            // Recreate overlay windows when any setting that affects overlay type changes
+            // (e.g. overlayDisplayMode: compact mode can't use shader overlays).
+            connect(m_settings, &ISettings::settingsChanged, this, [this]() {
+                recreateOverlayWindowsOnTypeMismatch();
+            });
+
             connect(m_settings, &ISettings::enableShaderEffectsChanged, this, [this]() {
                 // When shader effects setting changes, recreate overlay windows if visible
                 // to switch between shader and non-shader overlay types

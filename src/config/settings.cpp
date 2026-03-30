@@ -174,11 +174,19 @@ void Settings::load()
     }
     loadPerScreenOverrides(m_configBackend.get());
 
-    // Rendering backend lives in [General] (affects whole graphics pipeline, not just shaders)
+    // Rendering backend lives in [General] (affects whole graphics pipeline, not just shaders).
+    // Fall back to the root-level key if [General] doesn't have it yet — save()
+    // will move it into [General] on the next write.
     {
-        auto general = m_configBackend->group(QStringLiteral("General"));
-        m_renderingBackend = ConfigDefaults::normalizeRenderingBackend(
-            general->readString(QStringLiteral("RenderingBackend"), ConfigDefaults::renderingBackend()));
+        QString raw;
+        {
+            auto general = m_configBackend->group(QStringLiteral("General"));
+            raw = general->readString(QStringLiteral("RenderingBackend"));
+        }
+        if (raw.isEmpty() && m_configBackend->hasUngroupedKey(QStringLiteral("RenderingBackend")))
+            raw = m_configBackend->readUngroupedString(QStringLiteral("RenderingBackend"));
+        m_renderingBackend =
+            ConfigDefaults::normalizeRenderingBackend(raw.isEmpty() ? ConfigDefaults::renderingBackend() : raw);
     }
 
     // Shaders (small enough to stay inline)
@@ -269,7 +277,9 @@ void Settings::save()
         saveEditorConfig(*editor);
     }
 
-    // Rendering backend in [General]
+    // Rendering backend in [General] — also remove any stale root-level key
+    if (m_configBackend->hasUngroupedKey(QStringLiteral("RenderingBackend")))
+        m_configBackend->removeUngroupedKey(QStringLiteral("RenderingBackend"));
     {
         auto general = m_configBackend->group(QStringLiteral("General"));
         general->writeString(QStringLiteral("RenderingBackend"), m_renderingBackend);

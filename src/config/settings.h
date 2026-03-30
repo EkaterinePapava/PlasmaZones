@@ -34,8 +34,6 @@ public:
     static constexpr int MaxTriggersPerAction = 4;
 
     // Activation settings
-    Q_PROPERTY(bool shiftDragToActivate READ shiftDragToActivate WRITE setShiftDragToActivate NOTIFY
-                   shiftDragToActivateChanged)
     Q_PROPERTY(QVariantList dragActivationTriggers READ dragActivationTriggers WRITE setDragActivationTriggers NOTIFY
                    dragActivationTriggersChanged)
     Q_PROPERTY(bool zoneSpanEnabled READ zoneSpanEnabled WRITE setZoneSpanEnabled NOTIFY zoneSpanEnabledChanged)
@@ -369,12 +367,6 @@ public:
     // No singleton - use dependency injection instead
 
     // ISettings interface implementation
-    bool shiftDragToActivate() const override
-    {
-        return m_shiftDragToActivate;
-    }
-    void setShiftDragToActivate(bool enable) override;
-
     QVariantList dragActivationTriggers() const override
     {
         return m_dragActivationTriggers;
@@ -1556,7 +1548,6 @@ private:
     static QString normalizeUuidString(const QString& uuidStr);
 
     // Activation
-    bool m_shiftDragToActivate = ConfigDefaults::shiftDrag(); // Deprecated - kept for migration
     QVariantList m_dragActivationTriggers; // [{modifier: int, mouseButton: int}, ...]
     bool m_zoneSpanEnabled = ConfigDefaults::zoneSpanEnabled();
     DragModifier m_zoneSpanModifier = DragModifier::Ctrl;

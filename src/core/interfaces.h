@@ -100,7 +100,6 @@ public:
 
 Q_SIGNALS:
     void settingsChanged();
-    void shiftDragToActivateChanged(); // Deprecated
     void dragActivationTriggersChanged();
     void zoneSpanEnabledChanged();
     void zoneSpanModifierChanged();

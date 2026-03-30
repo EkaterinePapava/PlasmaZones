@@ -134,17 +134,32 @@ QString QSettingsConfigGroup::readString(const QString& key, const QString& defa
 
 int QSettingsConfigGroup::readInt(const QString& key, int defaultValue) const
 {
-    return m_settings->value(key, defaultValue).toInt();
+    QVariant val = m_settings->value(key);
+    if (!val.isValid())
+        return defaultValue;
+    bool ok = false;
+    int result = val.toInt(&ok);
+    return ok ? result : defaultValue;
 }
 
 bool QSettingsConfigGroup::readBool(const QString& key, bool defaultValue) const
 {
-    return m_settings->value(key, defaultValue).toBool();
+    QVariant val = m_settings->value(key);
+    if (!val.isValid())
+        return defaultValue;
+    // Our custom reader already stores true/false as bool QVariants,
+    // so canConvert<bool> is reliable here.
+    return val.toBool();
 }
 
 double QSettingsConfigGroup::readDouble(const QString& key, double defaultValue) const
 {
-    return m_settings->value(key, defaultValue).toDouble();
+    QVariant val = m_settings->value(key);
+    if (!val.isValid())
+        return defaultValue;
+    bool ok = false;
+    double result = val.toDouble(&ok);
+    return ok ? result : defaultValue;
 }
 
 QColor QSettingsConfigGroup::readColor(const QString& key, const QColor& defaultValue) const
@@ -247,6 +262,27 @@ void QSettingsConfigBackend::deleteGroup(const QString& name)
 QStringList QSettingsConfigBackend::groupList() const
 {
     return m_settings->childGroups();
+}
+
+void QSettingsConfigBackend::removeUngroupedKey(const QString& key)
+{
+    // QSettings without beginGroup() accesses root-level keys.
+    // In our custom format, ungrouped keys have no "/" prefix.
+    Q_ASSERT_X(m_settings->group().isEmpty(), "removeUngroupedKey", "A ConfigGroup is still active — destroy it first");
+    m_settings->remove(key);
+}
+
+bool QSettingsConfigBackend::hasUngroupedKey(const QString& key) const
+{
+    Q_ASSERT_X(m_settings->group().isEmpty(), "hasUngroupedKey", "A ConfigGroup is still active — destroy it first");
+    return m_settings->contains(key);
+}
+
+QString QSettingsConfigBackend::readUngroupedString(const QString& key, const QString& defaultValue) const
+{
+    Q_ASSERT_X(m_settings->group().isEmpty(), "readUngroupedString",
+               "A ConfigGroup is still active — destroy it first");
+    return m_settings->value(key, defaultValue).toString();
 }
 
 // ── Static factory ───────────────────────────────────────────────────────────

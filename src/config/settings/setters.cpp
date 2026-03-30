@@ -16,15 +16,6 @@ namespace PlasmaZones {
 // Activation setters
 // ═══════════════════════════════════════════════════════════════════════════════
 
-void Settings::setShiftDragToActivate(bool enable)
-{
-    if (m_shiftDragToActivate != enable) {
-        m_shiftDragToActivate = enable;
-        Q_EMIT shiftDragToActivateChanged();
-        Q_EMIT settingsChanged();
-    }
-}
-
 void Settings::setDragActivationTriggers(const QVariantList& triggers)
 {
     QVariantList capped = triggers.mid(0, MaxTriggersPerAction);

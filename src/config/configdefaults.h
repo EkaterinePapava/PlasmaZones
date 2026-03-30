@@ -32,10 +32,6 @@ public:
     // Activation Settings
     // ═══════════════════════════════════════════════════════════════════════════
 
-    static bool shiftDrag()
-    {
-        return true;
-    }
     static int dragActivationModifier()
     {
         return 3;

@@ -197,6 +197,7 @@ private:
     void createOverlayWindow(QScreen* screen);
     void destroyOverlayWindow(QScreen* screen);
     void updateOverlayWindow(QScreen* screen);
+    void recreateOverlayWindowsOnTypeMismatch();
     void updateLabelsTextureForWindow(QQuickWindow* window, const QVariantList& patched, QScreen* screen,
                                       Layout* screenLayout);
     QVariantList buildZonesList(QScreen* screen) const;

@@ -163,10 +163,7 @@ void SettingsAdaptor::initializeRegistry()
     };                                                                                                                 \
     m_schemas[QStringLiteral(name)] = QStringLiteral("string");
 
-    // Activation settings
-    REGISTER_BOOL_SETTING("shiftDragToActivate", shiftDragToActivate, setShiftDragToActivate)
-
-    // Drag activation triggers list (multi-bind)
+    // Activation settings — drag activation triggers list (multi-bind)
     m_getters[QStringLiteral("dragActivationTriggers")] = [this]() {
         return QVariant::fromValue(m_settings->dragActivationTriggers());
     };

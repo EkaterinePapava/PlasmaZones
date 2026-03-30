@@ -40,13 +40,6 @@ public:
     }
 
     // IZoneActivationSettings
-    bool shiftDragToActivate() const override
-    {
-        return false;
-    }
-    void setShiftDragToActivate(bool) override
-    {
-    }
     bool snappingEnabled() const override
     {
         return true;
