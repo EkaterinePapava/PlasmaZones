@@ -35,7 +35,7 @@ Flickable {
                     description: i18n("Derive border colors from your system color scheme")
 
                     SettingsSwitch {
-                        id: useSystemColorsCheck
+                        id: useSystemColorsSwitch
 
                         checked: appSettings.autotileUseSystemBorderColors
                         accessibleName: i18n("Use system accent color")
@@ -45,11 +45,11 @@ Flickable {
                 }
 
                 SettingsSeparator {
-                    visible: !useSystemColorsCheck.checked
+                    visible: !useSystemColorsSwitch.checked
                 }
 
                 SettingsRow {
-                    visible: !useSystemColorsCheck.checked
+                    visible: !useSystemColorsSwitch.checked
                     title: i18n("Active border color")
                     description: i18n("Border color for the focused window")
 
@@ -64,11 +64,11 @@ Flickable {
                 }
 
                 SettingsSeparator {
-                    visible: !useSystemColorsCheck.checked
+                    visible: !useSystemColorsSwitch.checked
                 }
 
                 SettingsRow {
-                    visible: !useSystemColorsCheck.checked
+                    visible: !useSystemColorsSwitch.checked
                     title: i18n("Inactive border color")
                     description: i18n("Border color for unfocused windows")
 
@@ -102,7 +102,7 @@ Flickable {
                     description: i18n("Remove window title bars while autotiled, restored when floating")
 
                     SettingsSwitch {
-                        id: hideTitleBarsCheck
+                        id: hideTitleBarsSwitch
 
                         checked: appSettings.autotileHideTitleBars
                         accessibleName: i18n("Hide title bars on tiled windows")

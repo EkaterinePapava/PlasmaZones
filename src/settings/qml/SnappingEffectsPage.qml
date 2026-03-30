@@ -144,7 +144,7 @@ Flickable {
                         Layout.fillWidth: true
                         type: Kirigami.MessageType.Warning
                         text: i18n("CAVA is not installed. Install the <b>cava</b> package to enable audio-reactive shader effects.")
-                        visible: !settingsController.cavaAvailable
+                        visible: !settingsController.cavaAvailable && shaderCard.toggleChecked
                     }
 
                     SettingsSeparator {

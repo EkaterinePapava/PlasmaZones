@@ -54,7 +54,7 @@ SettingsCard {
         }
 
         SettingsRow {
-            visible: !tilePerSideCheck.checked
+            visible: !tilePerSideSwitch.checked
             title: i18n("Outer gap")
             description: i18n("Space from screen edges to tiled windows")
 
@@ -78,10 +78,10 @@ SettingsCard {
 
         SettingsRow {
             title: i18n("Per-side outer gaps")
-            description: tilePerSideCheck.checked ? i18n("Set different gap sizes for each screen edge") : i18n("Use a single outer gap value for all edges")
+            description: tilePerSideSwitch.checked ? i18n("Set different gap sizes for each screen edge") : i18n("Use a single outer gap value for all edges")
 
             SettingsSwitch {
-                id: tilePerSideCheck
+                id: tilePerSideSwitch
 
                 checked: root.usePerSideOuterGap
                 accessibleName: i18n("Set gaps per side")
@@ -92,7 +92,7 @@ SettingsCard {
 
         // Per-side gap grid (only when per-side is enabled)
         GridLayout {
-            visible: tilePerSideCheck.checked
+            visible: tilePerSideSwitch.checked
             Layout.alignment: Qt.AlignRight
             Layout.rightMargin: Kirigami.Units.largeSpacing
             columns: 4

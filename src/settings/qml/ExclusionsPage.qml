@@ -81,6 +81,7 @@ Flickable {
                             stepSize: 10
                             value: appSettings.minimumWindowWidth
                             unitText: ""
+                            Accessible.name: i18n("Minimum window width")
                             onValueModified: (value) => {
                                 return appSettings.minimumWindowWidth = value;
                             }
@@ -104,6 +105,7 @@ Flickable {
                             stepSize: 10
                             value: appSettings.minimumWindowHeight
                             unitText: ""
+                            Accessible.name: i18n("Minimum window height")
                             onValueModified: (value) => {
                                 return appSettings.minimumWindowHeight = value;
                             }

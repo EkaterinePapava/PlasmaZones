@@ -231,6 +231,7 @@ ColumnLayout {
                     WideComboBox {
                         id: zoneSelectorLayoutModeCombo
 
+                        Accessible.name: i18n("Arrangement")
                         textRole: "text"
                         valueRole: "value"
                         model: [{
