@@ -103,14 +103,6 @@ ColumnLayout {
 
             // ─── Layout Grid (grouped by aspect ratio) ─────────────────────
             ListView {
-                // Source (built-in vs user scripts)
-                // Persistent (stateful vs stateless)
-                // None
-                // Auto / Manual
-                // Source (built-in vs user-created)
-                // Note: snapping layouts use hasSystemOrigin; algorithms do not
-                // None
-
                 id: layoutGrid
 
                 // Responsive cell sizing for Flow delegates
@@ -182,22 +174,14 @@ ColumnLayout {
                     return layoutId !== "";
                 }
 
+                // Snapping layouts use hasSystemOrigin; algorithms use isSystem only
+                function isBuiltIn(item) {
+                    return item.isSystem || item.hasSystemOrigin;
+                }
+
                 function applyFilters(filtered) {
-                    // Text search
                     let search = filterBar.filterText.toLowerCase();
-                    if (search.length > 0)
-                        filtered = filtered.filter((item) => {
-                        return (item.name || "").toLowerCase().includes(search) || (item.description || "").toLowerCase().includes(search);
-                    });
-
-                    // Hidden filter (applies to both modes)
-                    if (!filterBar.showHidden)
-                        filtered = filtered.filter((item) => {
-                        return item.hiddenFromSelector !== true;
-                    });
-
                     if (root.viewMode === 0) {
-                        // Snapping: aspect-ratio class filter
                         let arMap = {
                             "any": filterBar.showAspectAny,
                             "standard": filterBar.showAspectStandard,
@@ -206,22 +190,22 @@ ColumnLayout {
                             "portrait": filterBar.showAspectPortrait
                         };
                         filtered = filtered.filter((item) => {
+                            if (search.length > 0 && !(item.name || "").toLowerCase().includes(search) && !(item.description || "").toLowerCase().includes(search))
+                                return false;
+
+                            if (!filterBar.showHidden && item.hiddenFromSelector === true)
+                                return false;
+
                             let cls = item.aspectRatioClass || "any";
-                            // Unknown classes pass through (arMap[cls] is undefined, not false)
-                            return arMap[cls] !== false;
-                        });
-                        // Source filter (built-in vs user)
-                        filtered = filtered.filter((item) => {
-                            if ((item.isSystem || item.hasSystemOrigin) && !filterBar.showBuiltInLayouts)
+                            if (arMap[cls] === false)
                                 return false;
 
-                            if (!item.isSystem && !item.hasSystemOrigin && !filterBar.showUserLayouts)
+                            if (isBuiltIn(item) && !filterBar.showBuiltInLayouts)
                                 return false;
 
-                            return true;
-                        });
-                        // Auto / Manual filter
-                        filtered = filtered.filter((item) => {
+                            if (!isBuiltIn(item) && !filterBar.showUserLayouts)
+                                return false;
+
                             if (item.autoAssign === true && !filterBar.showAutoLayouts)
                                 return false;
 
@@ -231,18 +215,19 @@ ColumnLayout {
                             return true;
                         });
                     } else {
-                        // Tiling: source filter (algorithms don't have hasSystemOrigin)
                         filtered = filtered.filter((item) => {
+                            if (search.length > 0 && !(item.name || "").toLowerCase().includes(search) && !(item.description || "").toLowerCase().includes(search))
+                                return false;
+
+                            if (!filterBar.showHidden && item.hiddenFromSelector === true)
+                                return false;
+
                             if (item.isSystem && !filterBar.showBuiltInAlgorithms)
                                 return false;
 
                             if (!item.isSystem && !filterBar.showUserAlgorithms)
                                 return false;
 
-                            return true;
-                        });
-                        // Capability filters (hide when unchecked)
-                        filtered = filtered.filter((item) => {
                             if (!filterBar.showMasterCount && item.supportsMasterCount === true)
                                 return false;
 
@@ -349,7 +334,7 @@ ColumnLayout {
                         } else if (groupIdx === 1) {
                             // Zone count (0 or undefined → "Unknown" group at the end)
                             for (let i = 0; i < filtered.length; i++) {
-                                let count = filtered[i].zoneCount || 0;
+                                let count = Math.max(0, filtered[i].zoneCount || 0);
                                 let key = count > 0 ? "zones-" + count : "zones-unknown";
                                 if (!groups[key])
                                     groups[key] = {
@@ -366,7 +351,7 @@ ColumnLayout {
                         }, "auto", i18n("Auto"), "manual", i18n("Manual"));
                         else if (groupIdx === 3)
                             groups = groupByBoolKey(filtered, (item) => {
-                            return item.isSystem || item.hasSystemOrigin;
+                            return isBuiltIn(item);
                         }, "builtin", i18n("Built-in"), "user", i18n("User Layouts"));
                         else
                             groups["all"] = {
@@ -457,10 +442,7 @@ ColumnLayout {
                         visible: filterBar.hasActiveFilters
                         text: i18n("Reset Filters")
                         icon.name: "edit-reset"
-                        onTriggered: {
-                            filterBar.resetFilters();
-                            layoutGrid.rebuildModel();
-                        }
+                        onTriggered: filterBar.resetFilters()
                     }
 
                 }
