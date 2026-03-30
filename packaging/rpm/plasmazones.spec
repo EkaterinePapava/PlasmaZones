@@ -83,7 +83,6 @@ BuildRequires:  pkgconfig(systemd)
 %else
 BuildRequires:  kwin-devel >= 6.6.0
 BuildRequires:  qt6-qtwayland-devel
-BuildRequires:  qt6-qtwayland-private-devel
 BuildRequires:  libepoxy-devel
 BuildRequires:  wayland-devel
 BuildRequires:  libdrm-devel
