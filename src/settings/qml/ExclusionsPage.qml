@@ -51,71 +51,70 @@ Flickable {
 
                 anchors.fill: parent
                 headerText: i18n("Window Filtering")
+                showAccent: true
                 collapsible: true
 
-                contentItem: Kirigami.FormLayout {
-                    CheckBox {
-                        Kirigami.FormData.label: i18n("Transient:")
-                        text: i18n("Exclude transient windows (dialogs, popups, toolbars)")
-                        checked: appSettings.excludeTransientWindows
-                        onToggled: appSettings.excludeTransientWindows = checked
+                contentItem: ColumnLayout {
+                    spacing: Kirigami.Units.smallSpacing
+
+                    SettingsRow {
+                        title: i18n("Exclude transient windows")
+                        description: i18n("Skip dialogs, popups, and toolbars for snapping and tiling")
+
+                        SettingsSwitch {
+                            checked: appSettings.excludeTransientWindows
+                            accessibleName: i18n("Exclude transient windows")
+                            onToggled: appSettings.excludeTransientWindows = checked
+                        }
+
                     }
 
                     Kirigami.Separator {
-                        Kirigami.FormData.isSection: true
-                        Kirigami.FormData.label: i18n("Minimum Window Size")
-                    }
-
-                    RowLayout {
-                        Kirigami.FormData.label: i18n("Dimensions:")
-                        spacing: Kirigami.Units.largeSpacing
-
-                        RowLayout {
-                            Label {
-                                text: i18n("W:")
-                            }
-
-                            SpinBox {
-                                from: 0
-                                to: 1000
-                                stepSize: 10
-                                value: appSettings.minimumWindowWidth
-                                onValueModified: appSettings.minimumWindowWidth = value
-                                textFromValue: function(value) {
-                                    return value === 0 ? i18n("Disabled") : value + " px";
-                                }
-                                Accessible.name: i18n("Minimum window width")
-                            }
-
-                        }
-
-                        RowLayout {
-                            Label {
-                                text: i18n("H:")
-                            }
-
-                            SpinBox {
-                                from: 0
-                                to: 1000
-                                stepSize: 10
-                                value: appSettings.minimumWindowHeight
-                                onValueModified: appSettings.minimumWindowHeight = value
-                                textFromValue: function(value) {
-                                    return value === 0 ? i18n("Disabled") : value + " px";
-                                }
-                                Accessible.name: i18n("Minimum window height")
-                            }
-
-                        }
-
-                    }
-
-                    Label {
-                        text: i18n("Windows smaller than these dimensions will be excluded. Set to 0 to disable.")
-                        font.italic: true
-                        opacity: 0.7
-                        wrapMode: Text.WordWrap
                         Layout.fillWidth: true
+                        Layout.leftMargin: Kirigami.Units.largeSpacing
+                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    }
+
+                    SettingsRow {
+                        title: i18n("Minimum window width")
+                        description: appSettings.minimumWindowWidth === 0 ? i18n("Disabled — no width threshold") : i18n("Windows narrower than this are excluded")
+
+                        SpinBox {
+                            from: 0
+                            to: 1000
+                            stepSize: 10
+                            value: appSettings.minimumWindowWidth
+                            onValueModified: appSettings.minimumWindowWidth = value
+                            textFromValue: function(value) {
+                                return value === 0 ? i18n("Off") : value + " px";
+                            }
+                            Accessible.name: i18n("Minimum window width")
+                        }
+
+                    }
+
+                    Kirigami.Separator {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Kirigami.Units.largeSpacing
+                        Layout.rightMargin: Kirigami.Units.largeSpacing
+                    }
+
+                    SettingsRow {
+                        title: i18n("Minimum window height")
+                        description: appSettings.minimumWindowHeight === 0 ? i18n("Disabled — no height threshold") : i18n("Windows shorter than this are excluded")
+
+                        SpinBox {
+                            from: 0
+                            to: 1000
+                            stepSize: 10
+                            value: appSettings.minimumWindowHeight
+                            onValueModified: appSettings.minimumWindowHeight = value
+                            textFromValue: function(value) {
+                                return value === 0 ? i18n("Off") : value + " px";
+                            }
+                            Accessible.name: i18n("Minimum window height")
+                        }
+
                     }
 
                 }
