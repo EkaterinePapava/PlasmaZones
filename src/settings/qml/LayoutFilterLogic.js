@@ -128,6 +128,9 @@ function groupByZoneCount(items, pluralFn, unknownLabel) {
     return groups;
 }
 
+// NOTE: An item matching multiple capabilities appears in multiple groups
+// (e.g., an algorithm with both masterCount and splitRatio shows in both).
+// This is intentional — capability groups are non-exclusive.
 function groupByCapability(items, capGroups, otherLabel) {
     var groups = {};
     for (var g = 0; g < capGroups.length; g++) {

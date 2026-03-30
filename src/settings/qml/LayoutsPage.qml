@@ -151,7 +151,7 @@ ColumnLayout {
                 // Grouping — kept in QML because group labels require i18n/i18np
                 function buildGroups(filtered, groupIdx) {
                     if (root.viewMode === 1) {
-                        if (groupIdx === 0) {
+                        if (groupIdx === filterBar.groupCapability) {
                             let capGroups = [{
                                 "key": "masterCount",
                                 "label": i18n("Master Count"),
@@ -175,28 +175,28 @@ ColumnLayout {
                                 }
                             }];
                             return Logic.groupByCapability(filtered, capGroups, i18n("Other"));
-                        } else if (groupIdx === 1)
+                        } else if (groupIdx === filterBar.groupTilingSource)
                             return Logic.groupByBoolKey(filtered, (item) => {
-                                return Logic.isBuiltIn(item);
-                            }, "builtin", i18n("Built-in"), "user", i18n("User Scripts"));
-                        else if (groupIdx === 2)
+                            return Logic.isBuiltIn(item);
+                        }, "builtin", i18n("Built-in"), "user", i18n("User Scripts"));
+                        else if (groupIdx === filterBar.groupPersistent)
                             return Logic.groupByBoolKey(filtered, (item) => {
-                                return item.memory === true;
-                            }, "persistent", i18n("Persistent"), "stateless", i18n("Stateless"));
+                            return item.memory === true;
+                        }, "persistent", i18n("Persistent"), "stateless", i18n("Stateless"));
                         return Logic.ungrouped(filtered);
                     }
                     // Snapping grouping
-                    if (groupIdx === 0)
+                    if (groupIdx === filterBar.groupAspectRatio)
                         return Logic.groupByAspectRatio(filtered);
-                    else if (groupIdx === 1)
+                    else if (groupIdx === filterBar.groupZoneCount)
                         return Logic.groupByZoneCount(filtered, (count) => {
                         return i18np("%1 zone", "%1 zones", count);
                     }, i18n("Unknown"));
-                    else if (groupIdx === 2)
+                    else if (groupIdx === filterBar.groupAutoManual)
                         return Logic.groupByBoolKey(filtered, (item) => {
                         return item.autoAssign === true;
                     }, "auto", i18n("Auto"), "manual", i18n("Manual"));
-                    else if (groupIdx === 3)
+                    else if (groupIdx === filterBar.groupSource)
                         return Logic.groupByBoolKey(filtered, (item) => {
                         return Logic.isBuiltIn(item);
                     }, "builtin", i18n("Built-in"), "user", i18n("User Layouts"));
@@ -475,7 +475,7 @@ ColumnLayout {
         property string algorithmId: ""
 
         title: i18n("Export Algorithm")
-        nameFilters: ["JavaScript files (*.js)"]
+        nameFilters: [i18n("JavaScript files (*.js)")]
         fileMode: FileDialog.SaveFile
         onAccepted: {
             settingsController.exportAlgorithm(algorithmExportDialog.algorithmId, root.filePathFromUrl(selectedFile));

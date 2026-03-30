@@ -50,6 +50,18 @@ RowLayout {
         else
             return !showBuiltInAlgorithms || !showUserAlgorithms || showHidden || !showMasterCount || !showSplitRatio || !showOverlapping || !showPersistent;
     }
+    // ── Group-by index constants (must match model order below) ───────────
+    // Snapping
+    readonly property int groupAspectRatio: 0
+    readonly property int groupZoneCount: 1
+    readonly property int groupAutoManual: 2
+    readonly property int groupSource: 3
+    readonly property int groupSnappingNone: 4
+    // Tiling
+    readonly property int groupCapability: 0
+    readonly property int groupTilingSource: 1
+    readonly property int groupPersistent: 2
+    readonly property int groupTilingNone: 3
     // Static ComboBox models (avoids inline array recreation that resets currentIndex)
     readonly property var snappingGroupModel: [i18n("Aspect Ratio"), i18n("Zone Count"), i18n("Auto / Manual"), i18n("Source"), i18n("None")]
     readonly property var tilingGroupModel: [i18n("Capability"), i18n("Source"), i18n("Persistent"), i18n("None")]
@@ -118,9 +130,9 @@ RowLayout {
             let prop = map[i][0];
             let val = persistedState[map[i][1]];
             if (prop === "groupByIndex")
-                val = Math.min(val, maxGroup);
+                val = Math.max(0, Math.min(val, maxGroup));
             else if (prop === "sortByIndex")
-                val = Math.min(val, maxSort);
+                val = Math.max(0, Math.min(val, maxSort));
             root[prop] = val;
         }
         groupByCombo.currentIndex = groupByIndex;
@@ -136,8 +148,12 @@ RowLayout {
 
     }
     spacing: Kirigami.Units.smallSpacing
-    // Save current mode state, then load the new mode's persisted state
+    // Save current mode state, then load the new mode's persisted state.
+    // Guard: skip if called during _resetting to avoid saving partial state.
     onViewModeChanged: {
+        if (_resetting)
+            return ;
+
         saveState(_previousViewMode);
         _previousViewMode = viewMode;
         loadState(viewMode);
@@ -159,6 +175,8 @@ RowLayout {
 
         Layout.preferredWidth: Kirigami.Units.gridUnit * 8
         model: root.viewMode === 0 ? root.snappingGroupModel : root.tilingGroupModel
+        // Binding is initial-only — user interaction breaks it; loadState()
+        // re-syncs imperatively via groupByCombo.currentIndex = ...
         currentIndex: root.groupByIndex
         Accessible.name: i18n("Group by")
         onActivated: (index) => {
@@ -182,6 +200,8 @@ RowLayout {
 
         Layout.preferredWidth: Kirigami.Units.gridUnit * 8
         model: root.viewMode === 0 ? root.snappingSortModel : root.tilingSortModel
+        // Binding is initial-only — user interaction breaks it; loadState()
+        // re-syncs imperatively via sortByCombo.currentIndex = ...
         currentIndex: root.sortByIndex
         Accessible.name: i18n("Sort by")
         onActivated: (index) => {
@@ -241,6 +261,7 @@ RowLayout {
             onClicked: {
                 searchField.clear();
                 searchDebounce.stop();
+                root.filterText = "";
                 root.filterSettingsChanged();
             }
             Accessible.name: i18n("Clear search")
