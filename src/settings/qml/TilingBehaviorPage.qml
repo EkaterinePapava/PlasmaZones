@@ -24,51 +24,88 @@ Flickable {
         SettingsCard {
             Layout.fillWidth: true
             headerText: i18n("Behavior")
+            showAccent: true
             collapsible: true
 
-            contentItem: Kirigami.FormLayout {
-                ComboBox {
-                    Kirigami.FormData.label: i18n("New windows:")
+            contentItem: ColumnLayout {
+                spacing: Kirigami.Units.smallSpacing
+
+                SettingsRow {
+                    title: i18n("New window placement")
+                    description: i18n("Where newly opened windows appear in the tiling order")
+
+                    ComboBox {
+                        Layout.fillWidth: false
+                        textRole: "text"
+                        valueRole: "value"
+                        model: [{
+                            "text": i18n("After existing"),
+                            "value": 0
+                        }, {
+                            "text": i18n("After focused"),
+                            "value": 1
+                        }, {
+                            "text": i18n("As main window"),
+                            "value": 2
+                        }]
+                        currentIndex: Math.max(0, indexOfValue(appSettings.autotileInsertPosition))
+                        onActivated: appSettings.autotileInsertPosition = currentValue
+                    }
+
+                }
+
+                Kirigami.Separator {
                     Layout.fillWidth: true
-                    textRole: "text"
-                    valueRole: "value"
-                    model: [{
-                        "text": i18n("Add after existing windows"),
-                        "value": 0
-                    }, {
-                        "text": i18n("Insert after focused"),
-                        "value": 1
-                    }, {
-                        "text": i18n("Add as main window"),
-                        "value": 2
-                    }]
-                    currentIndex: Math.max(0, indexOfValue(appSettings.autotileInsertPosition))
-                    onActivated: appSettings.autotileInsertPosition = currentValue
+                    Layout.leftMargin: Kirigami.Units.largeSpacing
+                    Layout.rightMargin: Kirigami.Units.largeSpacing
                 }
 
-                CheckBox {
-                    Kirigami.FormData.label: i18n("Focus:")
-                    text: i18n("Automatically focus newly opened windows")
-                    checked: appSettings.autotileFocusNewWindows
-                    onToggled: appSettings.autotileFocusNewWindows = checked
+                SettingsRow {
+                    title: i18n("Focus new windows")
+                    description: i18n("Automatically focus windows when they open")
+
+                    SettingsSwitch {
+                        checked: appSettings.autotileFocusNewWindows
+                        accessibleName: i18n("Focus newly opened windows")
+                        onToggled: appSettings.autotileFocusNewWindows = checked
+                    }
+
                 }
 
-                CheckBox {
-                    Kirigami.FormData.label: " "
-                    text: i18n("Focus follows mouse pointer")
-                    checked: appSettings.autotileFocusFollowsMouse
-                    onToggled: appSettings.autotileFocusFollowsMouse = checked
-                    ToolTip.visible: hovered
-                    ToolTip.text: i18n("When enabled, moving mouse over a window focuses it")
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Kirigami.Units.largeSpacing
+                    Layout.rightMargin: Kirigami.Units.largeSpacing
                 }
 
-                CheckBox {
-                    Kirigami.FormData.label: i18n("Constraints:")
-                    text: i18n("Respect window minimum size")
-                    checked: appSettings.autotileRespectMinimumSize
-                    onToggled: appSettings.autotileRespectMinimumSize = checked
-                    ToolTip.visible: hovered
-                    ToolTip.text: i18n("Windows will not be resized below their minimum size. This may leave gaps in the layout.")
+                SettingsRow {
+                    title: i18n("Focus follows mouse")
+                    description: i18n("Moving the mouse pointer over a window gives it focus")
+
+                    SettingsSwitch {
+                        checked: appSettings.autotileFocusFollowsMouse
+                        accessibleName: i18n("Focus follows mouse pointer")
+                        onToggled: appSettings.autotileFocusFollowsMouse = checked
+                    }
+
+                }
+
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Kirigami.Units.largeSpacing
+                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                }
+
+                SettingsRow {
+                    title: i18n("Respect minimum size")
+                    description: i18n("Prevent windows from being resized below their minimum; may leave gaps")
+
+                    SettingsSwitch {
+                        checked: appSettings.autotileRespectMinimumSize
+                        accessibleName: i18n("Respect window minimum size")
+                        onToggled: appSettings.autotileRespectMinimumSize = checked
+                    }
+
                 }
 
             }

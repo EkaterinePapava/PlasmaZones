@@ -22,103 +22,158 @@ Flickable {
         spacing: Kirigami.Units.largeSpacing
 
         // =================================================================
-        // =================================================================
-        // Appearance Card (Colors + Decorations + Borders)
+        // Colors Card
         // =================================================================
         SettingsCard {
             Layout.fillWidth: true
-            headerText: i18n("Appearance")
+            headerText: i18n("Colors")
+            showAccent: true
             collapsible: true
 
-            contentItem: Kirigami.FormLayout {
+            contentItem: ColumnLayout {
+                spacing: Kirigami.Units.smallSpacing
+
+                SettingsRow {
+                    title: i18n("Use system accent color")
+                    description: i18n("Derive border colors from your system color scheme")
+
+                    SettingsSwitch {
+                        id: useSystemColorsCheck
+
+                        checked: appSettings.autotileUseSystemBorderColors
+                        accessibleName: i18n("Use system accent color")
+                        onToggled: appSettings.autotileUseSystemBorderColors = checked
+                    }
+
+                }
+
                 Kirigami.Separator {
-                    Kirigami.FormData.isSection: true
-                    Kirigami.FormData.label: i18n("Colors")
-                }
-
-                CheckBox {
-                    id: useSystemColorsCheck
-
-                    Kirigami.FormData.label: i18n("Color scheme:")
-                    text: i18n("Use system accent color")
-                    checked: appSettings.autotileUseSystemBorderColors
-                    onToggled: appSettings.autotileUseSystemBorderColors = checked
-                }
-
-                ColorSwatchRow {
-                    formLabel: i18n("Active color:")
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Kirigami.Units.largeSpacing
+                    Layout.rightMargin: Kirigami.Units.largeSpacing
                     visible: !useSystemColorsCheck.checked
-                    color: appSettings.autotileBorderColor
-                    onClicked: {
-                        activeBorderColorDialog.selectedColor = appSettings.autotileBorderColor;
-                        activeBorderColorDialog.open();
-                    }
                 }
 
-                ColorSwatchRow {
-                    formLabel: i18n("Inactive color:")
+                SettingsRow {
                     visible: !useSystemColorsCheck.checked
-                    color: appSettings.autotileInactiveBorderColor
-                    onClicked: {
-                        inactiveBorderColorDialog.selectedColor = appSettings.autotileInactiveBorderColor;
-                        inactiveBorderColorDialog.open();
+                    title: i18n("Active border color")
+                    description: i18n("Border color for the focused window")
+
+                    ColorButton {
+                        color: appSettings.autotileBorderColor
+                        onClicked: {
+                            activeBorderColorDialog.selectedColor = appSettings.autotileBorderColor;
+                            activeBorderColorDialog.open();
+                        }
                     }
+
                 }
 
                 Kirigami.Separator {
-                    Kirigami.FormData.isSection: true
-                    Kirigami.FormData.label: i18n("Decorations")
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Kirigami.Units.largeSpacing
+                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                    visible: !useSystemColorsCheck.checked
                 }
 
-                CheckBox {
-                    id: hideTitleBarsCheck
+                SettingsRow {
+                    visible: !useSystemColorsCheck.checked
+                    title: i18n("Inactive border color")
+                    description: i18n("Border color for unfocused windows")
 
-                    Kirigami.FormData.label: i18n("Title bars:")
-                    text: i18n("Hide title bars on tiled windows")
-                    checked: appSettings.autotileHideTitleBars
-                    onToggled: appSettings.autotileHideTitleBars = checked
-                    ToolTip.visible: hovered
-                    ToolTip.text: i18n("Remove window title bars while autotiled. Restored when floating or leaving autotile mode.")
+                    ColorButton {
+                        color: appSettings.autotileInactiveBorderColor
+                        onClicked: {
+                            inactiveBorderColorDialog.selectedColor = appSettings.autotileInactiveBorderColor;
+                            inactiveBorderColorDialog.open();
+                        }
+                    }
+
+                }
+
+            }
+
+        }
+
+        // =================================================================
+        // Decorations Card
+        // =================================================================
+        SettingsCard {
+            Layout.fillWidth: true
+            headerText: i18n("Decorations")
+            showAccent: true
+            collapsible: true
+
+            contentItem: ColumnLayout {
+                spacing: Kirigami.Units.smallSpacing
+
+                SettingsRow {
+                    title: i18n("Hide title bars")
+                    description: i18n("Remove window title bars while autotiled, restored when floating")
+
+                    SettingsSwitch {
+                        id: hideTitleBarsCheck
+
+                        checked: appSettings.autotileHideTitleBars
+                        accessibleName: i18n("Hide title bars on tiled windows")
+                        onToggled: appSettings.autotileHideTitleBars = checked
+                    }
+
+                }
+
+            }
+
+        }
+
+        // =================================================================
+        // Borders Card
+        // =================================================================
+        SettingsCard {
+            Layout.fillWidth: true
+            headerText: i18n("Borders")
+            showAccent: true
+            showToggle: true
+            toggleChecked: appSettings.autotileShowBorder
+            onToggleChanged: appSettings.autotileShowBorder = toggleChecked
+            collapsible: true
+
+            contentItem: ColumnLayout {
+                spacing: Kirigami.Units.smallSpacing
+
+                SettingsRow {
+                    title: i18n("Border width")
+                    description: i18n("Thickness of colored borders around tiled windows")
+
+                    SettingsSpinBox {
+                        from: settingsController.autotileBorderWidthMin
+                        to: settingsController.autotileBorderWidthMax
+                        value: appSettings.autotileBorderWidth
+                        onValueModified: (value) => {
+                            return appSettings.autotileBorderWidth = value;
+                        }
+                    }
+
                 }
 
                 Kirigami.Separator {
-                    Kirigami.FormData.isSection: true
-                    Kirigami.FormData.label: i18n("Borders")
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Kirigami.Units.largeSpacing
+                    Layout.rightMargin: Kirigami.Units.largeSpacing
                 }
 
-                CheckBox {
-                    id: showBorderCheck
+                SettingsRow {
+                    title: i18n("Corner radius")
+                    description: i18n("Roundness of border corners (0 for square)")
 
-                    Kirigami.FormData.label: i18n("Border:")
-                    text: i18n("Show borders in tiling mode")
-                    checked: appSettings.autotileShowBorder
-                    onToggled: appSettings.autotileShowBorder = checked
-                    ToolTip.visible: hovered
-                    ToolTip.text: i18n("Draw colored borders around all windows in tiling mode. Active color for focused, inactive for unfocused. Works with or without hidden title bars.")
-                }
-
-                SettingsSpinBox {
-                    formLabel: i18n("Width:")
-                    visible: root.bordersActive
-                    from: settingsController.autotileBorderWidthMin
-                    to: settingsController.autotileBorderWidthMax
-                    value: appSettings.autotileBorderWidth
-                    tooltipText: i18n("Colored border drawn around tiled windows (0 to disable)")
-                    onValueModified: (value) => {
-                        return appSettings.autotileBorderWidth = value;
+                    SettingsSpinBox {
+                        from: settingsController.autotileBorderRadiusMin
+                        to: settingsController.autotileBorderRadiusMax
+                        value: appSettings.autotileBorderRadius
+                        onValueModified: (value) => {
+                            return appSettings.autotileBorderRadius = value;
+                        }
                     }
-                }
 
-                SettingsSpinBox {
-                    formLabel: i18n("Corner radius:")
-                    visible: root.bordersActive
-                    from: settingsController.autotileBorderRadiusMin
-                    to: settingsController.autotileBorderRadiusMax
-                    value: appSettings.autotileBorderRadius
-                    tooltipText: i18n("Corner radius for the border (0 for square corners)")
-                    onValueModified: (value) => {
-                        return appSettings.autotileBorderRadius = value;
-                    }
                 }
 
             }

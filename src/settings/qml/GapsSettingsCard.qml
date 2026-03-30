@@ -30,34 +30,45 @@ SettingsCard {
     signal smartGapsToggled(bool checked)
 
     headerText: i18n("Gaps")
+    showAccent: true
     collapsible: true
 
-    contentItem: Kirigami.FormLayout {
-        SettingsSpinBox {
-            formLabel: i18n("Inner gap:")
-            from: root.gapMin
-            to: root.gapMax
-            value: root.innerGapValue
-            tooltipText: i18n("Gap between tiled windows")
-            onValueModified: (value) => {
-                return root.innerGapModified(value);
+    contentItem: ColumnLayout {
+        spacing: Kirigami.Units.smallSpacing
+
+        SettingsRow {
+            title: i18n("Inner gap")
+            description: i18n("Space between tiled windows")
+
+            SettingsSpinBox {
+                from: root.gapMin
+                to: root.gapMax
+                value: root.innerGapValue
+                onValueModified: (value) => {
+                    return root.innerGapModified(value);
+                }
             }
+
         }
 
-        RowLayout {
-            Kirigami.FormData.label: i18n("Outer gap:")
-            spacing: Kirigami.Units.smallSpacing
+        Kirigami.Separator {
+            Layout.fillWidth: true
+            Layout.leftMargin: Kirigami.Units.largeSpacing
+            Layout.rightMargin: Kirigami.Units.largeSpacing
+        }
+
+        SettingsRow {
+            visible: !tilePerSideCheck.checked
+            title: i18n("Outer gap")
+            description: i18n("Space from screen edges to tiled windows")
 
             SpinBox {
                 id: outerGapSpinBox
 
                 from: root.gapMin
                 to: root.gapMax
-                enabled: !tilePerSideCheck.checked
                 onValueModified: root.outerGapModified(value)
                 Accessible.name: i18n("Outer gap")
-                ToolTip.visible: hovered
-                ToolTip.text: i18n("Gap from screen edges")
 
                 Binding on value {
                     value: root.outerGapValue
@@ -67,31 +78,33 @@ SettingsCard {
 
             }
 
-            Label {
-                text: i18n("px")
-                visible: !tilePerSideCheck.checked
-            }
+        }
 
-            CheckBox {
+        SettingsRow {
+            title: i18n("Per-side outer gaps")
+            description: tilePerSideCheck.checked ? i18n("Set different gap sizes for each screen edge") : i18n("Use a single outer gap value for all edges")
+
+            SettingsSwitch {
                 id: tilePerSideCheck
 
-                text: i18n("Set per side")
                 checked: root.usePerSideOuterGap
+                accessibleName: i18n("Set gaps per side")
                 onToggled: root.usePerSideOuterGapToggled(checked)
-                Accessible.name: i18n("Set gaps per side")
             }
 
         }
 
+        // Per-side gap grid (only when per-side is enabled)
         GridLayout {
-            Kirigami.FormData.label: i18n("Per-side gaps:")
             visible: tilePerSideCheck.checked
-            columns: 6
-            columnSpacing: Kirigami.Units.smallSpacing
+            Layout.alignment: Qt.AlignRight
+            Layout.rightMargin: Kirigami.Units.largeSpacing
+            columns: 4
+            columnSpacing: Kirigami.Units.largeSpacing
             rowSpacing: Kirigami.Units.smallSpacing
 
             Label {
-                text: i18n("Top:")
+                text: i18n("Top")
             }
 
             SpinBox {
@@ -111,11 +124,7 @@ SettingsCard {
             }
 
             Label {
-                text: i18nc("@label", "px")
-            }
-
-            Label {
-                text: i18n("Bottom:")
+                text: i18n("Bottom")
             }
 
             SpinBox {
@@ -135,11 +144,7 @@ SettingsCard {
             }
 
             Label {
-                text: i18nc("@label", "px")
-            }
-
-            Label {
-                text: i18n("Left:")
+                text: i18n("Left")
             }
 
             SpinBox {
@@ -159,11 +164,7 @@ SettingsCard {
             }
 
             Label {
-                text: i18nc("@label", "px")
-            }
-
-            Label {
-                text: i18n("Right:")
+                text: i18n("Right")
             }
 
             SpinBox {
@@ -182,18 +183,24 @@ SettingsCard {
 
             }
 
-            Label {
-                text: i18nc("@label", "px")
-            }
-
         }
 
-        CheckBox {
-            Kirigami.FormData.label: i18n("Smart gaps:")
-            text: i18n("Hide gaps when only one window is tiled")
-            checked: root.smartGapsValue
-            onToggled: root.smartGapsToggled(checked)
-            Accessible.name: i18n("Smart gaps")
+        Kirigami.Separator {
+            Layout.fillWidth: true
+            Layout.leftMargin: Kirigami.Units.largeSpacing
+            Layout.rightMargin: Kirigami.Units.largeSpacing
+        }
+
+        SettingsRow {
+            title: i18n("Smart gaps")
+            description: i18n("Remove all gaps when only one window is tiled")
+
+            SettingsSwitch {
+                checked: root.smartGapsValue
+                accessibleName: i18n("Smart gaps")
+                onToggled: root.smartGapsToggled(checked)
+            }
+
         }
 
     }

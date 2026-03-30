@@ -186,15 +186,16 @@ Flickable {
         SettingsCard {
             Layout.fillWidth: true
             headerText: i18n("Algorithm")
+            showAccent: true
             collapsible: true
 
             contentItem: ColumnLayout {
-                spacing: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
 
                 // Live preview - centered at top
                 Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: root.algorithmPreviewHeight + Kirigami.Units.gridUnit * 4
+                    Layout.preferredHeight: root.algorithmPreviewHeight + Kirigami.Units.gridUnit * 1.5
 
                     // Preview container
                     Item {
@@ -293,25 +294,23 @@ Flickable {
 
                 }
 
-                // Max windows slider
-                ColumnLayout {
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: Kirigami.Units.smallSpacing
-                    Layout.maximumWidth: Math.min(Kirigami.Units.gridUnit * 20, parent.width)
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Kirigami.Units.largeSpacing
+                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                }
 
-                    Label {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: i18n("Max Windows")
-                        font.weight: Font.DemiBold
-                    }
+                // Max windows
+                SettingsRow {
+                    title: i18n("Max windows")
+                    description: i18n("Maximum number of windows to tile on this screen")
 
                     SettingsSlider {
                         id: previewWindowSlider
 
-                        Layout.fillWidth: true
-                        Accessible.name: i18n("Maximum preview windows")
+                        Accessible.name: i18n("Maximum windows")
                         from: settingsController.autotileMaxWindowsMin
-                        to: 12 // Intentional cap — most algorithms degrade beyond 12 windows; settingsController does not expose autotileMaxWindowsMax to QML
+                        to: 12
                         stepSize: 1
                         formatValue: function(v) {
                             return Math.round(v).toString();
@@ -334,29 +333,21 @@ Flickable {
                 }
 
                 // Algorithm-specific settings (master-stack, three-column, centered-master)
-                ColumnLayout {
-                    Layout.alignment: Qt.AlignHCenter
+                Kirigami.Separator {
                     Layout.fillWidth: true
-                    Layout.maximumWidth: Math.min(Kirigami.Units.gridUnit * 20, parent.width)
-                    spacing: Kirigami.Units.smallSpacing
+                    Layout.leftMargin: Kirigami.Units.largeSpacing
+                    Layout.rightMargin: Kirigami.Units.largeSpacing
                     visible: root.algoSupportsSplitRatio || root.algoSupportsMasterCount
+                }
 
-                    Kirigami.Separator {
-                        Layout.fillWidth: true
-                        Layout.topMargin: Kirigami.Units.smallSpacing
-                    }
-
-                    // Master/Center ratio
-                    Label {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: root.algoCenterLayout ? i18n("Center Ratio") : i18n("Master Ratio")
-                        font.weight: Font.DemiBold
-                    }
+                SettingsRow {
+                    visible: root.algoSupportsSplitRatio
+                    title: root.algoCenterLayout ? i18n("Center ratio") : i18n("Master ratio")
+                    description: root.algoCenterLayout ? i18n("Width proportion allocated to the center column") : i18n("Width proportion allocated to the master area")
 
                     SettingsSlider {
                         id: splitRatioSlider
 
-                        Layout.fillWidth: true
                         Accessible.name: root.algoCenterLayout ? i18n("Center ratio") : i18n("Master ratio")
                         from: settingsController.autotileSplitRatioMin
                         to: 0.9
@@ -365,9 +356,6 @@ Flickable {
                             return Math.round(v * 100) + "%";
                         }
                         onMoved: (value) => {
-                            // Write to the global split ratio — the engine's
-                            // setAlgorithm() save/restore logic persists it
-                            // into the per-algorithm map on algorithm switch.
                             root.writeSetting("SplitRatio", value, function(v) {
                                 appSettings.autotileSplitRatio = v;
                             });
@@ -382,19 +370,23 @@ Flickable {
                         restoreMode: Binding.RestoreNone
                     }
 
-                    // Master count - for master-stack and centered-master
-                    Label {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: root.algoCenterLayout ? i18n("Center Count") : i18n("Master Count")
-                        font.weight: Font.DemiBold
-                        visible: root.algoSupportsMasterCount
-                    }
+                }
+
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Kirigami.Units.largeSpacing
+                    Layout.rightMargin: Kirigami.Units.largeSpacing
+                    visible: root.algoSupportsMasterCount
+                }
+
+                SettingsRow {
+                    visible: root.algoSupportsMasterCount
+                    title: root.algoCenterLayout ? i18n("Center count") : i18n("Master count")
+                    description: root.algoCenterLayout ? i18n("Number of windows in the center column") : i18n("Number of windows in the master area")
 
                     SettingsSlider {
                         id: masterCountSlider
 
-                        Layout.fillWidth: true
-                        visible: root.algoSupportsMasterCount
                         Accessible.name: root.algoCenterLayout ? i18n("Center count") : i18n("Master count")
                         from: settingsController.autotileMasterCountMin
                         to: 5
