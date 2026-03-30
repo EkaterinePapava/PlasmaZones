@@ -166,7 +166,7 @@ function sortItems(groups, sortIdx, ascending) {
         groups[key].items.sort(function(a, b) {
             var cmp;
             if (sortIdx === 1) {
-                cmp = (a.zoneCount || 0) - (b.zoneCount || 0);
+                cmp = Math.max(0, a.zoneCount || 0) - Math.max(0, b.zoneCount || 0);
                 if (cmp === 0)
                     cmp = (a.name || "").localeCompare(b.name || "");
             } else {

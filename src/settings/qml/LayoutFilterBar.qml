@@ -97,6 +97,7 @@ RowLayout {
         let keys = Object.keys(_defaultValues);
         for (let i = 0; i < keys.length; i++) root[keys[i]] = _defaultValues[keys[i]]
         _resetting = false;
+        saveState(viewMode);
         filterSettingsChanged();
     }
 
@@ -125,10 +126,15 @@ RowLayout {
         groupByCombo.currentIndex = groupByIndex;
         sortByCombo.currentIndex = sortByIndex;
         _resetting = false;
+        saveState(viewMode);
         filterSettingsChanged();
     }
 
-    onFilterSettingsChanged: saveState(viewMode)
+    onFilterSettingsChanged: {
+        if (!_resetting)
+            saveState(viewMode);
+
+    }
     spacing: Kirigami.Units.smallSpacing
     // Save current mode state, then load the new mode's persisted state
     onViewModeChanged: {
@@ -211,9 +217,12 @@ RowLayout {
         Layout.preferredWidth: Kirigami.Units.gridUnit * 12
         placeholderText: root.viewMode === 0 ? i18n("Search layouts\u2026") : i18n("Search algorithms\u2026")
         inputMethodHints: Qt.ImhNoPredictiveText
-        rightPadding: clearButton.visible ? clearButton.width + Kirigami.Units.smallSpacing : undefined
+        rightPadding: clearButton.visible ? clearButton.width + Kirigami.Units.smallSpacing : Kirigami.Units.smallSpacing
         Accessible.name: root.viewMode === 0 ? i18n("Search layouts") : i18n("Search algorithms")
         onTextChanged: {
+            if (root.filterText === text)
+                return ;
+
             root.filterText = text;
             if (!root._resetting)
                 searchDebounce.restart();
