@@ -203,6 +203,7 @@ ColumnLayout {
                             if (!matchesCommonFilters(item, search))
                                 return false;
 
+                            // Unknown classes (not in arMap) pass through intentionally
                             let cls = item.aspectRatioClass || "any";
                             if (arMap[cls] === false)
                                 return false;
@@ -222,16 +223,14 @@ ColumnLayout {
                             return true;
                         });
                     } else {
-                        // Algorithms expose isSystem only (no hasSystemOrigin),
-                        // so isBuiltIn() is not used here.
                         filtered = filtered.filter((item) => {
                             if (!matchesCommonFilters(item, search))
                                 return false;
 
-                            if (item.isSystem && !filterBar.showBuiltInAlgorithms)
+                            if (isBuiltIn(item) && !filterBar.showBuiltInAlgorithms)
                                 return false;
 
-                            if (!item.isSystem && !filterBar.showUserAlgorithms)
+                            if (!isBuiltIn(item) && !filterBar.showUserAlgorithms)
                                 return false;
 
                             if (!filterBar.showMasterCount && item.supportsMasterCount === true)
@@ -301,7 +300,7 @@ ColumnLayout {
                                     if (!groups["other"])
                                         groups["other"] = {
                                         "items": [],
-                                        "order": 99,
+                                        "order": Number.MAX_SAFE_INTEGER,
                                         "label": i18n("Other")
                                     };
 
@@ -310,7 +309,7 @@ ColumnLayout {
                             }
                         } else if (groupIdx === 1)
                             groups = groupByBoolKey(filtered, (item) => {
-                            return item.isSystem;
+                            return isBuiltIn(item);
                         }, "builtin", i18n("Built-in"), "user", i18n("User Scripts"));
                         else if (groupIdx === 2)
                             groups = groupByBoolKey(filtered, (item) => {
@@ -430,16 +429,17 @@ ColumnLayout {
                     }
                     explanation: {
                         if (filterBar.hasActiveFilters) {
+                            let hints = [];
                             if (root.viewMode === 0 && !filterBar.showBuiltInLayouts && !filterBar.showUserLayouts)
-                                return i18n("Both Built-in and User layout sources are hidden");
+                                hints.push(i18n("Both Built-in and User layout sources are hidden"));
 
                             if (root.viewMode === 0 && !filterBar.showAutoLayouts && !filterBar.showManualLayouts)
-                                return i18n("Both Auto and Manual layout types are hidden");
+                                hints.push(i18n("Both Auto and Manual layout types are hidden"));
 
                             if (root.viewMode === 1 && !filterBar.showBuiltInAlgorithms && !filterBar.showUserAlgorithms)
-                                return i18n("Both Built-in and User algorithm sources are hidden");
+                                hints.push(i18n("Both Built-in and User algorithm sources are hidden"));
 
-                            return i18n("Try adjusting your filters or search terms");
+                            return hints.length > 0 ? hints.join("\n") : i18n("Try adjusting your filters or search terms");
                         }
                         return root.viewMode === 1 ? i18n("Enable autotiling to use tiling algorithms") : i18n("Start the PlasmaZones daemon or create a new layout");
                     }

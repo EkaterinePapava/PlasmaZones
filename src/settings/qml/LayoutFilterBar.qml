@@ -57,6 +57,7 @@ RowLayout {
     readonly property var tilingSortModel: [i18n("Name")]
     // Guard to suppress redundant filterSettingsChanged during batch resets
     property bool _resetting: false
+    property int _previousViewMode: 0
 
     signal filterSettingsChanged()
 
@@ -88,6 +89,7 @@ RowLayout {
         filterSettingsChanged();
     }
 
+    // NOTE: when adding a filter, also update: property declarations, resetFilters(), loadState(), persistedState
     function saveState(mode) {
         if (mode === 0) {
             persistedState.snappingGroupByIndex = groupByIndex;
@@ -119,6 +121,7 @@ RowLayout {
 
     function loadState(mode) {
         _resetting = true;
+        // filterText is intentionally not persisted — always start with empty search
         searchField.clear();
         filterText = "";
         if (mode === 0) {
@@ -151,6 +154,8 @@ RowLayout {
             showOverlapping = persistedState.tilingShowOverlapping;
             showPersistent = persistedState.tilingShowPersistent;
         }
+        groupByCombo.currentIndex = groupByIndex;
+        sortByCombo.currentIndex = sortByIndex;
         _resetting = false;
         filterSettingsChanged();
     }
@@ -159,10 +164,14 @@ RowLayout {
     spacing: Kirigami.Units.smallSpacing
     // Save current mode state, then load the new mode's persisted state
     onViewModeChanged: {
-        saveState(viewMode === 0 ? 1 : 0); // save the *previous* mode
+        saveState(_previousViewMode);
+        _previousViewMode = viewMode;
         loadState(viewMode);
     }
-    Component.onCompleted: loadState(viewMode)
+    Component.onCompleted: {
+        _previousViewMode = viewMode;
+        loadState(viewMode);
+    }
 
     // ── Group By ────────────────────────────────────────────────────────────
     Label {
@@ -177,7 +186,11 @@ RowLayout {
         Layout.preferredWidth: Kirigami.Units.gridUnit * 8
         model: root.viewMode === 0 ? root.snappingGroupModel : root.tilingGroupModel
         currentIndex: root.groupByIndex
+        Accessible.name: i18n("Group by")
         onActivated: (index) => {
+            if (index < 0 || index >= model.length)
+                return ;
+
             root.groupByIndex = index;
             root.filterSettingsChanged();
         }
@@ -196,7 +209,11 @@ RowLayout {
         Layout.preferredWidth: Kirigami.Units.gridUnit * 8
         model: root.viewMode === 0 ? root.snappingSortModel : root.tilingSortModel
         currentIndex: root.sortByIndex
+        Accessible.name: i18n("Sort by")
         onActivated: (index) => {
+            if (index < 0 || index >= model.length)
+                return ;
+
             root.sortByIndex = index;
             root.filterSettingsChanged();
         }
@@ -230,7 +247,7 @@ RowLayout {
         onTextChanged: {
             root.filterText = text;
             if (!root._resetting)
-                root.filterSettingsChanged();
+                searchDebounce.restart();
 
         }
 
@@ -247,6 +264,13 @@ RowLayout {
             Accessible.name: i18n("Clear search")
         }
 
+    }
+
+    Timer {
+        id: searchDebounce
+
+        interval: 150
+        onTriggered: root.filterSettingsChanged()
     }
 
     // ── Filter Button ───────────────────────────────────────────────────────
@@ -442,7 +466,7 @@ RowLayout {
         property bool tilingShowOverlapping: true
         property bool tilingShowPersistent: true
 
-        category: "LayoutFilterBar"
+        category: "LayoutsPageFilterBar"
     }
 
     // Checkable menu item that writes back to a named root filter property
@@ -451,10 +475,11 @@ RowLayout {
 
         checkable: true
         onToggled: {
-            root[filterProperty] = checked;
-            if (!root._resetting)
-                root.filterSettingsChanged();
+            if (root._resetting)
+                return ;
 
+            root[filterProperty] = checked;
+            root.filterSettingsChanged();
         }
     }
 
