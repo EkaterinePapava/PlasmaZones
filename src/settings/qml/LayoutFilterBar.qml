@@ -58,6 +58,31 @@ RowLayout {
     // Guard to suppress redundant filterSettingsChanged during batch resets
     property bool _resetting: false
     property int _previousViewMode: 0
+    // Property-name maps for data-driven save/load.
+    // Each entry: [rootPropertyName, persistedStatePropertyName].
+    // NOTE: when adding a filter, also update: property declarations,
+    // _defaultValues, _snappingStateMap or _tilingStateMap, and persistedState.
+    readonly property var _snappingStateMap: [["groupByIndex", "snappingGroupByIndex"], ["sortByIndex", "snappingSortByIndex"], ["sortAscending", "snappingSortAscending"], ["showHidden", "snappingShowHidden"], ["showAspectAny", "snappingShowAspectAny"], ["showAspectStandard", "snappingShowAspectStandard"], ["showAspectUltrawide", "snappingShowAspectUltrawide"], ["showAspectSuperUltrawide", "snappingShowAspectSuperUltrawide"], ["showAspectPortrait", "snappingShowAspectPortrait"], ["showAutoLayouts", "snappingShowAutoLayouts"], ["showManualLayouts", "snappingShowManualLayouts"], ["showBuiltInLayouts", "snappingShowBuiltInLayouts"], ["showUserLayouts", "snappingShowUserLayouts"]]
+    readonly property var _tilingStateMap: [["groupByIndex", "tilingGroupByIndex"], ["sortByIndex", "tilingSortByIndex"], ["sortAscending", "tilingSortAscending"], ["showHidden", "tilingShowHidden"], ["showBuiltInAlgorithms", "tilingShowBuiltInAlgorithms"], ["showUserAlgorithms", "tilingShowUserAlgorithms"], ["showMasterCount", "tilingShowMasterCount"], ["showSplitRatio", "tilingShowSplitRatio"], ["showOverlapping", "tilingShowOverlapping"], ["showPersistent", "tilingShowPersistent"]]
+    // Default values for all resettable filter properties (not group/sort)
+    readonly property var _defaultValues: {
+        "showHidden": false,
+        "showAspectAny": true,
+        "showAspectStandard": true,
+        "showAspectUltrawide": true,
+        "showAspectSuperUltrawide": true,
+        "showAspectPortrait": true,
+        "showAutoLayouts": true,
+        "showManualLayouts": true,
+        "showBuiltInLayouts": true,
+        "showUserLayouts": true,
+        "showBuiltInAlgorithms": true,
+        "showUserAlgorithms": true,
+        "showMasterCount": true,
+        "showSplitRatio": true,
+        "showOverlapping": true,
+        "showPersistent": true
+    }
 
     signal filterSettingsChanged()
 
@@ -69,54 +94,15 @@ RowLayout {
         _resetting = true;
         searchField.clear();
         filterText = "";
-        showHidden = false;
-        showAspectAny = true;
-        showAspectStandard = true;
-        showAspectUltrawide = true;
-        showAspectSuperUltrawide = true;
-        showAspectPortrait = true;
-        showAutoLayouts = true;
-        showManualLayouts = true;
-        showBuiltInLayouts = true;
-        showUserLayouts = true;
-        showBuiltInAlgorithms = true;
-        showUserAlgorithms = true;
-        showMasterCount = true;
-        showSplitRatio = true;
-        showOverlapping = true;
-        showPersistent = true;
+        let keys = Object.keys(_defaultValues);
+        for (let i = 0; i < keys.length; i++) root[keys[i]] = _defaultValues[keys[i]]
         _resetting = false;
         filterSettingsChanged();
     }
 
-    // NOTE: when adding a filter, also update: property declarations, resetFilters(), loadState(), persistedState
     function saveState(mode) {
-        if (mode === 0) {
-            persistedState.snappingGroupByIndex = groupByIndex;
-            persistedState.snappingSortByIndex = sortByIndex;
-            persistedState.snappingSortAscending = sortAscending;
-            persistedState.snappingShowHidden = showHidden;
-            persistedState.snappingShowAspectAny = showAspectAny;
-            persistedState.snappingShowAspectStandard = showAspectStandard;
-            persistedState.snappingShowAspectUltrawide = showAspectUltrawide;
-            persistedState.snappingShowAspectSuperUltrawide = showAspectSuperUltrawide;
-            persistedState.snappingShowAspectPortrait = showAspectPortrait;
-            persistedState.snappingShowAutoLayouts = showAutoLayouts;
-            persistedState.snappingShowManualLayouts = showManualLayouts;
-            persistedState.snappingShowBuiltInLayouts = showBuiltInLayouts;
-            persistedState.snappingShowUserLayouts = showUserLayouts;
-        } else {
-            persistedState.tilingGroupByIndex = groupByIndex;
-            persistedState.tilingSortByIndex = sortByIndex;
-            persistedState.tilingSortAscending = sortAscending;
-            persistedState.tilingShowHidden = showHidden;
-            persistedState.tilingShowBuiltInAlgorithms = showBuiltInAlgorithms;
-            persistedState.tilingShowUserAlgorithms = showUserAlgorithms;
-            persistedState.tilingShowMasterCount = showMasterCount;
-            persistedState.tilingShowSplitRatio = showSplitRatio;
-            persistedState.tilingShowOverlapping = showOverlapping;
-            persistedState.tilingShowPersistent = showPersistent;
-        }
+        let map = mode === 0 ? _snappingStateMap : _tilingStateMap;
+        for (let i = 0; i < map.length; i++) persistedState[map[i][1]] = root[map[i][0]]
     }
 
     function loadState(mode) {
@@ -124,35 +110,17 @@ RowLayout {
         // filterText is intentionally not persisted — always start with empty search
         searchField.clear();
         filterText = "";
-        if (mode === 0) {
-            let maxGroup = snappingGroupModel.length - 1;
-            let maxSort = snappingSortModel.length - 1;
-            groupByIndex = Math.min(persistedState.snappingGroupByIndex, maxGroup);
-            sortByIndex = Math.min(persistedState.snappingSortByIndex, maxSort);
-            sortAscending = persistedState.snappingSortAscending;
-            showHidden = persistedState.snappingShowHidden;
-            showAspectAny = persistedState.snappingShowAspectAny;
-            showAspectStandard = persistedState.snappingShowAspectStandard;
-            showAspectUltrawide = persistedState.snappingShowAspectUltrawide;
-            showAspectSuperUltrawide = persistedState.snappingShowAspectSuperUltrawide;
-            showAspectPortrait = persistedState.snappingShowAspectPortrait;
-            showAutoLayouts = persistedState.snappingShowAutoLayouts;
-            showManualLayouts = persistedState.snappingShowManualLayouts;
-            showBuiltInLayouts = persistedState.snappingShowBuiltInLayouts;
-            showUserLayouts = persistedState.snappingShowUserLayouts;
-        } else {
-            let maxGroup = tilingGroupModel.length - 1;
-            let maxSort = tilingSortModel.length - 1;
-            groupByIndex = Math.min(persistedState.tilingGroupByIndex, maxGroup);
-            sortByIndex = Math.min(persistedState.tilingSortByIndex, maxSort);
-            sortAscending = persistedState.tilingSortAscending;
-            showHidden = persistedState.tilingShowHidden;
-            showBuiltInAlgorithms = persistedState.tilingShowBuiltInAlgorithms;
-            showUserAlgorithms = persistedState.tilingShowUserAlgorithms;
-            showMasterCount = persistedState.tilingShowMasterCount;
-            showSplitRatio = persistedState.tilingShowSplitRatio;
-            showOverlapping = persistedState.tilingShowOverlapping;
-            showPersistent = persistedState.tilingShowPersistent;
+        let map = mode === 0 ? _snappingStateMap : _tilingStateMap;
+        let maxGroup = (mode === 0 ? snappingGroupModel : tilingGroupModel).length - 1;
+        let maxSort = (mode === 0 ? snappingSortModel : tilingSortModel).length - 1;
+        for (let i = 0; i < map.length; i++) {
+            let prop = map[i][0];
+            let val = persistedState[map[i][1]];
+            if (prop === "groupByIndex")
+                val = Math.min(val, maxGroup);
+            else if (prop === "sortByIndex")
+                val = Math.min(val, maxSort);
+            root[prop] = val;
         }
         groupByCombo.currentIndex = groupByIndex;
         sortByCombo.currentIndex = sortByIndex;
@@ -244,6 +212,7 @@ RowLayout {
         placeholderText: root.viewMode === 0 ? i18n("Search layouts\u2026") : i18n("Search algorithms\u2026")
         inputMethodHints: Qt.ImhNoPredictiveText
         rightPadding: clearButton.visible ? clearButton.width + Kirigami.Units.smallSpacing : undefined
+        Accessible.name: root.viewMode === 0 ? i18n("Search layouts") : i18n("Search algorithms")
         onTextChanged: {
             root.filterText = text;
             if (!root._resetting)
@@ -260,7 +229,11 @@ RowLayout {
             icon.name: "edit-clear"
             icon.width: Kirigami.Units.iconSizes.small
             icon.height: Kirigami.Units.iconSizes.small
-            onClicked: searchField.clear()
+            onClicked: {
+                searchField.clear();
+                searchDebounce.stop();
+                root.filterSettingsChanged();
+            }
             Accessible.name: i18n("Clear search")
         }
 
@@ -469,7 +442,9 @@ RowLayout {
         category: "LayoutsPageFilterBar"
     }
 
-    // Checkable menu item that writes back to a named root filter property
+    // Checkable menu item that writes back to a named root filter property.
+    // Uses an explicit Binding so the checked state survives imperative
+    // toggles (checkable breaks declarative bindings on user click).
     component FilterMenuItem: MenuItem {
         required property string filterProperty
 
@@ -481,6 +456,11 @@ RowLayout {
             root[filterProperty] = checked;
             root.filterSettingsChanged();
         }
+
+        Binding on checked {
+            value: root[filterProperty]
+        }
+
     }
 
     // Shared "Reset Filters" action used by both filter menus

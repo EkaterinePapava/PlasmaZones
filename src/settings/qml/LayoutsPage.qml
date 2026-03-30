@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 fuddlesworth
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import "LayoutFilterLogic.js" as Logic
 import QtCore
 import QtQuick
 import QtQuick.Controls
@@ -115,7 +116,6 @@ ColumnLayout {
 
                 function rebuildModel() {
                     let allLayouts = settingsController.layouts;
-                    // ── Step 1: filter by view mode ──────────────────────────
                     let filtered = [];
                     for (let i = 0; i < allLayouts.length; i++) {
                         let isAutotile = allLayouts[i].isAutotile === true;
@@ -124,40 +124,14 @@ ColumnLayout {
                         else if (root.viewMode === 1 && isAutotile)
                             filtered.push(allLayouts[i]);
                     }
-                    // ── Step 2: apply filters ────────────────────────────────
-                    filtered = applyFilters(filtered);
-                    // ── Step 3: group ────────────────────────────────────────
+                    let search = filterBar.filterText.toLowerCase();
+                    if (root.viewMode === 0)
+                        filtered = Logic.applySnappingFilters(filtered, search, filterBar);
+                    else
+                        filtered = Logic.applyTilingFilters(filtered, search, filterBar);
                     let groups = buildGroups(filtered, filterBar.groupByIndex);
-                    // ── Step 4: sort items within each group ─────────────────
-                    let ascending = filterBar.sortAscending;
-                    let sortIdx = filterBar.sortByIndex;
-                    for (let key in groups) {
-                        groups[key].items.sort((a, b) => {
-                            let cmp;
-                            if (sortIdx === 1) {
-                                cmp = (a.zoneCount || 0) - (b.zoneCount || 0);
-                                if (cmp === 0)
-                                    cmp = (a.name || "").localeCompare(b.name || "");
-
-                            } else {
-                                cmp = (a.name || "").localeCompare(b.name || "");
-                            }
-                            return ascending ? cmp : -cmp;
-                        });
-                    }
-                    // ── Step 5: sort groups and build model ──────────────────
-                    let sorted = Object.values(groups).sort((a, b) => {
-                        return a.order - b.order;
-                    });
-                    let nonEmpty = sorted.filter((g) => {
-                        return g.items.length > 0;
-                    });
-                    model = nonEmpty.map((g) => {
-                        return ({
-                            "label": nonEmpty.length > 1 ? g.label : "",
-                            "layouts": g.items
-                        });
-                    });
+                    Logic.sortItems(groups, filterBar.sortByIndex, filterBar.sortAscending);
+                    model = Logic.finalizeGroups(groups);
                 }
 
                 function selectDefaultLayout(mode) {
@@ -174,90 +148,10 @@ ColumnLayout {
                     return layoutId !== "";
                 }
 
-                // Snapping layouts use hasSystemOrigin; algorithms use isSystem only
-                function isBuiltIn(item) {
-                    return item.isSystem || item.hasSystemOrigin;
-                }
-
-                function matchesCommonFilters(item, search) {
-                    if (search.length > 0 && !(item.name || "").toLowerCase().includes(search) && !(item.description || "").toLowerCase().includes(search))
-                        return false;
-
-                    if (!filterBar.showHidden && item.hiddenFromSelector === true)
-                        return false;
-
-                    return true;
-                }
-
-                function applyFilters(filtered) {
-                    let search = filterBar.filterText.toLowerCase();
-                    if (root.viewMode === 0) {
-                        let arMap = {
-                            "any": filterBar.showAspectAny,
-                            "standard": filterBar.showAspectStandard,
-                            "ultrawide": filterBar.showAspectUltrawide,
-                            "super-ultrawide": filterBar.showAspectSuperUltrawide,
-                            "portrait": filterBar.showAspectPortrait
-                        };
-                        filtered = filtered.filter((item) => {
-                            if (!matchesCommonFilters(item, search))
-                                return false;
-
-                            // Unknown classes (not in arMap) pass through intentionally
-                            let cls = item.aspectRatioClass || "any";
-                            if (arMap[cls] === false)
-                                return false;
-
-                            if (isBuiltIn(item) && !filterBar.showBuiltInLayouts)
-                                return false;
-
-                            if (!isBuiltIn(item) && !filterBar.showUserLayouts)
-                                return false;
-
-                            if (item.autoAssign === true && !filterBar.showAutoLayouts)
-                                return false;
-
-                            if (item.autoAssign !== true && !filterBar.showManualLayouts)
-                                return false;
-
-                            return true;
-                        });
-                    } else {
-                        filtered = filtered.filter((item) => {
-                            if (!matchesCommonFilters(item, search))
-                                return false;
-
-                            if (isBuiltIn(item) && !filterBar.showBuiltInAlgorithms)
-                                return false;
-
-                            if (!isBuiltIn(item) && !filterBar.showUserAlgorithms)
-                                return false;
-
-                            if (!filterBar.showMasterCount && item.supportsMasterCount === true)
-                                return false;
-
-                            if (!filterBar.showSplitRatio && item.supportsSplitRatio === true)
-                                return false;
-
-                            if (!filterBar.showOverlapping && item.producesOverlappingZones === true)
-                                return false;
-
-                            if (!filterBar.showPersistent && item.memory === true)
-                                return false;
-
-                            return true;
-                        });
-                    }
-                    return filtered;
-                }
-
+                // Grouping — kept in QML because group labels require i18n/i18np
                 function buildGroups(filtered, groupIdx) {
-                    let groups = {
-                    };
                     if (root.viewMode === 1) {
-                        // ── Tiling grouping ──────────────────────────────────
                         if (groupIdx === 0) {
-                            // Capability (algorithms can appear in multiple groups)
                             let capGroups = [{
                                 "key": "masterCount",
                                 "label": i18n("Master Count"),
@@ -280,111 +174,33 @@ ColumnLayout {
                                     return a.supportsSplitRatio === true;
                                 }
                             }];
-                            for (let g = 0; g < capGroups.length; g++) {
-                                let cap = capGroups[g];
-                                groups[cap.key] = {
-                                    "items": [],
-                                    "order": cap.order,
-                                    "label": cap.label
-                                };
-                            }
-                            for (let i = 0; i < filtered.length; i++) {
-                                let placed = false;
-                                for (let g = 0; g < capGroups.length; g++) {
-                                    if (capGroups[g].test(filtered[i])) {
-                                        groups[capGroups[g].key].items.push(filtered[i]);
-                                        placed = true;
-                                    }
-                                }
-                                if (!placed) {
-                                    if (!groups["other"])
-                                        groups["other"] = {
-                                        "items": [],
-                                        "order": Number.MAX_SAFE_INTEGER,
-                                        "label": i18n("Other")
-                                    };
-
-                                    groups["other"].items.push(filtered[i]);
-                                }
-                            }
+                            return Logic.groupByCapability(filtered, capGroups, i18n("Other"));
                         } else if (groupIdx === 1)
-                            groups = groupByBoolKey(filtered, (item) => {
-                            return isBuiltIn(item);
-                        }, "builtin", i18n("Built-in"), "user", i18n("User Scripts"));
+                            return Logic.groupByBoolKey(filtered, (item) => {
+                                return Logic.isBuiltIn(item);
+                            }, "builtin", i18n("Built-in"), "user", i18n("User Scripts"));
                         else if (groupIdx === 2)
-                            groups = groupByBoolKey(filtered, (item) => {
-                            return item.memory === true;
-                        }, "persistent", i18n("Persistent"), "stateless", i18n("Stateless"));
-                        else
-                            groups["all"] = {
-                            "items": filtered,
-                            "order": 0,
-                            "label": ""
-                        };
-                    } else {
-                        // ── Snapping grouping ────────────────────────────────
-                        if (groupIdx === 0) {
-                            // Aspect ratio (data-driven from C++)
-                            for (let i = 0; i < filtered.length; i++) {
-                                let key = filtered[i].sectionKey || "default";
-                                if (!groups[key])
-                                    groups[key] = {
-                                    "items": [],
-                                    "order": filtered[i].sectionOrder !== undefined ? filtered[i].sectionOrder : 0,
-                                    "label": filtered[i].sectionLabel || ""
-                                };
-
-                                groups[key].items.push(filtered[i]);
-                            }
-                        } else if (groupIdx === 1) {
-                            // Zone count (0 or undefined → "Unknown" group at the end)
-                            for (let i = 0; i < filtered.length; i++) {
-                                let count = Math.max(0, filtered[i].zoneCount || 0);
-                                let key = count > 0 ? "zones-" + count : "zones-unknown";
-                                if (!groups[key])
-                                    groups[key] = {
-                                    "items": [],
-                                    "order": count > 0 ? count : 9999,
-                                    "label": count > 0 ? i18np("%1 zone", "%1 zones", count) : i18n("Unknown")
-                                };
-
-                                groups[key].items.push(filtered[i]);
-                            }
-                        } else if (groupIdx === 2)
-                            groups = groupByBoolKey(filtered, (item) => {
-                            return item.autoAssign === true;
-                        }, "auto", i18n("Auto"), "manual", i18n("Manual"));
-                        else if (groupIdx === 3)
-                            groups = groupByBoolKey(filtered, (item) => {
-                            return isBuiltIn(item);
-                        }, "builtin", i18n("Built-in"), "user", i18n("User Layouts"));
-                        else
-                            groups["all"] = {
-                            "items": filtered,
-                            "order": 0,
-                            "label": ""
-                        };
+                            return Logic.groupByBoolKey(filtered, (item) => {
+                                return item.memory === true;
+                            }, "persistent", i18n("Persistent"), "stateless", i18n("Stateless"));
+                        return Logic.ungrouped(filtered);
                     }
-                    return groups;
-                }
-
-                function groupByBoolKey(items, testFn, trueKey, trueLabel, falseKey, falseLabel) {
-                    let groups = {
-                    };
-                    for (let i = 0; i < items.length; i++) {
-                        let item = items[i];
-                        let match = testFn(item);
-                        let key = match ? trueKey : falseKey;
-                        if (!groups[key])
-                            groups[key] = {
-                            "items": [],
-                            "order": match ? 0 : 1,
-                            "label": match ? trueLabel : falseLabel
-                        };
-
-                        groups[key].items.push(item);
-                    }
-                    return groups;
+                    // Snapping grouping
+                    if (groupIdx === 0)
+                        return Logic.groupByAspectRatio(filtered);
+                    else if (groupIdx === 1)
+                        return Logic.groupByZoneCount(filtered, (count) => {
+                        return i18np("%1 zone", "%1 zones", count);
+                    }, i18n("Unknown"));
+                    else if (groupIdx === 2)
+                        return Logic.groupByBoolKey(filtered, (item) => {
+                        return item.autoAssign === true;
+                    }, "auto", i18n("Auto"), "manual", i18n("Manual"));
+                    else if (groupIdx === 3)
+                        return Logic.groupByBoolKey(filtered, (item) => {
+                        return Logic.isBuiltIn(item);
+                    }, "builtin", i18n("Built-in"), "user", i18n("User Layouts"));
+                    return Logic.ungrouped(filtered);
                 }
 
                 Layout.topMargin: Kirigami.Units.largeSpacing
