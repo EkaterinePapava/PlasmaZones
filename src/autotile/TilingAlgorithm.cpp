@@ -84,6 +84,27 @@ void TilingAlgorithm::prepareTilingState(TilingState* /*state*/) const
     // Default no-op. Memory-based algorithms override to ensure their SplitTree exists.
 }
 
+bool TilingAlgorithm::supportsLifecycleHooks() const noexcept
+{
+    return false;
+}
+
+void TilingAlgorithm::onWindowAdded(TilingState* /*state*/, int /*windowIndex*/) const
+{
+    // Default no-op. Algorithms with lifecycle hooks override.
+}
+
+void TilingAlgorithm::onWindowRemoved(TilingState* /*state*/, int /*windowIndex*/) const
+{
+    // Default no-op. Algorithms with lifecycle hooks override.
+}
+
+void TilingAlgorithm::onResize(TilingState* /*state*/, int /*windowIndex*/, const QString& /*edge*/,
+                               int /*deltaPx*/) const
+{
+    // Default no-op. Memory-based algorithms override for per-split resize.
+}
+
 QVector<int> TilingAlgorithm::distributeEvenly(int total, int count)
 {
     QVector<int> sizes;

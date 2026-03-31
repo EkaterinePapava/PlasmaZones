@@ -494,6 +494,13 @@ bool ScriptedAlgorithm::loadScript(const QString& filePath)
     m_jsProducesOverlappingZones = m_engine->globalObject().property(QStringLiteral("producesOverlappingZones"));
     m_jsCenterLayout = m_engine->globalObject().property(QStringLiteral("centerLayout"));
 
+    // Look up optional lifecycle hook functions
+    m_jsOnWindowAdded = m_engine->globalObject().property(QStringLiteral("onWindowAdded"));
+    m_jsOnWindowRemoved = m_engine->globalObject().property(QStringLiteral("onWindowRemoved"));
+    m_jsOnResize = m_engine->globalObject().property(QStringLiteral("onResize"));
+    m_hasLifecycleHooks =
+        m_jsOnWindowAdded.isCallable() || m_jsOnWindowRemoved.isCallable() || m_jsOnResize.isCallable();
+
     m_valid = true;
     // Cache JS override values through guardedCall so that a malicious function
     // (e.g. `function masterZoneIndex() { while(true){} }`) cannot hang forever.
@@ -620,6 +627,48 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
         jsMinSizes.setProperty(static_cast<quint32>(i), entry);
     }
     jsParams.setProperty(QStringLiteral("minSizes"), jsMinSizes);
+
+    // Per-window metadata: params.windows = [{appId, focused}, ...]
+    if (!params.windowInfos.isEmpty()) {
+        const int winInfoCap = std::min<int>(params.windowInfos.size(), MaxZones);
+        QJSValue jsWindows = m_engine->newArray(static_cast<uint>(winInfoCap));
+        for (int i = 0; i < winInfoCap; ++i) {
+            QJSValue entry = m_engine->newObject();
+            entry.setProperty(QStringLiteral("appId"), params.windowInfos[i].appId);
+            entry.setProperty(QStringLiteral("focused"), params.windowInfos[i].focused);
+            jsWindows.setProperty(static_cast<quint32>(i), entry);
+        }
+        jsParams.setProperty(QStringLiteral("windows"), jsWindows);
+    }
+
+    // Focused window index (-1 if unknown)
+    jsParams.setProperty(QStringLiteral("focusedIndex"), params.focusedIndex);
+
+    // Screen metadata: params.screen = {id, portrait, aspectRatio}
+    if (!params.screenInfo.id.isEmpty()) {
+        QJSValue jsScreen = m_engine->newObject();
+        jsScreen.setProperty(QStringLiteral("id"), params.screenInfo.id);
+        jsScreen.setProperty(QStringLiteral("portrait"), params.screenInfo.portrait);
+        jsScreen.setProperty(QStringLiteral("aspectRatio"), params.screenInfo.aspectRatio);
+        jsParams.setProperty(QStringLiteral("screen"), jsScreen);
+    }
+
+    // Custom algorithm parameters: params.custom = {paramName: value, ...}
+    if (!params.customParams.isEmpty()) {
+        QJSValue jsCustom = m_engine->newObject();
+        for (auto it = params.customParams.constBegin(); it != params.customParams.constEnd(); ++it) {
+            const QVariant& val = it.value();
+            if (val.typeId() == QMetaType::Bool) {
+                jsCustom.setProperty(it.key(), val.toBool());
+            } else if (val.typeId() == QMetaType::Double || val.typeId() == QMetaType::Float
+                       || val.typeId() == QMetaType::Int) {
+                jsCustom.setProperty(it.key(), val.toDouble());
+            } else {
+                jsCustom.setProperty(it.key(), val.toString());
+            }
+        }
+        jsParams.setProperty(QStringLiteral("custom"), jsCustom);
+    }
 
     // Use guardedCall helper for watchdog arm-evaluate-disarm-check pattern
     const QJSValue result = guardedCall([this, &jsParams]() {
@@ -861,6 +910,65 @@ void ScriptedAlgorithm::prepareTilingState(TilingState* state) const
         newTree->insertAtEnd(tiledWindows[i], ratio);
     }
     state->setSplitTree(std::move(newTree));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Lifecycle Hooks (v2)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+bool ScriptedAlgorithm::supportsLifecycleHooks() const noexcept
+{
+    return m_hasLifecycleHooks;
+}
+
+void ScriptedAlgorithm::onWindowAdded(TilingState* state, int windowIndex) const
+{
+    if (!m_jsOnWindowAdded.isCallable() || !state) {
+        return;
+    }
+    QJSValue jsState = m_engine->newObject();
+    jsState.setProperty(QStringLiteral("windowCount"), state->tiledWindowCount());
+    jsState.setProperty(QStringLiteral("masterCount"), state->masterCount());
+    jsState.setProperty(QStringLiteral("splitRatio"), std::clamp(state->splitRatio(), MinSplitRatio, MaxSplitRatio));
+
+    guardedCall([this, &jsState, windowIndex]() {
+        return m_jsOnWindowAdded.call({jsState, QJSValue(windowIndex)});
+    });
+}
+
+void ScriptedAlgorithm::onWindowRemoved(TilingState* state, int windowIndex) const
+{
+    if (!m_jsOnWindowRemoved.isCallable() || !state) {
+        return;
+    }
+    QJSValue jsState = m_engine->newObject();
+    jsState.setProperty(QStringLiteral("windowCount"), state->tiledWindowCount());
+    jsState.setProperty(QStringLiteral("masterCount"), state->masterCount());
+    jsState.setProperty(QStringLiteral("splitRatio"), std::clamp(state->splitRatio(), MinSplitRatio, MaxSplitRatio));
+
+    guardedCall([this, &jsState, windowIndex]() {
+        return m_jsOnWindowRemoved.call({jsState, QJSValue(windowIndex)});
+    });
+}
+
+void ScriptedAlgorithm::onResize(TilingState* state, int windowIndex, const QString& edge, int deltaPx) const
+{
+    if (!m_jsOnResize.isCallable() || !state) {
+        return;
+    }
+    QJSValue jsState = m_engine->newObject();
+    jsState.setProperty(QStringLiteral("windowCount"), state->tiledWindowCount());
+    jsState.setProperty(QStringLiteral("masterCount"), state->masterCount());
+    jsState.setProperty(QStringLiteral("splitRatio"), std::clamp(state->splitRatio(), MinSplitRatio, MaxSplitRatio));
+
+    guardedCall([this, &jsState, windowIndex, &edge, deltaPx]() {
+        return m_jsOnResize.call({jsState, QJSValue(windowIndex), QJSValue(edge), QJSValue(deltaPx)});
+    });
+}
+
+const QVector<ScriptedHelpers::CustomParamDef>& ScriptedAlgorithm::customParamDefs() const
+{
+    return m_metadata.customParams;
 }
 
 } // namespace PlasmaZones

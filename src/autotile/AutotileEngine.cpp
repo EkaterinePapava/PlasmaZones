@@ -431,7 +431,7 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
     // Only save after the first setAlgorithm() call has completed, to avoid
     // persisting uninitialised struct defaults from the constructor.
     if (m_algorithmEverSet && oldAlgo) {
-        m_config->savedAlgorithmSettings[m_algorithmId] = {m_config->splitRatio, m_config->masterCount};
+        m_config->savedAlgorithmSettings[m_algorithmId] = {m_config->splitRatio, m_config->masterCount, {}};
     }
 
     // Look up saved settings AFTER the save above — insertion may rehash the
@@ -1611,13 +1611,53 @@ void AutotileEngine::recalculateLayout(const QString& screenId)
         }
     }
 
+    // Build per-window metadata for algorithm context
+    QVector<WindowInfo> windowInfos;
+    int focusedIndex = -1;
+    {
+        const QStringList windows = state->tiledWindows();
+        const QString focusedWin = state->focusedWindow();
+        windowInfos.reserve(windowCount);
+        for (int i = 0; i < windowCount && i < windows.size(); ++i) {
+            WindowInfo info;
+            info.appId = Utils::extractAppId(windows[i]);
+            info.focused = (windows[i] == focusedWin);
+            if (info.focused) {
+                focusedIndex = i;
+            }
+            windowInfos.append(info);
+        }
+    }
+
+    // Build screen metadata for orientation-aware algorithms
+    TilingScreenInfo screenInfo;
+    screenInfo.id = screenId;
+    {
+        QScreen* qscreen = Utils::findScreenByIdOrName(screenId);
+        if (qscreen) {
+            const QRect geom = qscreen->geometry();
+            screenInfo.portrait = geom.height() > geom.width();
+            screenInfo.aspectRatio = Utils::screenAspectRatio(qscreen);
+        }
+    }
+
+    // Resolve custom params for this algorithm from saved settings
+    QVariantMap customParams;
+    if (m_config) {
+        const auto it = m_config->savedAlgorithmSettings.constFind(algoId);
+        if (it != m_config->savedAlgorithmSettings.constEnd()) {
+            customParams = it->customParams;
+        }
+    }
+
     // Let memory-based algorithms prepare their state (e.g., lazily create a SplitTree)
     // before calculateZones(). Virtual dispatch avoids concrete type casts here.
     algo->prepareTilingState(state);
 
     // Pass minSizes to algorithm so it can incorporate them directly into zone
     // calculations using its topology knowledge (split tree, column structure, etc.)
-    QVector<QRect> zones = algo->calculateZones({windowCount, screen, state, innerGap, outerGaps, minSizes});
+    QVector<QRect> zones = algo->calculateZones({windowCount, screen, state, innerGap, outerGaps, minSizes, windowInfos,
+                                                 focusedIndex, screenInfo, customParams});
 
     // Validate algorithm returned correct number of zones
     if (zones.size() != windowCount) {

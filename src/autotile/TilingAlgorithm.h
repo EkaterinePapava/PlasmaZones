@@ -9,11 +9,38 @@
 #include <QRect>
 #include <QString>
 #include <QSize>
+#include <QVariant>
+#include <QVariantMap>
 #include <QVector>
 
 namespace PlasmaZones {
 
 class TilingState;
+
+/**
+ * @brief Per-window metadata passed to algorithms
+ *
+ * Provides identity and state for each tiled window so algorithms
+ * can make app-aware layout decisions (e.g., "browser always master").
+ */
+struct WindowInfo
+{
+    QString appId; ///< Application identifier (e.g., "firefox", "org.kde.dolphin")
+    bool focused = false; ///< Whether this window currently has focus
+};
+
+/**
+ * @brief Screen metadata passed to tiling algorithms
+ *
+ * Provides physical screen context so algorithms can adapt to
+ * monitor orientation and multi-monitor setups.
+ */
+struct TilingScreenInfo
+{
+    QString id; ///< Screen connector name (e.g., "HDMI-1", "DP-2")
+    bool portrait = false; ///< True if height > width (portrait orientation)
+    qreal aspectRatio = 0.0; ///< width/height (e.g., 1.78 for 16:9, 0.56 for portrait)
+};
 
 /**
  * @brief Parameters for zone calculation
@@ -32,6 +59,12 @@ struct TilingParams
     int innerGap = 0; ///< Gap between adjacent zones in pixels
     EdgeGaps outerGaps; ///< Gaps at screen edges in pixels (per-side)
     QVector<QSize> minSizes = {}; ///< Per-window minimum sizes (may be empty)
+
+    // ── Enriched context (v2) ──────────────────────────────────────────
+    QVector<WindowInfo> windowInfos; ///< Per-window metadata (parallel to minSizes)
+    int focusedIndex = -1; ///< Index of focused window in tiled list (-1 = unknown)
+    TilingScreenInfo screenInfo; ///< Physical screen metadata
+    QVariantMap customParams; ///< Algorithm-declared custom parameters
 };
 
 /**
@@ -253,6 +286,51 @@ public:
      * @return true if loaded from user's writable data directory (default: false)
      */
     virtual bool isUserScript() const noexcept;
+
+    // ── Lifecycle Hooks (optional, v2) ──────────────────────────────────
+
+    /**
+     * @brief Whether this algorithm implements any lifecycle hooks
+     *
+     * When true, the engine calls onWindowAdded/onWindowRemoved before
+     * the next calculateZones() call, giving the algorithm a chance to
+     * update internal state incrementally.
+     *
+     * @return true if the algorithm defines lifecycle hooks (default: false)
+     */
+    virtual bool supportsLifecycleHooks() const noexcept;
+
+    /**
+     * @brief Called when a window is added to the tiling before retile
+     *
+     * Algorithms can use this to update internal state (e.g., BSP tree
+     * insertion) instead of rebuilding from scratch in calculateZones().
+     *
+     * @param state Current tiling state (mutable for tree updates)
+     * @param windowIndex Index where the window was inserted
+     */
+    virtual void onWindowAdded(TilingState* state, int windowIndex) const;
+
+    /**
+     * @brief Called when a window is removed from the tiling before retile
+     *
+     * @param state Current tiling state (mutable for tree updates)
+     * @param windowIndex Index the window occupied before removal
+     */
+    virtual void onWindowRemoved(TilingState* state, int windowIndex) const;
+
+    /**
+     * @brief Called during interactive resize of a split boundary
+     *
+     * Memory-based algorithms can use this to adjust individual split
+     * ratios instead of the global splitRatio.
+     *
+     * @param state Current tiling state
+     * @param windowIndex Window being resized
+     * @param edge Edge being dragged ("left", "right", "top", "bottom")
+     * @param deltaPx Pixel delta of the drag
+     */
+    virtual void onResize(TilingState* state, int windowIndex, const QString& edge, int deltaPx) const;
 
 protected:
     /**

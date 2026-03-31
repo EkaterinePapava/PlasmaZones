@@ -1928,10 +1928,106 @@ QVariantList SettingsController::availableAlgorithms() const
             algoMap[QLatin1String("producesOverlappingZones")] = algo->producesOverlappingZones();
             algoMap[QLatin1String("zoneNumberDisplay")] = algo->zoneNumberDisplay();
             algoMap[QLatin1String("centerLayout")] = algo->centerLayout();
+
+            // Expose custom parameter definitions for auto-generated UI controls
+            auto* scripted = qobject_cast<ScriptedAlgorithm*>(algo);
+            if (scripted && !scripted->customParamDefs().isEmpty()) {
+                QVariantList paramDefs;
+                for (const auto& def : scripted->customParamDefs()) {
+                    QVariantMap paramMap;
+                    paramMap[QLatin1String("name")] = def.name;
+                    paramMap[QLatin1String("type")] = def.type;
+                    paramMap[QLatin1String("defaultValue")] = def.defaultValue;
+                    paramMap[QLatin1String("description")] = def.description;
+                    if (def.type == QLatin1String("number")) {
+                        paramMap[QLatin1String("minValue")] = def.minValue;
+                        paramMap[QLatin1String("maxValue")] = def.maxValue;
+                    } else if (def.type == QLatin1String("enum")) {
+                        paramMap[QLatin1String("enumOptions")] = QVariant(def.enumOptions);
+                    }
+                    paramDefs.append(paramMap);
+                }
+                algoMap[QLatin1String("customParams")] = paramDefs;
+            }
+
             algorithms.append(algoMap);
         }
     }
     return algorithms;
+}
+
+QVariantList SettingsController::customParamsForAlgorithm(const QString& algorithmId) const
+{
+    auto* registry = AlgorithmRegistry::instance();
+    TilingAlgorithm* algo = registry->algorithm(algorithmId);
+    if (!algo) {
+        return {};
+    }
+
+    auto* scripted = qobject_cast<ScriptedAlgorithm*>(algo);
+    if (!scripted || scripted->customParamDefs().isEmpty()) {
+        return {};
+    }
+
+    // Get saved values from perAlgorithmSettings
+    QVariantMap savedCustom;
+    const QVariantMap perAlgo = m_settings.autotilePerAlgorithmSettings();
+    const QVariant algoEntry = perAlgo.value(algorithmId);
+    if (algoEntry.isValid()) {
+        const QVariantMap entry = algoEntry.toMap();
+        const QVariant customVar = entry.value(QLatin1String("customParams"));
+        if (customVar.isValid()) {
+            savedCustom = customVar.toMap();
+        }
+    }
+
+    QVariantList result;
+    for (const auto& def : scripted->customParamDefs()) {
+        QVariantMap paramMap;
+        paramMap[QLatin1String("name")] = def.name;
+        paramMap[QLatin1String("type")] = def.type;
+        paramMap[QLatin1String("defaultValue")] = def.defaultValue;
+        paramMap[QLatin1String("description")] = def.description;
+        // Current value: saved value if exists, else default
+        paramMap[QLatin1String("value")] =
+            savedCustom.contains(def.name) ? savedCustom.value(def.name) : def.defaultValue;
+        if (def.type == QLatin1String("number")) {
+            paramMap[QLatin1String("minValue")] = def.minValue;
+            paramMap[QLatin1String("maxValue")] = def.maxValue;
+        } else if (def.type == QLatin1String("enum")) {
+            paramMap[QLatin1String("enumOptions")] = QVariant(def.enumOptions);
+        }
+        result.append(paramMap);
+    }
+    return result;
+}
+
+void SettingsController::setCustomParam(const QString& algorithmId, const QString& paramName, const QVariant& value)
+{
+    if (algorithmId.isEmpty() || paramName.isEmpty()) {
+        return;
+    }
+
+    QVariantMap perAlgo = m_settings.autotilePerAlgorithmSettings();
+    QVariantMap algoEntry = perAlgo.value(algorithmId).toMap();
+    QVariantMap customParams = algoEntry.value(QLatin1String("customParams")).toMap();
+    customParams[paramName] = value;
+    algoEntry[QLatin1String("customParams")] = customParams;
+
+    // Preserve existing splitRatio/masterCount if not already in the entry
+    if (!algoEntry.contains(PerAlgoKeys::SplitRatio)) {
+        auto* registry = AlgorithmRegistry::instance();
+        TilingAlgorithm* algo = registry->algorithm(algorithmId);
+        if (algo) {
+            algoEntry[PerAlgoKeys::SplitRatio] = algo->defaultSplitRatio();
+        }
+    }
+    if (!algoEntry.contains(PerAlgoKeys::MasterCount)) {
+        algoEntry[PerAlgoKeys::MasterCount] = 1;
+    }
+
+    perAlgo[algorithmId] = algoEntry;
+    m_settings.setAutotilePerAlgorithmSettings(perAlgo);
 }
 
 QVariantList SettingsController::generateAlgorithmPreview(const QString& algorithmId, int windowCount,

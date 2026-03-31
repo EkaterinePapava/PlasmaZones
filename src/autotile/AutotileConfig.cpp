@@ -63,7 +63,13 @@ QHash<QString, AlgorithmSettings> AutotileConfig::perAlgoFromVariantMap(const QV
         const QVariant mcVar = entry.value(PerAlgoKeys::MasterCount);
         const int masterCount =
             std::clamp(mcVar.isValid() ? mcVar.toInt() : DefaultMasterCount, MinMasterCount, MaxMasterCount);
-        result[it.key()] = {ratio, masterCount};
+        AlgorithmSettings settings{ratio, masterCount, {}};
+        // Load custom params if present
+        const QVariant customVar = entry.value(QLatin1String("customParams"));
+        if (customVar.isValid() && customVar.typeId() == QMetaType::QVariantMap) {
+            settings.customParams = customVar.toMap();
+        }
+        result[it.key()] = settings;
     }
     return result;
 }
@@ -75,6 +81,9 @@ QVariantMap AutotileConfig::perAlgoToVariantMap(const QHash<QString, AlgorithmSe
         QVariantMap entry;
         entry[PerAlgoKeys::SplitRatio] = it.value().splitRatio;
         entry[PerAlgoKeys::MasterCount] = it.value().masterCount;
+        if (!it.value().customParams.isEmpty()) {
+            entry[QLatin1String("customParams")] = it.value().customParams;
+        }
         result[it.key()] = entry;
     }
     return result;
@@ -154,7 +163,7 @@ AutotileConfig AutotileConfig::fromJson(const QJsonObject& json)
             int cmCount = json[CenteredMasterMasterCount].toInt(1);
             cmRatio = std::clamp(cmRatio, MinSplitRatio, MaxSplitRatio);
             cmCount = std::clamp(cmCount, MinMasterCount, MaxMasterCount);
-            config.savedAlgorithmSettings[QLatin1String("centered-master")] = {cmRatio, cmCount};
+            config.savedAlgorithmSettings[QLatin1String("centered-master")] = {cmRatio, cmCount, {}};
         }
     }
     if (json.contains(InnerGap)) {

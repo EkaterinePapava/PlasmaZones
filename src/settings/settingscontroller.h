@@ -554,6 +554,29 @@ public:
     Q_INVOKABLE bool duplicateAlgorithm(const QString& algorithmId);
     Q_INVOKABLE bool exportAlgorithm(const QString& algorithmId, const QString& destPath);
 
+    /**
+     * @brief Get current custom param values for an algorithm, merged with defaults
+     *
+     * Returns a list of {name, type, value, defaultValue, description, minValue, maxValue, enumOptions}
+     * maps. The "value" field is the currently saved value, falling back to the declared default.
+     *
+     * @param algorithmId Algorithm to query
+     * @return List of param value maps, or empty if no custom params declared
+     */
+    Q_INVOKABLE QVariantList customParamsForAlgorithm(const QString& algorithmId) const;
+
+    /**
+     * @brief Set a custom parameter value for an algorithm
+     *
+     * Saves the value into autotilePerAlgorithmSettings and triggers
+     * a retile with the updated parameter.
+     *
+     * @param algorithmId Algorithm to configure
+     * @param paramName Parameter name (must match a declared @param)
+     * @param value New value (type must match the declared type)
+     */
+    Q_INVOKABLE void setCustomParam(const QString& algorithmId, const QString& paramName, const QVariant& value);
+
     // ── Per-screen autotile overrides ────────────────────────────────────────
     Q_INVOKABLE QVariantMap getPerScreenAutotileSettings(const QString& screenName) const;
     Q_INVOKABLE void setPerScreenAutotileSetting(const QString& screenName, const QString& key, const QVariant& value);

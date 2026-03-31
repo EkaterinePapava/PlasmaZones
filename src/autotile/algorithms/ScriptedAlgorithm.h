@@ -142,6 +142,17 @@ public:
     bool isUserScript() const noexcept override;
     void prepareTilingState(TilingState* state) const override;
 
+    // Lifecycle hooks (v2)
+    bool supportsLifecycleHooks() const noexcept override;
+    void onWindowAdded(TilingState* state, int windowIndex) const override;
+    void onWindowRemoved(TilingState* state, int windowIndex) const override;
+    void onResize(TilingState* state, int windowIndex, const QString& edge, int deltaPx) const override;
+
+    /**
+     * @brief Get the custom parameter definitions declared by this script
+     */
+    const QVector<ScriptedHelpers::CustomParamDef>& customParamDefs() const;
+
 private:
     /**
      * @brief Load and validate a JavaScript file
@@ -204,6 +215,12 @@ private:
     mutable QJSValue m_jsDefaultMaxWindows;
     mutable QJSValue m_jsProducesOverlappingZones;
     mutable QJSValue m_jsCenterLayout;
+
+    // Optional lifecycle hook JS functions
+    mutable QJSValue m_jsOnWindowAdded;
+    mutable QJSValue m_jsOnWindowRemoved;
+    mutable QJSValue m_jsOnResize;
+    bool m_hasLifecycleHooks = false; ///< True if any lifecycle hook is defined
 
     // Cached JS virtual method overrides (loaded once at script load time)
     int m_cachedMinimumWindows = 1;

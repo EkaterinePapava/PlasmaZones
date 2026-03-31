@@ -23,9 +23,11 @@ struct AlgorithmSettings
 {
     qreal splitRatio = 0.5;
     int masterCount = 1;
+    QVariantMap customParams; ///< Algorithm-declared custom parameter values
     bool operator==(const AlgorithmSettings& other) const
     {
-        return masterCount == other.masterCount && qFuzzyCompare(1.0 + splitRatio, 1.0 + other.splitRatio);
+        return masterCount == other.masterCount && qFuzzyCompare(1.0 + splitRatio, 1.0 + other.splitRatio)
+            && customParams == other.customParams;
     }
 };
 
