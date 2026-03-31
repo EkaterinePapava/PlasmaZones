@@ -193,7 +193,7 @@ void AutotileHandler::handleCursorMoved(const QPointF& pos, const QString& scree
     const auto windows = KWin::effects->stackingOrder();
     for (int i = windows.size() - 1; i >= 0; --i) {
         KWin::EffectWindow* w = windows[i];
-        if (!w || !m_effect->shouldHandleWindow(w) || w->isMinimized() || !w->isOnCurrentDesktop()
+        if (!w || !m_effect->isTileableWindow(w) || w->isMinimized() || !w->isOnCurrentDesktop()
             || !w->isOnCurrentActivity()) {
             continue;
         }
