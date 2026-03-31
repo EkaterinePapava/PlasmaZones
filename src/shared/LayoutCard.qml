@@ -39,10 +39,15 @@ Item {
     property real activeOpacity: 0.5
     property real inactiveOpacity: 0.3
     property bool showZoneNumbers: true
+    property string zoneNumberDisplay: "all"
+    property bool producesOverlappingZones: false
     property color zoneHighlightColor: Kirigami.Theme.highlightColor
     property color zoneInactiveColor: Kirigami.Theme.textColor
     property color zoneBorderColor: Kirigami.Theme.textColor
     property real hoverScale: 1
+    // Autotile algorithm metadata
+    property bool isAutotile: false
+    property bool supportsMasterCount: false
     // Theme colors
     property color highlightColor: Kirigami.Theme.highlightColor
     property color textColor: Kirigami.Theme.textColor
@@ -307,11 +312,15 @@ Item {
 
         // Zone rectangles — fill the fitted preview background, not the bounding box
         ZonePreview {
+            id: zonePreview
+
             anchors.fill: previewBackground
             anchors.margins: root.showCardBackground ? Kirigami.Units.smallSpacing : 0
             zones: root.layoutData.zones || []
             interactive: root.interactive
             showZoneNumbers: root.showZoneNumbers
+            zoneNumberDisplay: root.zoneNumberDisplay
+            producesOverlappingZones: root.producesOverlappingZones
             highlightAllZones: false
             selectedZoneIndex: root.selectedZoneIndex
             isHovered: root.isHovered || root.isSelected
@@ -335,6 +344,29 @@ Item {
             onZoneHovered: function(index) {
                 root.zoneHovered(index);
             }
+        }
+
+        // Master indicator dots overlaid on master windows (for autotile algorithms)
+        Repeater {
+            model: root.layoutData.zones || []
+
+            Rectangle {
+                required property var modelData
+                required property int index
+                readonly property real relX: (modelData.relativeGeometry && modelData.relativeGeometry.x) || 0
+                readonly property real relY: (modelData.relativeGeometry && modelData.relativeGeometry.y) || 0
+                readonly property real leftOffset: relX < 0.01 ? zonePreview.edgeGap : zonePreview.zonePadding / 2
+                readonly property real topOffset: relY < 0.01 ? zonePreview.edgeGap : zonePreview.zonePadding / 2
+
+                visible: root.isAutotile && root.supportsMasterCount && index < 1
+                x: zonePreview.x + relX * zonePreview.width + leftOffset + Kirigami.Units.smallSpacing
+                y: zonePreview.y + relY * zonePreview.height + topOffset + Kirigami.Units.smallSpacing
+                width: Kirigami.Units.smallSpacing * 2
+                height: Kirigami.Units.smallSpacing * 2
+                radius: Kirigami.Units.smallSpacing
+                color: Kirigami.Theme.positiveTextColor
+            }
+
         }
 
     }

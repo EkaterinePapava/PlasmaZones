@@ -20,6 +20,11 @@ Rectangle {
     property var zones: [] // Array of zone objects with relativeGeometry
     property int category: 0 // 0=Manual (matches LayoutCategory in C++)
     property bool autoAssign: false
+    // Autotile algorithm metadata
+    property bool isAutotile: false
+    property bool supportsMasterCount: false
+    property bool producesOverlappingZones: false
+    property string zoneNumberDisplay: "all"
     // State
     property bool isActive: false
     property bool isHovered: false
@@ -93,6 +98,8 @@ Rectangle {
         edgeGap: 1
         minZoneSize: 8
         showZoneNumbers: true
+        zoneNumberDisplay: root.zoneNumberDisplay
+        producesOverlappingZones: root.producesOverlappingZones
         inactiveOpacity: root.inactiveOpacity
         activeOpacity: root.hoverOpacity
         fontFamily: root.fontFamily
@@ -102,6 +109,29 @@ Rectangle {
         fontUnderline: root.fontUnderline
         fontStrikeout: root.fontStrikeout
         animationDuration: constants.animationDuration
+    }
+
+    // Master indicator dots overlaid on master windows (for autotile algorithms)
+    Repeater {
+        model: root.zones
+
+        Rectangle {
+            required property var modelData
+            required property int index
+            readonly property real relX: (modelData.relativeGeometry && modelData.relativeGeometry.x) || 0
+            readonly property real relY: (modelData.relativeGeometry && modelData.relativeGeometry.y) || 0
+            readonly property real leftOffset: relX < 0.01 ? zoneContainer.edgeGap : zoneContainer.zonePadding / 2
+            readonly property real topOffset: relY < 0.01 ? zoneContainer.edgeGap : zoneContainer.zonePadding / 2
+
+            visible: root.isAutotile && root.supportsMasterCount && index < 1
+            x: zoneContainer.x + relX * zoneContainer.width + leftOffset + Kirigami.Units.smallSpacing
+            y: zoneContainer.y + relY * zoneContainer.height + topOffset + Kirigami.Units.smallSpacing
+            width: Kirigami.Units.smallSpacing * 2
+            height: Kirigami.Units.smallSpacing * 2
+            radius: Kirigami.Units.smallSpacing
+            color: Kirigami.Theme.positiveTextColor
+        }
+
     }
 
     // Layout name label at bottom with category badge
