@@ -244,7 +244,7 @@ constexpr qreal GeometryBoundsTolerance = 0.001; // Tolerance for coordinate bou
 // Default zone colors (hex strings for QML compatibility)
 inline constexpr const char* DefaultHighlightColor = "#800078D4";
 inline constexpr const char* DefaultInactiveColor = "#40808080";
-inline constexpr const char* DefaultBorderColor = "#CCFFFFFF";
+inline constexpr const char* DefaultBorderColor = "#C8FFFFFF";
 }
 
 /**
