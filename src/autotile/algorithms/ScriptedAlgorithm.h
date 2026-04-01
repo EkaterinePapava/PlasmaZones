@@ -185,6 +185,9 @@ private:
     /// Build a JS state object from TilingState for lifecycle hook calls
     QJSValue buildJsState(const TilingState* state) const;
 
+    /// Build a JS array of {appId, focused} objects and return the focused index
+    QJSValue buildJsWindowArray(const QVector<WindowInfo>& infos, int cap, int& focusedIdx) const;
+
     /// Arms watchdog, calls fn(), disarms, checks for timeout. Returns error on timeout.
     QJSValue guardedCall(const std::function<QJSValue()>& fn) const;
 

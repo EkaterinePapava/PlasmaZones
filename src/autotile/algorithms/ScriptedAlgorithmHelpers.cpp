@@ -200,12 +200,16 @@ ScriptMetadata parseMetadata(const QString& source, const QString& filePath)
                     }
                 }
                 param.description = pm.captured(4).left(200).toHtmlEscaped();
-                if (!param.enumOptions.contains(param.defaultValue.toString())) {
+                if (param.enumOptions.isEmpty()) {
+                    qCWarning(lcAutotile) << "ScriptedAlgorithm::parseMetadata: @param enum has no valid options for"
+                                          << param.name << "in" << filePath;
+                } else if (!param.enumOptions.contains(param.defaultValue.toString())) {
                     qCWarning(lcAutotile)
                         << "ScriptedAlgorithm::parseMetadata: @param enum default" << param.defaultValue.toString()
                         << "not in options list for" << param.name << "in" << filePath;
+                } else {
+                    meta.customParams.append(param);
                 }
-                meta.customParams.append(param);
             } else {
                 qCWarning(lcAutotile) << "ScriptedAlgorithm::parseMetadata: malformed @param" << value << "in"
                                       << filePath;

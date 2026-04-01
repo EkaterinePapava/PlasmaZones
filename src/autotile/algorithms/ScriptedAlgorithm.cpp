@@ -629,15 +629,9 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
 
     // Per-window metadata: params.windows = [{appId, focused}, ...]
     if (!params.windowInfos.isEmpty()) {
+        int focusedIdx = -1;
         const int winInfoCap = std::min<int>(params.windowInfos.size(), MaxZones);
-        QJSValue jsWindows = m_engine->newArray(static_cast<uint>(winInfoCap));
-        for (int i = 0; i < winInfoCap; ++i) {
-            QJSValue entry = m_engine->newObject();
-            entry.setProperty(QStringLiteral("appId"), params.windowInfos[i].appId);
-            entry.setProperty(QStringLiteral("focused"), params.windowInfos[i].focused);
-            jsWindows.setProperty(static_cast<quint32>(i), entry);
-        }
-        jsParams.setProperty(QStringLiteral("windows"), jsWindows);
+        jsParams.setProperty(QStringLiteral("windows"), buildJsWindowArray(params.windowInfos, winInfoCap, focusedIdx));
     }
 
     // Focused window index (-1 if unknown)
@@ -920,6 +914,22 @@ bool ScriptedAlgorithm::supportsLifecycleHooks() const noexcept
     return m_hasLifecycleHooks;
 }
 
+QJSValue ScriptedAlgorithm::buildJsWindowArray(const QVector<WindowInfo>& infos, int cap, int& focusedIdx) const
+{
+    QJSValue jsWindows = m_engine->newArray(static_cast<uint>(cap));
+    focusedIdx = -1;
+    for (int i = 0; i < cap; ++i) {
+        QJSValue entry = m_engine->newObject();
+        entry.setProperty(QStringLiteral("appId"), infos[i].appId);
+        entry.setProperty(QStringLiteral("focused"), infos[i].focused);
+        if (infos[i].focused) {
+            focusedIdx = i;
+        }
+        jsWindows.setProperty(static_cast<quint32>(i), entry);
+    }
+    return jsWindows;
+}
+
 QJSValue ScriptedAlgorithm::buildJsState(const TilingState* state) const
 {
     QJSValue jsState = m_engine->newObject();
@@ -927,23 +937,21 @@ QJSValue ScriptedAlgorithm::buildJsState(const TilingState* state) const
     jsState.setProperty(QStringLiteral("masterCount"), state->masterCount());
     jsState.setProperty(QStringLiteral("splitRatio"), std::clamp(state->splitRatio(), MinSplitRatio, MaxSplitRatio));
 
-    // Expose per-window appIds so lifecycle hooks can make app-aware decisions
+    // Build WindowInfo list from TilingState for the shared helper
     const QStringList windows = state->tiledWindows();
     const QString focusedWin = state->focusedWindow();
     const int winCount = windows.size();
-    QJSValue jsWindows = m_engine->newArray(static_cast<uint>(winCount));
-    int focusedIdx = -1;
+    QVector<WindowInfo> infos;
+    infos.reserve(winCount);
     for (int i = 0; i < winCount; ++i) {
-        QJSValue entry = m_engine->newObject();
-        entry.setProperty(QStringLiteral("appId"), Utils::extractAppId(windows[i]));
-        const bool focused = (windows[i] == focusedWin);
-        entry.setProperty(QStringLiteral("focused"), focused);
-        if (focused) {
-            focusedIdx = i;
-        }
-        jsWindows.setProperty(static_cast<quint32>(i), entry);
+        WindowInfo info;
+        info.appId = Utils::extractAppId(windows[i]);
+        info.focused = (windows[i] == focusedWin);
+        infos.append(info);
     }
-    jsState.setProperty(QStringLiteral("windows"), jsWindows);
+
+    int focusedIdx = -1;
+    jsState.setProperty(QStringLiteral("windows"), buildJsWindowArray(infos, winCount, focusedIdx));
     jsState.setProperty(QStringLiteral("focusedIndex"), focusedIdx);
 
     return jsState;

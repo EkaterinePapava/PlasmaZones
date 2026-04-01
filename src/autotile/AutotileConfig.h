@@ -26,8 +26,29 @@ struct AlgorithmSettings
     QVariantMap customParams; ///< Algorithm-declared custom parameter values
     bool operator==(const AlgorithmSettings& other) const
     {
-        return masterCount == other.masterCount && qFuzzyCompare(1.0 + splitRatio, 1.0 + other.splitRatio)
-            && customParams == other.customParams;
+        if (masterCount != other.masterCount || !qFuzzyCompare(1.0 + splitRatio, 1.0 + other.splitRatio)) {
+            return false;
+        }
+        if (customParams.size() != other.customParams.size()) {
+            return false;
+        }
+        // Fuzzy-compare floating-point custom param values to match splitRatio semantics
+        for (auto it = customParams.constBegin(); it != customParams.constEnd(); ++it) {
+            auto oit = other.customParams.constFind(it.key());
+            if (oit == other.customParams.constEnd()) {
+                return false;
+            }
+            const QVariant& a = it.value();
+            const QVariant& b = oit.value();
+            if (a.typeId() == QMetaType::Double && b.typeId() == QMetaType::Double) {
+                if (!qFuzzyCompare(1.0 + a.toDouble(), 1.0 + b.toDouble())) {
+                    return false;
+                }
+            } else if (a != b) {
+                return false;
+            }
+        }
+        return true;
     }
 };
 

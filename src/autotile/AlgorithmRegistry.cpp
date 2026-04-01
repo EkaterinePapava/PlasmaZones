@@ -364,12 +364,7 @@ QVariantList AlgorithmRegistry::generatePreviewZones(TilingAlgorithm* algorithm,
     previewState.setMasterCount(masterCount);
     previewState.setSplitRatio(splitRatio);
 
-    // Preview: no per-window/screen context needed — only geometry matters
-    TilingParams previewParams;
-    previewParams.windowCount = count;
-    previewParams.screenGeometry = previewRect;
-    previewParams.state = &previewState;
-    QVector<QRect> zones = algorithm->calculateZones(previewParams);
+    QVector<QRect> zones = algorithm->calculateZones(TilingParams::forPreview(count, previewRect, &previewState));
 
     QVariantList list = zonesToRelativeGeometry(zones, previewRect);
 

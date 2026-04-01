@@ -2021,7 +2021,7 @@ void SettingsController::setCustomParam(const QString& algorithmId, const QStrin
         return def.name == paramName;
     });
     if (defIt == defs.cend()) {
-        qCWarning(lcAutotile) << "setCustomParam: unknown param" << paramName << "for algorithm" << algorithmId;
+        qCWarning(lcCore) << "setCustomParam: unknown param" << paramName << "for algorithm" << algorithmId;
         return;
     }
 
@@ -2031,7 +2031,7 @@ void SettingsController::setCustomParam(const QString& algorithmId, const QStrin
         bool ok = false;
         const qreal num = value.toDouble(&ok);
         if (!ok) {
-            qCWarning(lcAutotile) << "setCustomParam: value" << value << "is not a valid number for" << paramName;
+            qCWarning(lcCore) << "setCustomParam: value" << value << "is not a valid number for" << paramName;
             return;
         }
         coerced = std::clamp(num, defIt->minValue, defIt->maxValue);
@@ -2040,7 +2040,7 @@ void SettingsController::setCustomParam(const QString& algorithmId, const QStrin
     } else if (defIt->type == QLatin1String("enum")) {
         const QString str = value.toString();
         if (!defIt->enumOptions.contains(str)) {
-            qCWarning(lcAutotile) << "setCustomParam: value" << str << "not in enum options for" << paramName;
+            qCWarning(lcCore) << "setCustomParam: value" << str << "not in enum options for" << paramName;
             return;
         }
         coerced = str;
@@ -2080,13 +2080,8 @@ QVariantList SettingsController::generateAlgorithmPreview(const QString& algorit
     state.setMasterCount(masterCount);
     state.setSplitRatio(splitRatio);
 
-    // Preview: no per-window/screen context needed — only geometry matters
     const int count = qMax(1, windowCount);
-    TilingParams previewParams;
-    previewParams.windowCount = count;
-    previewParams.screenGeometry = previewRect;
-    previewParams.state = &state;
-    QVector<QRect> zones = algo->calculateZones(previewParams);
+    QVector<QRect> zones = algo->calculateZones(TilingParams::forPreview(count, previewRect, &state));
 
     return AlgorithmRegistry::zonesToRelativeGeometry(zones, previewRect);
 }

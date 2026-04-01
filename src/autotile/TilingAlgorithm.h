@@ -65,6 +65,16 @@ struct TilingParams
     int focusedIndex = -1; ///< Index of focused window in tiled list (-1 = unknown)
     TilingScreenInfo screenInfo; ///< Physical screen metadata
     QVariantMap customParams; ///< Algorithm-declared custom parameters
+
+    /// Create minimal params for preview rendering (no per-window/screen context)
+    static TilingParams forPreview(int count, const QRect& rect, const TilingState* state)
+    {
+        TilingParams p;
+        p.windowCount = count;
+        p.screenGeometry = rect;
+        p.state = state;
+        return p;
+    }
 };
 
 /**
