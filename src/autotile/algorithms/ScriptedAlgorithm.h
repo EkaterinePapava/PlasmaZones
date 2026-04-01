@@ -184,6 +184,9 @@ private:
     template<typename T>
     T resolveJsOverrideClamped(const QJSValue& jsFn, T cachedValue, T metadataFallback, T minVal, T maxVal) const;
 
+    /// Build a JS state object from TilingState for lifecycle hook calls
+    QJSValue buildJsState(const TilingState* state) const;
+
     /// Arms watchdog, calls fn(), disarms, checks for timeout. Returns error on timeout.
     QJSValue guardedCall(const std::function<QJSValue()>& fn) const;
 

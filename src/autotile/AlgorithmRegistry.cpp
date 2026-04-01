@@ -364,7 +364,11 @@ QVariantList AlgorithmRegistry::generatePreviewZones(TilingAlgorithm* algorithm,
     previewState.setMasterCount(masterCount);
     previewState.setSplitRatio(splitRatio);
 
-    QVector<QRect> zones = algorithm->calculateZones({count, previewRect, &previewState, 0, {}, {}, {}, -1, {}, {}});
+    TilingParams previewParams;
+    previewParams.windowCount = count;
+    previewParams.screenGeometry = previewRect;
+    previewParams.state = &previewState;
+    QVector<QRect> zones = algorithm->calculateZones(previewParams);
 
     QVariantList list = zonesToRelativeGeometry(zones, previewRect);
 

@@ -65,7 +65,7 @@ QHash<QString, AlgorithmSettings> AutotileConfig::perAlgoFromVariantMap(const QV
             std::clamp(mcVar.isValid() ? mcVar.toInt() : DefaultMasterCount, MinMasterCount, MaxMasterCount);
         AlgorithmSettings settings{ratio, masterCount, {}};
         // Load custom params if present
-        const QVariant customVar = entry.value(QLatin1String("customParams"));
+        const QVariant customVar = entry.value(PerAlgoKeys::CustomParams);
         if (customVar.isValid() && customVar.typeId() == QMetaType::QVariantMap) {
             settings.customParams = customVar.toMap();
         }
@@ -82,7 +82,7 @@ QVariantMap AutotileConfig::perAlgoToVariantMap(const QHash<QString, AlgorithmSe
         entry[PerAlgoKeys::SplitRatio] = it.value().splitRatio;
         entry[PerAlgoKeys::MasterCount] = it.value().masterCount;
         if (!it.value().customParams.isEmpty()) {
-            entry[QLatin1String("customParams")] = it.value().customParams;
+            entry[PerAlgoKeys::CustomParams] = it.value().customParams;
         }
         result[it.key()] = entry;
     }

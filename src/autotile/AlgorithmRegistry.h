@@ -28,6 +28,7 @@ namespace PlasmaZones {
 namespace PerAlgoKeys {
 inline constexpr auto SplitRatio = AutotileJsonKeys::SplitRatio;
 inline constexpr auto MasterCount = AutotileJsonKeys::MasterCount;
+inline constexpr QLatin1String CustomParams{"customParams"};
 } // namespace PerAlgoKeys
 
 class TilingAlgorithm;

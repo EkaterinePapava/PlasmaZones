@@ -921,16 +921,21 @@ bool ScriptedAlgorithm::supportsLifecycleHooks() const noexcept
     return m_hasLifecycleHooks;
 }
 
+QJSValue ScriptedAlgorithm::buildJsState(const TilingState* state) const
+{
+    QJSValue jsState = m_engine->newObject();
+    jsState.setProperty(QStringLiteral("windowCount"), state->tiledWindowCount());
+    jsState.setProperty(QStringLiteral("masterCount"), state->masterCount());
+    jsState.setProperty(QStringLiteral("splitRatio"), std::clamp(state->splitRatio(), MinSplitRatio, MaxSplitRatio));
+    return jsState;
+}
+
 void ScriptedAlgorithm::onWindowAdded(TilingState* state, int windowIndex) const
 {
     if (!m_jsOnWindowAdded.isCallable() || !state) {
         return;
     }
-    QJSValue jsState = m_engine->newObject();
-    jsState.setProperty(QStringLiteral("windowCount"), state->tiledWindowCount());
-    jsState.setProperty(QStringLiteral("masterCount"), state->masterCount());
-    jsState.setProperty(QStringLiteral("splitRatio"), std::clamp(state->splitRatio(), MinSplitRatio, MaxSplitRatio));
-
+    QJSValue jsState = buildJsState(state);
     guardedCall([this, &jsState, windowIndex]() {
         return m_jsOnWindowAdded.call({jsState, QJSValue(windowIndex)});
     });
@@ -941,11 +946,7 @@ void ScriptedAlgorithm::onWindowRemoved(TilingState* state, int windowIndex) con
     if (!m_jsOnWindowRemoved.isCallable() || !state) {
         return;
     }
-    QJSValue jsState = m_engine->newObject();
-    jsState.setProperty(QStringLiteral("windowCount"), state->tiledWindowCount());
-    jsState.setProperty(QStringLiteral("masterCount"), state->masterCount());
-    jsState.setProperty(QStringLiteral("splitRatio"), std::clamp(state->splitRatio(), MinSplitRatio, MaxSplitRatio));
-
+    QJSValue jsState = buildJsState(state);
     guardedCall([this, &jsState, windowIndex]() {
         return m_jsOnWindowRemoved.call({jsState, QJSValue(windowIndex)});
     });
@@ -956,11 +957,7 @@ void ScriptedAlgorithm::onResize(TilingState* state, int windowIndex, const QStr
     if (!m_jsOnResize.isCallable() || !state) {
         return;
     }
-    QJSValue jsState = m_engine->newObject();
-    jsState.setProperty(QStringLiteral("windowCount"), state->tiledWindowCount());
-    jsState.setProperty(QStringLiteral("masterCount"), state->masterCount());
-    jsState.setProperty(QStringLiteral("splitRatio"), std::clamp(state->splitRatio(), MinSplitRatio, MaxSplitRatio));
-
+    QJSValue jsState = buildJsState(state);
     guardedCall([this, &jsState, windowIndex, &edge, deltaPx]() {
         return m_jsOnResize.call({jsState, QJSValue(windowIndex), QJSValue(edge), QJSValue(deltaPx)});
     });

@@ -431,7 +431,9 @@ void AutotileEngine::setAlgorithm(const QString& algorithmId)
     // Only save after the first setAlgorithm() call has completed, to avoid
     // persisting uninitialised struct defaults from the constructor.
     if (m_algorithmEverSet && oldAlgo) {
-        m_config->savedAlgorithmSettings[m_algorithmId] = {m_config->splitRatio, m_config->masterCount, {}};
+        auto& entry = m_config->savedAlgorithmSettings[m_algorithmId];
+        entry.splitRatio = m_config->splitRatio;
+        entry.masterCount = m_config->masterCount;
     }
 
     // Look up saved settings AFTER the save above — insertion may rehash the
@@ -1379,6 +1381,14 @@ void AutotileEngine::onWindowAdded(const QString& windowId)
     }
 
     if (inserted) {
+        // Notify algorithm via lifecycle hook before retile
+        TilingAlgorithm* algo = effectiveAlgorithm(screenId);
+        if (algo && algo->supportsLifecycleHooks() && state) {
+            const int idx = state->tiledWindows().indexOf(windowId);
+            if (idx >= 0) {
+                algo->onWindowAdded(state, idx);
+            }
+        }
         scheduleRetileForScreen(screenId);
     }
 }
@@ -1388,6 +1398,16 @@ void AutotileEngine::onWindowRemoved(const QString& windowId)
     const QString screenId = m_windowToStateKey.value(windowId).screenId;
     if (screenId.isEmpty()) {
         return;
+    }
+
+    // Notify algorithm via lifecycle hook before removal
+    TilingState* state = stateForScreen(screenId);
+    TilingAlgorithm* algo = effectiveAlgorithm(screenId);
+    if (algo && algo->supportsLifecycleHooks() && state) {
+        const int idx = state->tiledWindows().indexOf(windowId);
+        if (idx >= 0) {
+            algo->onWindowRemoved(state, idx);
+        }
     }
 
     removeWindow(windowId);
@@ -1656,8 +1676,18 @@ void AutotileEngine::recalculateLayout(const QString& screenId)
 
     // Pass minSizes to algorithm so it can incorporate them directly into zone
     // calculations using its topology knowledge (split tree, column structure, etc.)
-    QVector<QRect> zones = algo->calculateZones({windowCount, screen, state, innerGap, outerGaps, minSizes, windowInfos,
-                                                 focusedIndex, screenInfo, customParams});
+    TilingParams tilingParams;
+    tilingParams.windowCount = windowCount;
+    tilingParams.screenGeometry = screen;
+    tilingParams.state = state;
+    tilingParams.innerGap = innerGap;
+    tilingParams.outerGaps = outerGaps;
+    tilingParams.minSizes = minSizes;
+    tilingParams.windowInfos = windowInfos;
+    tilingParams.focusedIndex = focusedIndex;
+    tilingParams.screenInfo = screenInfo;
+    tilingParams.customParams = customParams;
+    QVector<QRect> zones = algo->calculateZones(tilingParams);
 
     // Validate algorithm returned correct number of zones
     if (zones.size() != windowCount) {

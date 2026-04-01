@@ -160,8 +160,8 @@ ScriptMetadata parseMetadata(const QString& source, const QString& filePath)
             // number: // @param name number default min max "description"
             // bool:   // @param name bool default "description"
             // enum:   // @param name enum "default" ["opt1","opt2"] "description"
-            static const QRegularExpression paramNumberRe(
-                QStringLiteral(R"RX(^(\w+)\s+number\s+([\d.+-]+)\s+([\d.+-]+)\s+([\d.+-]+)\s+"([^"]*)")RX"));
+            static const QRegularExpression paramNumberRe(QStringLiteral(
+                R"RX(^(\w+)\s+number\s+([+-]?\d+(?:\.\d+)?)\s+([+-]?\d+(?:\.\d+)?)\s+([+-]?\d+(?:\.\d+)?)\s+"([^"]*)")RX"));
             static const QRegularExpression paramBoolRe(
                 QStringLiteral(R"RX(^(\w+)\s+bool\s+(true|false)\s+"([^"]*)")RX"));
             static const QRegularExpression paramEnumRe(
@@ -200,6 +200,11 @@ ScriptMetadata parseMetadata(const QString& source, const QString& filePath)
                     }
                 }
                 param.description = pm.captured(4).left(200).toHtmlEscaped();
+                if (!param.enumOptions.contains(param.defaultValue.toString())) {
+                    qCWarning(lcAutotile)
+                        << "ScriptedAlgorithm::parseMetadata: @param enum default" << param.defaultValue.toString()
+                        << "not in options list for" << param.name << "in" << filePath;
+                }
                 meta.customParams.append(param);
             } else {
                 qCWarning(lcAutotile) << "ScriptedAlgorithm::parseMetadata: malformed @param" << value << "in"

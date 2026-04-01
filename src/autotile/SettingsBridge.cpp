@@ -29,7 +29,7 @@ void populatePreviewSavedSettings(AlgorithmRegistry::PreviewParams& params,
             {PerAlgoKeys::SplitRatio, it.value().splitRatio},
         };
         if (!it.value().customParams.isEmpty()) {
-            entry[QLatin1String("customParams")] = it.value().customParams;
+            entry[PerAlgoKeys::CustomParams] = it.value().customParams;
         }
         params.savedAlgorithmSettings[it.key()] = entry;
     }
