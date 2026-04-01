@@ -276,9 +276,11 @@ void ZoneShaderNodeRhi::uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb)
             if (!m_audioSpectrumTexture->create()) {
                 return;
             }
-            m_srb.reset();
-            m_srbB.reset();
-            m_computeSrb.reset(); // Compute SRB also references audio texture
+            // ALL SRBs reference the audio texture (image pass, buffer pass, compute).
+            // resetAllSrbs() invalidates every SRB and their pipelines so buffer
+            // passes won't be recorded with a dangling pointer to the destroyed
+            // texture — which would crash the NVIDIA Vulkan driver in endFrame().
+            resetAllSrbs();
             if (!ensurePipeline()) {
                 return;
             }
@@ -429,6 +431,9 @@ void ZoneShaderNodeRhi::releaseRhiResources()
     m_cpuParticles.clear();
     m_cpuParticleImage = QImage();
     m_cpuParticlesFallback = false;
+    m_computeShaderDirty = true;
+    m_computeShaderReady = false;
+    m_particleSsboNeedsInit = true;
     m_ubo.reset();
     m_vbo.reset();
     m_vertexShader = QShader();

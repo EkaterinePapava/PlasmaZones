@@ -21,7 +21,6 @@
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QScreen>
-#include <QSettings>
 #include <QCursor>
 #include <QObject>
 
@@ -54,16 +53,7 @@ int main(int argc, char* argv[])
     QVulkanInstance vulkanInstance;
 #endif
     {
-        QSettings cfg(PlasmaZones::ConfigDefaults::configFilePath(), QSettings::IniFormat);
-        QString backendRaw = cfg.value(PlasmaZones::ConfigDefaults::renderingBackendKey()).toString();
-        if (backendRaw.isEmpty()) {
-            cfg.beginGroup(PlasmaZones::ConfigDefaults::generalGroup());
-            backendRaw = cfg.value(PlasmaZones::ConfigDefaults::renderingBackendKey(),
-                                   PlasmaZones::ConfigDefaults::renderingBackend())
-                             .toString();
-            cfg.endGroup();
-        }
-        const QString backend = PlasmaZones::ConfigDefaults::normalizeRenderingBackend(backendRaw);
+        const QString backend = PlasmaZones::ConfigDefaults::readRenderingBackendFromDisk();
 
         if (backend == QLatin1String("vulkan")) {
 #if QT_CONFIG(vulkan)

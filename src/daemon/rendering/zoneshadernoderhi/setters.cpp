@@ -323,8 +323,19 @@ void ZoneShaderNodeRhi::resetAllSrbs()
     m_bufferSrb.reset();
     m_bufferSrbB.reset();
     m_computeSrb.reset();
+    // Pipelines store the SRB layout from creation. If an SRB is rebuilt with
+    // different bindings (particle texture added/removed, depth buffer toggled,
+    // audio texture appeared), the pipeline becomes layout-incompatible.
+    // Vulkan rejects setShaderResources() when the SRB doesn't match the
+    // pipeline's layout — this manifests as a validation error or driver crash,
+    // particularly on NVIDIA. Reset all pipelines so they're recreated with
+    // the correct SRB layout on the next ensurePipeline() / ensureBufferPipeline().
+    m_pipeline.reset();
+    m_bufferPipeline.reset();
+    m_computePipeline.reset();
     for (int i = 0; i < kMaxBufferPasses; ++i) {
         m_multiBufferSrbs[i].reset();
+        m_multiBufferPipelines[i].reset();
     }
 }
 

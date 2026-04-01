@@ -546,6 +546,19 @@ public:
     // which tests rely on via IsolatedConfigGuard.
     PLASMAZONES_EXPORT static QString configFilePath();
 
+    /**
+     * Read the rendering backend from the config file on disk.
+     *
+     * QSettings::IniFormat does NOT map ungrouped keys to "General" (unlike KConfig).
+     * The settings app writes RenderingBackend before any [Section] header, so we
+     * must check both the ungrouped root and the [General] group. This helper
+     * provides a single canonical read order used by daemon, editor, and Settings.
+     *
+     * Safe to call before QCoreApplication exists (uses raw QSettings).
+     * Returns the normalized backend string ("auto", "vulkan", or "opengl").
+     */
+    PLASMAZONES_EXPORT static QString readRenderingBackendFromDisk();
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Rendering Settings
     // ═══════════════════════════════════════════════════════════════════════════

@@ -17,7 +17,6 @@
 #include <QIcon>
 #include <QLibrary>
 #include <QQuickWindow>
-#include <QSettings>
 #include <QThread>
 #include <QTimer>
 #include <QtQml/qqmlextensionplugin.h>
@@ -56,21 +55,7 @@ int main(int argc, char* argv[])
     QVulkanInstance vulkanInstance;
 #endif
     {
-        // QSettings::IniFormat does NOT map ungrouped keys to "General" (unlike KConfig).
-        // The settings app writes RenderingBackend before any [Section] header, so read
-        // both locations: ungrouped first, then General group as fallback.
-        // The custom kconfigIniFormat cannot be used here because it requires the
-        // QCoreApplication event loop for QConfFile caching, which doesn't exist yet.
-        QSettings cfg(PlasmaZones::ConfigDefaults::configFilePath(), QSettings::IniFormat);
-        QString backendRaw = cfg.value(PlasmaZones::ConfigDefaults::renderingBackendKey()).toString();
-        if (backendRaw.isEmpty()) {
-            cfg.beginGroup(PlasmaZones::ConfigDefaults::generalGroup());
-            backendRaw = cfg.value(PlasmaZones::ConfigDefaults::renderingBackendKey(),
-                                   PlasmaZones::ConfigDefaults::renderingBackend())
-                             .toString();
-            cfg.endGroup();
-        }
-        const QString backend = PlasmaZones::ConfigDefaults::normalizeRenderingBackend(backendRaw);
+        const QString backend = PlasmaZones::ConfigDefaults::readRenderingBackendFromDisk();
 
         if (backend == QLatin1String("vulkan")) {
 #if QT_CONFIG(vulkan)

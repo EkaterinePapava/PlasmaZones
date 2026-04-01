@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QHash>
 #include <QImage>
+#include <QMap>
 #include <QString>
 #include <QUrl>
 #include <QVariant>
@@ -69,7 +70,7 @@ public:
         QString category; ///< Hierarchical category path (e.g. "Organic", "Audio Visualizer")
         QList<ParameterInfo> parameters;
 
-        QHash<QString, QVariantMap> presets; ///< Named parameter presets (key=name, value=param ID→value)
+        QMap<QString, QVariantMap> presets; ///< Named parameter presets (key=name, value=param ID→value, sorted)
 
         bool isUserShader = false; ///< True for ~/.local/share shaders
         bool isMultipass = false; ///< True if multipass and bufferShader are set

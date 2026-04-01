@@ -400,8 +400,12 @@ void ZoneShaderNodeRhi::prepare()
     // offscreen FBOs (their own render targets), not the main RT.
     // Compute dispatch stays in render() — see render() comment.
     // ========================================================================
+    // SRB validity is required — if resetAllSrbs() fired earlier in this prepare()
+    // (e.g., from particle texture resize), the buffer SRBs are null. Attempting
+    // setShaderResources(nullptr) crashes on Vulkan. Skip the buffer pass entirely;
+    // the SRBs will be rebuilt on the next frame.
     const bool multipassSingle = !multiBufferMode && !m_bufferPath.isEmpty() && m_bufferShaderReady && m_bufferPipeline
-        && m_bufferRenderTarget && m_bufferTexture;
+        && m_bufferSrb && m_bufferRenderTarget && m_bufferTexture;
     const bool multipassMulti =
         multiBufferMode && m_multiBufferShadersReady && m_multiBufferTextures[0] && m_multiBufferPipelines[0];
     const bool multipassActive = multipassSingle || multipassMulti;
@@ -437,6 +441,8 @@ void ZoneShaderNodeRhi::prepare()
             QRhiTextureRenderTarget* bufferRT = (m_bufferFeedback && writeIndex == 1 && m_bufferRenderTargetB)
                 ? m_bufferRenderTargetB.get()
                 : m_bufferRenderTarget.get();
+            // Guard feedback SRB: if m_srbB is null on odd frames, fall back to m_bufferSrb
+            // (which is guaranteed non-null by the multipassSingle check above).
             QRhiShaderResourceBindings* bufferSrb =
                 (m_bufferFeedback && writeIndex == 1 && m_bufferSrbB) ? m_bufferSrbB.get() : m_bufferSrb.get();
             QRhiTexture* writtenTexture = (m_bufferFeedback && writeIndex == 1 && m_bufferTextureB)
@@ -485,12 +491,13 @@ void ZoneShaderNodeRhi::render(const RenderState* state)
     }
 
     // GPU compute dispatch: must happen outside any render pass (Vulkan requirement).
-    // On OpenGL, compute dispatch is safe in prepare() (no render pass concept).
-    // On Vulkan, GPU compute is disabled (NVIDIA 595.x driver bug) — CPU fallback is used.
-    // If a future driver fixes this, compute dispatch can be restored here with:
-    //   cb->endPass(); dispatchCompute(cb); cb->beginPass(rt, clear, {1.0f, 0});
-    const bool computeActive =
-        m_computeSupported && m_computeShaderReady && m_computePipeline && m_particleSsbo && m_particleTexture;
+    // All resources (pipeline, SRB, SSBO, texture) must be valid — if any were
+    // invalidated (e.g., audio texture resize resets m_computeSrb), skip the dispatch
+    // entirely. The missing resource will be rebuilt in the next frame's prepare().
+    // Critically, do NOT call endPass()/beginPass() unless we will actually dispatch —
+    // doing so with a stale SRB clears the render target and produces a blank frame.
+    const bool computeActive = m_computeSupported && m_computeShaderReady && m_computePipeline && m_computeSrb
+        && m_particleSsbo && m_particleTexture;
     if (computeActive) {
         cb->endPass();
         dispatchCompute(cb);

@@ -73,8 +73,20 @@ void ZoneShaderNodeRhi::bakeComputeShader()
 
 bool ZoneShaderNodeRhi::ensureParticleTexture(QRhi* rhi)
 {
-    const int w = qMax(1, static_cast<int>(m_width));
-    const int h = qMax(1, static_cast<int>(m_height));
+    // Cap particle texture to 1920×1080 (or proportional). Particles are soft blurred
+    // dots — full display resolution is unnecessary and causes massive per-frame CPU
+    // uploads for the texture clear (33MB at 4K × 60fps = ~2GB/s PCIe traffic).
+    // The fragment shader samples this with linear filtering, so downscaling is invisible.
+    static constexpr int MaxParticleTexDim = 1920;
+    const int fullW = qMax(1, static_cast<int>(m_width));
+    const int fullH = qMax(1, static_cast<int>(m_height));
+    int w = fullW;
+    int h = fullH;
+    if (w > MaxParticleTexDim || h > MaxParticleTexDim) {
+        const float scale = static_cast<float>(MaxParticleTexDim) / static_cast<float>(qMax(w, h));
+        w = qMax(1, static_cast<int>(static_cast<float>(w) * scale));
+        h = qMax(1, static_cast<int>(static_cast<float>(h) * scale));
+    }
     const QSize texSize(w, h);
 
     // For GPU compute, texture needs UsedWithLoadStore + RenderTarget. The RenderTarget flag
@@ -250,6 +262,14 @@ void ZoneShaderNodeRhi::updateCpuParticles()
     const int count = qMin(m_particleCount, CpuMaxParticles);
     if (count <= 0) {
         return;
+    }
+    if (m_particleCount > CpuMaxParticles) {
+        static bool warned = false;
+        if (!warned) {
+            warned = true;
+            qCInfo(lcOverlay) << "CPU particle fallback capped at" << CpuMaxParticles
+                              << "(requested:" << m_particleCount << ")";
+        }
     }
 
     // Initialize particles on first call or if count changed
