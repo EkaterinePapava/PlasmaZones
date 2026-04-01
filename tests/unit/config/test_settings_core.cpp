@@ -415,9 +415,9 @@ private Q_SLOTS:
     }
 
     /**
-     * save() must purge stale keys within per-screen override groups while
-     * preserving valid keys. Per-screen groups themselves are preserved
-     * (screens may be temporarily disconnected).
+     * save() must delete per-screen override groups that it doesn't rewrite,
+     * which removes any stale keys they contain. Groups for screens the
+     * Settings object doesn't know about are deleted entirely.
      */
     void testSave_purgesStaleKeysInPerScreenGroups()
     {
