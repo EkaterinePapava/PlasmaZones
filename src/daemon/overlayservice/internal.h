@@ -39,7 +39,7 @@ inline void writeFontProperties(QObject* window, const IZoneVisualizationSetting
 }
 
 inline void writeAutotileMetadata(QObject* window, bool showMasterDot, bool producesOverlappingZones,
-                                  const QString& zoneNumberDisplay = QStringLiteral("all"))
+                                  const QString& zoneNumberDisplay = QStringLiteral("all"), int masterCount = 1)
 {
     if (!window) {
         return;
@@ -47,6 +47,7 @@ inline void writeAutotileMetadata(QObject* window, bool showMasterDot, bool prod
     writeQmlProperty(window, QStringLiteral("showMasterDot"), showMasterDot);
     writeQmlProperty(window, QStringLiteral("producesOverlappingZones"), producesOverlappingZones);
     writeQmlProperty(window, QStringLiteral("zoneNumberDisplay"), zoneNumberDisplay);
+    writeQmlProperty(window, QStringLiteral("masterCount"), masterCount);
 }
 
 // Fallback config when ISettings* is null (e.g. during teardown).

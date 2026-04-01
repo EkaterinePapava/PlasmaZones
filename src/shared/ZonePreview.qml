@@ -287,6 +287,7 @@ Item {
             readonly property real topOffset: relY < 0.01 ? root.edgeGap : root.zonePadding / 2
 
             visible: index < root.masterCount
+            Accessible.ignored: true
             x: relX * root.width + leftOffset + Kirigami.Units.smallSpacing
             y: relY * root.height + topOffset + Kirigami.Units.smallSpacing
             width: Kirigami.Units.smallSpacing * 2

@@ -132,7 +132,8 @@ public:
     void showLayoutOsd(Layout* layout, const QString& screenId = QString());
     void showLayoutOsd(const QString& id, const QString& name, const QVariantList& zones, int category,
                        bool autoAssign = false, const QString& screenId = QString(), bool showMasterDot = false,
-                       bool producesOverlappingZones = false, const QString& zoneNumberDisplay = QStringLiteral("all"));
+                       bool producesOverlappingZones = false, const QString& zoneNumberDisplay = QStringLiteral("all"),
+                       int masterCount = 1);
     void showLockedLayoutOsd(Layout* layout, const QString& screenId = QString());
 
     /**

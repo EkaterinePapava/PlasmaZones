@@ -29,6 +29,7 @@ Window {
     property bool autoAssign: false
     // Autotile algorithm metadata
     property bool showMasterDot: false
+    property int masterCount: 1
     property bool producesOverlappingZones: false
     property string zoneNumberDisplay: "all"
     // Screen info for aspect ratio (bounded to prevent layout issues)
@@ -245,6 +246,7 @@ Window {
                     fontItalic: root.fontItalic
                     fontUnderline: root.fontUnderline
                     showMasterDot: root.showMasterDot
+                    masterCount: root.masterCount
                     fontStrikeout: root.fontStrikeout
                     animationDuration: 150
                 }

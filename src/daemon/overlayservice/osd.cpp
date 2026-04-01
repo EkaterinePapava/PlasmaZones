@@ -173,7 +173,7 @@ void OverlayService::showLockedLayoutOsd(Layout* layout, const QString& screenId
 
 void OverlayService::showLayoutOsd(const QString& id, const QString& name, const QVariantList& zones, int category,
                                    bool autoAssign, const QString& screenId, bool showMasterDot,
-                                   bool producesOverlappingZones, const QString& zoneNumberDisplay)
+                                   bool producesOverlappingZones, const QString& zoneNumberDisplay, int masterCount)
 {
     if (zones.isEmpty()) {
         qCDebug(lcOverlay) << "Skipping OSD for empty layout=" << name;
@@ -206,7 +206,7 @@ void OverlayService::showLayoutOsd(const QString& id, const QString& name, const
     }
     writeQmlProperty(window, QStringLiteral("category"), category);
     writeQmlProperty(window, QStringLiteral("autoAssign"), autoAssign);
-    writeAutotileMetadata(window, showMasterDot, producesOverlappingZones, zoneNumberDisplay);
+    writeAutotileMetadata(window, showMasterDot, producesOverlappingZones, zoneNumberDisplay, masterCount);
     writeQmlProperty(window, QStringLiteral("zones"), zones);
     writeFontProperties(window, m_settings);
 
