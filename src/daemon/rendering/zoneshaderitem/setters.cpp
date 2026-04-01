@@ -580,7 +580,7 @@ void ZoneShaderItem::setComputeShaderPath(const QString& path)
 
 void ZoneShaderItem::setParticleCount(int count)
 {
-    const int clamped = qBound(0, count, 16384);
+    const int clamped = qBound(0, count, MaxParticles);
     if (m_particleCount == clamped) {
         return;
     }

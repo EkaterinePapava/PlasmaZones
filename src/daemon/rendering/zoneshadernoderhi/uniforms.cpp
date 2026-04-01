@@ -425,6 +425,7 @@ void ZoneShaderNodeRhi::releaseRhiResources()
     m_particleSsbo.reset();
     m_particleTexture.reset();
     m_particleSampler.reset();
+    m_particleClearImage = QImage();
     m_cpuParticles.clear();
     m_cpuParticleImage = QImage();
     m_cpuParticlesFallback = false;
@@ -447,7 +448,6 @@ void ZoneShaderNodeRhi::releaseRhiResources()
     m_zoneDataDirty = true;
     m_labelsTextureDirty = true;
     m_audioSpectrumDirty = true;
-    m_offscreenPassesDone = false;
     // Next prepare() will re-create all RHI resources and do a full UBO upload
 }
 

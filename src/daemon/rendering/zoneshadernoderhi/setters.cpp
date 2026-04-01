@@ -294,6 +294,7 @@ void ZoneShaderNodeRhi::setComputeShaderPath(const QString& path)
     // Re-probe compute support and clear CPU fallback so a new shader gets a fresh chance
     m_computeSupported = false;
     m_cpuParticlesFallback = false;
+    m_particleClearImage = QImage();
     m_cpuParticles.clear();
     m_cpuParticleImage = QImage();
     resetAllSrbs();

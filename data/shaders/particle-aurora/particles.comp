@@ -27,16 +27,9 @@ void main() {
     Particle p = particles[idx];
     ivec2 imgSize = imageSize(uParticleImage);
 
-    // ── Clear this thread's stripe of the particle image ───
-    int totalParticles = int(particles.length());
-    int stripWidth = max(1, (imgSize.x + totalParticles - 1) / totalParticles);
-    int stripStart = int(idx) * stripWidth;
-    int stripEnd = min(stripStart + stripWidth, imgSize.x);
-    for (int x = stripStart; x < stripEnd; x++) {
-        for (int y = 0; y < imgSize.y; y++) {
-            imageStore(uParticleImage, ivec2(x, y), vec4(0.0));
-        }
-    }
+    // Image clear is handled by the C++ host (texture upload of zeroed data before
+    // compute dispatch) to avoid cross-workgroup data races. The host upload + QRhi
+    // beginComputePass barrier guarantees the image is zeroed before any thread writes.
 
     // ── Parameters from UBO ────────────────────────────
     float spawnRate      = max(customParams[0].x, 0.1);
@@ -212,7 +205,7 @@ void main() {
         alpha *= 1.0 + treble * audioReact * 0.3;
     }
 
-    // ── Render to particle image ───────────────────────
+    // ── Render to particle image ───────��───────────────
     if (p.life > 0.0 && alpha > 0.01) {
         ivec2 center = ivec2(p.pos * vec2(imgSize));
         int radius = clamp(int(p.size * float(imgSize.y)), 1, 24);

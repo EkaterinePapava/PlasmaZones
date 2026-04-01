@@ -205,7 +205,6 @@ private:
     bool m_timeDirty = true;
     bool m_zoneDataDirty = true;
     bool m_didFullUploadOnce = false;
-    bool m_offscreenPassesDone = false; // Set by prepare(), read by render()
 
     ZoneShaderUniforms m_uniforms = {};
     QVector<ZoneData> m_zones;
@@ -286,6 +285,9 @@ private:
 
     std::unique_ptr<QRhiTexture> m_particleTexture;
     std::unique_ptr<QRhiSampler> m_particleSampler;
+
+    // Pre-zeroed image for clearing particle texture before each compute dispatch
+    QImage m_particleClearImage;
 
     // CPU particle fallback (when GPU compute unavailable)
     QVector<ParticleData> m_cpuParticles;

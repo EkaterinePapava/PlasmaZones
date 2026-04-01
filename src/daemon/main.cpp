@@ -125,8 +125,9 @@ int main(int argc, char* argv[])
             qCInfo(PlasmaZones::lcDaemon) << "Vulkan instance created successfully";
         } else {
             qCCritical(PlasmaZones::lcDaemon)
-                << "Failed to create Vulkan instance after app init — Vulkan windows will not work."
+                << "Failed to create Vulkan instance after app init — falling back to OpenGL."
                 << "Check that Vulkan drivers are installed (vulkan-icd-loader, mesa-vulkan-drivers, etc.)";
+            QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
             useVulkan = false;
         }
     }

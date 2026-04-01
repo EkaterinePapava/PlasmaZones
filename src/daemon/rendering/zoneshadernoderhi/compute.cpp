@@ -194,22 +194,35 @@ void ZoneShaderNodeRhi::dispatchCompute(QRhiCommandBuffer* cb)
         return;
     }
 
+    // Clear the particle image to transparent black before each dispatch.
+    // This replaces the in-shader per-thread stripe clear which had cross-workgroup
+    // data races (threads from different workgroups could clear pixels that other
+    // workgroups had already rendered). The host-side upload + beginComputePass
+    // barrier guarantees the image is fully zeroed before any compute thread writes.
+    QRhiResourceUpdateBatch* batch = rhi->nextResourceUpdateBatch();
+    if (m_particleTexture) {
+        const QSize texSize = m_particleTexture->pixelSize();
+        if (m_particleClearImage.size() != texSize) {
+            m_particleClearImage = QImage(texSize, QImage::Format_RGBA8888);
+            m_particleClearImage.fill(0);
+        }
+        batch->uploadTexture(m_particleTexture.get(), m_particleClearImage);
+    }
+
     // Initialize SSBO with random particle data on first frame.
-    // Pass the upload batch to beginComputePass() instead of standalone cb->resourceUpdate()
-    // so QRhi applies it with correct Vulkan pipeline barriers at pass start.
-    QRhiResourceUpdateBatch* initBatch = nullptr;
     if (m_particleSsboNeedsInit) {
         QVector<ParticleData> initData(m_particleCount);
         for (int i = 0; i < m_particleCount; ++i) {
             initParticle(initData[i], i, m_particleCount);
         }
-        initBatch = rhi->nextResourceUpdateBatch();
-        initBatch->uploadStaticBuffer(m_particleSsbo.get(), 0, m_particleCount * sizeof(ParticleData),
-                                      initData.constData());
+        batch->uploadStaticBuffer(m_particleSsbo.get(), 0, m_particleCount * sizeof(ParticleData),
+                                  initData.constData());
         m_particleSsboNeedsInit = false;
     }
 
-    cb->beginComputePass(initBatch);
+    // Pass the upload batch to beginComputePass() so QRhi applies it with correct
+    // Vulkan pipeline barriers at pass start.
+    cb->beginComputePass(batch);
     cb->setComputePipeline(m_computePipeline.get());
     cb->setShaderResources(m_computeSrb.get());
     // 64 threads per workgroup

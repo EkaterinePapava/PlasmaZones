@@ -96,6 +96,10 @@ int main(int argc, char* argv[])
         vulkanInstance.setApiVersion(PlasmaZones::PzVulkanApiVersion);
         if (vulkanInstance.create()) {
             app.setProperty(PlasmaZones::PzVulkanInstanceProperty, QVariant::fromValue(&vulkanInstance));
+        } else {
+            qCCritical(PlasmaZones::lcEditor)
+                << "Failed to create Vulkan instance — falling back to OpenGL for shader preview.";
+            QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
         }
     }
 #endif
