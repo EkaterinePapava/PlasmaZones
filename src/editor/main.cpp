@@ -84,6 +84,7 @@ int main(int argc, char* argv[])
     qRegisterMetaType<QVulkanInstance*>();
     if (QQuickWindow::graphicsApi() == QSGRendererInterface::Vulkan) {
         vulkanInstance.setApiVersion(PlasmaZones::PzVulkanApiVersion);
+        vulkanInstance.setExtensions(vulkanInstance.extensions() << QByteArrayLiteral("VK_EXT_swapchain_colorspace"));
         if (vulkanInstance.create()) {
             app.setProperty(PlasmaZones::PzVulkanInstanceProperty, QVariant::fromValue(&vulkanInstance));
         } else {

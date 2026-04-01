@@ -391,6 +391,7 @@ void ZoneShaderNodeRhi::prepare()
                 QSize ps = m_multiBufferTextures[i]->pixelSize();
                 cb->beginPass(m_multiBufferRenderTargets[i].get(), clearColor, {1.0f, 0});
                 cb->setViewport(QRhiViewport(0, 0, ps.width(), ps.height()));
+                cb->setScissor(QRhiScissor(0, 0, ps.width(), ps.height()));
                 cb->setGraphicsPipeline(m_multiBufferPipelines[i].get());
                 cb->setShaderResources(m_multiBufferSrbs[i].get());
                 QRhiCommandBuffer::VertexInput vbufBinding(m_vbo.get(), 0);
@@ -420,6 +421,8 @@ void ZoneShaderNodeRhi::prepare()
             cb->beginPass(bufferRT, clearColor, {1.0f, 0});
             cb->setViewport(
                 QRhiViewport(0, 0, writtenTexture->pixelSize().width(), writtenTexture->pixelSize().height()));
+            cb->setScissor(
+                QRhiScissor(0, 0, writtenTexture->pixelSize().width(), writtenTexture->pixelSize().height()));
             cb->setGraphicsPipeline(m_bufferPipeline.get());
             cb->setShaderResources(bufferSrb);
             QRhiCommandBuffer::VertexInput vbufBinding(m_vbo.get(), 0);
@@ -449,8 +452,6 @@ void ZoneShaderNodeRhi::render(const RenderState* state)
         return;
     }
     if (!m_shaderReady || !m_pipeline || !m_srb) {
-        qCDebug(lcOverlay) << "render(): bail — shaderReady:" << m_shaderReady << "pipeline:" << (m_pipeline != nullptr)
-                           << "srb:" << (m_srb != nullptr);
         return;
     }
     QRhiCommandBuffer* cb = commandBuffer();
@@ -489,6 +490,7 @@ void ZoneShaderNodeRhi::render(const RenderState* state)
         vpH = qBound(1, itemPxH, outputSize.height() - vpY);
     }
     cb->setViewport(QRhiViewport(vpX, vpY, vpW, vpH));
+    cb->setScissor(QRhiScissor(vpX, vpY, vpW, vpH));
     cb->setGraphicsPipeline(m_pipeline.get());
 
     const bool multiBufferMode = m_bufferPaths.size() > 1;

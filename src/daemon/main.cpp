@@ -105,6 +105,12 @@ int main(int argc, char* argv[])
         // QGuiApplicationPrivate::platform_integration in ensureVulkan(), which
         // is null before app construction (SIGSEGV on NVIDIA 595+).
         vulkanInstance.setApiVersion(PlasmaZones::PzVulkanApiVersion);
+        // Qt's Wayland Vulkan platform integration uses VK_COLOR_SPACE_PASS_THROUGH_EXT
+        // for swapchain creation, which requires VK_EXT_swapchain_colorspace on the
+        // instance. Without it, the NVIDIA validation layer reports an error on every
+        // vkCreateSwapchainKHR call, and after repeated window creation/destruction
+        // cycles (overlay show/hide), the driver starts rejecting swapchain commands.
+        vulkanInstance.setExtensions(vulkanInstance.extensions() << QByteArrayLiteral("VK_EXT_swapchain_colorspace"));
         if (vulkanInstance.create()) {
             app.setProperty(PlasmaZones::PzVulkanInstanceProperty, QVariant::fromValue(&vulkanInstance));
             qCInfo(PlasmaZones::lcDaemon) << "Vulkan instance created successfully";
