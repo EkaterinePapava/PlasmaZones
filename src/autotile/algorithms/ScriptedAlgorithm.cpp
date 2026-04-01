@@ -652,9 +652,7 @@ QVector<QRect> ScriptedAlgorithm::calculateZones(const TilingParams& params) con
             const QVariant& val = it.value();
             if (val.typeId() == QMetaType::Bool) {
                 jsCustom.setProperty(it.key(), val.toBool());
-            } else if (val.typeId() == QMetaType::Double || val.typeId() == QMetaType::Float
-                       || val.typeId() == QMetaType::Int || val.typeId() == QMetaType::UInt
-                       || val.typeId() == QMetaType::LongLong || val.typeId() == QMetaType::ULongLong) {
+            } else if (AutotileDefaults::isNumericMetaType(val.typeId())) {
                 jsCustom.setProperty(it.key(), val.toDouble());
             } else {
                 jsCustom.setProperty(it.key(), val.toString());
@@ -933,27 +931,11 @@ QJSValue ScriptedAlgorithm::buildJsState(const TilingState* state) const
     jsState.setProperty(QStringLiteral("masterCount"), state->masterCount());
     jsState.setProperty(QStringLiteral("splitRatio"), std::clamp(state->splitRatio(), MinSplitRatio, MaxSplitRatio));
 
-    const QStringList windows = state->tiledWindows();
-    const QString focusedWin = state->focusedWindow();
-    const int winCount = windows.size();
-
-    // Build WindowInfo list — mirrors buildWindowInfos() in AutotileEngine.cpp.
-    // Kept inline here because buildWindowInfos lives in an anonymous namespace
-    // and lifecycle hooks need to build from TilingState (not TilingParams).
-    QVector<WindowInfo> infos;
-    infos.reserve(winCount);
+    const int winCount = state->tiledWindowCount();
     int focusedIdx = -1;
-    for (int i = 0; i < winCount; ++i) {
-        WindowInfo info;
-        info.appId = Utils::extractAppId(windows[i]);
-        info.focused = (windows[i] == focusedWin);
-        if (info.focused) {
-            focusedIdx = i;
-        }
-        infos.append(info);
-    }
+    const QVector<WindowInfo> infos = buildWindowInfos(state, winCount, focusedIdx);
 
-    jsState.setProperty(QStringLiteral("windows"), buildJsWindowArray(infos, winCount));
+    jsState.setProperty(QStringLiteral("windows"), buildJsWindowArray(infos, infos.size()));
     jsState.setProperty(QStringLiteral("focusedIndex"), focusedIdx);
 
     return jsState;

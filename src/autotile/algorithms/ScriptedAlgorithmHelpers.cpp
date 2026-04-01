@@ -177,6 +177,11 @@ ScriptMetadata parseMetadata(const QString& source, const QString& filePath)
                 param.minValue = pm.captured(3).toDouble();
                 param.maxValue = pm.captured(4).toDouble();
                 param.description = pm.captured(5).left(200).toHtmlEscaped();
+                if (param.minValue > param.maxValue) {
+                    qCWarning(lcAutotile) << "ScriptedAlgorithm::parseMetadata: @param number min" << param.minValue
+                                          << "> max" << param.maxValue << "for" << param.name << "in" << filePath;
+                    std::swap(param.minValue, param.maxValue);
+                }
                 meta.customParams.append(param);
             } else if ((pm = paramBoolRe.match(value)).hasMatch()) {
                 param.name = pm.captured(1).left(64);

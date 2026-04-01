@@ -150,7 +150,7 @@ function calculateZones(params) {
             clusterSizes[numClusters - 1] += availablePrimary - totalAssigned;
         }
     } else if (totalAssigned < availablePrimary) {
-        // Distribute surplus to the focused cluster, or the largest
+        // Distribute surplus to the focused cluster, or the first cluster
         var surplus = availablePrimary - totalAssigned;
         var targetIdx = 0;
         for (var ci = 0; ci < numClusters; ci++) {

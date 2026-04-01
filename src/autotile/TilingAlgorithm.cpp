@@ -2,12 +2,33 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "TilingAlgorithm.h"
+#include "TilingState.h"
 #include "core/constants.h"
+#include "core/utils.h"
 #include <algorithm>
 
 namespace PlasmaZones {
 
 using namespace AutotileDefaults;
+
+QVector<WindowInfo> buildWindowInfos(const TilingState* state, int windowCount, int& focusedIndex)
+{
+    QVector<WindowInfo> infos;
+    focusedIndex = -1;
+    const QStringList windows = state->tiledWindows();
+    const QString focusedWin = state->focusedWindow();
+    infos.reserve(windowCount);
+    for (int i = 0; i < windowCount && i < windows.size(); ++i) {
+        WindowInfo info;
+        info.appId = Utils::extractAppId(windows[i]);
+        info.focused = (windows[i] == focusedWin);
+        if (info.focused) {
+            focusedIndex = i;
+        }
+        infos.append(info);
+    }
+    return infos;
+}
 
 TilingAlgorithm::TilingAlgorithm(QObject* parent)
     : QObject(parent)

@@ -67,7 +67,7 @@ struct TilingParams
     QVariantMap customParams; ///< Algorithm-declared custom parameters
 
     /// Create minimal params for preview rendering (no per-window/screen context)
-    static TilingParams forPreview(int count, const QRect& rect, TilingState* state)
+    static TilingParams forPreview(int count, const QRect& rect, const TilingState* state)
     {
         TilingParams p;
         p.windowCount = count;
@@ -76,6 +76,20 @@ struct TilingParams
         return p;
     }
 };
+
+/**
+ * @brief Build per-window metadata from a TilingState
+ *
+ * Shared between AutotileEngine (for TilingParams construction) and
+ * ScriptedAlgorithm (for lifecycle hook JS state). Extracts appId via
+ * Utils::extractAppId() and identifies the focused window.
+ *
+ * @param state Current tiling state (must be non-null)
+ * @param windowCount Number of windows to process (may differ from state->tiledWindowCount())
+ * @param[out] focusedIndex Set to the index of the focused window, or -1
+ * @return WindowInfo vector (size may be less than windowCount if state has fewer windows)
+ */
+QVector<WindowInfo> buildWindowInfos(const TilingState* state, int windowCount, int& focusedIndex);
 
 /**
  * @brief Abstract base class for tiling algorithms

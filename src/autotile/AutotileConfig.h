@@ -21,8 +21,8 @@ namespace PlasmaZones {
  */
 struct AlgorithmSettings
 {
-    qreal splitRatio = 0.5;
-    int masterCount = 1;
+    qreal splitRatio = AutotileDefaults::DefaultSplitRatio;
+    int masterCount = AutotileDefaults::DefaultMasterCount;
     QVariantMap customParams; ///< Algorithm-declared custom parameter values
     bool operator==(const AlgorithmSettings& other) const
     {
@@ -42,12 +42,8 @@ struct AlgorithmSettings
             }
             const QVariant& a = it.value();
             const QVariant& b = oit.value();
-            const auto isNumericType = [](int typeId) {
-                return typeId == QMetaType::Double || typeId == QMetaType::Float || typeId == QMetaType::Int
-                    || typeId == QMetaType::UInt || typeId == QMetaType::LongLong || typeId == QMetaType::ULongLong;
-            };
-            if (a.canConvert<double>() && b.canConvert<double>() && isNumericType(a.typeId())
-                && isNumericType(b.typeId())) {
+            if (a.canConvert<double>() && b.canConvert<double>() && AutotileDefaults::isNumericMetaType(a.typeId())
+                && AutotileDefaults::isNumericMetaType(b.typeId())) {
                 if (!qFuzzyCompare(1.0 + a.toDouble(), 1.0 + b.toDouble())) {
                     return false;
                 }

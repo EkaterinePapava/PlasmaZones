@@ -39,27 +39,6 @@ namespace {
 // m_pendingInitialOrders from leaking state indefinitely.
 constexpr int PendingOrderTimeoutMs = 10000;
 
-/// Build per-window metadata from TilingState for algorithm context.
-/// Note: ScriptedAlgorithm::buildJsState() has a parallel implementation for
-/// lifecycle hooks — keep both in sync if the WindowInfo population logic changes.
-QVector<WindowInfo> buildWindowInfos(const TilingState* state, int windowCount, int& focusedIndex)
-{
-    QVector<WindowInfo> infos;
-    focusedIndex = -1;
-    const QStringList windows = state->tiledWindows();
-    const QString focusedWin = state->focusedWindow();
-    infos.reserve(windowCount);
-    for (int i = 0; i < windowCount && i < windows.size(); ++i) {
-        WindowInfo info;
-        info.appId = Utils::extractAppId(windows[i]);
-        info.focused = (windows[i] == focusedWin);
-        if (info.focused) {
-            focusedIndex = i;
-        }
-        infos.append(info);
-    }
-    return infos;
-}
 } // namespace
 
 AutotileEngine::AutotileEngine(LayoutManager* layoutManager, WindowTrackingService* windowTracker,
@@ -1691,9 +1670,8 @@ void AutotileEngine::recalculateLayout(const QString& screenId)
                         customParams[key] = pit.value();
                     }
                 }
-            } else {
-                customParams = it->customParams;
             }
+            // else: algorithm doesn't support custom params — don't pass any
         }
     }
 

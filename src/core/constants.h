@@ -207,6 +207,14 @@ constexpr int MaxAnimationDuration = 500;
 constexpr int MinAnimationStaggerIntervalMs = 10;
 constexpr int MaxAnimationStaggerIntervalMs = 200;
 constexpr int DefaultAnimationDuration = 150;
+
+/// Returns true if typeId is a numeric QMetaType (Double, Float, Int, UInt, LongLong, ULongLong).
+/// Used for fuzzy-comparing QVariant values after JSON round-trip type drift.
+constexpr bool isNumericMetaType(int typeId)
+{
+    return typeId == QMetaType::Double || typeId == QMetaType::Float || typeId == QMetaType::Int
+        || typeId == QMetaType::UInt || typeId == QMetaType::LongLong || typeId == QMetaType::ULongLong;
+}
 }
 
 /**
