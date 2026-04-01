@@ -2017,18 +2017,39 @@ void SettingsController::setCustomParam(const QString& algorithmId, const QStrin
         return;
     }
     const auto& defs = scripted->customParamDefs();
-    const bool paramExists = std::any_of(defs.cbegin(), defs.cend(), [&paramName](const auto& def) {
+    auto defIt = std::find_if(defs.cbegin(), defs.cend(), [&paramName](const auto& def) {
         return def.name == paramName;
     });
-    if (!paramExists) {
+    if (defIt == defs.cend()) {
         qCWarning(lcCore) << "setCustomParam: unknown param" << paramName << "for algorithm" << algorithmId;
         return;
+    }
+
+    // Coerce value to the declared type so QML callers can't persist wrong types
+    QVariant coerced = value;
+    if (defIt->type == QLatin1String("number")) {
+        bool ok = false;
+        const qreal num = value.toDouble(&ok);
+        if (!ok) {
+            qCWarning(lcCore) << "setCustomParam: value" << value << "is not a valid number for" << paramName;
+            return;
+        }
+        coerced = std::clamp(num, defIt->minValue, defIt->maxValue);
+    } else if (defIt->type == QLatin1String("bool")) {
+        coerced = value.toBool();
+    } else if (defIt->type == QLatin1String("enum")) {
+        const QString str = value.toString();
+        if (!defIt->enumOptions.contains(str)) {
+            qCWarning(lcCore) << "setCustomParam: value" << str << "not in enum options for" << paramName;
+            return;
+        }
+        coerced = str;
     }
 
     QVariantMap perAlgo = m_settings.autotilePerAlgorithmSettings();
     QVariantMap algoEntry = perAlgo.value(algorithmId).toMap();
     QVariantMap customParams = algoEntry.value(PerAlgoKeys::CustomParams).toMap();
-    customParams[paramName] = value;
+    customParams[paramName] = coerced;
     algoEntry[PerAlgoKeys::CustomParams] = customParams;
 
     // Preserve existing splitRatio/masterCount if not already in the entry
@@ -2059,6 +2080,7 @@ QVariantList SettingsController::generateAlgorithmPreview(const QString& algorit
     state.setMasterCount(masterCount);
     state.setSplitRatio(splitRatio);
 
+    // Preview: no per-window/screen context needed — only geometry matters
     const int count = qMax(1, windowCount);
     TilingParams previewParams;
     previewParams.windowCount = count;

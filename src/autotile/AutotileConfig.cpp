@@ -163,7 +163,10 @@ AutotileConfig AutotileConfig::fromJson(const QJsonObject& json)
             int cmCount = json[CenteredMasterMasterCount].toInt(1);
             cmRatio = std::clamp(cmRatio, MinSplitRatio, MaxSplitRatio);
             cmCount = std::clamp(cmCount, MinMasterCount, MaxMasterCount);
-            config.savedAlgorithmSettings[QLatin1String("centered-master")] = {cmRatio, cmCount, {}};
+            AlgorithmSettings cmSettings;
+            cmSettings.splitRatio = cmRatio;
+            cmSettings.masterCount = cmCount;
+            config.savedAlgorithmSettings[QLatin1String("centered-master")] = cmSettings;
         }
     }
     if (json.contains(InnerGap)) {

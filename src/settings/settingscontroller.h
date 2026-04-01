@@ -568,12 +568,14 @@ public:
     /**
      * @brief Set a custom parameter value for an algorithm
      *
-     * Saves the value into autotilePerAlgorithmSettings and triggers
-     * a retile with the updated parameter.
+     * Saves the value into autotilePerAlgorithmSettings (staged — applied
+     * on save, like all other settings). The value is coerced and validated
+     * against the algorithm's @param declaration: numbers are clamped to
+     * [min, max], bools are coerced, enums are checked against the options list.
      *
      * @param algorithmId Algorithm to configure
      * @param paramName Parameter name (must match a declared @param)
-     * @param value New value (type must match the declared type)
+     * @param value New value (coerced to the declared type)
      */
     Q_INVOKABLE void setCustomParam(const QString& algorithmId, const QString& paramName, const QVariant& value);
 

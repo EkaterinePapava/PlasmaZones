@@ -314,7 +314,12 @@ public:
     /**
      * @brief Called when a window is removed from the tiling before retile
      *
-     * @param state Current tiling state (mutable for tree updates)
+     * The window is still present in @p state when this hook fires; it will
+     * be removed immediately after the hook returns. Algorithms should use
+     * @p windowIndex to identify the departing window but must not assume
+     * the tiled window list will remain unchanged after the call.
+     *
+     * @param state Current tiling state (window still present)
      * @param windowIndex Index the window occupied before removal
      */
     virtual void onWindowRemoved(TilingState* state, int windowIndex) const;

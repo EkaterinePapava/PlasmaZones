@@ -85,14 +85,16 @@ function calculateZones(params) {
     var numClusters = clusterOrder.length;
 
     // ── Compute cluster sizes (proportional to window count + focus boost) ──
-    // Base weight = window count in cluster. Focused cluster gets extra.
+    // Base weight = window count in cluster. Focused cluster gets a boost
+    // proportional to its own size, so single-window clusters don't get
+    // disproportionately inflated.
     var totalWeight = 0;
     var weights = [];
     for (var ci = 0; ci < numClusters; ci++) {
         var cluster = clusterMap[clusterOrder[ci]];
         var w = cluster.indices.length;
         if (cluster.hasFocus && focusBoost > 0) {
-            w += focusBoost * count;
+            w += focusBoost * cluster.indices.length;
         }
         weights.push(w);
         totalWeight += w;
