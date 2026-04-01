@@ -42,7 +42,11 @@ void main() {
     float maxLifetime    = max(customParams[0].y, 1.0);
     float gravity        = customParams[0].z;
     float turbulence     = customParams[0].w;
-    float particleSize   = max(customParams[1].x, 1.0);
+    // Scale particle size relative to image height so appearance is consistent
+    // across resolutions (editor preview ~300px vs overlay ~1800px).
+    // The user-facing value (1-8) is treated as a percentage of height / 100.
+    float particleSizeRaw = max(customParams[1].x, 1.0);
+    float particleSize    = particleSizeRaw * float(imgSize.y) / 300.0;
     float glowIntensity  = max(customParams[1].y, 0.5);
     float audioReact     = customParams[1].z;
     float driftSpeed     = customParams[1].w;
@@ -137,7 +141,7 @@ void main() {
     // ── Render to particle image ───────────────────────
     if (p.life > 0.0 && alpha > 0.01) {
         ivec2 center = ivec2(p.pos * vec2(imgSize));
-        int radius = max(1, int(p.size * float(imgSize.y)));
+        int radius = clamp(int(p.size * float(imgSize.y)), 1, 24);
 
         for (int dy = -radius; dy <= radius; dy++) {
             for (int dx = -radius; dx <= radius; dx++) {

@@ -37,9 +37,11 @@ void main() {
     float bass = hasAudio ? getBass() : 0.0;
     float energy = hasAudio ? getOverall() * customParams[1].z : 0.0;
 
-    // Sample particle texture (screen-space)
-    vec2 particleUv = fc / max(iResolution, vec2(1.0));
-    vec4 particleSample = texture(uParticleTexture, particleUv);
+    // Sample particle texture using vTexCoord (not fc) — the compute shader writes
+    // particles in [0,1] normalized coordinates, and vTexCoord is the unflipped UV.
+    // Using fc/iResolution would have a Y-flip mismatch on Vulkan where the vertex
+    // shader flips Y for fragment coordinate conventions.
+    vec4 particleSample = texture(uParticleTexture, vTexCoord);
 
     for (int i = 0; i < zoneCount && i < 64; i++) {
         vec4 rect = zoneRects[i];

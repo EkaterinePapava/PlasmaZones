@@ -7,17 +7,21 @@
 #include "../core/qpa/layershellpluginloader.h"
 #include "../core/layersurface.h"
 #include "../core/translationloader.h"
+#include "../config/configdefaults.h"
 #include "version.h"
 #include "../daemon/rendering/zoneshaderitem.h"
+#include "../daemon/vulkan_support.h"
 
 #include <QFile>
 #include <QGuiApplication>
+#include <QLibrary>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QCommandLineParser>
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QScreen>
+#include <QSettings>
 #include <QCursor>
 #include <QObject>
 
@@ -44,8 +48,57 @@ int main(int argc, char* argv[])
     // Register our layer-shell QPA plugin before QGuiApplication
     PlasmaZones::registerLayerShellPlugin();
 
+    // Read rendering backend preference and set graphics API BEFORE QGuiApplication.
+    // Must match daemon's backend so shader previews render identically.
+#if QT_CONFIG(vulkan)
+    QVulkanInstance vulkanInstance;
+#endif
+    {
+        QSettings cfg(PlasmaZones::ConfigDefaults::configFilePath(), QSettings::IniFormat);
+        QString backendRaw = cfg.value(PlasmaZones::ConfigDefaults::renderingBackendKey()).toString();
+        if (backendRaw.isEmpty()) {
+            cfg.beginGroup(PlasmaZones::ConfigDefaults::generalGroup());
+            backendRaw = cfg.value(PlasmaZones::ConfigDefaults::renderingBackendKey(),
+                                   PlasmaZones::ConfigDefaults::renderingBackend())
+                             .toString();
+            cfg.endGroup();
+        }
+        const QString backend = PlasmaZones::ConfigDefaults::normalizeRenderingBackend(backendRaw);
+
+        if (backend == QLatin1String("vulkan")) {
+#if QT_CONFIG(vulkan)
+            QLibrary vulkanLib(QStringLiteral("vulkan"), 1);
+            bool vulkanLibAvailable = vulkanLib.load();
+            if (!vulkanLibAvailable) {
+                vulkanLib.setFileName(QStringLiteral("vulkan"));
+                vulkanLibAvailable = vulkanLib.load();
+            }
+            if (vulkanLibAvailable) {
+                QQuickWindow::setGraphicsApi(QSGRendererInterface::Vulkan);
+            } else {
+                QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+            }
+#else
+            QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+#endif
+        } else if (backend == QLatin1String("opengl")) {
+            QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+        }
+    }
+
     QGuiApplication app(argc, argv);
     PlasmaZones::loadTranslations(&app);
+
+    // Create and store QVulkanInstance for shader preview windows (same as daemon)
+#if QT_CONFIG(vulkan)
+    qRegisterMetaType<QVulkanInstance*>();
+    if (QQuickWindow::graphicsApi() == QSGRendererInterface::Vulkan) {
+        vulkanInstance.setApiVersion(PlasmaZones::PzVulkanApiVersion);
+        if (vulkanInstance.create()) {
+            app.setProperty(PlasmaZones::PzVulkanInstanceProperty, QVariant::fromValue(&vulkanInstance));
+        }
+    }
+#endif
 
     // Register metatype for QVariant storage (LayerSurface stores itself
     // as a QWindow dynamic property via QVariant::fromValue).
