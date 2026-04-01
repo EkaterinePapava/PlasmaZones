@@ -14,6 +14,7 @@ using namespace AutotileDefaults;
 
 QVector<WindowInfo> buildWindowInfos(const TilingState* state, int windowCount, int& focusedIndex)
 {
+    Q_ASSERT(state);
     QVector<WindowInfo> infos;
     focusedIndex = -1;
     const QStringList windows = state->tiledWindows();

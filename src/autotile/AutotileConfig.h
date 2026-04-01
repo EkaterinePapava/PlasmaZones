@@ -42,9 +42,16 @@ struct AlgorithmSettings
             }
             const QVariant& a = it.value();
             const QVariant& b = oit.value();
-            if (a.canConvert<double>() && b.canConvert<double>() && AutotileDefaults::isNumericMetaType(a.typeId())
-                && AutotileDefaults::isNumericMetaType(b.typeId())) {
+            const bool aNumeric = AutotileDefaults::isNumericMetaType(a.typeId());
+            const bool bNumeric = AutotileDefaults::isNumericMetaType(b.typeId());
+            const bool aBool = a.typeId() == QMetaType::Bool;
+            const bool bBool = b.typeId() == QMetaType::Bool;
+            if (aNumeric && bNumeric) {
                 if (!qFuzzyCompare(1.0 + a.toDouble(), 1.0 + b.toDouble())) {
+                    return false;
+                }
+            } else if (aBool && bBool) {
+                if (a.toBool() != b.toBool()) {
                     return false;
                 }
             } else if (a != b) {

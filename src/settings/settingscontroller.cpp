@@ -2008,10 +2008,14 @@ void SettingsController::setCustomParam(const QString& algorithmId, const QStrin
         const QString str = value.toString();
         const QStringList options = defMap.value(QLatin1String("enumOptions")).toStringList();
         if (!options.contains(str)) {
-            qCWarning(lcCore) << "setCustomParam: value" << str << "not in enum options for" << paramName;
+            qCWarning(lcCore) << "setCustomParam: value" << str << "not in enum options for" << paramName
+                              << "(valid:" << options << ")";
             return;
         }
         coerced = str;
+    } else {
+        qCWarning(lcCore) << "setCustomParam: unknown param type" << defType << "for" << paramName;
+        return;
     }
 
     QVariantMap perAlgo = m_settings.autotilePerAlgorithmSettings();
