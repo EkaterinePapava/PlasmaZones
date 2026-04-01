@@ -42,7 +42,7 @@ constexpr int PendingOrderTimeoutMs = 10000;
 } // namespace
 
 AutotileEngine::AutotileEngine(LayoutManager* layoutManager, WindowTrackingService* windowTracker,
-                               ScreenManager* screenManager, QObject* parent)
+                               ScreenManager* screenManager, QSettingsConfigBackend* configBackend, QObject* parent)
     : QObject(parent)
     , m_layoutManager(layoutManager)
     , m_windowTracker(windowTracker)
@@ -50,7 +50,7 @@ AutotileEngine::AutotileEngine(LayoutManager* layoutManager, WindowTrackingServi
     , m_config(std::make_unique<AutotileConfig>())
     , m_configResolver(std::make_unique<PerScreenConfigResolver>(this))
     , m_navigation(std::make_unique<NavigationController>(this))
-    , m_settingsBridge(std::make_unique<SettingsBridge>(this))
+    , m_settingsBridge(std::make_unique<SettingsBridge>(this, configBackend))
     , m_algorithmId(AlgorithmRegistry::defaultAlgorithmId())
 {
     connectSignals();
