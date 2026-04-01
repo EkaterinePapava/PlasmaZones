@@ -83,9 +83,6 @@ public:
         QStringList bufferFilters; ///< Per-channel filter modes (up to 4); empty = all use bufferFilter
         bool useDepthBuffer = false; ///< True if shader writes to a depth (R32F) attachment at location 1
 
-        QString computeShaderPath; ///< Optional compute shader (.comp) for particle systems
-        int particleCount = 0; ///< Number of particles (0 = no compute shader)
-
         bool isValid() const
         {
             return !id.isEmpty() && (ShaderRegistry::isNoneShader(id) || shaderUrl.isValid());

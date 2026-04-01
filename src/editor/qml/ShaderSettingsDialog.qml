@@ -239,8 +239,6 @@ Kirigami.Dialog {
             "bufferFilters": info.bufferFilters || [],
             "useWallpaper": useWallpaper,
             "useDepthBuffer": info.depthBuffer || false,
-            "computeShaderPath": info.computeShaderPath || "",
-            "particleCount": info.particleCount || 0,
             "zones": zones,
             "shaderParams": params,
             "labelsTexture": labelsImg,
@@ -1356,8 +1354,6 @@ Kirigami.Dialog {
                         bufferFilter: previewBackground.cfg.bufferFilter || "linear"
                         bufferFilters: previewBackground.cfg.bufferFilters || []
                         useDepthBuffer: previewBackground.cfg.useDepthBuffer || false
-                        computeShaderPath: previewBackground.cfg.computeShaderPath || ""
-                        particleCount: previewBackground.cfg.particleCount || 0
                         zones: previewBackground.cfg.zones || []
                         shaderParams: previewBackground.cfg.shaderParams || ({
                         })

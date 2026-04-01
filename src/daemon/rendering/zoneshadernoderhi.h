@@ -98,8 +98,6 @@ public:
     void setBufferFilter(const QString& filter) override;
     void setBufferFilters(const QStringList& filters) override;
     void setUseDepthBuffer(bool use) override;
-    void setComputeShaderPath(const QString& path) override;
-    void setParticleCount(int count) override;
     bool loadVertexShader(const QString& path) override;
     bool loadFragmentShader(const QString& path) override;
     void setVertexShaderSource(const QString& source) override;
@@ -116,12 +114,6 @@ private:
     bool ensurePipeline();
     bool ensureBufferPipeline();
     bool ensureBufferTarget();
-    bool ensureComputePipeline();
-    void bakeComputeShader();
-    void dispatchCompute(QRhiCommandBuffer* cb);
-    bool ensureParticleTexture(QRhi* rhi);
-    void updateCpuParticles();
-    void appendParticleTextureBinding(QVector<QRhiShaderResourceBinding>& bindings) const;
     void syncUniformsFromData();
     void uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb);
     void releaseRhiResources();
@@ -267,32 +259,6 @@ private:
     bool m_useDepthBuffer = false;
     std::unique_ptr<QRhiTexture> m_depthTexture; // R32F, readable at binding 12
     std::unique_ptr<QRhiSampler> m_depthSampler;
-
-    // Compute shader (optional — particle systems)
-    bool m_computeSupported = false;
-    QString m_computeShaderPath;
-    QString m_computeShaderSource;
-    QShader m_computeShader;
-    qint64 m_computeMtime = 0;
-    bool m_computeShaderDirty = true;
-    bool m_computeShaderReady = false;
-    int m_particleCount = 0;
-
-    std::unique_ptr<QRhiComputePipeline> m_computePipeline;
-    std::unique_ptr<QRhiShaderResourceBindings> m_computeSrb;
-    std::unique_ptr<QRhiBuffer> m_particleSsbo;
-    bool m_particleSsboNeedsInit = true;
-
-    std::unique_ptr<QRhiTexture> m_particleTexture;
-    std::unique_ptr<QRhiSampler> m_particleSampler;
-
-    // Pre-zeroed image for clearing particle texture before each compute dispatch
-    QImage m_particleClearImage;
-
-    // CPU particle fallback (when GPU compute unavailable)
-    QVector<ParticleData> m_cpuParticles;
-    QImage m_cpuParticleImage;
-    bool m_cpuParticlesFallback = false;
 
     // Desktop wallpaper texture (binding 11) — opt-in via metadata "wallpaper": true
     bool m_useWallpaper = false;

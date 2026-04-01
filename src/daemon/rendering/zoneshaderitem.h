@@ -143,12 +143,6 @@ class PLASMAZONES_RENDERING_EXPORT ZoneShaderItem : public QQuickItem
     /** Whether the current shader uses a depth buffer (R32F at binding 12). */
     Q_PROPERTY(bool useDepthBuffer READ useDepthBuffer WRITE setUseDepthBuffer NOTIFY useDepthBufferChanged FINAL)
 
-    /** Compute shader path (.comp) for particle systems. Empty = no compute. */
-    Q_PROPERTY(QString computeShaderPath READ computeShaderPath WRITE setComputeShaderPath NOTIFY
-                   computeShaderPathChanged FINAL)
-    /** Number of particles for compute shader (0 = disabled, max 16384). */
-    Q_PROPERTY(int particleCount READ particleCount WRITE setParticleCount NOTIFY particleCountChanged FINAL)
-
     // Status
     Q_PROPERTY(Status status READ status NOTIFY statusChanged FINAL)
     Q_PROPERTY(QString errorLog READ errorLog NOTIFY errorLogChanged FINAL)
@@ -454,18 +448,6 @@ public:
     }
     void setUseDepthBuffer(bool use);
 
-    QString computeShaderPath() const
-    {
-        return m_computeShaderPath;
-    }
-    void setComputeShaderPath(const QString& path);
-
-    int particleCount() const
-    {
-        return m_particleCount;
-    }
-    void setParticleCount(int count);
-
     // Status getters
     Status status() const
     {
@@ -536,8 +518,6 @@ Q_SIGNALS:
     void wallpaperTextureChanged();
     void useWallpaperChanged();
     void useDepthBufferChanged();
-    void computeShaderPathChanged();
-    void particleCountChanged();
     void statusChanged();
     void errorLogChanged();
 
@@ -675,8 +655,6 @@ private:
     mutable QMutex m_wallpaperTextureMutex;
     bool m_useWallpaper = false;
     bool m_useDepthBuffer = false;
-    QString m_computeShaderPath;
-    int m_particleCount = 0;
 
     // User texture data (bindings 7-10)
     std::array<QString, 4> m_userTexturePaths;

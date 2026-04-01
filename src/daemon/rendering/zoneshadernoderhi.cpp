@@ -306,40 +306,6 @@ void ZoneShaderNodeRhi::prepare()
     // Multi-pass: bake buffer fragment shader(s) when path(s) set
     bakeBufferShaders();
 
-    // Compute shader: bake and ensure pipeline, or fall back to CPU particles
-    if (!m_computeShaderPath.isEmpty() && m_particleCount > 0 && !m_cpuParticlesFallback) {
-        if (!m_computeSupported) {
-            m_computeSupported = rhi->isFeatureSupported(QRhi::Compute);
-            if (m_computeSupported) {
-                qCInfo(lcOverlay) << "Compute support: true"
-                                  << "path:" << m_computeShaderPath << "particles:" << m_particleCount;
-            }
-        }
-        if (m_computeSupported) {
-            bakeComputeShader();
-            if (m_computeShaderReady && !ensureComputePipeline()) {
-                // Pipeline creation failed (e.g., binding limit) — fall through to CPU
-            }
-        }
-        // If compute is unavailable or pipeline failed, activate CPU fallback
-        if (!m_computeSupported || (!m_computePipeline && m_computeShaderReady)) {
-            m_cpuParticlesFallback = true;
-            m_computeSupported = false;
-            qCInfo(lcOverlay) << "Using CPU particle fallback — particles:" << m_particleCount;
-        }
-    }
-    if (m_cpuParticlesFallback && m_particleCount > 0) {
-        ensureParticleTexture(rhi);
-        updateCpuParticles();
-        if (m_particleTexture && !m_cpuParticleImage.isNull()) {
-            QRhiResourceUpdateBatch* batch = rhi->nextResourceUpdateBatch();
-            if (batch) {
-                batch->uploadTexture(m_particleTexture.get(), m_cpuParticleImage);
-                cb->resourceUpdate(batch);
-            }
-        }
-    }
-
     if (!m_shaderReady) {
         return;
     }
@@ -488,21 +454,6 @@ void ZoneShaderNodeRhi::render(const RenderState* state)
     QRhiRenderTarget* rt = renderTarget();
     if (!cb || !rt) {
         return;
-    }
-
-    // GPU compute dispatch: must happen outside any render pass (Vulkan requirement).
-    // All resources (pipeline, SRB, SSBO, texture) must be valid — if any were
-    // invalidated (e.g., audio texture resize resets m_computeSrb), skip the dispatch
-    // entirely. The missing resource will be rebuilt in the next frame's prepare().
-    // Critically, do NOT call endPass()/beginPass() unless we will actually dispatch —
-    // doing so with a stale SRB clears the render target and produces a blank frame.
-    const bool computeActive = m_computeSupported && m_computeShaderReady && m_computePipeline && m_computeSrb
-        && m_particleSsbo && m_particleTexture;
-    if (computeActive) {
-        cb->endPass();
-        dispatchCompute(cb);
-        const QColor mainClear(0, 0, 0, 0);
-        cb->beginPass(rt, mainClear, {1.0f, 0});
     }
 
     // Use item's rect in render target (device pixels) so we render only within the item,

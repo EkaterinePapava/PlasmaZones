@@ -47,11 +47,6 @@ QString ShaderRegistry::ParameterInfo::uniformName() const
         return QString();
     }
 
-    // Special: particleCount maps directly to the particleCount Q_PROPERTY (not a uniform slot)
-    if (type == QLatin1String("int") && id == QLatin1String("particleCount")) {
-        return QStringLiteral("particleCount");
-    }
-
     // Image slots 0-3 → uTexture0-3
     if (type == QLatin1String("image")) {
         if (slot >= 0 && slot < 4) {
@@ -512,16 +507,6 @@ ShaderRegistry::ShaderInfo ShaderRegistry::loadShaderMetadata(const QString& sha
     info.bufferWrap = (wrap == QLatin1String("repeat")) ? QStringLiteral("repeat") : QStringLiteral("clamp");
 
     info.useDepthBuffer = root.value(QLatin1String("depthBuffer")).toBool(false);
-
-    const QString computeShaderName = root.value(QLatin1String("computeShader")).toString();
-    if (!computeShaderName.isEmpty()) {
-        info.computeShaderPath = dir.filePath(computeShaderName);
-        if (!QFile::exists(info.computeShaderPath)) {
-            qCWarning(lcCore) << "Compute shader not found:" << info.computeShaderPath;
-            info.computeShaderPath.clear();
-        }
-    }
-    info.particleCount = qBound(0, root.value(QLatin1String("particleCount")).toInt(0), 16384);
 
     const QJsonArray bufferWrapsArray = root.value(QLatin1String("bufferWraps")).toArray();
     if (!bufferWrapsArray.isEmpty()) {

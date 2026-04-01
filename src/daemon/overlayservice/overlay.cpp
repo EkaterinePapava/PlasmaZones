@@ -399,8 +399,6 @@ void OverlayService::updateOverlayWindow(QScreen* screen)
         writeQmlProperty(window, QStringLiteral("bufferFilter"), QStringLiteral("linear"));
         writeQmlProperty(window, QStringLiteral("bufferFilters"), QVariant::fromValue(QStringList()));
         writeQmlProperty(window, QStringLiteral("useDepthBuffer"), false);
-        writeQmlProperty(window, QStringLiteral("computeShaderPath"), QString());
-        writeQmlProperty(window, QStringLiteral("particleCount"), 0);
         writeQmlProperty(window, QStringLiteral("shaderParams"), QVariantMap());
     }
 

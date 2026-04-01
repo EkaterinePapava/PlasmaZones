@@ -64,8 +64,6 @@ Window {
     property var wallpaperTexture: null
     property bool useWallpaper: false
     property bool useDepthBuffer: false
-    property string computeShaderPath: ""
-    property int particleCount: 0
     property var bufferWraps: []
     property string bufferFilter: "linear"
     property var bufferFilters: []
@@ -156,8 +154,6 @@ Window {
             property var wallpaperTexture: root.wallpaperTexture
             property bool useWallpaper: root.useWallpaper
             property bool useDepthBuffer: root.useDepthBuffer
-            property string computeShaderPath: root.computeShaderPath
-            property int particleCount: root.particleCount
             property var bufferWraps: root.bufferWraps
             property string bufferFilter: root.bufferFilter
             property var bufferFilters: root.bufferFilters

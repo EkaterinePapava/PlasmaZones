@@ -129,10 +129,8 @@ inline void applyShaderInfoToWindow(QObject* window, const ShaderRegistry::Shade
     // which can crash NVIDIA's EGL driver in beginFrame().
     writeQmlProperty(window, QStringLiteral("shaderSource"), QString());
 
-    // Clear compute/depth/particle props so stale values from the previous shader
+    // Clear depth props so stale values from the previous shader
     // don't leak through when the next shader doesn't use them.
-    writeQmlProperty(window, QStringLiteral("computeShaderPath"), QString());
-    writeQmlProperty(window, QStringLiteral("particleCount"), 0);
     writeQmlProperty(window, QStringLiteral("useDepthBuffer"), false);
     writeQmlProperty(window, QStringLiteral("bufferWraps"), QVariant::fromValue(QStringList()));
     writeQmlProperty(window, QStringLiteral("bufferFilter"), QStringLiteral("linear"));
@@ -152,8 +150,6 @@ inline void applyShaderInfoToWindow(QObject* window, const ShaderRegistry::Shade
         writeQmlProperty(window, QStringLiteral("bufferFilters"), QVariant::fromValue(info.bufferFilters));
     }
     writeQmlProperty(window, QStringLiteral("useDepthBuffer"), info.useDepthBuffer);
-    writeQmlProperty(window, QStringLiteral("computeShaderPath"), info.computeShaderPath);
-    writeQmlProperty(window, QStringLiteral("particleCount"), info.particleCount);
     writeQmlProperty(window, QStringLiteral("shaderParams"), QVariant::fromValue(params));
     // Desktop wallpaper subscription
     writeQmlProperty(window, QStringLiteral("useWallpaper"), info.useWallpaper);

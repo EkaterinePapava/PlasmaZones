@@ -274,65 +274,21 @@ void ZoneShaderNodeRhi::setUseDepthBuffer(bool use)
     markDirty(QSGNode::DirtyMaterial);
 }
 
-void ZoneShaderNodeRhi::setComputeShaderPath(const QString& path)
-{
-    if (m_computeShaderPath == path) {
-        return;
-    }
-    m_computeShaderPath = path;
-    m_computeShaderDirty = true;
-    m_computeShaderReady = false;
-    m_computeShaderSource.clear();
-    m_computeShader = QShader();
-    m_computeMtime = 0;
-    m_computePipeline.reset();
-    m_computeSrb.reset();
-    m_particleSsbo.reset();
-    m_particleSsboNeedsInit = true;
-    m_particleTexture.reset();
-    m_particleSampler.reset();
-    // Re-probe compute support and clear CPU fallback so a new shader gets a fresh chance
-    m_computeSupported = false;
-    m_cpuParticlesFallback = false;
-    m_particleClearImage = QImage();
-    m_cpuParticles.clear();
-    m_cpuParticleImage = QImage();
-    resetAllSrbs();
-    markDirty(QSGNode::DirtyMaterial);
-}
-
-void ZoneShaderNodeRhi::setParticleCount(int count)
-{
-    const int clamped = qBound(0, count, MaxParticles);
-    if (m_particleCount == clamped) {
-        return;
-    }
-    m_particleCount = clamped;
-    // Force SSBO and pipeline recreation
-    m_particleSsbo.reset();
-    m_particleSsboNeedsInit = true;
-    m_computePipeline.reset();
-    m_computeSrb.reset();
-    markDirty(QSGNode::DirtyMaterial);
-}
-
 void ZoneShaderNodeRhi::resetAllSrbs()
 {
     m_srb.reset();
     m_srbB.reset();
     m_bufferSrb.reset();
     m_bufferSrbB.reset();
-    m_computeSrb.reset();
     // Pipelines store the SRB layout from creation. If an SRB is rebuilt with
-    // different bindings (particle texture added/removed, depth buffer toggled,
-    // audio texture appeared), the pipeline becomes layout-incompatible.
+    // different bindings (depth buffer toggled, audio texture appeared), the
+    // pipeline becomes layout-incompatible.
     // Vulkan rejects setShaderResources() when the SRB doesn't match the
     // pipeline's layout — this manifests as a validation error or driver crash,
     // particularly on NVIDIA. Reset all pipelines so they're recreated with
     // the correct SRB layout on the next ensurePipeline() / ensureBufferPipeline().
     m_pipeline.reset();
     m_bufferPipeline.reset();
-    m_computePipeline.reset();
     for (int i = 0; i < kMaxBufferPasses; ++i) {
         m_multiBufferSrbs[i].reset();
         m_multiBufferPipelines[i].reset();

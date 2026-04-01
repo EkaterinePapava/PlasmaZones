@@ -411,16 +411,6 @@ void ZoneShaderItem::setShaderParams(const QVariantMap& params)
         }
     }
 
-    // Special property params: particleCount routes to the Q_PROPERTY, not a uniform slot
-    static const QLatin1String particleCountKey("particleCount");
-    if (params.contains(particleCountKey)) {
-        bool ok = false;
-        const int count = params.value(particleCountKey).toInt(&ok);
-        if (ok) {
-            setParticleCount(count);
-        }
-    }
-
     Q_EMIT shaderParamsChanged();
     update();
 }
@@ -565,27 +555,6 @@ void ZoneShaderItem::setUseDepthBuffer(bool use)
     }
     m_useDepthBuffer = use;
     Q_EMIT useDepthBufferChanged();
-    update();
-}
-
-void ZoneShaderItem::setComputeShaderPath(const QString& path)
-{
-    if (m_computeShaderPath == path) {
-        return;
-    }
-    m_computeShaderPath = path;
-    Q_EMIT computeShaderPathChanged();
-    update();
-}
-
-void ZoneShaderItem::setParticleCount(int count)
-{
-    const int clamped = qBound(0, count, MaxParticles);
-    if (m_particleCount == clamped) {
-        return;
-    }
-    m_particleCount = clamped;
-    Q_EMIT particleCountChanged();
     update();
 }
 
