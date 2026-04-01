@@ -70,10 +70,11 @@ function calculateZones(params) {
     var clusterMap = {};   // appId -> { indices: [int], hasFocus: bool }
 
     var focusedIndex = (typeof params.focusedIndex === "number") ? params.focusedIndex : -1;
+    var winLen = params.windows ? params.windows.length : 0;
 
     for (var i = 0; i < count; i++) {
         var appId = "unknown";
-        if (params.windows && i < params.windows.length && params.windows[i].appId) {
+        if (i < winLen && params.windows[i].appId) {
             appId = params.windows[i].appId;
         }
 
@@ -82,7 +83,8 @@ function calculateZones(params) {
             clusterOrder.push(appId);
         }
         clusterMap[appId].indices.push(i);
-        if (i === focusedIndex) {
+        // Only trust focusedIndex when it maps to a real window entry
+        if (i === focusedIndex && i < winLen) {
             clusterMap[appId].hasFocus = true;
         }
     }

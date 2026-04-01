@@ -8,6 +8,7 @@
 #include <QString>
 #include <QStringList>
 #include <QVariant>
+#include <QVariantMap>
 #include <QVector>
 
 namespace PlasmaZones {
@@ -29,6 +30,23 @@ struct CustomParamDef
     qreal minValue = 0.0; ///< Minimum for number type (0.0 if unset)
     qreal maxValue = 1.0; ///< Maximum for number type (1.0 if unset)
     QStringList enumOptions; ///< Valid options for enum type
+
+    /// Convert to QVariantMap for QML consumption (name, type, defaultValue, description, etc.)
+    QVariantMap toVariantMap() const
+    {
+        QVariantMap m;
+        m[QLatin1String("name")] = name;
+        m[QLatin1String("type")] = type;
+        m[QLatin1String("defaultValue")] = defaultValue;
+        m[QLatin1String("description")] = description;
+        if (type == QLatin1String("number")) {
+            m[QLatin1String("minValue")] = minValue;
+            m[QLatin1String("maxValue")] = maxValue;
+        } else if (type == QLatin1String("enum")) {
+            m[QLatin1String("enumOptions")] = QVariant(enumOptions);
+        }
+        return m;
+    }
 };
 
 /**

@@ -45,23 +45,6 @@ namespace PlasmaZones {
 
 namespace {
 
-/// DRY helper: convert a CustomParamDef to a QVariantMap for QML consumption
-QVariantMap customParamDefToMap(const ScriptedHelpers::CustomParamDef& def)
-{
-    QVariantMap paramMap;
-    paramMap[QLatin1String("name")] = def.name;
-    paramMap[QLatin1String("type")] = def.type;
-    paramMap[QLatin1String("defaultValue")] = def.defaultValue;
-    paramMap[QLatin1String("description")] = def.description;
-    if (def.type == QLatin1String("number")) {
-        paramMap[QLatin1String("minValue")] = def.minValue;
-        paramMap[QLatin1String("maxValue")] = def.maxValue;
-    } else if (def.type == QLatin1String("enum")) {
-        paramMap[QLatin1String("enumOptions")] = QVariant(def.enumOptions);
-    }
-    return paramMap;
-}
-
 QString userAlgorithmsDir()
 {
     return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
@@ -1972,21 +1955,11 @@ QVariantList SettingsController::customParamsForAlgorithm(const QString& algorit
         return {};
     }
 
-    // Get saved values from perAlgorithmSettings
-    QVariantMap savedCustom;
-    const QVariantMap perAlgo = m_settings.autotilePerAlgorithmSettings();
-    const QVariant algoEntry = perAlgo.value(algorithmId);
-    if (algoEntry.isValid()) {
-        const QVariantMap entry = algoEntry.toMap();
-        const QVariant customVar = entry.value(PerAlgoKeys::CustomParams);
-        if (customVar.isValid()) {
-            savedCustom = customVar.toMap();
-        }
-    }
+    const QVariantMap savedCustom = savedCustomParams(algorithmId);
 
     QVariantList result;
     for (const auto& def : scripted->customParamDefs()) {
-        QVariantMap paramMap = customParamDefToMap(def);
+        QVariantMap paramMap = def.toVariantMap();
         // Current value: saved value if exists, else default
         paramMap[QLatin1String("value")] =
             savedCustom.contains(def.name) ? savedCustom.value(def.name) : def.defaultValue;
@@ -2057,6 +2030,20 @@ void SettingsController::setCustomParam(const QString& algorithmId, const QStrin
 
     perAlgo[algorithmId] = algoEntry;
     m_settings.setAutotilePerAlgorithmSettings(perAlgo);
+    Q_EMIT customParamChanged(algorithmId, paramName);
+}
+
+QVariantMap SettingsController::savedCustomParams(const QString& algorithmId) const
+{
+    const QVariantMap perAlgo = m_settings.autotilePerAlgorithmSettings();
+    const QVariant algoEntry = perAlgo.value(algorithmId);
+    if (algoEntry.isValid()) {
+        const QVariant customVar = algoEntry.toMap().value(PerAlgoKeys::CustomParams);
+        if (customVar.isValid()) {
+            return customVar.toMap();
+        }
+    }
+    return {};
 }
 
 QVariantList SettingsController::generateAlgorithmPreview(const QString& algorithmId, int windowCount,
@@ -2079,14 +2066,7 @@ QVariantList SettingsController::generateAlgorithmPreview(const QString& algorit
     TilingParams params = TilingParams::forPreview(count, previewRect, &state);
 
     // Include saved custom params so preview reflects user configuration
-    const QVariantMap perAlgo = m_settings.autotilePerAlgorithmSettings();
-    const QVariant algoEntry = perAlgo.value(algorithmId);
-    if (algoEntry.isValid()) {
-        const QVariant customVar = algoEntry.toMap().value(PerAlgoKeys::CustomParams);
-        if (customVar.isValid()) {
-            params.customParams = customVar.toMap();
-        }
-    }
+    params.customParams = savedCustomParams(algorithmId);
 
     QVector<QRect> zones = algo->calculateZones(params);
 

@@ -7,6 +7,7 @@
 #include <QJSValue>
 #include <QRegularExpression>
 #include <QStringView>
+#include <QVariantMap>
 #include <algorithm>
 
 namespace PlasmaZones {

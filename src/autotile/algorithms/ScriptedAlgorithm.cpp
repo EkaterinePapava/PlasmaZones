@@ -935,6 +935,10 @@ QJSValue ScriptedAlgorithm::buildJsState(const TilingState* state) const
     const QStringList windows = state->tiledWindows();
     const QString focusedWin = state->focusedWindow();
     const int winCount = windows.size();
+
+    // Build WindowInfo list — mirrors buildWindowInfos() in AutotileEngine.cpp.
+    // Kept inline here because buildWindowInfos lives in an anonymous namespace
+    // and lifecycle hooks need to build from TilingState (not TilingParams).
     QVector<WindowInfo> infos;
     infos.reserve(winCount);
     int focusedIdx = -1;

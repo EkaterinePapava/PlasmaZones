@@ -39,7 +39,9 @@ namespace {
 // m_pendingInitialOrders from leaking state indefinitely.
 constexpr int PendingOrderTimeoutMs = 10000;
 
-/// Build per-window metadata from TilingState for algorithm context
+/// Build per-window metadata from TilingState for algorithm context.
+/// Note: ScriptedAlgorithm::buildJsState() has a parallel implementation for
+/// lifecycle hooks — keep both in sync if the WindowInfo population logic changes.
 QVector<WindowInfo> buildWindowInfos(const TilingState* state, int windowCount, int& focusedIndex)
 {
     QVector<WindowInfo> infos;

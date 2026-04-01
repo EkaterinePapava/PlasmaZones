@@ -32,7 +32,9 @@ struct AlgorithmSettings
         if (customParams.size() != other.customParams.size()) {
             return false;
         }
-        // Fuzzy-compare floating-point custom param values to match splitRatio semantics
+        // Fuzzy-compare numeric custom param values to match splitRatio semantics.
+        // After JSON round-trip, numbers may arrive as Int/LongLong rather than Double,
+        // so check canConvert<double> rather than requiring exact QMetaType::Double.
         for (auto it = customParams.constBegin(); it != customParams.constEnd(); ++it) {
             auto oit = other.customParams.constFind(it.key());
             if (oit == other.customParams.constEnd()) {
@@ -40,7 +42,11 @@ struct AlgorithmSettings
             }
             const QVariant& a = it.value();
             const QVariant& b = oit.value();
-            if (a.typeId() == QMetaType::Double && b.typeId() == QMetaType::Double) {
+            if (a.canConvert<double>() && b.canConvert<double>()
+                && (a.typeId() == QMetaType::Double || a.typeId() == QMetaType::Float || a.typeId() == QMetaType::Int
+                    || a.typeId() == QMetaType::LongLong)
+                && (b.typeId() == QMetaType::Double || b.typeId() == QMetaType::Float || b.typeId() == QMetaType::Int
+                    || b.typeId() == QMetaType::LongLong)) {
                 if (!qFuzzyCompare(1.0 + a.toDouble(), 1.0 + b.toDouble())) {
                     return false;
                 }

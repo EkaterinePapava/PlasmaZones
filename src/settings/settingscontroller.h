@@ -613,6 +613,7 @@ Q_SIGNALS:
     void layoutsChanged();
     void layoutAdded(const QString& layoutId);
     void availableAlgorithmsChanged();
+    void customParamChanged(const QString& algorithmId, const QString& paramName);
     void algorithmCreated(const QString& algorithmId);
     void algorithmOperationFailed(const QString& reason);
     void layoutOperationFailed(const QString& reason);
@@ -663,6 +664,9 @@ private Q_SLOTS:
     void onScreenLayoutChanged(const QString& screenId, const QString& layoutId, int virtualDesktop);
 
 private:
+    /// Resolve saved custom params for the given algorithm from per-algorithm settings
+    QVariantMap savedCustomParams(const QString& algorithmId) const;
+
     QString scriptedFilePath(const QString& algorithmId) const;
     void watchForAlgorithmRegistration(const QString& expectedId);
     void cancelAlgorithmWatcher(const QString& expectedId);

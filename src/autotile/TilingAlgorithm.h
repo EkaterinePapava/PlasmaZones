@@ -316,6 +316,10 @@ public:
      * Algorithms can use this to update internal state (e.g., BSP tree
      * insertion) instead of rebuilding from scratch in calculateZones().
      *
+     * Unlike calculateZones() (which receives a const TilingState*),
+     * lifecycle hooks receive a mutable pointer so algorithms can update
+     * internal structures (e.g., split trees) incrementally.
+     *
      * @param state Current tiling state (mutable for tree updates)
      * @param windowIndex Index where the window was inserted
      */
@@ -330,6 +334,10 @@ public:
      * Algorithms should use @p windowIndex to identify the departing window
      * but must not assume the tiled window list will remain unchanged
      * after the call.
+     *
+     * Unlike calculateZones() (which receives a const TilingState*),
+     * lifecycle hooks receive a mutable pointer so algorithms can update
+     * internal structures (e.g., split trees) incrementally.
      *
      * @param state Current tiling state (window still present, count not yet decremented)
      * @param windowIndex Index the window occupied before removal
