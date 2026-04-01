@@ -49,9 +49,9 @@ void ZoneShaderNodeRhi::bakeComputeShader()
     }
 
     // Compute requires GLSL 430+ / GLES 310+ (higher than fragment shader targets which use 330).
-    // SPIR-V 1.3 (version code 130) matches the fragment bake targets for Vulkan 1.1 compatibility.
+    // SPIR-V 1.0 (version 100): Qt's Vulkan QRhi looks up this exact version at pipeline creation.
     static const QList<QShaderBaker::GeneratedShader> computeTargets = {
-        {QShader::SpirvShader, QShaderVersion(130)},
+        {QShader::SpirvShader, QShaderVersion(100)},
         {QShader::GlslShader, QShaderVersion(430)},
         {QShader::GlslShader, QShaderVersion(310, QShaderVersion::GlslEs)},
     };

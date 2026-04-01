@@ -30,7 +30,7 @@ float noise(vec2 p) {
 
 void main() {
     vTexCoord = texCoord;
-    vFragCoord = fragCoordFromTexCoord(texCoord);
+    vFragCoord = vec2(texCoord.x, 1.0 - texCoord.y) * iResolution;
 
     // Get parameters
     float fieldStrength = customParams[0].x >= 0.0 ? customParams[0].x : 1.0;
