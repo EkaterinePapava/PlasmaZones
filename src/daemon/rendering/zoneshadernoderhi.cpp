@@ -310,6 +310,17 @@ void ZoneShaderNodeRhi::prepare()
         return;
     }
 
+    // Upload textures FIRST — before any SRB or pipeline creation.
+    // Texture uploads may destroy and recreate QRhiTexture objects (audio
+    // spectrum resize, user texture resize, wallpaper resize), which invalidates
+    // any SRB that references the old texture. If we created SRBs first and then
+    // uploaded textures, the buffer passes recorded later in this function would
+    // use SRBs with dangling pointers to destroyed textures — crashing the NVIDIA
+    // Vulkan driver in endFrame() when the GPU processes the command buffer.
+    // The internal ensurePipeline() calls inside uploadDirtyTextures() rebuild
+    // SRBs immediately after each texture change so rendering recovers same-frame.
+    uploadDirtyTextures(rhi, cb);
+
     // Create buffer targets (single or multi) before the image pass SRB so createImageSrb*()
     // can bind iChannel0/1/2/3 and syncUniformsFromData() sees correct sizes for iChannelResolution.
     const bool multiBufferMode = m_bufferPaths.size() > 1;
@@ -357,8 +368,6 @@ void ZoneShaderNodeRhi::prepare()
     if (!ensurePipeline()) {
         return;
     }
-
-    uploadDirtyTextures(rhi, cb);
 
     // ========================================================================
     // Multipass buffer passes recorded in prepare() — safe because prepare()
