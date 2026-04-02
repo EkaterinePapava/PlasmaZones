@@ -70,8 +70,10 @@ Window {
                 return i18n("Target is locked");
             else if (reason === "intermediate_locked")
                 return i18n("Locked window in the way");
-            else if (reason === "all_locked" || reason === "nothing_to_rotate")
+            else if (reason === "all_locked")
                 return i18n("All windows are locked");
+            else if (reason === "nothing_to_rotate")
+                return i18n("Not enough windows to rotate");
             else
                 return i18n("Failed");
         }

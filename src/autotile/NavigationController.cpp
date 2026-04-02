@@ -131,8 +131,8 @@ void NavigationController::rotateWindowOrder(bool clockwise)
         }
     }
     if (unlockedCount < 2) {
-        Q_EMIT m_engine->navigationFeedbackRequested(
-            false, QStringLiteral("rotate"), QStringLiteral("nothing_to_rotate"), QString(), QString(), screenId);
+        Q_EMIT m_engine->navigationFeedbackRequested(false, QStringLiteral("rotate"), QStringLiteral("all_locked"),
+                                                     QString(), QString(), screenId);
         return;
     }
 
