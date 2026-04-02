@@ -43,6 +43,7 @@ void cleanupWindowMap(QHash<K, QQuickWindow*>& windowMap)
         if (window) {
             QQmlEngine::setObjectOwnership(window, QQmlEngine::CppOwnership);
             window->close();
+            window->destroy();
             window->deleteLater();
         }
     }
@@ -313,15 +314,19 @@ void OverlayService::updateSettings(ISettings* settings)
     // the current configuration.
     syncCavaState();
 
-    // Hide overlay and zone selector on screens/desktops/activities that are now disabled
-    for (auto* screen : m_overlayWindows.keys()) {
-        if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                              m_currentActivity)) {
-            if (auto* window = m_overlayWindows.value(screen)) {
-                window->hide();
+    // Destroy overlay windows on screens/desktops/activities that are now disabled.
+    // Must destroy (not just hide) because on Vulkan, window->hide() destroys the
+    // VkSwapchainKHR but Qt doesn't reinitialize it on re-show, causing stale surfaces.
+    {
+        const QList<QScreen*> overlayScreens = m_overlayWindows.keys();
+        for (auto* screen : overlayScreens) {
+            if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                                  m_currentActivity)) {
+                destroyOverlayWindow(screen);
             }
         }
     }
+    // Zone selector windows don't use Vulkan rendering (standard QML), so hide() is safe.
     for (auto* screen : m_zoneSelectorWindows.keys()) {
         if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
                               m_currentActivity)) {
@@ -388,7 +393,9 @@ Layout* OverlayService::resolveScreenLayout(QScreen* screen) const
 
 void OverlayService::hideDisabledAndRefresh()
 {
-    // Hide overlay/selector on screens where the current context is disabled
+    // Destroy overlay windows / hide selectors on screens where the current context is disabled.
+    // Overlay windows must be destroyed (not just hidden) because on Vulkan, hide() destroys
+    // the VkSwapchainKHR and Qt doesn't reinitialize it on re-show.
     if (m_settings) {
         for (auto* screen : m_zoneSelectorWindows.keys()) {
             if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
@@ -399,12 +406,11 @@ void OverlayService::hideDisabledAndRefresh()
             }
         }
         if (m_visible) {
-            for (auto* screen : m_overlayWindows.keys()) {
+            const QList<QScreen*> overlayScreens = m_overlayWindows.keys();
+            for (auto* screen : overlayScreens) {
                 if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
                                       m_currentActivity)) {
-                    if (auto* window = m_overlayWindows.value(screen)) {
-                        window->hide();
-                    }
+                    destroyOverlayWindow(screen);
                 }
             }
         }

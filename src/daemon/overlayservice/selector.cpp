@@ -74,10 +74,12 @@ void OverlayService::hideZoneSelector()
     // Note: Don't clear selected zone here - we need it for snapping when drag ends
     // The selected zone will be cleared after the snap is processed
 
-    for (auto* window : std::as_const(m_zoneSelectorWindows)) {
-        if (window) {
-            window->hide();
-        }
+    // Destroy windows instead of hiding — on Vulkan, hide() destroys the
+    // VkSwapchainKHR and Qt doesn't reinitialize it on re-show.
+    // showZoneSelector() will create fresh windows via createZoneSelectorWindow().
+    const QList<QScreen*> screens = m_zoneSelectorWindows.keys();
+    for (auto* screen : screens) {
+        destroyZoneSelectorWindow(screen);
     }
 
     Q_EMIT zoneSelectorVisibilityChanged(false);
@@ -289,6 +291,7 @@ void OverlayService::destroyZoneSelectorWindow(QScreen* screen)
         // Disconnect so no signals (e.g. geometryChanged) are delivered to a window we're destroying
         disconnect(screen, nullptr, window, nullptr);
         window->close();
+        window->destroy();
         window->deleteLater();
     }
 }

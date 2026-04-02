@@ -35,13 +35,15 @@ void OverlayService::initializeOverlay(QScreen* cursorScreen)
     ensureShaderTimerStarted(m_shaderTimer, m_shaderTimerMutex, m_lastFrameTime, m_frameCount);
     m_zoneDataDirty = true; // Rebuild zone data on next frame
 
-    // When single-monitor mode, hide overlay on screens we're switching away from (#136)
+    // When single-monitor mode, destroy overlay on screens we're switching away from (#136).
+    // Must destroy (not just hide) because on Vulkan, window->hide() destroys the
+    // VkSwapchainKHR but Qt doesn't properly reinitialize it on re-show. Destroying
+    // the window ensures a fresh window is created via createOverlayWindow() below.
     if (!showOnAllMonitors) {
-        for (auto* screen : m_overlayWindows.keys()) {
+        const QList<QScreen*> screens = m_overlayWindows.keys();
+        for (auto* screen : screens) {
             if (screen != cursorScreen) {
-                if (auto* window = m_overlayWindows.value(screen)) {
-                    window->hide();
-                }
+                destroyOverlayWindow(screen);
             }
         }
     }
@@ -344,6 +346,13 @@ void OverlayService::destroyOverlayWindow(QScreen* screen)
         // Disconnect so no signals (e.g. geometryChanged) are delivered to a window we're destroying
         disconnect(screen, nullptr, window, nullptr);
         window->close();
+        // destroy() synchronously tears down the platform window (wl_surface) and
+        // its Vulkan resources (VkSurfaceKHR, VkSwapchainKHR, scene graph render loop).
+        // Without this, deleteLater() defers cleanup to the next event loop iteration,
+        // leaving stale Vulkan resources alive when createOverlayWindow() creates a new
+        // surface on the same screen — causing swapchain/render loop corruption after
+        // 2-3 show/hide cycles.
+        window->destroy();
         window->deleteLater();
     }
 }

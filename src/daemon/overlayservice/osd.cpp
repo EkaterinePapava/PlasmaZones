@@ -282,6 +282,7 @@ void OverlayService::destroyLayoutOsdWindow(QScreen* screen)
         // Disconnect so no signals (e.g. geometryChanged) are delivered to a window we're destroying
         disconnect(screen, nullptr, window, nullptr);
         window->close();
+        window->destroy();
         window->deleteLater();
     }
 }
@@ -460,6 +461,7 @@ void OverlayService::destroyNavigationOsdWindow(QScreen* screen)
         // Disconnect so no signals (e.g. geometryChanged) are delivered to a window we're destroying
         disconnect(screen, nullptr, window, nullptr);
         window->close();
+        window->destroy();
         window->deleteLater();
     }
     // Clear failed flag when destroying window
