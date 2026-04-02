@@ -87,7 +87,8 @@ static QJsonObject swapResult(bool success, const QString& reason, const QString
 // Locking Helpers
 // ═══════════════════════════════════════════════════════════════════════════
 
-QString WindowTrackingAdaptor::skipLockedZones(const QString& startZoneId, const QString& direction)
+QString WindowTrackingAdaptor::skipLockedZones(const QString& startZoneId, const QString& direction,
+                                               const QString& originZoneId)
 {
     QString zoneId = startZoneId;
     QSet<QString> visited;
@@ -97,6 +98,11 @@ QString WindowTrackingAdaptor::skipLockedZones(const QString& startZoneId, const
         }
         visited.insert(zoneId);
         zoneId = m_zoneDetectionAdaptor->getAdjacentZone(zoneId, direction);
+    }
+    // Guard against degenerate topologies where walking past locked zones
+    // loops back to the window's own zone.
+    if (!originZoneId.isEmpty() && zoneId == originZoneId) {
+        return {};
     }
     return zoneId;
 }
@@ -168,7 +174,7 @@ QString WindowTrackingAdaptor::getMoveTargetForWindow(const QString& windowId, c
         }
     } else {
         QString rawAdjacentZone = m_zoneDetectionAdaptor->getAdjacentZone(currentZoneId, direction);
-        targetZoneId = skipLockedZones(rawAdjacentZone, direction);
+        targetZoneId = skipLockedZones(rawAdjacentZone, direction, currentZoneId);
         if (targetZoneId.isEmpty()) {
             // Distinguish "no adjacent zone at all" from "adjacent zones exist but are all locked"
             QString reason =
@@ -381,7 +387,7 @@ QString WindowTrackingAdaptor::getSwapTargetForWindow(const QString& windowId, c
     }
 
     QString rawAdjacentZone = m_zoneDetectionAdaptor->getAdjacentZone(currentZoneId, direction);
-    QString targetZoneId = skipLockedZones(rawAdjacentZone, direction);
+    QString targetZoneId = skipLockedZones(rawAdjacentZone, direction, currentZoneId);
     if (targetZoneId.isEmpty()) {
         // Distinguish "no adjacent zone at all" from "adjacent zones exist but are all locked"
         QString reason =

@@ -886,9 +886,11 @@ private:
      *
      * @param startZoneId Zone to start walking from
      * @param direction Direction to walk ("left", "right", "up", "down")
+     * @param originZoneId The window's current zone — reject if the walk loops back to it
      * @return First unlocked adjacent zone, or empty if all are locked / no more zones
      */
-    QString skipLockedZones(const QString& startZoneId, const QString& direction);
+    QString skipLockedZones(const QString& startZoneId, const QString& direction,
+                            const QString& originZoneId = QString());
 
     /**
      * @brief Validate window ID and log warning if empty

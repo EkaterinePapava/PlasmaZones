@@ -525,6 +525,19 @@ bool WindowTrackingService::isWindowLocked(const QString& windowId) const
     return m_lockedWindows.contains(windowId);
 }
 
+void WindowTrackingService::decrementPendingCount(const QString& appId)
+{
+    auto it = m_pendingAppIdLocks.find(appId);
+    if (it == m_pendingAppIdLocks.end()) {
+        return;
+    }
+    if (it.value() <= 1) {
+        m_pendingAppIdLocks.erase(it);
+    } else {
+        --it.value();
+    }
+}
+
 void WindowTrackingService::promoteAppIdLock(const QString& windowId)
 {
     QString appId = Utils::extractAppId(windowId);
@@ -534,18 +547,13 @@ void WindowTrackingService::promoteAppIdLock(const QString& windowId)
     if (m_lockedWindows.contains(windowId)) {
         return; // already locked (e.g. zone reassignment) — don't consume a pending count
     }
-    auto it = m_pendingAppIdLocks.find(appId);
-    if (it == m_pendingAppIdLocks.end()) {
+    if (!m_pendingAppIdLocks.contains(appId)) {
         return; // no pending appId lock to promote
     }
     // Promote: bind the lock to this specific window instance.
     // Decrement the count so that additional instances of the same app
     // can also inherit a lock (one per count).
-    if (it.value() <= 1) {
-        m_pendingAppIdLocks.erase(it);
-    } else {
-        --it.value();
-    }
+    decrementPendingCount(appId);
     m_lockedWindows.insert(windowId);
     Q_EMIT windowLockChanged(windowId, true);
     scheduleSaveState();
@@ -556,34 +564,20 @@ void WindowTrackingService::setWindowLocked(const QString& windowId, bool locked
     if (locked == m_lockedWindows.contains(windowId)) {
         return; // no change
     }
-    QString appId = Utils::extractAppId(windowId);
     if (locked) {
         // Decrement (not remove) any pending appId count — other instances may still
         // need their pending locks. Only decrement by 1 for this specific instance.
+        QString appId = Utils::extractAppId(windowId);
         if (appId != windowId) {
-            auto it = m_pendingAppIdLocks.find(appId);
-            if (it != m_pendingAppIdLocks.end()) {
-                if (it.value() <= 1) {
-                    m_pendingAppIdLocks.erase(it);
-                } else {
-                    --it.value();
-                }
-            }
+            decrementPendingCount(appId);
         }
         m_lockedWindows.insert(windowId);
     } else {
         m_lockedWindows.remove(windowId);
-        // Decrement (not remove) pending appId count for this specific instance
-        if (appId != windowId) {
-            auto it = m_pendingAppIdLocks.find(appId);
-            if (it != m_pendingAppIdLocks.end()) {
-                if (it.value() <= 1) {
-                    m_pendingAppIdLocks.erase(it);
-                } else {
-                    --it.value();
-                }
-            }
-        }
+        // Don't touch pending counts on unlock — the count was already consumed
+        // when the window was locked (either via promoteAppIdLock or the lock path above).
+        // Decrementing here would double-consume and steal a pending lock from
+        // another instance of the same app.
     }
     Q_EMIT windowLockChanged(windowId, locked);
     scheduleSaveState();

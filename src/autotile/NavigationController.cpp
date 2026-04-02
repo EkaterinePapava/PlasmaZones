@@ -85,6 +85,20 @@ void NavigationController::swapFocusedWithMaster()
         return;
     }
 
+    // Check for locked windows between focused and master — moveToTiledPosition
+    // shifts intermediates, which would displace locked windows.
+    const int focusedIndex = windows.indexOf(focused);
+    if (focusedIndex > 1) {
+        for (int i = 1; i < focusedIndex; ++i) {
+            if (isWindowLocked(windows.at(i))) {
+                Q_EMIT m_engine->navigationFeedbackRequested(false, QStringLiteral("swap_master"),
+                                                             QStringLiteral("intermediate_locked"), QString(),
+                                                             QString(), screenId);
+                return;
+            }
+        }
+    }
+
     const bool promoted = state->moveToTiledPosition(focused, 0);
     m_engine->retileAfterOperation(screenId, promoted);
 
@@ -259,6 +273,22 @@ void NavigationController::moveFocusedToPosition(int position)
         Q_EMIT m_engine->navigationFeedbackRequested(false, QStringLiteral("move_to_position"),
                                                      QStringLiteral("target_locked"), QString(), QString(), screenId);
         return;
+    }
+
+    // Check for locked windows between current and target — moveToTiledPosition
+    // shifts intermediates, which would displace locked windows.
+    const int currentIndex = windows.indexOf(focused);
+    if (currentIndex >= 0) {
+        const int lo = qMin(currentIndex, targetIndex);
+        const int hi = qMax(currentIndex, targetIndex);
+        for (int i = lo + 1; i < hi; ++i) {
+            if (isWindowLocked(windows.at(i))) {
+                Q_EMIT m_engine->navigationFeedbackRequested(false, QStringLiteral("move_to_position"),
+                                                             QStringLiteral("intermediate_locked"), QString(),
+                                                             QString(), screenId);
+                return;
+            }
+        }
     }
 
     const bool moved = state->moveToTiledPosition(focused, targetIndex);

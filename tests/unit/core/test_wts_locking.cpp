@@ -374,6 +374,29 @@ private Q_SLOTS:
         QCOMPARE(m_service->pendingAppIdLocks().value(QStringLiteral("org.kde.dolphin")), 2);
     }
 
+    void testSetWindowLocked_unlockDoesNotDoubleconsumePending()
+    {
+        // Restore with count=2. Lock one instance (consuming 1 → pending=1).
+        // Unlock that instance — pending must stay at 1, not drop to 0.
+        // The second instance should still inherit its lock.
+        QHash<QString, int> appIdCounts = {{QStringLiteral("org.kde.dolphin"), 2}};
+        m_service->setLockedWindows(appIdCounts);
+
+        QString inst1 = QStringLiteral("org.kde.dolphin|a1b2c3d4-0000-0000-0000-000000011111");
+        m_service->setWindowLocked(inst1, true);
+        QCOMPARE(m_service->pendingAppIdLocks().value(QStringLiteral("org.kde.dolphin")), 1);
+
+        // Unlock must NOT consume the remaining pending count
+        m_service->setWindowLocked(inst1, false);
+        QCOMPARE(m_service->pendingAppIdLocks().value(QStringLiteral("org.kde.dolphin")), 1);
+
+        // Second instance should still get its lock via promotion
+        QString inst2 = QStringLiteral("org.kde.dolphin|a1b2c3d4-0000-0000-0000-000000022222");
+        m_service->assignWindowToZone(inst2, m_zoneIds[1], QStringLiteral("DP-1"), 1);
+        QVERIFY(m_service->isWindowLocked(inst2));
+        QVERIFY(m_service->pendingAppIdLocks().isEmpty());
+    }
+
     // =====================================================================
     // P1: Multi-Instance Lock Persistence (BUG-1 fix)
     // =====================================================================

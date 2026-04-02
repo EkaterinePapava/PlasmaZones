@@ -887,6 +887,12 @@ private:
     // app survive session persistence (each instance decrements the count on zone assignment).
     QHash<QString, int> m_pendingAppIdLocks;
 
+    /**
+     * @brief Decrement (or erase) a pending appId lock count by 1
+     * No-op if the appId has no pending entry.
+     */
+    void decrementPendingCount(const QString& appId);
+
     // Resnap buffer: when layout changes, store (windowId, zonePosition, screenId, vd)
     // for windows that were in the previous layout, so resnapToNewLayout can map them
     struct ResnapEntry
