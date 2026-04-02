@@ -35,7 +35,11 @@ createFullscreenQuadPipeline(QRhi* rhi, QRhiRenderPassDescriptor* rpDesc, const 
     QList<QRhiGraphicsPipeline::TargetBlend> blends;
     QRhiGraphicsPipeline::TargetBlend blend;
     blend.enable = enableBlend;
-    blend.srcColor = QRhiGraphicsPipeline::SrcAlpha;
+    // Premultiplied alpha blending (Qt Quick convention). The fragment shader
+    // outputs premultiplied color (rgb * alpha) via clampFragColor(), so srcColor
+    // uses One instead of SrcAlpha. This matches the Wayland compositor's
+    // expectation for surface alpha compositing on both Vulkan and OpenGL.
+    blend.srcColor = QRhiGraphicsPipeline::One;
     blend.dstColor = QRhiGraphicsPipeline::OneMinusSrcAlpha;
     blend.srcAlpha = QRhiGraphicsPipeline::One;
     blend.dstAlpha = QRhiGraphicsPipeline::OneMinusSrcAlpha;
@@ -84,7 +88,10 @@ bool ZoneShaderNodeRhi::ensureBufferTarget()
                 return false;
             }
         }
-        // Force RT recreation since attachment count changed
+        // Force RT recreation since attachment count changed.
+        // Depth texture is bound at binding 12 in all SRBs; adding/removing it
+        // changes the SRB layout, so all pipelines must be recreated too.
+        m_pipeline.reset();
         m_bufferPipeline.reset();
         m_bufferSrb.reset();
         m_bufferSrbB.reset();
@@ -104,7 +111,13 @@ bool ZoneShaderNodeRhi::ensureBufferTarget()
     auto createTextureAndRT = [rhi, bufferSize, this](std::unique_ptr<QRhiTexture>& tex,
                                                       std::unique_ptr<QRhiTextureRenderTarget>& rt,
                                                       std::unique_ptr<QRhiRenderPassDescriptor>& rpd) -> bool {
-        tex.reset(rhi->newTexture(QRhiTexture::RGBA8, bufferSize, 1, QRhiTexture::RenderTarget));
+        // UsedWithLoadStore adds VK_IMAGE_USAGE_STORAGE_BIT, which disables
+        // NVIDIA's Delta Color Compression (DCC) on the texture. Without this,
+        // compressed render target data isn't decompressed when the texture is
+        // sampled in a later pass — Qt RHI's barrier tracking doesn't trigger
+        // the DCC decompression, causing rectangular tile artifacts on Vulkan.
+        tex.reset(rhi->newTexture(QRhiTexture::RGBA16F, bufferSize, 1,
+                                  QRhiTexture::RenderTarget | QRhiTexture::UsedWithLoadStore));
         if (!tex->create()) {
             return false;
         }
@@ -149,6 +162,9 @@ bool ZoneShaderNodeRhi::ensureBufferTarget()
             }
         }
         if (needCreate) {
+            qCInfo(lcOverlay) << "Creating multi-buffer textures:"
+                              << "bufferSize=" << bufferSize << "m_width=" << m_width << "m_height=" << m_height
+                              << "bufferScale=" << m_bufferScale << "passes=" << n;
             for (int i = 0; i < n; ++i) {
                 if (!createTextureAndRT(m_multiBufferTextures[i], m_multiBufferRenderTargets[i],
                                         m_multiBufferRenderPassDescriptors[i])) {
@@ -263,6 +279,25 @@ bool ZoneShaderNodeRhi::ensureBufferPipeline()
         if (!rhi || !m_bufferSamplers[0]) {
             return false;
         }
+        // Ensure dummy channel texture/sampler exist before creating SRBs —
+        // every multipass SRB needs all 4 channel bindings for Vulkan.
+        if (!m_dummyChannelTexture) {
+            m_dummyChannelTexture.reset(rhi->newTexture(QRhiTexture::RGBA8, QSize(1, 1)));
+            if (m_dummyChannelTexture->create()) {
+                m_dummyChannelTextureNeedsUpload = true;
+            } else {
+                m_dummyChannelTexture.reset();
+                return false;
+            }
+        }
+        if (!m_dummyChannelSampler) {
+            m_dummyChannelSampler.reset(rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
+                                                        QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
+            if (!m_dummyChannelSampler->create()) {
+                m_dummyChannelSampler.reset();
+                return false;
+            }
+        }
         const int n = qMin(m_bufferPaths.size(), kMaxBufferPasses);
         for (int i = 0; i < n; ++i) {
             QRhiRenderPassDescriptor* rpDesc = m_multiBufferRenderPassDescriptors[i]
@@ -280,11 +315,19 @@ bool ZoneShaderNodeRhi::ensureBufferPipeline()
                     bindings.append(QRhiShaderResourceBinding::sampledTexture(
                         1, QRhiShaderResourceBinding::FragmentStage, m_labelsTexture.get(), m_labelsSampler.get()));
                 }
-                for (int j = 0; j < i; ++j) {
-                    if (m_multiBufferTextures[j] && m_bufferSamplers[j]) {
+                // Bind ALL 4 channel slots (bindings 2-5). The SPIR-V shader
+                // declares iChannel0-3 via multipass.glsl; on Vulkan, every
+                // declared binding must exist in the descriptor set layout.
+                // Unbound slots get a dummy 1×1 texture. OpenGL tolerates
+                // missing bindings but Vulkan treats them as undefined behavior.
+                for (int j = 0; j < kMaxBufferPasses; ++j) {
+                    QRhiTexture* tex = (j < i && m_multiBufferTextures[j]) ? m_multiBufferTextures[j].get()
+                                                                           : m_dummyChannelTexture.get();
+                    QRhiSampler* sam =
+                        (j < i && m_bufferSamplers[j]) ? m_bufferSamplers[j].get() : m_dummyChannelSampler.get();
+                    if (tex && sam) {
                         bindings.append(QRhiShaderResourceBinding::sampledTexture(
-                            2 + j, QRhiShaderResourceBinding::FragmentStage, m_multiBufferTextures[j].get(),
-                            m_bufferSamplers[j].get()));
+                            2 + j, QRhiShaderResourceBinding::FragmentStage, tex, sam));
                     }
                 }
                 if (m_audioSpectrumTexture && m_audioSpectrumSampler) {
@@ -328,6 +371,24 @@ bool ZoneShaderNodeRhi::ensureBufferPipeline()
     if (!rhi) {
         return false;
     }
+    // Ensure dummy channel texture/sampler for single-buffer SRBs (ping-pong).
+    if (!m_dummyChannelTexture) {
+        m_dummyChannelTexture.reset(rhi->newTexture(QRhiTexture::RGBA8, QSize(1, 1)));
+        if (m_dummyChannelTexture->create()) {
+            m_dummyChannelTextureNeedsUpload = true;
+        } else {
+            m_dummyChannelTexture.reset();
+            return false;
+        }
+    }
+    if (!m_dummyChannelSampler) {
+        m_dummyChannelSampler.reset(rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
+                                                    QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
+        if (!m_dummyChannelSampler->create()) {
+            m_dummyChannelSampler.reset();
+            return false;
+        }
+    }
     QRhiRenderPassDescriptor* rpDesc = m_bufferRenderPassDescriptor ? m_bufferRenderPassDescriptor.get()
                                                                     : m_bufferRenderTarget->renderPassDescriptor();
     if (!rpDesc) {
@@ -350,9 +411,17 @@ bool ZoneShaderNodeRhi::ensureBufferPipeline()
             bindings.append(QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage,
                                                                       m_labelsTexture.get(), m_labelsSampler.get()));
         }
-        if (channel0Texture && m_bufferSamplers[0]) {
-            bindings.append(QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage,
-                                                                      channel0Texture, m_bufferSamplers[0].get()));
+        // Bind all 4 channel slots (bindings 2-5) — SPIR-V requires all declared
+        // bindings to exist in the descriptor set layout. Channel 0 gets the real
+        // feedback texture; channels 1-3 get a dummy 1×1 transparent texture.
+        for (int ch = 0; ch < kMaxBufferPasses; ++ch) {
+            QRhiTexture* tex = (ch == 0 && channel0Texture) ? channel0Texture : m_dummyChannelTexture.get();
+            QRhiSampler* sam = (ch == 0 && channel0Texture && m_bufferSamplers[0]) ? m_bufferSamplers[0].get()
+                                                                                   : m_dummyChannelSampler.get();
+            if (tex && sam) {
+                bindings.append(QRhiShaderResourceBinding::sampledTexture(
+                    2 + ch, QRhiShaderResourceBinding::FragmentStage, tex, sam));
+            }
         }
         if (m_audioSpectrumTexture && m_audioSpectrumSampler) {
             bindings.append(QRhiShaderResourceBinding::sampledTexture(6, QRhiShaderResourceBinding::FragmentStage,
@@ -437,9 +506,16 @@ bool ZoneShaderNodeRhi::ensurePipeline()
             bindings.append(QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage,
                                                                       m_labelsTexture.get(), m_labelsSampler.get()));
         }
-        if (channel0Texture && channel0Sampler) {
-            bindings.append(QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage,
-                                                                      channel0Texture, channel0Sampler));
+        // Bind all 4 channel slots (bindings 2-5). SPIR-V shaders that include
+        // multipass.glsl declare iChannel0-3; every declared binding must exist
+        // in the Vulkan descriptor set layout or the driver reads garbage.
+        for (int ch = 0; ch < kMaxBufferPasses; ++ch) {
+            QRhiTexture* tex = (ch == 0 && channel0Texture) ? channel0Texture : m_dummyChannelTexture.get();
+            QRhiSampler* sam = (ch == 0 && channel0Sampler) ? channel0Sampler : m_dummyChannelSampler.get();
+            if (tex && sam) {
+                bindings.append(QRhiShaderResourceBinding::sampledTexture(
+                    2 + ch, QRhiShaderResourceBinding::FragmentStage, tex, sam));
+            }
         }
         if (m_audioSpectrumTexture && m_audioSpectrumSampler) {
             bindings.append(QRhiShaderResourceBinding::sampledTexture(6, QRhiShaderResourceBinding::FragmentStage,
@@ -464,8 +540,9 @@ bool ZoneShaderNodeRhi::ensurePipeline()
         const int n = qMin(m_bufferPaths.size(), kMaxBufferPasses);
         QRhiTexture* dummyTex = m_dummyChannelTexture.get();
         QRhiSampler* dummySam = m_dummyChannelSampler.get();
-        for (int i = 0; i < n; ++i) {
-            QRhiTexture* tex = m_multiBufferTextures[i] ? m_multiBufferTextures[i].get() : dummyTex;
+        // Bind ALL 4 channel slots (bindings 2-5), not just 0..n-1.
+        for (int i = 0; i < kMaxBufferPasses; ++i) {
+            QRhiTexture* tex = (i < n && m_multiBufferTextures[i]) ? m_multiBufferTextures[i].get() : dummyTex;
             QRhiSampler* sam = (tex == dummyTex || !m_bufferSamplers[i]) ? dummySam : m_bufferSamplers[i].get();
             if (tex && sam) {
                 bindings.append(QRhiShaderResourceBinding::sampledTexture(

@@ -216,8 +216,13 @@ void ZoneShaderNodeRhi::uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb)
 
     if (m_uniformsDirty) {
         syncUniformsFromData();
-        // Buffer textures rendered via FBO need Y-flip on OpenGL (Y-up framebuffer)
-        m_uniforms.iFlipBufferY = rhi->isYUpInFramebuffer() ? 1 : 0;
+        // Buffer textures rendered via FBO always need Y-flip when sampling.
+        // On OpenGL, FBOs are Y-up (row 0 at bottom). On Vulkan, Qt RHI applies
+        // a negative-height viewport which reverses the rasterization Y, but the
+        // texture data is still stored with row 0 at top in GPU memory — the
+        // viewport flip means the BOTTOM of the screen is written to the LAST
+        // row, so texture UV must be Y-flipped to read the correct screen position.
+        m_uniforms.iFlipBufferY = 1;
         QRhiResourceUpdateBatch* batch = rhi->nextResourceUpdateBatch();
         if (batch) {
             if (!m_didFullUploadOnce) {
@@ -279,8 +284,11 @@ void ZoneShaderNodeRhi::uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb)
             if (!m_audioSpectrumTexture->create()) {
                 return;
             }
-            m_srb.reset();
-            m_srbB.reset();
+            // Audio spectrum texture is bound at binding 6 in ALL SRBs (image,
+            // buffer, multi-buffer). Resetting only image-pass SRBs leaves buffer
+            // SRBs with a dangling pointer to the old texture — crashes NVIDIA
+            // Vulkan driver when the buffer pass is recorded.
+            resetAllSrbs();
             if (!ensurePipeline()) {
                 return;
             }

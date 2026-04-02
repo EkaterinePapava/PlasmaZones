@@ -231,6 +231,10 @@ QSGNode* ZoneShaderItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* 
     node->setTime(static_cast<float>(m_iTime));
     node->setTimeDelta(static_cast<float>(m_iTimeDelta));
     node->setFrame(m_iFrame);
+    // Use logical pixels for iResolution — shader parameters (pxScale, edge
+    // widths, etc.) depend on a consistent resolution across backends. Buffer
+    // textures are also at logical resolution; the slight DPR mismatch with the
+    // physical render target is handled by bilinear upscaling in the image pass.
     node->setResolution(static_cast<float>(width()), static_cast<float>(height()));
     node->setMousePosition(m_iMouse);
 

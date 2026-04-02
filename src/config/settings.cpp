@@ -166,8 +166,12 @@ void Settings::load()
     }
     loadPerScreenOverrides(m_configBackend);
 
-    // Rendering backend — use the shared helper so read order matches daemon/editor.
-    m_renderingBackend = ConfigDefaults::readRenderingBackendFromDisk();
+    // Rendering backend — stored at root level (ungrouped, before any [Section]).
+    // Read through the config backend (which just reparsed fresh from disk)
+    // rather than readRenderingBackendFromDisk() which creates a separate
+    // QSettings(IniFormat) instance subject to Qt's global QConfFile cache.
+    m_renderingBackend = ConfigDefaults::normalizeRenderingBackend(
+        m_configBackend->readRootString(ConfigDefaults::renderingBackendKey(), ConfigDefaults::renderingBackend()));
 
     // Shaders (small enough to stay inline)
     {
@@ -330,11 +334,8 @@ void Settings::save()
         saveEditorConfig(*editor);
     }
 
-    // Rendering backend in [General]
-    {
-        auto general = m_configBackend->group(ConfigDefaults::generalGroup());
-        general->writeString(ConfigDefaults::renderingBackendKey(), m_renderingBackend);
-    }
+    // Rendering backend at root level (ungrouped, before any [Section] header)
+    m_configBackend->writeRootString(ConfigDefaults::renderingBackendKey(), m_renderingBackend);
 
     // Shader Effects
     {

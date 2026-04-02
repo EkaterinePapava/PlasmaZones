@@ -180,7 +180,10 @@ void ZoneShaderNodeRhi::prepare()
         m_initialized = true;
         qCInfo(lcOverlay) << "ZoneShaderNodeRhi INIT — backend:" << rhi->backendName()
                           << "driver:" << rhi->driverInfo().deviceName
-                          << "Y-up framebuffer:" << rhi->isYUpInFramebuffer();
+                          << "Y-up framebuffer:" << rhi->isYUpInFramebuffer() << "RT pixelSize:" << rt->pixelSize()
+                          << "item size:" << m_item->width() << "x" << m_item->height()
+                          << "DPR:" << (m_item->window() ? m_item->window()->devicePixelRatio() : -1)
+                          << "iResolution:" << m_width << "x" << m_height;
         // Create VBO (fullscreen quad)
         m_vbo.reset(
             rhi->newBuffer(QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer, sizeof(RhiConstants::QuadVertices)));
@@ -355,8 +358,9 @@ void ZoneShaderNodeRhi::prepare()
             m_bufferTextureB.reset();
             m_srbB.reset();
         }
-        ensureBufferTarget();
-        ensureBufferPipeline();
+        if (!ensureBufferTarget() || !ensureBufferPipeline()) {
+            return;
+        }
         if (!m_srb || (!multiBufferMode && m_bufferFeedback && !m_srbB)) {
             ensurePipeline();
         }
@@ -402,6 +406,18 @@ void ZoneShaderNodeRhi::prepare()
                 cb->setVertexInput(0, 1, &vbufBinding);
                 cb->draw(4);
                 cb->endPass();
+
+                // Force a real resource update between buffer passes so the
+                // Vulkan backend flushes image layout transitions. Pass N+1
+                // samples pass N's output texture via its SRB. A redundant
+                // 4-byte UBO write ensures the batch is non-empty and actually
+                // processed by Qt RHI's deferred command recording — empty
+                // batches may be optimized to no-ops, skipping barrier emission.
+                if (i + 1 < n && m_ubo) {
+                    QRhiResourceUpdateBatch* barrier = rhi->nextResourceUpdateBatch();
+                    barrier->updateDynamicBuffer(m_ubo.get(), 0, 4, &m_uniforms);
+                    cb->resourceUpdate(barrier);
+                }
             }
         } else {
             if (m_bufferFeedback && !m_bufferFeedbackCleared && m_bufferRenderTarget && m_bufferRenderTargetB) {
@@ -431,6 +447,13 @@ void ZoneShaderNodeRhi::prepare()
             cb->setVertexInput(0, 1, &vbufBinding);
             cb->draw(4);
             cb->endPass();
+        }
+
+        // Resource flush after buffer passes (Vulkan barrier hint).
+        if (m_ubo) {
+            QRhiResourceUpdateBatch* barrier = rhi->nextResourceUpdateBatch();
+            barrier->updateDynamicBuffer(m_ubo.get(), 0, 4, &m_uniforms);
+            cb->resourceUpdate(barrier);
         }
     }
 }

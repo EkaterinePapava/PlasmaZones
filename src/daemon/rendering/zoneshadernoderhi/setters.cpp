@@ -231,6 +231,13 @@ void ZoneShaderNodeRhi::setUseWallpaper(bool use)
         return;
     }
     m_useWallpaper = use;
+    // Toggling wallpaper adds/removes binding 11 from the SRB layout.
+    // Pipelines bake the layout at creation, so they must be recreated too.
+    m_pipeline.reset();
+    m_bufferPipeline.reset();
+    for (int i = 0; i < kMaxBufferPasses; ++i) {
+        m_multiBufferPipelines[i].reset();
+    }
     resetAllSrbs();
 }
 
@@ -267,9 +274,15 @@ void ZoneShaderNodeRhi::setUseDepthBuffer(bool use)
         return;
     }
     m_useDepthBuffer = use;
-    // Force recreation of render targets and pipelines
+    // Toggling depth buffer adds/removes binding 12 from the SRB layout.
+    // Pipelines bake the layout at creation, so they must be recreated too.
     m_depthTexture.reset();
     m_depthSampler.reset();
+    m_pipeline.reset();
+    m_bufferPipeline.reset();
+    for (int i = 0; i < kMaxBufferPasses; ++i) {
+        m_multiBufferPipelines[i].reset();
+    }
     resetAllSrbs();
     markDirty(QSGNode::DirtyMaterial);
 }
@@ -280,8 +293,17 @@ void ZoneShaderNodeRhi::resetAllSrbs()
     m_srbB.reset();
     m_bufferSrb.reset();
     m_bufferSrbB.reset();
+    // Pipelines bake the SRB layout (descriptor set layout) at creation time.
+    // When a texture binding is added or removed (e.g. labels texture created
+    // late, audio spectrum resized from zero), the rebuilt SRBs have a different
+    // layout than the pipelines expect. Vulkan rejects the mismatch silently,
+    // causing missing/incomplete rendering. Reset all pipelines so they are
+    // recreated with the new SRB layout.
+    m_pipeline.reset();
+    m_bufferPipeline.reset();
     for (int i = 0; i < kMaxBufferPasses; ++i) {
         m_multiBufferSrbs[i].reset();
+        m_multiBufferPipelines[i].reset();
     }
 }
 
