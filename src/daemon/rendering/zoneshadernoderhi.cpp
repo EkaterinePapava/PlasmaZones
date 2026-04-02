@@ -364,10 +364,12 @@ void ZoneShaderNodeRhi::prepare()
     // Multipass buffer passes recorded in prepare() — safe because prepare()
     // runs BEFORE the scene graph opens its render pass. Buffer passes use
     // offscreen FBOs (their own render targets), not the main RT.
-    // Compute dispatch stays in render() — see render() comment.
     // ========================================================================
+    // m_bufferSrb guard: uploadDirtyTextures() above can call resetAllSrbs() when
+    // a texture is resized, which nulls all SRBs. Without this guard,
+    // setShaderResources(nullptr) crashes the NVIDIA Vulkan driver.
     const bool multipassSingle = !multiBufferMode && !m_bufferPath.isEmpty() && m_bufferShaderReady && m_bufferPipeline
-        && m_bufferRenderTarget && m_bufferTexture;
+        && m_bufferSrb && m_bufferRenderTarget && m_bufferTexture;
     const bool multipassMulti =
         multiBufferMode && m_multiBufferShadersReady && m_multiBufferTextures[0] && m_multiBufferPipelines[0];
     const bool multipassActive = multipassSingle || multipassMulti;
