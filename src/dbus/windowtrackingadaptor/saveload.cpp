@@ -13,6 +13,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include "../../config/configbackend_qsettings.h"
+#include "../../config/configdefaults.h"
 #include <QTimer>
 
 namespace PlasmaZones {
@@ -178,7 +179,7 @@ void WindowTrackingAdaptor::saveState()
     for (auto it = lockedAppIdCounts.cbegin(); it != lockedAppIdCounts.cend(); ++it) {
         lockedWindowsObj.insert(it.key(), it.value());
     }
-    tracking->writeString(QStringLiteral("LockedWindows"),
+    tracking->writeString(ConfigDefaults::lockedWindowsKey(),
                           QString::fromUtf8(QJsonDocument(lockedWindowsObj).toJson(QJsonDocument::Compact)));
 
     tracking.reset(); // release group before sync
@@ -525,7 +526,7 @@ void WindowTrackingAdaptor::loadState()
 
     // Load locked windows (persisted as appId → count JSON object)
     QHash<QString, int> lockedCounts;
-    QString lockedJson = readVal(QStringLiteral("LockedWindows"), QString());
+    QString lockedJson = readVal(ConfigDefaults::lockedWindowsKey(), QString());
     if (!lockedJson.isEmpty()) {
         QJsonDocument doc = QJsonDocument::fromJson(lockedJson.toUtf8());
         if (doc.isObject()) {

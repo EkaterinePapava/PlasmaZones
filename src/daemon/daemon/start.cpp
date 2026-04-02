@@ -486,46 +486,49 @@ void Daemon::connectShortcutSignals()
     });
 
     // Toggle window lock shortcut — locks/unlocks the active window to its current zone
-    connect(m_shortcutManager.get(), &ShortcutManager::toggleWindowLockRequested, this, [this]() {
-        if (!m_windowTrackingAdaptor) {
-            return;
-        }
-        QString windowId = m_windowTrackingAdaptor->lastActiveWindowId();
-        if (windowId.isEmpty()) {
-            return;
-        }
-        auto* service = m_windowTrackingAdaptor->service();
-        // Can only lock snapped windows (must be assigned to a zone).
-        // In autotile mode, also allow locking tiled windows (they may not be
-        // "snapped" in the tracking service, but they hold a tree position).
-        bool isTiledInAutotile = false;
-        if (m_autotileEngine) {
-            for (const auto* state : m_autotileEngine->screenStates()) {
-                if (state->tiledWindows().contains(windowId)) {
-                    isTiledInAutotile = true;
-                    break;
-                }
+    connect(m_shortcutManager.get(), &ShortcutManager::toggleWindowLockRequested, this,
+            &Daemon::handleToggleWindowLock);
+}
+
+void Daemon::handleToggleWindowLock()
+{
+    if (!m_windowTrackingAdaptor) {
+        return;
+    }
+    QString windowId = m_windowTrackingAdaptor->lastActiveWindowId();
+    if (windowId.isEmpty()) {
+        return;
+    }
+    auto* service = m_windowTrackingAdaptor->service();
+    // Can only lock snapped windows (must be assigned to a zone).
+    // In autotile mode, also allow locking tiled windows (they may not be
+    // "snapped" in the tracking service, but they hold a tree position).
+    bool isTiledInAutotile = false;
+    if (m_autotileEngine) {
+        for (const auto* state : m_autotileEngine->screenStates()) {
+            if (state->tiledWindows().contains(windowId)) {
+                isTiledInAutotile = true;
+                break;
             }
         }
-        if (!service->isWindowSnapped(windowId) && !isTiledInAutotile) {
-            if (m_settings && m_settings->showNavigationOsd() && m_overlayService) {
-                QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
-                QString screenId = screen ? Utils::screenIdentifier(screen) : QString();
-                m_overlayService->showNavigationOsd(false, QStringLiteral("lock"), QStringLiteral("not_snapped"),
-                                                    QString(), QString(), screenId);
-            }
-            return;
-        }
-        bool nowLocked = service->toggleWindowLock(windowId);
-        // Show OSD feedback
+    }
+    if (!service->isWindowSnapped(windowId) && !isTiledInAutotile) {
         if (m_settings && m_settings->showNavigationOsd() && m_overlayService) {
             QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
             QString screenId = screen ? Utils::screenIdentifier(screen) : QString();
-            QString reason = nowLocked ? QStringLiteral("locked") : QStringLiteral("unlocked");
-            m_overlayService->showNavigationOsd(true, QStringLiteral("lock"), reason, QString(), QString(), screenId);
+            m_overlayService->showNavigationOsd(false, QStringLiteral("lock"), QStringLiteral("not_snapped"), QString(),
+                                                QString(), screenId);
         }
-        qCInfo(lcDaemon) << "Toggle window lock:" << (nowLocked ? "locked" : "unlocked") << "window=" << windowId;
-    });
+        return;
+    }
+    bool nowLocked = service->toggleWindowLock(windowId);
+    if (m_settings && m_settings->showNavigationOsd() && m_overlayService) {
+        QScreen* screen = resolveShortcutScreen(m_windowTrackingAdaptor);
+        QString screenId = screen ? Utils::screenIdentifier(screen) : QString();
+        QString reason = nowLocked ? QStringLiteral("locked") : QStringLiteral("unlocked");
+        m_overlayService->showNavigationOsd(true, QStringLiteral("lock"), reason, QString(), QString(), screenId);
+    }
+    qCInfo(lcDaemon) << "Toggle window lock:" << (nowLocked ? "locked" : "unlocked") << "window=" << windowId;
 }
 
 void Daemon::pruneContextMapsForDesktop(int maxDesktop)

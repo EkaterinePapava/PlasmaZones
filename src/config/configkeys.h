@@ -260,6 +260,7 @@ public:
     PZ_CONFIG_KEY(autotileUseSystemBorderColorsKey, "AutotileUseSystemBorderColors")
     PZ_CONFIG_KEY(autotileStickyWindowHandlingKey, "AutotileStickyWindowHandling")
     PZ_CONFIG_KEY(lockedScreensKey, "LockedScreens")
+    PZ_CONFIG_KEY(lockedWindowsKey, "LockedWindows")
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Config Keys — AutotileShortcuts

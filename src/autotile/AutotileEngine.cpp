@@ -1190,8 +1190,8 @@ void AutotileEngine::toggleWindowFloat(const QString& windowId, const QString& s
 
 void AutotileEngine::performToggleFloat(TilingState* state, const QString& windowId, const QString& screenId)
 {
-    // Locked windows cannot be floated (they must stay at their tree position)
-    if (!state->isFloating(windowId) && m_windowTracker && m_windowTracker->isWindowLocked(windowId)) {
+    // Locked windows cannot be floated or unfloated — they must stay at their tree position
+    if (m_windowTracker && m_windowTracker->isWindowLocked(windowId)) {
         Q_EMIT navigationFeedbackRequested(false, QStringLiteral("float"), QStringLiteral("window_locked"), QString(),
                                            QString(), screenId);
         return;

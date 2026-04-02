@@ -559,6 +559,27 @@ private Q_SLOTS:
         QCOMPARE(spy.at(0).at(1).toBool(), true);
     }
 
+    // =====================================================================
+    // P2: windowClosed — locked-but-unsnapped window doesn't create phantom pending
+    // =====================================================================
+
+    void testWindowClosed_lockedButUnsnapped_noPendingEntry()
+    {
+        // If a window is locked but was never assigned to a zone (e.g. external
+        // state manipulation), closing it should NOT create a phantom pending
+        // appId lock that auto-locks the next instance.
+        QString windowId = QStringLiteral("org.kde.dolphin|a1b2c3d4-1234-5678-9abc-def012345678");
+        m_service->setWindowLocked(windowId, true);
+        QVERIFY(m_service->isWindowLocked(windowId));
+
+        // Close without ever assigning to a zone
+        m_service->windowClosed(windowId);
+
+        QVERIFY(!m_service->isWindowLocked(windowId));
+        // No phantom pending lock should be created
+        QVERIFY(m_service->pendingAppIdLocks().isEmpty());
+    }
+
 private:
     std::unique_ptr<IsolatedConfigGuard> m_guard;
     LayoutManager* m_layoutManager = nullptr;
