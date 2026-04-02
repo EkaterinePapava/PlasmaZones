@@ -450,6 +450,7 @@ void OverlayService::destroyShaderPreviewWindow()
             disconnect(m_shaderPreviewScreen, nullptr, m_shaderPreviewWindow, nullptr);
         }
         m_shaderPreviewWindow->close();
+        m_shaderPreviewWindow->destroy();
         m_shaderPreviewWindow->deleteLater();
         m_shaderPreviewWindow = nullptr;
     }

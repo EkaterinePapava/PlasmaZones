@@ -196,7 +196,10 @@ void ZoneShaderNodeRhi::uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb)
                 m_shaderError = QStringLiteral("Failed to resize labels texture");
                 return;
             }
-            m_srb.reset(); // Force SRB recreation with new texture
+            // Labels texture is bound in ALL SRBs (image, buffer, multi-buffer).
+            // Resetting only m_srb leaves buffer SRBs with a dangling pointer
+            // to the old labels texture — crashes NVIDIA Vulkan in endFrame().
+            resetAllBindingsAndPipelines();
             if (!ensurePipeline()) {
                 return;
             }
@@ -213,8 +216,16 @@ void ZoneShaderNodeRhi::uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb)
 
     if (m_uniformsDirty) {
         syncUniformsFromData();
-        // Buffer textures rendered via FBO need Y-flip on OpenGL (Y-up framebuffer)
-        m_uniforms.iFlipBufferY = rhi->isYUpInFramebuffer() ? 1 : 0;
+        // Buffer textures rendered via FBO always need Y-flip when sampling.
+        // On OpenGL, FBOs are Y-up (row 0 at bottom). On Vulkan, Qt RHI applies
+        // a negative-height viewport which reverses the rasterization Y, but the
+        // texture data is still stored with row 0 at top in GPU memory — the
+        // viewport flip means the BOTTOM of the screen is written to the LAST
+        // row, so texture UV must be Y-flipped to read the correct screen position.
+        // NOTE: If a future RHI backend (e.g. Metal, Direct3D) does not need this
+        // flip, this must become conditional again (check rhi->isYUpInFramebuffer()
+        // and backend-specific viewport behavior).
+        m_uniforms.iFlipBufferY = 1;
         QRhiResourceUpdateBatch* batch = rhi->nextResourceUpdateBatch();
         if (batch) {
             if (!m_didFullUploadOnce) {
@@ -276,8 +287,11 @@ void ZoneShaderNodeRhi::uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb)
             if (!m_audioSpectrumTexture->create()) {
                 return;
             }
-            m_srb.reset();
-            m_srbB.reset();
+            // Audio spectrum texture is bound at binding 6 in ALL SRBs (image,
+            // buffer, multi-buffer). Resetting only image-pass SRBs leaves buffer
+            // SRBs with a dangling pointer to the old texture — crashes NVIDIA
+            // Vulkan driver when the buffer pass is recorded.
+            resetAllBindingsAndPipelines();
             if (!ensurePipeline()) {
                 return;
             }
@@ -311,7 +325,7 @@ void ZoneShaderNodeRhi::uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb)
             if (!m_userTextureSamplers[i]->create()) {
                 continue;
             }
-            resetAllSrbs();
+            resetAllBindingsAndPipelines();
         }
         if (!m_userTextureDirty[i] || !m_userTextures[i] || !m_userTextureSamplers[i]) {
             continue;
@@ -324,7 +338,7 @@ void ZoneShaderNodeRhi::uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb)
             if (!m_userTextures[i]->create()) {
                 continue;
             }
-            resetAllSrbs();
+            resetAllBindingsAndPipelines();
             if (!ensurePipeline()) {
                 return;
             }
@@ -353,7 +367,7 @@ void ZoneShaderNodeRhi::uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb)
                 m_wallpaperTexture.reset(); // Prevent binding a non-created texture
                 return;
             }
-            resetAllSrbs();
+            resetAllBindingsAndPipelines();
             if (!ensurePipeline()) {
                 return;
             }
@@ -387,7 +401,9 @@ void ZoneShaderNodeRhi::releaseRhiResources()
     m_bufferRenderTargetB.reset();
     m_bufferRenderPassDescriptor.reset();
     m_bufferRenderPassDescriptorB.reset();
-    m_bufferSampler.reset();
+    for (int i = 0; i < kMaxBufferPasses; ++i) {
+        m_bufferSamplers[i].reset();
+    }
     m_bufferRenderPassFormat.clear();
     m_bufferFeedbackCleared = false;
     m_srbB.reset();
@@ -415,6 +431,8 @@ void ZoneShaderNodeRhi::releaseRhiResources()
     m_wallpaperTexture.reset();
     m_wallpaperSampler.reset();
     m_wallpaperDirty = true;
+    m_depthTexture.reset();
+    m_depthSampler.reset();
     m_ubo.reset();
     m_vbo.reset();
     m_vertexShader = QShader();
@@ -491,7 +509,12 @@ void ZoneShaderNodeRhi::bakeBufferShaders()
             m_srb.reset();
             m_srbB.reset();
         } else {
-            m_multiBufferShaderDirty = true; // Retry next frame on failure
+            if (++m_multiBufferShaderRetries < 3) {
+                m_multiBufferShaderDirty = true; // Retry next frame
+            } else {
+                qCWarning(lcOverlay)
+                    << "Multi-buffer shader compilation failed after 3 attempts; giving up until shader path changes";
+            }
         }
     }
     if (multipass && !multiBufferMode && m_bufferShaderDirty) {
@@ -517,10 +540,16 @@ void ZoneShaderNodeRhi::bakeBufferShaders()
                 m_bufferShaderReady = true;
                 m_bufferPipeline.reset();
                 m_bufferSrb.reset();
+                m_bufferSrbB.reset();
             } else {
                 qCWarning(lcOverlay) << "Buffer shader: compile failed, path=" << m_bufferPath
                                      << "error=" << fragmentBaker.errorMessage();
-                m_bufferShaderDirty = true; // Retry next frame on failure
+                if (++m_bufferShaderRetries < 3) {
+                    m_bufferShaderDirty = true; // Retry next frame
+                } else {
+                    qCWarning(lcOverlay)
+                        << "Buffer shader compilation failed after 3 attempts; giving up until shader path changes";
+                }
             }
         }
     }

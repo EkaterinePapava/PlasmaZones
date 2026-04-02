@@ -260,6 +260,7 @@ void OverlayService::destroySnapAssistWindow()
             disconnect(m_snapAssistScreen, nullptr, m_snapAssistWindow, nullptr);
         }
         m_snapAssistWindow->close();
+        m_snapAssistWindow->destroy();
         m_snapAssistWindow->deleteLater();
         m_snapAssistWindow = nullptr;
     }
@@ -423,6 +424,7 @@ void OverlayService::destroyLayoutPickerWindow()
             disconnect(screen, nullptr, m_layoutPickerWindow, nullptr);
         }
         m_layoutPickerWindow->close();
+        m_layoutPickerWindow->destroy();
         m_layoutPickerWindow->deleteLater();
         m_layoutPickerWindow = nullptr;
     }

@@ -35,13 +35,15 @@ void OverlayService::initializeOverlay(QScreen* cursorScreen)
     ensureShaderTimerStarted(m_shaderTimer, m_shaderTimerMutex, m_lastFrameTime, m_frameCount);
     m_zoneDataDirty = true; // Rebuild zone data on next frame
 
-    // When single-monitor mode, hide overlay on screens we're switching away from (#136)
+    // When single-monitor mode, destroy overlay on screens we're switching away from (#136).
+    // Must destroy (not just hide) because on Vulkan, window->hide() destroys the
+    // VkSwapchainKHR but Qt doesn't properly reinitialize it on re-show. Destroying
+    // the window ensures a fresh window is created via createOverlayWindow() below.
     if (!showOnAllMonitors) {
-        for (auto* screen : m_overlayWindows.keys()) {
+        const QList<QScreen*> screens = m_overlayWindows.keys();
+        for (auto* screen : screens) {
             if (screen != cursorScreen) {
-                if (auto* window = m_overlayWindows.value(screen)) {
-                    window->hide();
-                }
+                destroyOverlayWindow(screen);
             }
         }
     }
@@ -71,51 +73,19 @@ void OverlayService::initializeOverlay(QScreen* cursorScreen)
                                << (window->screen() ? window->screen()->name() : QStringLiteral("null"));
             updateOverlayWindow(screen);
             window->show();
+            // On Vulkan, window->hide() destroys the swapchain and the scene graph
+            // becomes inactive. Property writes (e.g. shaderSource) while hidden queue
+            // update() requests that are lost when the scene graph reinitializes on
+            // show(). Force a content update after show so the scene graph renders.
+            window->update();
         }
     }
 
-    // Check if we need to recreate windows - this handles the case where windows
-    // were created before shaders were ready (e.g., at startup after reboot)
-    // Check per-screen: each monitor's layout may differ in shader usage
-    QList<QScreen*> screensToRecreate;
-
-    for (auto* screen : Utils::allScreens()) {
-        if (!m_overlayWindows.contains(screen)) {
-            continue;
-        }
-        auto* window = m_overlayWindows.value(screen);
-        if (!window) {
-            continue;
-        }
-
-        // Use isShaderOverlay property set at creation time (more reliable than shaderSource
-        // which can be set on non-shader windows by updateOverlayWindow())
-        const bool windowIsShader = window->property("isShaderOverlay").toBool();
-        const bool shouldUseShader = useShaderForScreen(screen);
-        if (windowIsShader != shouldUseShader) {
-            screensToRecreate.append(screen);
-            qCDebug(lcOverlay) << "Overlay window type mismatch detected for screen" << screen->name()
-                               << "(window is shader:" << windowIsShader << "should be:" << shouldUseShader << ")";
-        }
-    }
-
-    // Recreate only the windows with type mismatch
-    if (!screensToRecreate.isEmpty()) {
-        for (QScreen* screen : screensToRecreate) {
-            destroyOverlayWindow(screen);
-        }
-        for (QScreen* screen : screensToRecreate) {
-            if (!isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                   m_currentActivity)) {
-                createOverlayWindow(screen);
-                updateOverlayWindow(screen);
-                if (auto* window = m_overlayWindows.value(screen)) {
-                    assertWindowOnScreen(window, screen);
-                    window->show();
-                }
-            }
-        }
-    }
+    // Type-mismatch recreation is not needed here: hide() destroys all overlay
+    // windows, so initializeOverlay() always creates fresh windows with the
+    // correct type. The old check compared isShaderOverlay against useShaderForScreen()
+    // and recreated on mismatch, but could trigger runaway loops when both evaluations
+    // raced during window setup.
 
     if (anyScreenUsesShader()) {
         updateZonesForAllWindows(); // Push initial zone data
@@ -304,7 +274,7 @@ void OverlayService::createOverlayWindow(QScreen* screen)
                                QStringLiteral("plasmazones-overlay-%1").arg(Utils::screenIdentifier(screen)),
                                LayerSurface::AnchorAll)) {
         qCWarning(lcOverlay) << "Failed to configure layer surface for overlay on" << screen->name();
-        delete window;
+        window->deleteLater();
         return;
     }
 
@@ -376,6 +346,13 @@ void OverlayService::destroyOverlayWindow(QScreen* screen)
         // Disconnect so no signals (e.g. geometryChanged) are delivered to a window we're destroying
         disconnect(screen, nullptr, window, nullptr);
         window->close();
+        // destroy() synchronously tears down the platform window (wl_surface) and
+        // its Vulkan resources (VkSurfaceKHR, VkSwapchainKHR, scene graph render loop).
+        // Without this, deleteLater() defers cleanup to the next event loop iteration,
+        // leaving stale Vulkan resources alive when createOverlayWindow() creates a new
+        // surface on the same screen — causing swapchain/render loop corruption after
+        // 2-3 show/hide cycles.
+        window->destroy();
         window->deleteLater();
     }
 }
@@ -423,10 +400,14 @@ void OverlayService::updateOverlayWindow(QScreen* screen)
         // Clear shader properties if window is shader type but shaders are now disabled
         writeQmlProperty(window, QStringLiteral("shaderSource"), QUrl());
         writeQmlProperty(window, QStringLiteral("bufferShaderPath"), QString());
-        writeQmlProperty(window, QStringLiteral("bufferShaderPaths"), QVariantList());
+        writeQmlProperty(window, QStringLiteral("bufferShaderPaths"), QVariant::fromValue(QStringList()));
         writeQmlProperty(window, QStringLiteral("bufferFeedback"), false);
         writeQmlProperty(window, QStringLiteral("bufferScale"), 1.0);
         writeQmlProperty(window, QStringLiteral("bufferWrap"), QStringLiteral("clamp"));
+        writeQmlProperty(window, QStringLiteral("bufferWraps"), QStringList());
+        writeQmlProperty(window, QStringLiteral("bufferFilter"), QStringLiteral("linear"));
+        writeQmlProperty(window, QStringLiteral("bufferFilters"), QStringList());
+        writeQmlProperty(window, QStringLiteral("useDepthBuffer"), false);
         writeQmlProperty(window, QStringLiteral("shaderParams"), QVariantMap());
     }
 

@@ -43,6 +43,7 @@ void cleanupWindowMap(QHash<K, QQuickWindow*>& windowMap)
         if (window) {
             QQmlEngine::setObjectOwnership(window, QQmlEngine::CppOwnership);
             window->close();
+            window->destroy();
             window->deleteLater();
         }
     }
@@ -274,10 +275,16 @@ void OverlayService::hide()
     // Do NOT invalidate m_shaderTimer - keeps iTime continuous across show/hide
     // so animations feel less predictable and don't restart
 
-    for (auto* window : std::as_const(m_overlayWindows)) {
-        if (window) {
-            window->hide();
-        }
+    // Destroy overlay windows instead of hiding them. On Vulkan with Wayland
+    // layer-shell, window->hide() destroys the wl_surface but the Qt Vulkan
+    // backend doesn't properly reinitialize the VkSwapchainKHR when the window
+    // is re-shown, causing the scene graph render loop to stall. Destroying the
+    // window entirely and creating a fresh one on the next show() avoids this.
+    // initializeOverlay() will call createOverlayWindow() since m_overlayWindows
+    // is now empty.
+    const QList<QScreen*> screens = m_overlayWindows.keys();
+    for (auto* screen : screens) {
+        destroyOverlayWindow(screen);
     }
 
     m_pendingShaderError.clear();
@@ -307,20 +314,27 @@ void OverlayService::updateSettings(ISettings* settings)
     // the current configuration.
     syncCavaState();
 
-    // Hide overlay and zone selector on screens/desktops/activities that are now disabled
-    for (auto* screen : m_overlayWindows.keys()) {
-        if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                              m_currentActivity)) {
-            if (auto* window = m_overlayWindows.value(screen)) {
-                window->hide();
+    // Destroy overlay windows on screens/desktops/activities that are now disabled.
+    // Must destroy (not just hide) because on Vulkan, window->hide() destroys the
+    // VkSwapchainKHR but Qt doesn't reinitialize it on re-show, causing stale surfaces.
+    {
+        const QList<QScreen*> overlayScreens = m_overlayWindows.keys();
+        for (auto* screen : overlayScreens) {
+            if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                                  m_currentActivity)) {
+                destroyOverlayWindow(screen);
             }
         }
     }
-    for (auto* screen : m_zoneSelectorWindows.keys()) {
-        if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                              m_currentActivity)) {
-            if (auto* window = m_zoneSelectorWindows.value(screen)) {
-                window->hide();
+    // Zone selector windows must also be destroyed (not just hidden) when Vulkan is
+    // the scene graph backend — hide() destroys the VkSwapchainKHR and Qt doesn't
+    // reinitialize it on re-show, affecting ALL QQuickWindows.
+    {
+        const QList<QScreen*> selectorScreens = m_zoneSelectorWindows.keys();
+        for (auto* screen : selectorScreens) {
+            if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                                  m_currentActivity)) {
+                destroyZoneSelectorWindow(screen);
             }
         }
     }
@@ -382,23 +396,25 @@ Layout* OverlayService::resolveScreenLayout(QScreen* screen) const
 
 void OverlayService::hideDisabledAndRefresh()
 {
-    // Hide overlay/selector on screens where the current context is disabled
+    // Destroy windows on screens where the current context is disabled.
+    // Must destroy (not just hide) because on Vulkan, hide() destroys the
+    // VkSwapchainKHR and Qt doesn't reinitialize it on re-show.
     if (m_settings) {
-        for (auto* screen : m_zoneSelectorWindows.keys()) {
-            if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
-                                  m_currentActivity)) {
-                if (auto* window = m_zoneSelectorWindows.value(screen)) {
-                    window->hide();
+        {
+            const QList<QScreen*> selectorScreens = m_zoneSelectorWindows.keys();
+            for (auto* screen : selectorScreens) {
+                if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
+                                      m_currentActivity)) {
+                    destroyZoneSelectorWindow(screen);
                 }
             }
         }
         if (m_visible) {
-            for (auto* screen : m_overlayWindows.keys()) {
+            const QList<QScreen*> overlayScreens = m_overlayWindows.keys();
+            for (auto* screen : overlayScreens) {
                 if (isContextDisabled(m_settings, Utils::screenIdentifier(screen), m_currentVirtualDesktop,
                                       m_currentActivity)) {
-                    if (auto* window = m_overlayWindows.value(screen)) {
-                        window->hide();
-                    }
+                    destroyOverlayWindow(screen);
                 }
             }
         }

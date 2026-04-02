@@ -39,9 +39,14 @@ ZoneShaderItem::~ZoneShaderItem()
     // members are torn down.  The scene graph render thread may still call
     // prepare()/render() on the node between now and the node's eventual
     // deletion; without this, m_item would be a dangling pointer.
-    if (m_renderNode) {
+    //
+    // Guard: if the window (and its scene graph) was already destroyed, the node
+    // has been deleted by the SG and m_renderNode is dangling. QQuickItem::window()
+    // returns nullptr once the window is gone, so use that as our liveness check.
+    if (m_renderNode && window()) {
         m_renderNode->invalidateItem();
     }
+    m_renderNode = nullptr;
 }
 
 // ============================================================================
@@ -141,18 +146,25 @@ void ZoneShaderItem::updateHoveredHighlightOnly()
                             << "zones=" << m_zones.size() << ") - setZones must be called first";
         return;
     }
+    // Pre-compute highlight flags outside the mutex to avoid blocking the render
+    // thread with QVariant::toMap() conversions.
+    const int count = static_cast<int>(m_zoneData.rects.size());
+    QVector<bool> highlights(count, false);
     int highlightedCount = 0;
+    for (int i = 0; i < count; ++i) {
+        const bool fromZone = (i < m_zones.size())
+            ? m_zones[i].toMap().value(QLatin1String(JsonKeys::IsHighlighted), false).toBool()
+            : false;
+        const bool hovered = (m_hoveredZoneIndex >= 0 && i == m_hoveredZoneIndex);
+        highlights[i] = fromZone || hovered;
+        if (highlights[i]) {
+            ++highlightedCount;
+        }
+    }
     {
         QMutexLocker lock(&m_zoneDataMutex);
-        for (int i = 0; i < m_zoneData.rects.size(); ++i) {
-            const bool fromZone = (i < m_zones.size())
-                ? m_zones[i].toMap().value(QLatin1String(JsonKeys::IsHighlighted), false).toBool()
-                : false;
-            const bool hovered = (m_hoveredZoneIndex >= 0 && i == m_hoveredZoneIndex);
-            m_zoneData.rects[i].highlighted = fromZone || hovered;
-            if (m_zoneData.rects[i].highlighted) {
-                ++highlightedCount;
-            }
+        for (int i = 0; i < count; ++i) {
+            m_zoneData.rects[i].highlighted = highlights[i];
         }
         m_zoneData.highlightedCount = highlightedCount;
         m_zoneData.version = ++m_dataVersion;
@@ -221,12 +233,20 @@ QSGNode* ZoneShaderItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* 
         auto* rhiNode = new ZoneShaderNodeRhi(this);
         m_renderNode = rhiNode;
         node = rhiNode;
+        qCInfo(PlasmaZones::lcOverlay) << "updatePaintNode: created NEW render node (oldNode was null)";
+    } else {
+        qCDebug(PlasmaZones::lcOverlay) << "updatePaintNode: reusing existing node, shaderReady:"
+                                        << node->isShaderReady();
     }
 
     // Sync shader timing uniforms
     node->setTime(static_cast<float>(m_iTime));
     node->setTimeDelta(static_cast<float>(m_iTimeDelta));
     node->setFrame(m_iFrame);
+    // Use logical pixels for iResolution — shader parameters (pxScale, edge
+    // widths, etc.) depend on a consistent resolution across backends. Buffer
+    // textures are also at logical resolution; the slight DPR mismatch with the
+    // physical render target is handled by bilinear upscaling in the image pass.
     node->setResolution(static_cast<float>(width()), static_cast<float>(height()));
     node->setMousePosition(m_iMouse);
 
@@ -271,6 +291,9 @@ QSGNode* ZoneShaderItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* 
         node->setUserTextureWrap(i, m_userTextureWraps[i]);
     }
 
+    // Sync depth buffer (binding 12)
+    node->setUseDepthBuffer(m_useDepthBuffer);
+
     // Sync desktop wallpaper texture (binding 11)
     node->setUseWallpaper(m_useWallpaper);
     {
@@ -290,11 +313,20 @@ QSGNode* ZoneShaderItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* 
     node->setBufferFeedback(m_bufferFeedback);
     node->setBufferScale(m_bufferScale);
     node->setBufferWrap(m_bufferWrap);
+    if (!m_bufferWraps.isEmpty()) {
+        node->setBufferWraps(m_bufferWraps);
+    }
+    node->setBufferFilter(m_bufferFilter);
+    if (!m_bufferFilters.isEmpty()) {
+        node->setBufferFilters(m_bufferFilters);
+    }
 
     // Sync shader source FIRST (must compile before zone data can be used)
     // Load when: item's m_shaderDirty, OR node not ready (e.g. after releaseResources)
-    const bool needLoad = m_shaderDirty.exchange(false)
-        || (m_shaderSource.isValid() && !m_shaderSource.isEmpty() && !node->isShaderReady());
+    const bool wasDirty = m_shaderDirty.exchange(false);
+    const bool needLoad = wasDirty || (m_shaderSource.isValid() && !m_shaderSource.isEmpty() && !node->isShaderReady());
+    qCDebug(PlasmaZones::lcOverlay) << "updatePaintNode: needLoad:" << needLoad << "wasDirty:" << wasDirty
+                                    << "shaderReady:" << node->isShaderReady() << "source:" << m_shaderSource;
     if (needLoad) {
         if (m_shaderSource.isValid() && !m_shaderSource.isEmpty()) {
             QString fragPath = m_shaderSource.toLocalFile();
@@ -444,6 +476,20 @@ void ZoneShaderItem::geometryChange(const QRectF& newGeometry, const QRectF& old
         }
 
         update();
+    }
+}
+
+void ZoneShaderItem::itemChange(ItemChange change, const ItemChangeData& value)
+{
+    QQuickItem::itemChange(change, value);
+
+    if (change == ItemVisibleHasChanged && value.boolValue) {
+        // Item became visible — force scene graph update. On Vulkan, window hide
+        // destroys the swapchain; update() calls during the hidden period are lost.
+        // Without this, updatePaintNode() is never called after re-show.
+        m_shaderDirty = true;
+        update();
+        qCInfo(PlasmaZones::lcOverlay) << "ZoneShaderItem: became visible, forcing update";
     }
 }
 

@@ -20,7 +20,7 @@ namespace PlasmaZones {
 
 namespace RhiConstants {
 
-static constexpr float QuadVertices[] = {
+inline constexpr float QuadVertices[] = {
     -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, -1.0f, 1.0f, 0.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
 };
 
@@ -41,7 +41,7 @@ static constexpr int ComponentW = 3;
 
 namespace detail {
 
-/// Shader bake targets (SPIR-V 1.3 + GLSL 330 + ES variants). Defined in zoneshadernoderhi.cpp.
+/// Shader bake targets (SPIR-V 1.0 + GLSL 330 + ES variants). Defined in zoneshadernoderhi.cpp.
 const QList<QShaderBaker::GeneratedShader>& bakeTargets();
 
 /// Load shader file, expand #include directives. Defined in zoneshadernoderhi.cpp.

@@ -217,10 +217,13 @@ void OverlayService::showLayoutOsd(const QString& id, const QString& name, const
 
 void OverlayService::hideLayoutOsd()
 {
-    for (auto* window : std::as_const(m_layoutOsdWindows)) {
-        if (window && window->isVisible()) {
-            QMetaObject::invokeMethod(window, "hide");
-        }
+    // Destroy windows instead of hiding. When Vulkan is the scene graph backend,
+    // hide() destroys the VkSwapchainKHR but Qt doesn't reinitialize it on
+    // re-show, causing the window to stop rendering after the first cycle.
+    // prepareLayoutOsdWindow() will recreate via createLayoutOsdWindow().
+    const QList<QScreen*> screens = m_layoutOsdWindows.keys();
+    for (auto* screen : screens) {
+        destroyLayoutOsdWindow(screen);
     }
 }
 
@@ -282,6 +285,7 @@ void OverlayService::destroyLayoutOsdWindow(QScreen* screen)
         // Disconnect so no signals (e.g. geometryChanged) are delivered to a window we're destroying
         disconnect(screen, nullptr, window, nullptr);
         window->close();
+        window->destroy();
         window->deleteLater();
     }
 }
@@ -417,10 +421,13 @@ void OverlayService::showNavigationOsd(bool success, const QString& action, cons
 
 void OverlayService::hideNavigationOsd()
 {
-    for (auto* window : std::as_const(m_navigationOsdWindows)) {
-        if (window && window->isVisible()) {
-            QMetaObject::invokeMethod(window, "hide");
-        }
+    // Destroy windows instead of hiding. When Vulkan is the scene graph backend,
+    // hide() destroys the VkSwapchainKHR but Qt doesn't reinitialize it on
+    // re-show, causing the window to stop rendering after the first cycle.
+    // showNavigationOsd() will recreate via createNavigationOsdWindow().
+    const QList<QScreen*> screens = m_navigationOsdWindows.keys();
+    for (auto* screen : screens) {
+        destroyNavigationOsdWindow(screen);
     }
 }
 
@@ -460,6 +467,7 @@ void OverlayService::destroyNavigationOsdWindow(QScreen* screen)
         // Disconnect so no signals (e.g. geometryChanged) are delivered to a window we're destroying
         disconnect(screen, nullptr, window, nullptr);
         window->close();
+        window->destroy();
         window->deleteLater();
     }
     // Clear failed flag when destroying window
