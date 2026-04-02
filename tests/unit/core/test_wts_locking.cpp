@@ -316,13 +316,13 @@ private Q_SLOTS:
     // P2: setWindowLocked clears pending appId
     // =====================================================================
 
-    void testSetWindowLocked_clearsPendingAppId()
+    void testSetWindowLocked_decrementsPendingAppId()
     {
-        // Simulate session restore with pending appId lock
+        // Simulate session restore with pending appId lock (count=1)
         QHash<QString, int> appIdCounts = {{QStringLiteral("org.kde.dolphin"), 1}};
         m_service->setLockedWindows(appIdCounts);
 
-        // User explicitly locks — should clear pending entry
+        // User explicitly locks — should decrement (and consume) the single pending entry
         QString windowId = QStringLiteral("org.kde.dolphin|a1b2c3d4-1234-5678-9abc-def012345678");
         m_service->setWindowLocked(windowId, true);
 
@@ -330,17 +330,48 @@ private Q_SLOTS:
         QVERIFY(m_service->isWindowLocked(windowId));
     }
 
-    void testSetWindowLocked_unlockClearsPendingAppId()
+    void testSetWindowLocked_unlockNoop_doesNotTouchPending()
     {
+        // Pending appId lock exists, but this specific windowId is NOT currently locked.
+        // Unlocking an already-unlocked window is a no-op — pending counts are unaffected.
         QHash<QString, int> appIdCounts = {{QStringLiteral("org.kde.dolphin"), 1}};
         m_service->setLockedWindows(appIdCounts);
 
         QString windowId = QStringLiteral("org.kde.dolphin|a1b2c3d4-1234-5678-9abc-def012345678");
         m_service->setWindowLocked(windowId, false);
 
-        // Both active and pending should be clear
         QVERIFY(!m_service->isWindowLocked(windowId));
-        QVERIFY(m_service->pendingAppIdLocks().isEmpty());
+        // Pending count should be preserved — the window wasn't locked to begin with
+        QCOMPARE(m_service->pendingAppIdLocks().value(QStringLiteral("org.kde.dolphin")), 1);
+    }
+
+    void testSetWindowLocked_unlockAfterLock_decrementsPending()
+    {
+        // Lock then unlock — pending should be consumed by the lock, not the unlock
+        QHash<QString, int> appIdCounts = {{QStringLiteral("org.kde.dolphin"), 1}};
+        m_service->setLockedWindows(appIdCounts);
+
+        QString windowId = QStringLiteral("org.kde.dolphin|a1b2c3d4-1234-5678-9abc-def012345678");
+        m_service->setWindowLocked(windowId, true);
+        QVERIFY(m_service->pendingAppIdLocks().isEmpty()); // consumed by lock
+
+        m_service->setWindowLocked(windowId, false);
+        QVERIFY(!m_service->isWindowLocked(windowId));
+        QVERIFY(m_service->pendingAppIdLocks().isEmpty()); // still empty
+    }
+
+    void testSetWindowLocked_preservesOtherInstancePendingLocks()
+    {
+        // Restore with count=3 — locking one instance should only consume 1, leaving 2
+        QHash<QString, int> appIdCounts = {{QStringLiteral("org.kde.dolphin"), 3}};
+        m_service->setLockedWindows(appIdCounts);
+
+        QString windowId = QStringLiteral("org.kde.dolphin|a1b2c3d4-1234-5678-9abc-def012345678");
+        m_service->setWindowLocked(windowId, true);
+
+        QVERIFY(m_service->isWindowLocked(windowId));
+        // Should decrement by 1, not remove all
+        QCOMPARE(m_service->pendingAppIdLocks().value(QStringLiteral("org.kde.dolphin")), 2);
     }
 
     // =====================================================================
@@ -425,6 +456,84 @@ private Q_SLOTS:
         m_service->assignWindowToZone(newInstance, m_zoneIds[1], QStringLiteral("DP-1"), 1);
         QVERIFY(m_service->isWindowLocked(newInstance));
         QVERIFY(m_service->pendingAppIdLocks().isEmpty());
+    }
+
+    // =====================================================================
+    // P2: promoteAppIdLock — zone reassignment doesn't consume extra count
+    // =====================================================================
+
+    void testPromoteAppIdLock_zoneReassignmentDoesNotConsumeCount()
+    {
+        // Restore with count=2 — first instance promoted, then reassigned to a different zone.
+        // The reassignment should NOT consume a second pending count.
+        QHash<QString, int> appIdCounts = {{QStringLiteral("org.kde.dolphin"), 2}};
+        m_service->setLockedWindows(appIdCounts);
+
+        QString inst1 = QStringLiteral("org.kde.dolphin|a1b2c3d4-0000-0000-0000-000000011111");
+        m_service->assignWindowToZone(inst1, m_zoneIds[0], QStringLiteral("DP-1"), 1);
+        QVERIFY(m_service->isWindowLocked(inst1));
+        QCOMPARE(m_service->pendingAppIdLocks().value(QStringLiteral("org.kde.dolphin")), 1);
+
+        // Reassign to a different zone — should NOT consume the remaining count
+        m_service->assignWindowToZone(inst1, m_zoneIds[1], QStringLiteral("DP-1"), 1);
+        QVERIFY(m_service->isWindowLocked(inst1));
+        QCOMPARE(m_service->pendingAppIdLocks().value(QStringLiteral("org.kde.dolphin")), 1);
+
+        // Second instance should still get its lock
+        QString inst2 = QStringLiteral("org.kde.dolphin|a1b2c3d4-0000-0000-0000-000000022222");
+        m_service->assignWindowToZone(inst2, m_zoneIds[2], QStringLiteral("DP-1"), 1);
+        QVERIFY(m_service->isWindowLocked(inst2));
+        QVERIFY(m_service->pendingAppIdLocks().isEmpty());
+    }
+
+    // =====================================================================
+    // P2: windowLockChanged signal
+    // =====================================================================
+
+    void testWindowLockChanged_emittedOnLock()
+    {
+        QString windowId = QStringLiteral("org.kde.dolphin|a1b2c3d4-1234-5678-9abc-def012345678");
+        QSignalSpy spy(m_service, &WindowTrackingService::windowLockChanged);
+
+        m_service->setWindowLocked(windowId, true);
+        QCOMPARE(spy.count(), 1);
+        QCOMPARE(spy.at(0).at(0).toString(), windowId);
+        QCOMPARE(spy.at(0).at(1).toBool(), true);
+
+        m_service->setWindowLocked(windowId, false);
+        QCOMPARE(spy.count(), 2);
+        QCOMPARE(spy.at(1).at(0).toString(), windowId);
+        QCOMPARE(spy.at(1).at(1).toBool(), false);
+    }
+
+    void testWindowLockChanged_notEmittedOnNoop()
+    {
+        QString windowId = QStringLiteral("org.kde.dolphin|a1b2c3d4-1234-5678-9abc-def012345678");
+        QSignalSpy spy(m_service, &WindowTrackingService::windowLockChanged);
+
+        // Unlocking an already-unlocked window should not emit
+        m_service->setWindowLocked(windowId, false);
+        QCOMPARE(spy.count(), 0);
+
+        // Locking, then locking again should emit only once
+        m_service->setWindowLocked(windowId, true);
+        QCOMPARE(spy.count(), 1);
+        m_service->setWindowLocked(windowId, true);
+        QCOMPARE(spy.count(), 1);
+    }
+
+    void testWindowLockChanged_emittedOnPromote()
+    {
+        QHash<QString, int> appIdCounts = {{QStringLiteral("org.kde.dolphin"), 1}};
+        m_service->setLockedWindows(appIdCounts);
+
+        QString windowId = QStringLiteral("org.kde.dolphin|a1b2c3d4-1234-5678-9abc-def012345678");
+        QSignalSpy spy(m_service, &WindowTrackingService::windowLockChanged);
+
+        m_service->assignWindowToZone(windowId, m_zoneIds[0], QStringLiteral("DP-1"), 1);
+        QCOMPARE(spy.count(), 1);
+        QCOMPARE(spy.at(0).at(0).toString(), windowId);
+        QCOMPARE(spy.at(0).at(1).toBool(), true);
     }
 
 private:

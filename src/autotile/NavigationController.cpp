@@ -74,9 +74,7 @@ void NavigationController::swapFocusedWithMaster()
     }
 
     // Locked windows cannot be swapped with master
-    if (isWindowLocked(focused)) {
-        Q_EMIT m_engine->navigationFeedbackRequested(false, QStringLiteral("swap_master"),
-                                                     QStringLiteral("window_locked"), QString(), QString(), screenId);
+    if (emitIfLocked(focused, QStringLiteral("swap_master"), screenId)) {
         return;
     }
 
@@ -166,9 +164,7 @@ void NavigationController::swapFocusedInDirection(const QString& direction, cons
     }
 
     // Locked windows cannot be swapped
-    if (isWindowLocked(focused)) {
-        Q_EMIT m_engine->navigationFeedbackRequested(false, action, QStringLiteral("window_locked"), QString(),
-                                                     QString(), screenId);
+    if (emitIfLocked(focused, action, screenId)) {
         return;
     }
 
@@ -251,9 +247,7 @@ void NavigationController::moveFocusedToPosition(int position)
     }
 
     // Locked windows cannot be moved to a different position
-    if (isWindowLocked(focused)) {
-        Q_EMIT m_engine->navigationFeedbackRequested(false, QStringLiteral("move_to_position"),
-                                                     QStringLiteral("window_locked"), QString(), QString(), screenId);
+    if (emitIfLocked(focused, QStringLiteral("move_to_position"), screenId)) {
         return;
     }
 
@@ -447,6 +441,16 @@ QStringList NavigationController::tiledWindowsForFocusedScreen(QString& outScree
 bool NavigationController::isWindowLocked(const QString& windowId) const
 {
     return m_engine->m_windowTracker && m_engine->m_windowTracker->isWindowLocked(windowId);
+}
+
+bool NavigationController::emitIfLocked(const QString& windowId, const QString& action, const QString& screenId)
+{
+    if (!isWindowLocked(windowId)) {
+        return false;
+    }
+    Q_EMIT m_engine->navigationFeedbackRequested(false, action, QStringLiteral("window_locked"), QString(), QString(),
+                                                 screenId);
+    return true;
 }
 
 void NavigationController::applyToAllStates(const std::function<void(TilingState*)>& operation)

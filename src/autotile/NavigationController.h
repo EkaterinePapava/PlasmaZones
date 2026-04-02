@@ -94,6 +94,11 @@ private:
      */
     bool isWindowLocked(const QString& windowId) const;
 
+    /**
+     * @brief Emit feedback and return true if the window is locked, otherwise return false
+     */
+    bool emitIfLocked(const QString& windowId, const QString& action, const QString& screenId);
+
     AutotileEngine* m_engine = nullptr;
 };
 

@@ -20,7 +20,6 @@ class IZoneDetector;
 class ISettings;
 class VirtualDesktopManager;
 class Layout;
-class WindowTrackingAdaptor;
 class Zone;
 
 /**
@@ -49,7 +48,6 @@ class Zone;
 class PLASMAZONES_EXPORT WindowTrackingService : public QObject
 {
     Q_OBJECT
-    friend class WindowTrackingAdaptor;
 
 public:
     explicit WindowTrackingService(LayoutManager* layoutManager, IZoneDetector* zoneDetector, ISettings* settings,
@@ -791,6 +789,11 @@ Q_SIGNALS:
      * @brief Emitted when state needs to be saved
      */
     void stateChanged();
+
+    /**
+     * @brief Emitted when a window's lock state changes
+     */
+    void windowLockChanged(const QString& windowId, bool locked);
 
 private:
     // Minimum visible area for geometry validation

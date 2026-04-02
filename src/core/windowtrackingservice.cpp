@@ -531,6 +531,9 @@ void WindowTrackingService::promoteAppIdLock(const QString& windowId)
     if (appId == windowId) {
         return; // windowId is already an appId, nothing to promote
     }
+    if (m_lockedWindows.contains(windowId)) {
+        return; // already locked (e.g. zone reassignment) — don't consume a pending count
+    }
     auto it = m_pendingAppIdLocks.find(appId);
     if (it == m_pendingAppIdLocks.end()) {
         return; // no pending appId lock to promote
@@ -544,25 +547,45 @@ void WindowTrackingService::promoteAppIdLock(const QString& windowId)
         --it.value();
     }
     m_lockedWindows.insert(windowId);
+    Q_EMIT windowLockChanged(windowId, true);
     scheduleSaveState();
 }
 
 void WindowTrackingService::setWindowLocked(const QString& windowId, bool locked)
 {
+    if (locked == m_lockedWindows.contains(windowId)) {
+        return; // no change
+    }
     QString appId = Utils::extractAppId(windowId);
     if (locked) {
-        // Remove any pending appId entry (user is explicitly locking this instance)
+        // Decrement (not remove) any pending appId count — other instances may still
+        // need their pending locks. Only decrement by 1 for this specific instance.
         if (appId != windowId) {
-            m_pendingAppIdLocks.remove(appId);
+            auto it = m_pendingAppIdLocks.find(appId);
+            if (it != m_pendingAppIdLocks.end()) {
+                if (it.value() <= 1) {
+                    m_pendingAppIdLocks.erase(it);
+                } else {
+                    --it.value();
+                }
+            }
         }
         m_lockedWindows.insert(windowId);
     } else {
         m_lockedWindows.remove(windowId);
-        // Also remove pending appId entry if present
+        // Decrement (not remove) pending appId count for this specific instance
         if (appId != windowId) {
-            m_pendingAppIdLocks.remove(appId);
+            auto it = m_pendingAppIdLocks.find(appId);
+            if (it != m_pendingAppIdLocks.end()) {
+                if (it.value() <= 1) {
+                    m_pendingAppIdLocks.erase(it);
+                } else {
+                    --it.value();
+                }
+            }
         }
     }
+    Q_EMIT windowLockChanged(windowId, locked);
     scheduleSaveState();
 }
 
