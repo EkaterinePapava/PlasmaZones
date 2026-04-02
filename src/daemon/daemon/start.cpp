@@ -17,6 +17,7 @@
 #include "../../dbus/settingsadaptor.h"
 #include "../../dbus/windowtrackingadaptor.h"
 #include "../../autotile/AutotileEngine.h"
+#include "../../autotile/TilingState.h"
 #include "../../autotile/AlgorithmRegistry.h"
 #include "../../autotile/TilingAlgorithm.h"
 #include <QProcess>
@@ -494,8 +495,19 @@ void Daemon::connectShortcutSignals()
             return;
         }
         auto* service = m_windowTrackingAdaptor->service();
-        // Can only lock snapped windows (must be assigned to a zone)
-        if (!service->isWindowSnapped(windowId) && !m_autotileEngine) {
+        // Can only lock snapped windows (must be assigned to a zone).
+        // In autotile mode, also allow locking tiled windows (they may not be
+        // "snapped" in the tracking service, but they hold a tree position).
+        bool isTiledInAutotile = false;
+        if (m_autotileEngine) {
+            for (const auto* state : m_autotileEngine->screenStates()) {
+                if (state->tiledWindows().contains(windowId)) {
+                    isTiledInAutotile = true;
+                    break;
+                }
+            }
+        }
+        if (!service->isWindowSnapped(windowId) && !isTiledInAutotile) {
             return;
         }
         bool nowLocked = service->toggleWindowLock(windowId);

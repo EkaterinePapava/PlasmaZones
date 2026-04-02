@@ -532,6 +532,11 @@ bool WindowTrackingService::isWindowLocked(const QString& windowId) const
 void WindowTrackingService::setWindowLocked(const QString& windowId, bool locked)
 {
     if (locked) {
+        // Remove stale appId entry from session restore before inserting full windowId
+        QString appId = Utils::extractAppId(windowId);
+        if (appId != windowId) {
+            m_lockedWindows.remove(appId);
+        }
         m_lockedWindows.insert(windowId);
     } else {
         m_lockedWindows.remove(windowId);
