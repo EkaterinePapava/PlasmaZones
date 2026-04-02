@@ -47,11 +47,10 @@ const float TAU = 6.28318530718;
 float pxScale() { return max(iResolution.y, 1.0) / 1080.0; }
 
 // Compute fragment coordinates from texture coords.
-// OpenGL framebuffers are Y-up, Vulkan framebuffers are Y-down.
-// iFlipBufferY is 1 for OpenGL, 0 for Vulkan — use it to flip only when needed.
+// Y is always flipped: both OpenGL (Y-up FBO) and Vulkan (negative-height viewport)
+// store buffer data requiring a Y-flip when sampling. iFlipBufferY is always 1.
 vec2 fragCoordFromTexCoord(vec2 uv) {
-    float y = (iFlipBufferY != 0) ? (1.0 - uv.y) : uv.y;
-    return vec2(uv.x, y) * iResolution;
+    return vec2(uv.x, 1.0 - uv.y) * iResolution;
 }
 
 // Clamp color, apply qt_Opacity, and premultiply alpha for final output.

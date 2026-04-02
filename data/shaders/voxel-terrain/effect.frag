@@ -93,14 +93,21 @@ vec4 renderZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor,
         result.rgb = scene.rgb;
         result.a = fillOpacity;
 
-        // Volumetric glow alpha contribution (match single-pass behavior)
+        // Volumetric glow alpha contribution — reconstruct from depth buffer.
+        // Buffer pass writes oDepth = hit.t / 60.0 (0=near, 1=far/miss).
+        // Single-pass used: hit ? 0.5 * smoothstep(5.0, 40.0, hit.t) : 0.4
+        // Reconstruct hit.t from depth, then apply the same formula.
+        float pixDepth = readDepth(sceneUv);
+        float hitT = pixDepth * 60.0;  // undo normalization
+        float volG = (pixDepth >= 1.0)
+            ? 0.4  // miss — same as single-pass
+            : min(0.5 * smoothstep(5.0, 40.0, hitT), 3.0);
         float volMul;
         if (hasAudio) {
             volMul = 0.02 + energy * 0.06;
         } else {
             volMul = max(0.01 + sin(iTime * 0.6) * 0.005 * idleSpeed, 0.0);
         }
-        float volG = min(0.4, 3.0);  // conservative estimate for alpha
         result.a = max(result.a, min(volG * volMul * 0.2, fillOpacity));
 
         // Inner edge glow

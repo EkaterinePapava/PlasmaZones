@@ -109,8 +109,8 @@ bool ZoneShaderNodeRhi::ensureBufferTarget()
     // overwrites the depth attachment — only the final buffer pass's depth output survives
     // for the image pass to read at binding 12.
     if (m_useDepthBuffer && multiBufferMode && m_bufferPaths.size() > 1) {
-        qCInfo(lcOverlay) << "Depth buffer with" << m_bufferPaths.size()
-                          << "buffer passes: only the last pass's depth output will be available in the image pass";
+        qCWarning(lcOverlay) << "Depth buffer with" << m_bufferPaths.size()
+                             << "buffer passes: only the last pass's depth output will be available in the image pass";
     }
     auto createTextureAndRT = [rhi, bufferSize, this](std::unique_ptr<QRhiTexture>& tex,
                                                       std::unique_ptr<QRhiTextureRenderTarget>& rt,
@@ -135,25 +135,6 @@ bool ZoneShaderNodeRhi::ensureBufferTarget()
         rpd.reset(rt->newCompatibleRenderPassDescriptor());
         rt->setRenderPassDescriptor(rpd.get());
         return rt->create();
-    };
-
-    // Helper: resolve filter mode string to QRhiSampler filter enums
-    auto resolveFilter = [](const QString& filterMode, QRhiSampler::Filter& minFilter, QRhiSampler::Filter& magFilter,
-                            QRhiSampler::Filter& mipFilter) {
-        if (filterMode == QLatin1String("nearest")) {
-            minFilter = QRhiSampler::Nearest;
-            magFilter = QRhiSampler::Nearest;
-            mipFilter = QRhiSampler::None;
-        } else if (filterMode == QLatin1String("mipmap")) {
-            minFilter = QRhiSampler::Linear;
-            magFilter = QRhiSampler::Linear;
-            mipFilter = QRhiSampler::Linear;
-        } else {
-            // "linear" (default)
-            minFilter = QRhiSampler::Linear;
-            magFilter = QRhiSampler::Linear;
-            mipFilter = QRhiSampler::None;
-        }
     };
 
     if (multiBufferMode) {
@@ -185,16 +166,8 @@ bool ZoneShaderNodeRhi::ensureBufferTarget()
             m_srbB.reset();
         }
         for (int i = 0; i < n; ++i) {
-            if (!m_bufferSamplers[i]) {
-                const QRhiSampler::AddressMode addr =
-                    (m_bufferWraps[i] == QLatin1String("repeat")) ? QRhiSampler::Repeat : QRhiSampler::ClampToEdge;
-                QRhiSampler::Filter minF, magF, mipF;
-                resolveFilter(m_bufferFilters[i], minF, magF, mipF);
-                m_bufferSamplers[i].reset(rhi->newSampler(minF, magF, mipF, addr, addr));
-                if (!m_bufferSamplers[i]->create()) {
-                    qCWarning(lcOverlay) << "Failed to create buffer sampler" << i;
-                    return false;
-                }
+            if (!ensureBufferSampler(rhi, i)) {
+                return false;
             }
         }
         return true;
@@ -205,16 +178,8 @@ bool ZoneShaderNodeRhi::ensureBufferTarget()
             qCWarning(lcOverlay) << "Failed to create buffer texture";
             return false;
         }
-        if (!m_bufferSamplers[0]) {
-            const QRhiSampler::AddressMode addr =
-                (m_bufferWraps[0] == QLatin1String("repeat")) ? QRhiSampler::Repeat : QRhiSampler::ClampToEdge;
-            QRhiSampler::Filter minF, magF, mipF;
-            resolveFilter(m_bufferFilters[0], minF, magF, mipF);
-            m_bufferSamplers[0].reset(rhi->newSampler(minF, magF, mipF, addr, addr));
-            if (!m_bufferSamplers[0]->create()) {
-                qCWarning(lcOverlay) << "Failed to create buffer sampler";
-                return false;
-            }
+        if (!ensureBufferSampler(rhi, 0)) {
+            return false;
         }
         if (m_bufferFeedback
             && !createTextureAndRT(m_bufferTextureB, m_bufferRenderTargetB, m_bufferRenderPassDescriptorB)) {
@@ -251,13 +216,7 @@ bool ZoneShaderNodeRhi::ensureBufferTarget()
         m_srbB.reset();
     }
     if (m_bufferTexture && !m_bufferSamplers[0]) {
-        const QRhiSampler::AddressMode addr =
-            (m_bufferWraps[0] == QLatin1String("repeat")) ? QRhiSampler::Repeat : QRhiSampler::ClampToEdge;
-        QRhiSampler::Filter minF, magF, mipF;
-        resolveFilter(m_bufferFilters[0], minF, magF, mipF);
-        m_bufferSamplers[0].reset(rhi->newSampler(minF, magF, mipF, addr, addr));
-        if (!m_bufferSamplers[0]->create()) {
-            qCWarning(lcOverlay) << "Failed to create buffer sampler";
+        if (!ensureBufferSampler(rhi, 0)) {
             return false;
         }
         m_bufferSrb.reset();
@@ -290,6 +249,39 @@ bool ZoneShaderNodeRhi::ensureDummyChannelResources(QRhi* rhi)
             m_dummyChannelSampler.reset();
             return false;
         }
+    }
+    return true;
+}
+
+// ============================================================================
+// ensureBufferSampler — create/recreate sampler for a single buffer channel
+// ============================================================================
+
+bool ZoneShaderNodeRhi::ensureBufferSampler(QRhi* rhi, int index)
+{
+    if (index < 0 || index >= kMaxBufferPasses) {
+        return false;
+    }
+    if (m_bufferSamplers[index]) {
+        return true;
+    }
+    const QRhiSampler::AddressMode addr =
+        (m_bufferWraps[index] == QLatin1String("repeat")) ? QRhiSampler::Repeat : QRhiSampler::ClampToEdge;
+    QRhiSampler::Filter minF = QRhiSampler::Linear;
+    QRhiSampler::Filter magF = QRhiSampler::Linear;
+    QRhiSampler::Filter mipF = QRhiSampler::None;
+    const QString& filterMode = m_bufferFilters[index];
+    if (filterMode == QLatin1String("nearest")) {
+        minF = QRhiSampler::Nearest;
+        magF = QRhiSampler::Nearest;
+    } else if (filterMode == QLatin1String("mipmap")) {
+        mipF = QRhiSampler::Linear;
+    }
+    m_bufferSamplers[index].reset(rhi->newSampler(minF, magF, mipF, addr, addr));
+    if (!m_bufferSamplers[index]->create()) {
+        qCWarning(lcOverlay) << "Failed to create buffer sampler" << index;
+        m_bufferSamplers[index].reset();
+        return false;
     }
     return true;
 }

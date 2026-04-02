@@ -21,6 +21,21 @@
 
 namespace PlasmaZones {
 
+// Normalize wrap mode: only "repeat" is recognized, everything else → "clamp"
+static QString normalizeWrap(const QString& wrap)
+{
+    return (wrap == QLatin1String("repeat")) ? QStringLiteral("repeat") : QStringLiteral("clamp");
+}
+
+// Normalize filter mode: "nearest" and "mipmap" recognized, everything else → "linear"
+static QString normalizeFilter(const QString& filter)
+{
+    if (filter == QLatin1String("nearest") || filter == QLatin1String("mipmap")) {
+        return filter;
+    }
+    return QStringLiteral("linear");
+}
+
 // Namespace UUID for generating deterministic shader IDs (UUID v5)
 static const QUuid ShaderNamespaceUuid = QUuid::fromString(QStringLiteral("{a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d}"));
 
@@ -503,17 +518,14 @@ ShaderRegistry::ShaderInfo ShaderRegistry::loadShaderMetadata(const QString& sha
     info.bufferFeedback = root.value(QLatin1String("bufferFeedback")).toBool(false);
     qreal scale = root.value(QLatin1String("bufferScale")).toDouble(1.0);
     info.bufferScale = qBound(0.125, scale, 1.0);
-    const QString wrap = root.value(QLatin1String("bufferWrap")).toString(QStringLiteral("clamp"));
-    info.bufferWrap = (wrap == QLatin1String("repeat")) ? QStringLiteral("repeat") : QStringLiteral("clamp");
+    info.bufferWrap = normalizeWrap(root.value(QLatin1String("bufferWrap")).toString(QStringLiteral("clamp")));
 
     info.useDepthBuffer = root.value(QLatin1String("depthBuffer")).toBool(false);
 
     const QJsonArray bufferWrapsArray = root.value(QLatin1String("bufferWraps")).toArray();
     if (!bufferWrapsArray.isEmpty()) {
         for (const QJsonValue& v : bufferWrapsArray) {
-            const QString w = v.toString();
-            info.bufferWraps.append((w == QLatin1String("repeat")) ? QStringLiteral("repeat")
-                                                                   : QStringLiteral("clamp"));
+            info.bufferWraps.append(normalizeWrap(v.toString()));
         }
         const int needed = info.bufferShaderPaths.size();
         while (info.bufferWraps.size() < needed) {
@@ -525,22 +537,12 @@ ShaderRegistry::ShaderInfo ShaderRegistry::loadShaderMetadata(const QString& sha
     }
 
     // Per-channel filter modes: "nearest", "linear", or "mipmap"
-    const QString filter = root.value(QLatin1String("bufferFilter")).toString(QStringLiteral("linear"));
-    if (filter == QLatin1String("nearest") || filter == QLatin1String("mipmap")) {
-        info.bufferFilter = filter;
-    } else {
-        info.bufferFilter = QStringLiteral("linear");
-    }
+    info.bufferFilter = normalizeFilter(root.value(QLatin1String("bufferFilter")).toString(QStringLiteral("linear")));
 
     const QJsonArray bufferFiltersArray = root.value(QLatin1String("bufferFilters")).toArray();
     if (!bufferFiltersArray.isEmpty()) {
         for (const QJsonValue& v : bufferFiltersArray) {
-            const QString f = v.toString();
-            if (f == QLatin1String("nearest") || f == QLatin1String("mipmap")) {
-                info.bufferFilters.append(f);
-            } else {
-                info.bufferFilters.append(QStringLiteral("linear"));
-            }
+            info.bufferFilters.append(normalizeFilter(v.toString()));
         }
         const int needed = info.bufferShaderPaths.size();
         while (info.bufferFilters.size() < needed) {

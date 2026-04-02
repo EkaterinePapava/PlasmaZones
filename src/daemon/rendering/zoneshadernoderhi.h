@@ -115,6 +115,7 @@ private:
     bool ensureBufferPipeline();
     bool ensureBufferTarget();
     bool ensureDummyChannelResources(QRhi* rhi);
+    bool ensureBufferSampler(QRhi* rhi, int index);
     void syncUniformsFromData();
     void uploadDirtyTextures(QRhi* rhi, QRhiCommandBuffer* cb);
     void releaseRhiResources();
