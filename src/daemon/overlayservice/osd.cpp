@@ -337,7 +337,13 @@ void OverlayService::showNavigationOsd(bool success, const QString& action, cons
         return;
     }
 
-    // Create window if needed
+    // Reuse existing window for this screen (create only if not in map).
+    // The window stays alive and visible across rapid navigation calls —
+    // QML show() resets the animation and restarts the dismiss timer each time.
+    // Cleanup happens when the dismiss timer expires: dismissed() signal →
+    // hideNavigationOsd() slot → destroyNavigationOsdWindow(). This matches
+    // the layout OSD pattern and avoids Vulkan surface create/destroy churn
+    // that causes resource exhaustion and daemon freezes during rapid input.
     if (!m_navigationOsdWindows.contains(screen)) {
         // Only try to create if we haven't failed before (prevents log spam)
         if (!m_navigationOsdCreationFailed.value(screen, false)) {
@@ -395,9 +401,6 @@ void OverlayService::showNavigationOsd(bool success, const QString& action, cons
     // (only need zoneId and zoneNumber, not name/appearance)
     QVariantList zonesList = LayoutUtils::zonesToVariantList(screenLayout, ZoneField::Minimal);
     writeQmlProperty(window, QStringLiteral("zones"), zonesList);
-
-    // Hide any existing navigation OSD before showing new one (prevent overlap)
-    hideNavigationOsd();
 
     // Ensure the window is on the correct Wayland output (must come before sizing —
     // assertWindowOnScreen calls setGeometry(screen) which would override setWidth/setHeight)
