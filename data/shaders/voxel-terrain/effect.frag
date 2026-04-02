@@ -90,7 +90,19 @@ vec4 renderZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor,
             scene = texture(iChannel0, sceneUv);
         }
 
-        result.rgb = scene.rgb;
+        // Apply vitality to sampled scene — non-highlighted zones are dimmer and
+        // desaturated so you can immediately tell which zone is active.  The buffer
+        // pass renders the 3D world once (shared), so without this modulation all
+        // zones would show identical terrain.
+        vec3 sceneRgb = scene.rgb;
+        if (!isHighlighted) {
+            // Desaturate toward luminance
+            float lum = dot(sceneRgb, vec3(0.2126, 0.7152, 0.0722));
+            sceneRgb = mix(vec3(lum), sceneRgb, 0.45);
+            // Darken
+            sceneRgb *= 0.4;
+        }
+        result.rgb = sceneRgb;
         result.a = fillOpacity;
 
         // Volumetric glow alpha contribution — reconstruct from depth buffer.
