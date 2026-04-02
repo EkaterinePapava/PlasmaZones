@@ -22,6 +22,13 @@ void SnapEngine::toggleWindowFloat(const QString& windowId, const QString& scree
         return;
     }
 
+    // Locked windows cannot be floated
+    if (!currentlyFloating && m_windowTracker->isWindowLocked(windowId)) {
+        Q_EMIT navigationFeedback(false, QStringLiteral("float"), QStringLiteral("window_locked"), QString(), QString(),
+                                  screenId);
+        return;
+    }
+
     if (currentlyFloating) {
         if (!unfloatToZone(windowId, screenId)) {
             Q_EMIT navigationFeedback(false, QStringLiteral("float"), QStringLiteral("no_pre_float_zone"), QString(),

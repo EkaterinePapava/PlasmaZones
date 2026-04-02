@@ -50,8 +50,8 @@ WindowTrackingService::~WindowTrackingService()
 // Zone Assignment Management
 // ═══════════════════════════════════════════════════════════════════════════════
 
-void WindowTrackingService::assignWindowToZone(const QString& windowId, const QString& zoneId,
-                                               const QString& screenId, int virtualDesktop)
+void WindowTrackingService::assignWindowToZone(const QString& windowId, const QString& zoneId, const QString& screenId,
+                                               int virtualDesktop)
 {
     assignWindowToZones(windowId, QStringList{zoneId}, screenId, virtualDesktop);
 }
@@ -510,6 +510,56 @@ void WindowTrackingService::setWindowSticky(const QString& windowId, bool sticky
 bool WindowTrackingService::isWindowSticky(const QString& windowId) const
 {
     return m_windowStickyStates.value(windowId, false);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Window Locking
+// ═══════════════════════════════════════════════════════════════════════════════
+
+bool WindowTrackingService::isWindowLocked(const QString& windowId) const
+{
+    if (m_lockedWindows.contains(windowId)) {
+        return true;
+    }
+    // Fallback: check by appId (for session-restored entries)
+    QString appId = Utils::extractAppId(windowId);
+    if (appId != windowId && m_lockedWindows.contains(appId)) {
+        return true;
+    }
+    return false;
+}
+
+void WindowTrackingService::setWindowLocked(const QString& windowId, bool locked)
+{
+    if (locked) {
+        m_lockedWindows.insert(windowId);
+    } else {
+        m_lockedWindows.remove(windowId);
+        // Also remove appId entry if present (from session restore)
+        QString appId = Utils::extractAppId(windowId);
+        if (appId != windowId) {
+            m_lockedWindows.remove(appId);
+        }
+    }
+    scheduleSaveState();
+}
+
+bool WindowTrackingService::toggleWindowLock(const QString& windowId)
+{
+    bool wasLocked = isWindowLocked(windowId);
+    setWindowLocked(windowId, !wasLocked);
+    return !wasLocked;
+}
+
+bool WindowTrackingService::isZoneLockedByWindow(const QString& zoneId) const
+{
+    QStringList windows = windowsInZone(zoneId);
+    for (const QString& windowId : windows) {
+        if (isWindowLocked(windowId)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace PlasmaZones

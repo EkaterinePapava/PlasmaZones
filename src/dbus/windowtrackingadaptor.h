@@ -45,6 +45,16 @@ public:
     ~WindowTrackingAdaptor() override = default;
 
     /**
+     * @brief Last active window ID reported by the KWin effect's windowActivated call
+     *
+     * Returns the internal window ID string of the most recently focused window.
+     */
+    QString lastActiveWindowId() const
+    {
+        return m_lastActiveWindowId;
+    }
+
+    /**
      * @brief Last screen reported by the KWin effect's windowActivated call
      *
      * The KWin effect has reliable screen info on both X11 and Wayland.

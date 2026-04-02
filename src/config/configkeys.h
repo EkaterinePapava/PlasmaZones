@@ -227,6 +227,7 @@ public:
     PZ_CONFIG_KEY(snapAllWindowsShortcutKey, "SnapAllWindowsShortcut")
     PZ_CONFIG_KEY(layoutPickerShortcutKey, "LayoutPickerShortcut")
     PZ_CONFIG_KEY(toggleLayoutLockShortcutKey, "ToggleLayoutLockShortcut")
+    PZ_CONFIG_KEY(toggleWindowLockShortcutKey, "ToggleWindowLockShortcut")
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Config Keys — Autotiling

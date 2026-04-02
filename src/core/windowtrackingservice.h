@@ -301,6 +301,52 @@ public:
     bool isWindowSticky(const QString& windowId) const;
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // Window Locking
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * @brief Check if a window is locked to its current zone
+     */
+    bool isWindowLocked(const QString& windowId) const;
+
+    /**
+     * @brief Set window lock state
+     * @param windowId Full window ID
+     * @param locked true to lock, false to unlock
+     */
+    void setWindowLocked(const QString& windowId, bool locked);
+
+    /**
+     * @brief Toggle window lock state
+     * @param windowId Full window ID
+     * @return New lock state (true = locked)
+     */
+    bool toggleWindowLock(const QString& windowId);
+
+    /**
+     * @brief Get all locked window IDs
+     */
+    const QSet<QString>& lockedWindows() const
+    {
+        return m_lockedWindows;
+    }
+
+    /**
+     * @brief Set locked windows (loaded from KConfig by adaptor)
+     */
+    void setLockedWindows(const QSet<QString>& windows)
+    {
+        m_lockedWindows = windows;
+    }
+
+    /**
+     * @brief Check if a zone contains any locked windows
+     * @param zoneId Zone UUID string
+     * @return true if any window in the zone is locked
+     */
+    bool isZoneLockedByWindow(const QString& zoneId) const;
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // Auto-Snap Logic
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -801,6 +847,11 @@ private:
     // Used by the sibling check in calculateRestoreFromSession to distinguish
     // live siblings (daemon-only restart) from stale config entries (KWin restart).
     QSet<QString> m_effectReportedWindows;
+
+    // Locked windows: windows locked to their current zone (runtime: full windowId, persisted: appId)
+    // Locked windows cannot be moved by navigation shortcuts, and other windows skip over them.
+    // Converted from windowId to appId on window close for cross-session persistence.
+    QSet<QString> m_lockedWindows;
 
     // Resnap buffer: when layout changes, store (windowId, zonePosition, screenId, vd)
     // for windows that were in the previous layout, so resnapToNewLayout can map them

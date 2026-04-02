@@ -164,12 +164,22 @@ void WindowTrackingAdaptor::saveState()
     tracking->writeString(QStringLiteral("UserSnappedClasses"),
                           QString::fromUtf8(QJsonDocument(userSnappedArray).toJson(QJsonDocument::Compact)));
 
+    // Save locked windows (persisted as appIds for cross-session restore).
+    // Runtime keys may be full window IDs; convert to app IDs.
+    QJsonArray lockedWindowsArray;
+    for (const QString& windowId : m_service->lockedWindows()) {
+        lockedWindowsArray.append(Utils::extractAppId(windowId));
+    }
+    tracking->writeString(QStringLiteral("LockedWindows"),
+                          QString::fromUtf8(QJsonDocument(lockedWindowsArray).toJson(QJsonDocument::Compact)));
+
     tracking.reset(); // release group before sync
     backend->sync();
     qCInfo(lcDbusWindow) << "Saved state:"
                          << "zones=" << fullAssignments.size() << "pending=" << pendingQueuesObj.size()
                          << "preTile=" << m_service->preTileGeometries().size()
-                         << "preFloat=" << preFloatZonesObj.size() << "userSnapped=" << userSnappedArray.size();
+                         << "preFloat=" << preFloatZonesObj.size() << "userSnapped=" << userSnappedArray.size()
+                         << "locked=" << lockedWindowsArray.size();
 }
 
 void WindowTrackingAdaptor::requestReapplyWindowGeometries()
@@ -504,6 +514,22 @@ void WindowTrackingAdaptor::loadState()
         }
     }
     m_service->setUserSnappedClasses(userSnappedClasses);
+
+    // Load locked windows (persisted as appIds)
+    QSet<QString> lockedWindows;
+    QString lockedJson = readVal(QStringLiteral("LockedWindows"), QString());
+    if (!lockedJson.isEmpty()) {
+        QJsonDocument doc = QJsonDocument::fromJson(lockedJson.toUtf8());
+        if (doc.isArray()) {
+            QJsonArray arr = doc.array();
+            for (const QJsonValue& val : arr) {
+                if (val.isString()) {
+                    lockedWindows.insert(val.toString());
+                }
+            }
+        }
+    }
+    m_service->setLockedWindows(lockedWindows);
 
     // Restore active layout from previous session so that previousLayout() is correct
     // on the next layout switch. Without this, the daemon starts with defaultLayout()
