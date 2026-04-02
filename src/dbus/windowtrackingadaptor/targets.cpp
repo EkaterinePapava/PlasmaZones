@@ -84,30 +84,6 @@ static QJsonObject swapResult(bool success, const QString& reason, const QString
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Locking Helpers
-// ═══════════════════════════════════════════════════════════════════════════
-
-QString WindowTrackingAdaptor::skipLockedZones(const QString& startZoneId, const QString& direction,
-                                               const QString& originZoneId)
-{
-    QString zoneId = startZoneId;
-    QSet<QString> visited;
-    while (!zoneId.isEmpty() && m_service->isZoneLockedByWindow(zoneId)) {
-        if (visited.contains(zoneId)) {
-            return {};
-        }
-        visited.insert(zoneId);
-        zoneId = m_zoneDetectionAdaptor->getAdjacentZone(zoneId, direction);
-    }
-    // Guard against degenerate topologies where walking past locked zones
-    // loops back to the window's own zone.
-    if (!originZoneId.isEmpty() && zoneId == originZoneId) {
-        return {};
-    }
-    return zoneId;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // Navigation Target Computation
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -128,15 +104,6 @@ QString WindowTrackingAdaptor::getMoveTargetForWindow(const QString& windowId, c
         return QString::fromUtf8(QJsonDocument(moveResult(false, QStringLiteral("no_zone_detection"), QString(),
                                                           QString(), QString(), screenId))
                                      .toJson(QJsonDocument::Compact));
-    }
-
-    // Locked windows cannot be moved out of their zone
-    if (m_service->isWindowLocked(windowId)) {
-        Q_EMIT navigationFeedback(false, QStringLiteral("move"), QStringLiteral("window_locked"), QString(), QString(),
-                                  screenId);
-        return QString::fromUtf8(
-            QJsonDocument(moveResult(false, QStringLiteral("window_locked"), QString(), QString(), QString(), screenId))
-                .toJson(QJsonDocument::Compact));
     }
 
     QString currentZoneId = m_service->zoneForWindow(windowId);
@@ -173,17 +140,13 @@ QString WindowTrackingAdaptor::getMoveTargetForWindow(const QString& windowId, c
                                          .toJson(QJsonDocument::Compact));
         }
     } else {
-        QString rawAdjacentZone = m_zoneDetectionAdaptor->getAdjacentZone(currentZoneId, direction);
-        targetZoneId = skipLockedZones(rawAdjacentZone, direction, currentZoneId);
+        targetZoneId = m_zoneDetectionAdaptor->getAdjacentZone(currentZoneId, direction);
         if (targetZoneId.isEmpty()) {
-            // Distinguish "no adjacent zone at all" from "adjacent zones exist but are all locked"
-            QString reason =
-                rawAdjacentZone.isEmpty() ? QStringLiteral("no_adjacent_zone") : QStringLiteral("target_locked");
-            Q_EMIT navigationFeedback(false, QStringLiteral("move"), reason, currentZoneId, QString(),
-                                      effectiveScreenId);
-            return QString::fromUtf8(
-                QJsonDocument(moveResult(false, reason, QString(), QString(), currentZoneId, effectiveScreenId))
-                    .toJson(QJsonDocument::Compact));
+            Q_EMIT navigationFeedback(false, QStringLiteral("move"), QStringLiteral("no_adjacent_zone"), currentZoneId,
+                                      QString(), effectiveScreenId);
+            return QString::fromUtf8(QJsonDocument(moveResult(false, QStringLiteral("no_adjacent_zone"), QString(),
+                                                              QString(), currentZoneId, effectiveScreenId))
+                                         .toJson(QJsonDocument::Compact));
         }
     }
 
@@ -225,9 +188,9 @@ QString WindowTrackingAdaptor::getFocusTargetForWindow(const QString& windowId, 
     if (currentZoneId.isEmpty()) {
         Q_EMIT navigationFeedback(false, QStringLiteral("focus"), QStringLiteral("not_snapped"), QString(), QString(),
                                   screenId);
-        return QString::fromUtf8(
-            QJsonDocument(focusResult(false, QStringLiteral("not_snapped"), QString(), QString(), QString(), screenId))
-                .toJson(QJsonDocument::Compact));
+        return QString::fromUtf8(QJsonDocument(focusResult(false, QStringLiteral("not_snapped"), QString(), QString(),
+                                                           QString(), screenId))
+                                     .toJson(QJsonDocument::Compact));
     }
 
     QString targetZoneId = m_zoneDetectionAdaptor->getAdjacentZone(currentZoneId, direction);
@@ -357,16 +320,6 @@ QString WindowTrackingAdaptor::getSwapTargetForWindow(const QString& windowId, c
                 .toJson(QJsonDocument::Compact));
     }
 
-    // Locked windows cannot be swapped out of their zone
-    if (m_service->isWindowLocked(windowId)) {
-        Q_EMIT navigationFeedback(false, QStringLiteral("swap"), QStringLiteral("window_locked"), QString(), QString(),
-                                  screenId);
-        return QString::fromUtf8(
-            QJsonDocument(swapResult(false, QStringLiteral("window_locked"), windowId, 0, 0, 0, 0, QString(), QString(),
-                                     0, 0, 0, 0, QString(), screenId, QString(), QString()))
-                .toJson(QJsonDocument::Compact));
-    }
-
     QString currentZoneId = m_service->zoneForWindow(windowId);
     if (currentZoneId.isEmpty()) {
         Q_EMIT navigationFeedback(false, QStringLiteral("swap"), QStringLiteral("not_snapped"), QString(), QString(),
@@ -386,16 +339,13 @@ QString WindowTrackingAdaptor::getSwapTargetForWindow(const QString& windowId, c
         }
     }
 
-    QString rawAdjacentZone = m_zoneDetectionAdaptor->getAdjacentZone(currentZoneId, direction);
-    QString targetZoneId = skipLockedZones(rawAdjacentZone, direction, currentZoneId);
+    QString targetZoneId = m_zoneDetectionAdaptor->getAdjacentZone(currentZoneId, direction);
     if (targetZoneId.isEmpty()) {
-        // Distinguish "no adjacent zone at all" from "adjacent zones exist but are all locked"
-        QString reason =
-            rawAdjacentZone.isEmpty() ? QStringLiteral("no_adjacent_zone") : QStringLiteral("target_locked");
-        Q_EMIT navigationFeedback(false, QStringLiteral("swap"), reason, currentZoneId, QString(), effectiveScreenId);
+        Q_EMIT navigationFeedback(false, QStringLiteral("swap"), QStringLiteral("no_adjacent_zone"), currentZoneId,
+                                  QString(), effectiveScreenId);
         return QString::fromUtf8(
-            QJsonDocument(swapResult(false, reason, windowId, 0, 0, 0, 0, QString(), QString(), 0, 0, 0, 0, QString(),
-                                     effectiveScreenId, currentZoneId, QString()))
+            QJsonDocument(swapResult(false, QStringLiteral("no_adjacent_zone"), windowId, 0, 0, 0, 0, QString(),
+                                     QString(), 0, 0, 0, 0, QString(), effectiveScreenId, currentZoneId, QString()))
                 .toJson(QJsonDocument::Compact));
     }
 
@@ -480,15 +430,6 @@ QString WindowTrackingAdaptor::getSnapToZoneByNumberTarget(const QString& window
                                      .toJson(QJsonDocument::Compact));
     }
 
-    // Locked windows cannot be moved to a different zone
-    if (m_service->isWindowLocked(windowId)) {
-        Q_EMIT navigationFeedback(false, QStringLiteral("snap"), QStringLiteral("window_locked"), QString(), QString(),
-                                  screenId);
-        return QString::fromUtf8(
-            QJsonDocument(moveResult(false, QStringLiteral("window_locked"), QString(), QString(), QString(), screenId))
-                .toJson(QJsonDocument::Compact));
-    }
-
     // resolveLayoutForScreen accepts both connector names and screen IDs;
     // screenIdForName is idempotent (returns input if already a screen ID).
     auto* layout = m_layoutManager->resolveLayoutForScreen(screenId);
@@ -517,16 +458,6 @@ QString WindowTrackingAdaptor::getSnapToZoneByNumberTarget(const QString& window
     }
 
     QString zoneId = targetZone->id().toString();
-
-    // Cannot snap to a zone that contains a locked window
-    if (m_service->isZoneLockedByWindow(zoneId)) {
-        Q_EMIT navigationFeedback(false, QStringLiteral("snap"), QStringLiteral("zone_locked"), QString(), zoneId,
-                                  screenId);
-        return QString::fromUtf8(
-            QJsonDocument(moveResult(false, QStringLiteral("zone_locked"), zoneId, QString(), QString(), screenId))
-                .toJson(QJsonDocument::Compact));
-    }
-
     QRect geo = m_service->zoneGeometry(zoneId, screenId);
     if (!geo.isValid()) {
         Q_EMIT navigationFeedback(false, QStringLiteral("snap"), QStringLiteral("geometry_error"), QString(), zoneId,

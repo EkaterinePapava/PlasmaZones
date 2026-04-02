@@ -227,7 +227,6 @@ public:
     PZ_CONFIG_KEY(snapAllWindowsShortcutKey, "SnapAllWindowsShortcut")
     PZ_CONFIG_KEY(layoutPickerShortcutKey, "LayoutPickerShortcut")
     PZ_CONFIG_KEY(toggleLayoutLockShortcutKey, "ToggleLayoutLockShortcut")
-    PZ_CONFIG_KEY(toggleWindowLockShortcutKey, "ToggleWindowLockShortcut")
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Config Keys — Autotiling
@@ -260,7 +259,6 @@ public:
     PZ_CONFIG_KEY(autotileUseSystemBorderColorsKey, "AutotileUseSystemBorderColors")
     PZ_CONFIG_KEY(autotileStickyWindowHandlingKey, "AutotileStickyWindowHandling")
     PZ_CONFIG_KEY(lockedScreensKey, "LockedScreens")
-    PZ_CONFIG_KEY(lockedWindowsKey, "LockedWindows")
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Config Keys — AutotileShortcuts

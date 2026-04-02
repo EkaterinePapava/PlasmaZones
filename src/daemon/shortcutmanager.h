@@ -170,11 +170,6 @@ Q_SIGNALS:
      */
     void toggleLayoutLockRequested();
 
-    /**
-     * @brief Emitted when toggle window lock shortcut is triggered
-     */
-    void toggleWindowLockRequested();
-
     // ═══════════════════════════════════════════════════════════════════════════
     // Autotile Shortcuts
     // ═══════════════════════════════════════════════════════════════════════════
@@ -275,10 +270,6 @@ private Q_SLOTS:
     void onToggleLayoutLock();
     void updateToggleLayoutLockShortcut();
 
-    // Toggle Window Lock
-    void onToggleWindowLock();
-    void updateToggleWindowLockShortcut();
-
     // Autotile shortcuts
     void onToggleAutotile();
     void onFocusMaster();
@@ -313,7 +304,6 @@ private:
     void setupSnapAllWindowsShortcut();
     void setupLayoutPickerShortcut();
     void setupToggleLayoutLockShortcut();
-    void setupToggleWindowLockShortcut();
     void setupAutotileShortcuts();
     Settings* m_settings = nullptr;
     LayoutManager* m_layoutManager = nullptr;
@@ -365,9 +355,6 @@ private:
 
     // Toggle Layout Lock action
     QAction* m_toggleLayoutLockAction = nullptr;
-
-    // Toggle Window Lock action
-    QAction* m_toggleWindowLockAction = nullptr;
 
     // Autotile actions
     QAction* m_toggleAutotileAction = nullptr;

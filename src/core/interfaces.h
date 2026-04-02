@@ -250,9 +250,6 @@ Q_SIGNALS:
     // Toggle Layout Lock Shortcut
     void toggleLayoutLockShortcutChanged();
 
-    // Toggle Window Lock Shortcut
-    void toggleWindowLockShortcutChanged();
-
     // Autotile settings
     void autotileEnabledChanged();
     void defaultAutotileAlgorithmChanged();

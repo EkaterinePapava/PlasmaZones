@@ -341,8 +341,6 @@ void Settings::loadShortcutConfig(QSettingsConfigGroup& globalShortcuts)
         globalShortcuts.readString(ConfigDefaults::layoutPickerShortcutKey(), ConfigDefaults::layoutPickerShortcut());
     m_toggleLayoutLockShortcut = globalShortcuts.readString(ConfigDefaults::toggleLayoutLockShortcutKey(),
                                                             ConfigDefaults::toggleLayoutLockShortcut());
-    m_toggleWindowLockShortcut = globalShortcuts.readString(ConfigDefaults::toggleWindowLockShortcutKey(),
-                                                            ConfigDefaults::toggleWindowLockShortcut());
 }
 
 void Settings::loadAutotilingConfig(QSettingsConfigBackend* backend)
@@ -712,7 +710,6 @@ void Settings::saveShortcutConfig(QSettingsConfigGroup& globalShortcuts)
     globalShortcuts.writeString(ConfigDefaults::snapAllWindowsShortcutKey(), m_snapAllWindowsShortcut);
     globalShortcuts.writeString(ConfigDefaults::layoutPickerShortcutKey(), m_layoutPickerShortcut);
     globalShortcuts.writeString(ConfigDefaults::toggleLayoutLockShortcutKey(), m_toggleLayoutLockShortcut);
-    globalShortcuts.writeString(ConfigDefaults::toggleWindowLockShortcutKey(), m_toggleWindowLockShortcut);
 }
 
 void Settings::saveAutotilingConfig(QSettingsConfigBackend* backend)

@@ -150,7 +150,6 @@ private:
     void connectScreenSignals();
     void connectDesktopActivity();
     void connectShortcutSignals();
-    void handleToggleWindowLock();
     void initializeAutotile();
     void initializeUnifiedController();
     void connectLayoutSignals();
