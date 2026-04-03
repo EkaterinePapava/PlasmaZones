@@ -214,6 +214,12 @@ void EditorController::loadEditorSettings()
 
 void EditorController::saveEditorSettings()
 {
+    // Creates an ephemeral backend — reads from disk, writes one group, syncs.
+    // If the daemon has unsaved in-memory changes to the same file, QSaveFile's
+    // atomic rename prevents corruption but the daemon's next sync will overwrite
+    // editor changes (and vice versa).  Proper fix requires IPC (D-Bus) for
+    // cross-process settings writes; acceptable for now since the editor only
+    // writes to the Editor group which the daemon doesn't modify at runtime.
     auto backend = PlasmaZones::createDefaultConfigBackend();
     auto editorGroup = backend->group(ConfigDefaults::editorGroup());
 

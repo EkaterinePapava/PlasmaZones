@@ -21,8 +21,15 @@ JsonConfigGroup::JsonConfigGroup(QJsonObject& root, const QString& groupName, Js
     , m_backend(backend)
 {
     // JsonConfigBackend is single-threaded (used only from the main/GUI thread).
-    // Relaxed ordering is sufficient here — the assert is a debug-only sanity check.
-    Q_ASSERT_X(m_backend->m_activeGroupCount.load(std::memory_order_relaxed) == 0, "JsonConfigGroup::JsonConfigGroup",
+    // Warn in release builds to help diagnose lost-write bugs; assert in debug.
+    const int count = m_backend->m_activeGroupCount.load(std::memory_order_relaxed);
+    if (count != 0) {
+        qWarning(
+            "JsonConfigGroup: creating group '%s' while %d other group(s) still active — "
+            "concurrent writes to the same backend may lose data",
+            qPrintable(groupName), count);
+    }
+    Q_ASSERT_X(count == 0, "JsonConfigGroup::JsonConfigGroup",
                "Another JsonConfigGroup is still alive — destroy it first");
     m_backend->m_activeGroupCount.fetch_add(1, std::memory_order_relaxed);
 }
@@ -59,7 +66,7 @@ QJsonObject JsonConfigGroup::groupObject() const
 {
     if (isPerScreenGroup()) {
         const auto path = parsePerScreenGroup();
-        const QJsonObject perScreen = m_root.value(QLatin1String(JsonConfigBackend::PerScreenKey)).toObject();
+        const QJsonObject perScreen = m_root.value(QLatin1String(PerScreenKey)).toObject();
         const QJsonObject category = perScreen.value(path.category).toObject();
         return category.value(path.screenId).toObject();
     }
@@ -70,11 +77,11 @@ void JsonConfigGroup::setGroupObject(const QJsonObject& obj)
 {
     if (isPerScreenGroup()) {
         const auto path = parsePerScreenGroup();
-        QJsonObject perScreen = m_root.value(QLatin1String(JsonConfigBackend::PerScreenKey)).toObject();
+        QJsonObject perScreen = m_root.value(QLatin1String(PerScreenKey)).toObject();
         QJsonObject category = perScreen.value(path.category).toObject();
         category[path.screenId] = obj;
         perScreen[path.category] = category;
-        m_root[QLatin1String(JsonConfigBackend::PerScreenKey)] = perScreen;
+        m_root[QLatin1String(PerScreenKey)] = perScreen;
     } else {
         m_root[m_groupName] = obj;
     }
@@ -110,7 +117,12 @@ int JsonConfigGroup::readInt(const QString& key, int defaultValue) const
         const double d = val.toDouble();
         if (d >= static_cast<double>(std::numeric_limits<int>::min())
             && d <= static_cast<double>(std::numeric_limits<int>::max())) {
-            return static_cast<int>(d);
+            const int result = static_cast<int>(d);
+            if (d != static_cast<double>(result)) {
+                qWarning("JsonConfigGroup: key '%s' contains non-integer double %g, truncating to %d", qPrintable(key),
+                         d, result);
+            }
+            return result;
         }
         return defaultValue;
     }
@@ -395,14 +407,15 @@ bool JsonConfigBackend::writeJsonAtomically(const QString& filePath, const QJson
 
 void JsonConfigBackend::deleteGroup(const QString& name)
 {
-    if (isPerScreenPrefix(name)) {
+    if (PlasmaZones::isPerScreenPrefix(name)) {
         const int colonIdx = name.indexOf(QLatin1Char(':'));
         Q_ASSERT(colonIdx >= 0); // guaranteed by isPerScreenPrefix
         const QString prefix = name.left(colonIdx);
         const QString screenId = name.mid(colonIdx + 1);
-        const QString category = prefixToCategory(prefix);
+        const QString category = PlasmaZones::prefixToCategory(prefix);
 
-        QJsonObject perScreen = m_root.value(QLatin1String(PerScreenKey)).toObject();
+        const QLatin1String psKey(PerScreenKey);
+        QJsonObject perScreen = m_root.value(psKey).toObject();
         QJsonObject cat = perScreen.value(category).toObject();
         cat.remove(screenId);
         if (cat.isEmpty()) {
@@ -411,9 +424,9 @@ void JsonConfigBackend::deleteGroup(const QString& name)
             perScreen[category] = cat;
         }
         if (perScreen.isEmpty()) {
-            m_root.remove(QLatin1String(PerScreenKey));
+            m_root.remove(psKey);
         } else {
-            m_root[QLatin1String(PerScreenKey)] = perScreen;
+            m_root[psKey] = perScreen;
         }
     } else {
         m_root.remove(name);
@@ -423,8 +436,9 @@ void JsonConfigBackend::deleteGroup(const QString& name)
 
 QString JsonConfigBackend::readRootString(const QString& key, const QString& defaultValue) const
 {
-    // Root-level keys live under "General" (matching QSettings INI behavior)
-    const QJsonObject general = m_root.value(QLatin1String("General")).toObject();
+    // Root-level keys live under the General group (matching QSettings INI behavior)
+    const QString generalKey = ConfigDefaults::generalGroup();
+    const QJsonObject general = m_root.value(generalKey).toObject();
     if (general.contains(key)) {
         return general.value(key).toString(defaultValue);
     }
@@ -433,21 +447,23 @@ QString JsonConfigBackend::readRootString(const QString& key, const QString& def
 
 void JsonConfigBackend::writeRootString(const QString& key, const QString& value)
 {
-    QJsonObject general = m_root.value(QLatin1String("General")).toObject();
+    const QString generalKey = ConfigDefaults::generalGroup();
+    QJsonObject general = m_root.value(generalKey).toObject();
     general[key] = value;
-    m_root[QLatin1String("General")] = general;
+    m_root[generalKey] = general;
     markDirty();
 }
 
 void JsonConfigBackend::removeRootKey(const QString& key)
 {
-    QJsonObject general = m_root.value(QLatin1String("General")).toObject();
+    const QString generalKey = ConfigDefaults::generalGroup();
+    QJsonObject general = m_root.value(generalKey).toObject();
     if (general.contains(key)) {
         general.remove(key);
         if (general.isEmpty()) {
-            m_root.remove(QLatin1String("General"));
+            m_root.remove(generalKey);
         } else {
-            m_root[QLatin1String("General")] = general;
+            m_root[generalKey] = general;
         }
         markDirty();
     }
@@ -456,10 +472,11 @@ void JsonConfigBackend::removeRootKey(const QString& key)
 QStringList JsonConfigBackend::groupList() const
 {
     QStringList groups;
+    const QLatin1String psKey(PerScreenKey);
 
     // Add all top-level keys that are objects (except PerScreen and _version)
     for (auto it = m_root.constBegin(); it != m_root.constEnd(); ++it) {
-        if (it.key() == QLatin1String(PerScreenKey) || it.key() == QLatin1String("_version")) {
+        if (it.key() == psKey || it.key() == QLatin1String("_version")) {
             continue;
         }
         if (it.value().isObject()) {
@@ -468,10 +485,10 @@ QStringList JsonConfigBackend::groupList() const
     }
 
     // Flatten per-screen groups into Prefix:ScreenId format
-    const QJsonObject perScreen = m_root.value(QLatin1String(PerScreenKey)).toObject();
+    const QJsonObject perScreen = m_root.value(psKey).toObject();
     for (auto catIt = perScreen.constBegin(); catIt != perScreen.constEnd(); ++catIt) {
         const QJsonObject category = catIt.value().toObject();
-        const QString prefix = categoryToPrefix(catIt.key());
+        const QString prefix = PlasmaZones::categoryToPrefix(catIt.key());
         for (auto screenIt = category.constBegin(); screenIt != category.constEnd(); ++screenIt) {
             groups.append(prefix + QLatin1Char(':') + screenIt.key());
         }
@@ -504,17 +521,19 @@ QMap<QString, QVariant> JsonConfigBackend::readConfigFromDisk(const QString& fil
 
     const QJsonObject root = doc.object();
 
+    const QLatin1String psKey(PerScreenKey);
+
     // Flatten nested JSON into "Group/Key" format
     for (auto it = root.constBegin(); it != root.constEnd(); ++it) {
         if (it.key() == QLatin1String("_version")) {
             continue;
         }
         if (it.value().isObject()) {
-            if (it.key() == QLatin1String(PerScreenKey)) {
+            if (it.key() == psKey) {
                 // Flatten per-screen: PerScreen/Category/ScreenId/Key → Category:ScreenId/Key
                 const QJsonObject perScreen = it.value().toObject();
                 for (auto catIt = perScreen.constBegin(); catIt != perScreen.constEnd(); ++catIt) {
-                    const QString prefix = categoryToPrefix(catIt.key());
+                    const QString prefix = PlasmaZones::categoryToPrefix(catIt.key());
                     const QJsonObject category = catIt.value().toObject();
                     for (auto sIt = category.constBegin(); sIt != category.constEnd(); ++sIt) {
                         const QJsonObject screenObj = sIt.value().toObject();
@@ -538,57 +557,6 @@ QMap<QString, QVariant> JsonConfigBackend::readConfigFromDisk(const QString& fil
     }
 
     return map;
-}
-
-// ── Per-screen group helpers ─────────────────────────────────────────────
-
-// Single lookup table for per-screen prefix ↔ category mapping.
-// Adding a new per-screen category only requires adding one entry here.
-struct PerScreenMapping
-{
-    const char* prefix; // e.g. "AutotileScreen"
-    const char* category; // e.g. "Autotile"
-};
-
-static constexpr PerScreenMapping kPerScreenMappings[] = {
-    {"ZoneSelector", "ZoneSelector"},
-    {"AutotileScreen", "Autotile"},
-    {"SnappingScreen", "Snapping"},
-};
-
-bool JsonConfigBackend::isPerScreenPrefix(const QString& groupName)
-{
-    if (groupName.isEmpty()) {
-        return false;
-    }
-    for (const auto& m : kPerScreenMappings) {
-        const QLatin1String prefixColon(m.prefix);
-        if (groupName.startsWith(prefixColon) && groupName.size() > static_cast<int>(qstrlen(m.prefix))
-            && groupName.at(static_cast<int>(qstrlen(m.prefix))) == QLatin1Char(':')) {
-            return true;
-        }
-    }
-    return false;
-}
-
-QString JsonConfigBackend::prefixToCategory(const QString& prefix)
-{
-    for (const auto& m : kPerScreenMappings) {
-        if (prefix == QLatin1String(m.prefix)) {
-            return QString::fromLatin1(m.category);
-        }
-    }
-    return prefix;
-}
-
-QString JsonConfigBackend::categoryToPrefix(const QString& category)
-{
-    for (const auto& m : kPerScreenMappings) {
-        if (category == QLatin1String(m.category)) {
-            return QString::fromLatin1(m.prefix);
-        }
-    }
-    return category;
 }
 
 // ── Default backend factory ──────────────────────────────────────────────

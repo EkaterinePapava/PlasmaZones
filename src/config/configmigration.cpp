@@ -5,6 +5,7 @@
 #include "configbackend_json.h"
 #include "configbackend_qsettings.h"
 #include "configdefaults.h"
+#include "iconfigbackend.h"
 #include <QColor>
 #include <QFile>
 #include <QJsonArray>
@@ -34,6 +35,9 @@ bool ConfigMigration::ensureJsonConfig()
         // Corrupt or empty JSON — check if INI backup exists for re-migration.
         // If no INI exists either, preserve the corrupt file as .corrupt.bak
         // so the user has a recovery path (rather than silently losing data).
+        // Note: if multiple processes hit this path concurrently, the second rename
+        // fails (source already moved by the first) — non-fatal, corrupt data is
+        // preserved by whichever process succeeds first.
         const QString iniPath = ConfigDefaults::legacyConfigFilePath();
         if (!QFile::exists(iniPath)) {
             const QString corruptBak = jsonPath + QStringLiteral(".corrupt.bak");
@@ -97,6 +101,11 @@ QJsonObject ConfigMigration::iniMapToJson(const QMap<QString, QVariant>& flatMap
 {
     QJsonObject root;
 
+    const QString renderingGroup = ConfigDefaults::renderingGroup();
+    const QString generalGroup = ConfigDefaults::generalGroup();
+    const QString renderingKey = ConfigDefaults::renderingBackendKey();
+    const QLatin1String psKey(PerScreenKey);
+
     for (auto it = flatMap.constBegin(); it != flatMap.constEnd(); ++it) {
         const QString& flatKey = it.key();
         const QVariant& value = it.value();
@@ -104,14 +113,14 @@ QJsonObject ConfigMigration::iniMapToJson(const QMap<QString, QVariant>& flatMap
         const int slashIdx = flatKey.indexOf(QLatin1Char('/'));
         if (slashIdx < 0) {
             // Root-level INI key (ungrouped). Route RenderingBackend to its own group.
-            if (flatKey == QLatin1String("RenderingBackend")) {
-                QJsonObject rendering = root.value(QLatin1String("Rendering")).toObject();
+            if (flatKey == renderingKey) {
+                QJsonObject rendering = root.value(renderingGroup).toObject();
                 rendering[flatKey] = convertValue(value);
-                root[QLatin1String("Rendering")] = rendering;
+                root[renderingGroup] = rendering;
             } else {
-                QJsonObject general = root.value(QLatin1String("General")).toObject();
+                QJsonObject general = root.value(generalGroup).toObject();
                 general[flatKey] = convertValue(value);
-                root[QLatin1String("General")] = general;
+                root[generalGroup] = general;
             }
             continue;
         }
@@ -122,28 +131,28 @@ QJsonObject ConfigMigration::iniMapToJson(const QMap<QString, QVariant>& flatMap
         // QSettings maps ungrouped keys AND [General]-grouped keys identically,
         // so RenderingBackend may appear as either a root key (handled above) or
         // as "General/RenderingBackend". Route it to the Rendering group either way.
-        if (groupPart == QLatin1String("General") && keyPart == QLatin1String("RenderingBackend")) {
-            QJsonObject rendering = root.value(QLatin1String("Rendering")).toObject();
+        if (groupPart == generalGroup && keyPart == renderingKey) {
+            QJsonObject rendering = root.value(renderingGroup).toObject();
             rendering[keyPart] = convertValue(value);
-            root[QLatin1String("Rendering")] = rendering;
+            root[renderingGroup] = rendering;
             continue;
         }
 
         // Check for known per-screen group patterns: ZoneSelector:*, AutotileScreen:*, SnappingScreen:*
         // Other colon-containing groups (e.g., Assignment:ScreenId:Desktop:1) are regular groups.
-        if (JsonConfigBackend::isPerScreenPrefix(groupPart)) {
+        if (isPerScreenPrefix(groupPart)) {
             const int colonIdx = groupPart.indexOf(QLatin1Char(':'));
             const QString prefix = groupPart.left(colonIdx);
             const QString screenId = groupPart.mid(colonIdx + 1);
-            const QString category = JsonConfigBackend::prefixToCategory(prefix);
+            const QString category = prefixToCategory(prefix);
 
-            QJsonObject perScreen = root.value(QLatin1String(JsonConfigBackend::PerScreenKey)).toObject();
+            QJsonObject perScreen = root.value(psKey).toObject();
             QJsonObject cat = perScreen.value(category).toObject();
             QJsonObject screen = cat.value(screenId).toObject();
             screen[keyPart] = convertValue(value);
             cat[screenId] = screen;
             perScreen[category] = cat;
-            root[QLatin1String(JsonConfigBackend::PerScreenKey)] = perScreen;
+            root[psKey] = perScreen;
         } else {
             // Regular group: Group/Key
             QJsonObject groupObj = root.value(groupPart).toObject();
@@ -188,7 +197,10 @@ QJsonValue ConfigMigration::convertValue(const QVariant& value)
         }
     }
 
-    // Color in r,g,b or r,g,b,a format → convert to hex
+    // Color in r,g,b or r,g,b,a format → convert to hex.
+    // Assumption: no PlasmaZones config value is a comma-separated list of integers
+    // in the 0-255 range that isn't a color. If one is added, this heuristic would
+    // need a key-based allowlist to avoid false positives.
     if (s.contains(QLatin1Char(','))) {
         const QStringList parts = s.split(QLatin1Char(','));
         if (parts.size() >= 3 && parts.size() <= 4) {

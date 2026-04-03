@@ -99,22 +99,20 @@ public:
     /// If @p filePath is empty, reads from the default config path.
     static QMap<QString, QVariant> readConfigFromDisk(const QString& filePath = {});
 
-    // ── Per-screen group helpers (shared by backend, migration, groupList) ────
-
-    /// Returns true if @p groupName uses a known per-screen prefix
-    /// (ZoneSelector:, AutotileScreen:, SnappingScreen:).
-    /// Assignment groups and other colon-containing names return false.
-    static bool isPerScreenPrefix(const QString& groupName);
-
-    /// Map a per-screen group prefix (e.g. "AutotileScreen") to its JSON
-    /// category key (e.g. "Autotile").  ZoneSelector maps to itself.
-    static QString prefixToCategory(const QString& prefix);
-
-    /// Reverse of prefixToCategory: "Autotile" → "AutotileScreen", etc.
-    static QString categoryToPrefix(const QString& category);
-
-    /// JSON key for the per-screen container object.
-    static constexpr char PerScreenKey[] = "PerScreen";
+    // Per-screen group helpers — delegate to free functions in iconfigbackend.h.
+    // Kept for backward compatibility with tests and callers that use the qualified name.
+    static bool isPerScreenPrefix(const QString& groupName)
+    {
+        return PlasmaZones::isPerScreenPrefix(groupName);
+    }
+    static QString prefixToCategory(const QString& prefix)
+    {
+        return PlasmaZones::prefixToCategory(prefix);
+    }
+    static QString categoryToPrefix(const QString& category)
+    {
+        return PlasmaZones::categoryToPrefix(category);
+    }
 
     /// Atomically write a QJsonObject to disk (temp file + rename).
     /// Shared by sync() and ConfigMigration to avoid duplicated write logic.

@@ -98,4 +98,65 @@ inline IConfigBackend* resolveBackend(IConfigBackend* shared, std::unique_ptr<IC
     return fallback.get();
 }
 
+// ── Per-screen group helpers ─────────────────────────────────────────────
+// Backend-agnostic utilities for per-screen group name resolution.
+// Used by Settings, ConfigMigration, and config backend implementations.
+
+/// JSON key for the per-screen container object.
+inline constexpr char PerScreenKey[] = "PerScreen";
+
+namespace detail {
+struct PerScreenMapping
+{
+    const char* prefix; // e.g. "AutotileScreen"
+    const char* category; // e.g. "Autotile"
+};
+inline constexpr PerScreenMapping kPerScreenMappings[] = {
+    {"ZoneSelector", "ZoneSelector"},
+    {"AutotileScreen", "Autotile"},
+    {"SnappingScreen", "Snapping"},
+};
+} // namespace detail
+
+/// Returns true if @p groupName uses a known per-screen prefix
+/// (ZoneSelector:, AutotileScreen:, SnappingScreen:).
+/// Assignment groups and other colon-containing names return false.
+inline bool isPerScreenPrefix(const QString& groupName)
+{
+    if (groupName.isEmpty()) {
+        return false;
+    }
+    for (const auto& m : detail::kPerScreenMappings) {
+        const auto prefixLen = static_cast<int>(qstrlen(m.prefix));
+        if (groupName.size() > prefixLen && groupName.startsWith(QLatin1String(m.prefix))
+            && groupName.at(prefixLen) == QLatin1Char(':')) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// Map a per-screen group prefix (e.g. "AutotileScreen") to its JSON
+/// category key (e.g. "Autotile").  ZoneSelector maps to itself.
+inline QString prefixToCategory(const QString& prefix)
+{
+    for (const auto& m : detail::kPerScreenMappings) {
+        if (prefix == QLatin1String(m.prefix)) {
+            return QString::fromLatin1(m.category);
+        }
+    }
+    return prefix;
+}
+
+/// Reverse of prefixToCategory: "Autotile" → "AutotileScreen", etc.
+inline QString categoryToPrefix(const QString& category)
+{
+    for (const auto& m : detail::kPerScreenMappings) {
+        if (category == QLatin1String(m.category)) {
+            return QString::fromLatin1(m.prefix);
+        }
+    }
+    return category;
+}
+
 } // namespace PlasmaZones

@@ -4,7 +4,6 @@
 #include "settings.h"
 #include "colorimporter.h"
 #include "configdefaults.h"
-#include "configbackend_json.h"
 #include "iconfigbackend.h"
 #include "../core/constants.h"
 #include "../core/logging.h"
@@ -274,7 +273,7 @@ void Settings::deletePerScreenGroups(IConfigBackend* backend)
 {
     const QStringList allGroups = backend->groupList();
     for (const QString& groupName : allGroups) {
-        if (JsonConfigBackend::isPerScreenPrefix(groupName)) {
+        if (isPerScreenPrefix(groupName)) {
             backend->deleteGroup(groupName);
         }
     }
