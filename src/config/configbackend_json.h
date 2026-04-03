@@ -115,14 +115,14 @@ public:
     /// Reverse of prefixToCategory: "Autotile" → "AutotileScreen", etc.
     static QString categoryToPrefix(const QString& category);
 
+    /// JSON key for the per-screen container object.
+    static constexpr const char* PerScreenKey = "PerScreen";
+
 private:
     friend class JsonConfigGroup; // for group-count tracking and dirty flag
 
     void loadFromDisk();
     void markDirty();
-
-    /// JSON key for the per-screen container object.
-    static constexpr const char* PerScreenKey = "PerScreen";
 
     QString m_filePath;
     QJsonObject m_root;

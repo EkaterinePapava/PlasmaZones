@@ -6,7 +6,6 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QSettings>
 #include <QStandardPaths>
 
 namespace PlasmaZones {
@@ -32,7 +31,6 @@ QString ConfigDefaults::legacyConfigFilePath()
 
 QString ConfigDefaults::readRenderingBackendFromDisk()
 {
-    // Try the new JSON config first
     const QString jsonPath = configFilePath();
     QFile jsonFile(jsonPath);
     if (jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -40,7 +38,6 @@ QString ConfigDefaults::readRenderingBackendFromDisk()
         QJsonDocument doc = QJsonDocument::fromJson(jsonFile.readAll(), &err);
         if (err.error == QJsonParseError::NoError) {
             const QJsonObject root = doc.object();
-            // Check Rendering group
             const QJsonObject rendering = root.value(renderingGroup()).toObject();
             if (rendering.contains(renderingBackendKey())) {
                 return normalizeRenderingBackend(rendering.value(renderingBackendKey()).toString());
@@ -48,16 +45,7 @@ QString ConfigDefaults::readRenderingBackendFromDisk()
         }
     }
 
-    // Fall back to legacy INI config
-    const QString iniPath = legacyConfigFilePath();
-    QFile iniFile(iniPath);
-    if (iniFile.exists()) {
-        QSettings cfg(iniPath, QSettings::IniFormat);
-        const QString raw = cfg.value(renderingBackendKey(), renderingBackend()).toString();
-        return normalizeRenderingBackend(raw);
-    }
-
-    return renderingBackend(); // default
+    return renderingBackend();
 }
 
 } // namespace PlasmaZones

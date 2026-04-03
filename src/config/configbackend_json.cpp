@@ -45,7 +45,11 @@ JsonConfigGroup::PerScreenPath JsonConfigGroup::parsePerScreenGroup() const
     }
 
     const QString prefix = m_groupName.left(colonIdx);
-    path.screenId = m_groupName.mid(colonIdx + 1);
+    const QString screenId = m_groupName.mid(colonIdx + 1);
+    if (screenId.isEmpty()) {
+        return path;
+    }
+    path.screenId = screenId;
     path.category = JsonConfigBackend::prefixToCategory(prefix);
     return path;
 }
@@ -478,7 +482,7 @@ QMap<QString, QVariant> JsonConfigBackend::readConfigFromDisk()
             continue;
         }
         if (it.value().isObject()) {
-            if (it.key() == QLatin1String("PerScreen")) {
+            if (it.key() == QLatin1String(PerScreenKey)) {
                 // Flatten per-screen: PerScreen/Category/ScreenId/Key → Category:ScreenId/Key
                 const QJsonObject perScreen = it.value().toObject();
                 for (auto catIt = perScreen.constBegin(); catIt != perScreen.constEnd(); ++catIt) {
@@ -510,34 +514,49 @@ QMap<QString, QVariant> JsonConfigBackend::readConfigFromDisk()
 
 // ── Per-screen group helpers ─────────────────────────────────────────────
 
+// Single lookup table for per-screen prefix ↔ category mapping.
+// Adding a new per-screen category only requires adding one entry here.
+struct PerScreenMapping
+{
+    const char* prefix; // e.g. "AutotileScreen"
+    const char* category; // e.g. "Autotile"
+};
+
+static constexpr PerScreenMapping kPerScreenMappings[] = {
+    {"ZoneSelector", "ZoneSelector"},
+    {"AutotileScreen", "Autotile"},
+    {"SnappingScreen", "Snapping"},
+};
+
 bool JsonConfigBackend::isPerScreenPrefix(const QString& groupName)
 {
-    return groupName.startsWith(QLatin1String("ZoneSelector:"))
-        || groupName.startsWith(QLatin1String("AutotileScreen:"))
-        || groupName.startsWith(QLatin1String("SnappingScreen:"));
+    for (const auto& m : kPerScreenMappings) {
+        const QLatin1String prefixColon(m.prefix);
+        if (groupName.startsWith(prefixColon) && groupName.size() > static_cast<int>(qstrlen(m.prefix))
+            && groupName.at(static_cast<int>(qstrlen(m.prefix))) == QLatin1Char(':')) {
+            return true;
+        }
+    }
+    return false;
 }
 
 QString JsonConfigBackend::prefixToCategory(const QString& prefix)
 {
-    if (prefix == QLatin1String("AutotileScreen")) {
-        return QStringLiteral("Autotile");
+    for (const auto& m : kPerScreenMappings) {
+        if (prefix == QLatin1String(m.prefix)) {
+            return QString::fromLatin1(m.category);
+        }
     }
-    if (prefix == QLatin1String("SnappingScreen")) {
-        return QStringLiteral("Snapping");
-    }
-    // ZoneSelector and unknown prefixes map to themselves
     return prefix;
 }
 
 QString JsonConfigBackend::categoryToPrefix(const QString& category)
 {
-    if (category == QLatin1String("Autotile")) {
-        return QStringLiteral("AutotileScreen");
+    for (const auto& m : kPerScreenMappings) {
+        if (category == QLatin1String(m.category)) {
+            return QString::fromLatin1(m.prefix);
+        }
     }
-    if (category == QLatin1String("Snapping")) {
-        return QStringLiteral("SnappingScreen");
-    }
-    // ZoneSelector and unknown categories map to themselves
     return category;
 }
 

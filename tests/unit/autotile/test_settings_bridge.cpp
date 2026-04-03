@@ -200,7 +200,7 @@ private Q_SLOTS:
 
     void testSettingsBridge_loadState_invalidJson()
     {
-        // Write corrupt JSON to the config via QSettingsConfigBackend
+        // Write corrupt JSON to the config via JsonConfigBackend
         {
             auto backend = JsonConfigBackend::createDefault();
             auto group = backend->group(QStringLiteral("AutoTileState"));
@@ -223,7 +223,7 @@ private Q_SLOTS:
 
     void testSettingsBridge_loadState_unknownAlgorithmIgnored()
     {
-        // Write an unknown algorithm to the config via QSettingsConfigBackend
+        // Write an unknown algorithm to the config via JsonConfigBackend
         {
             auto backend = JsonConfigBackend::createDefault();
             auto group = backend->group(QStringLiteral("AutoTileState"));

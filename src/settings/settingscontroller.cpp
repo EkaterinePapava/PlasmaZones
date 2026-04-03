@@ -1927,7 +1927,13 @@ bool SettingsController::importAllSettings(const QString& filePath)
         }
     }
 
-    if (ok) {
+    if (!ok) {
+        // Restore backup on failure
+        if (QFile::exists(backupPath)) {
+            QFile::remove(configPath);
+            QFile::rename(backupPath, configPath);
+        }
+    } else {
         m_settings.load();
         DaemonDBus::notifyReload();
         Q_EMIT needsSaveChanged();
