@@ -35,15 +35,12 @@ void OverlayService::initializeOverlay(QScreen* cursorScreen)
     ensureShaderTimerStarted(m_shaderTimer, m_shaderTimerMutex, m_lastFrameTime, m_frameCount);
     m_zoneDataDirty = true; // Rebuild zone data on next frame
 
-    // When single-monitor mode, destroy overlay on screens we're switching away from (#136).
-    // Must destroy (not just hide) because on Vulkan, window->hide() destroys the
-    // VkSwapchainKHR but Qt doesn't properly reinitialize it on re-show. Destroying
-    // the window ensures a fresh window is created via createOverlayWindow() below.
+    // When single-monitor mode, dismiss overlay on screens we're switching away from (#136).
     if (!showOnAllMonitors) {
         const QList<QScreen*> screens = m_overlayWindows.keys();
         for (auto* screen : screens) {
             if (screen != cursorScreen) {
-                destroyOverlayWindow(screen);
+                dismissOverlayWindow(screen);
             }
         }
     }
@@ -63,6 +60,19 @@ void OverlayService::initializeOverlay(QScreen* cursorScreen)
             continue;
         }
 
+        if (m_overlayWindows.contains(screen)) {
+            // Type-mismatch check: non-shader windows survive hide() and may be
+            // stale if shader settings changed while the overlay was hidden.
+            // Destroy and recreate if the window type no longer matches.
+            auto* existing = m_overlayWindows.value(screen);
+            if (existing) {
+                const bool windowIsShader = existing->property("isShaderOverlay").toBool();
+                const bool shouldUseShader = useShaderForScreen(screen);
+                if (windowIsShader != shouldUseShader) {
+                    destroyOverlayWindow(screen);
+                }
+            }
+        }
         if (!m_overlayWindows.contains(screen)) {
             createOverlayWindow(screen);
         }
@@ -73,19 +83,9 @@ void OverlayService::initializeOverlay(QScreen* cursorScreen)
                                << (window->screen() ? window->screen()->name() : QStringLiteral("null"));
             updateOverlayWindow(screen);
             window->show();
-            // On Vulkan, window->hide() destroys the swapchain and the scene graph
-            // becomes inactive. Property writes (e.g. shaderSource) while hidden queue
-            // update() requests that are lost when the scene graph reinitializes on
-            // show(). Force a content update after show so the scene graph renders.
             window->update();
         }
     }
-
-    // Type-mismatch recreation is not needed here: hide() destroys all overlay
-    // windows, so initializeOverlay() always creates fresh windows with the
-    // correct type. The old check compared isShaderOverlay against useShaderForScreen()
-    // and recreated on mismatch, but could trigger runaway loops when both evaluations
-    // raced during window setup.
 
     if (anyScreenUsesShader()) {
         updateZonesForAllWindows(); // Push initial zone data
@@ -338,6 +338,24 @@ void OverlayService::recreateOverlayWindowsOnTypeMismatch()
     if (wasVisible && anyScreenUsesShader()) {
         updateZonesForAllWindows();
         startShaderAnimation();
+    }
+}
+
+void OverlayService::dismissOverlayWindow(QScreen* screen)
+{
+    auto* window = m_overlayWindows.value(screen);
+    if (!window) {
+        return;
+    }
+    // Shader overlays: must destroy — QSGRenderNode Vulkan pipelines are tied
+    // to the per-window QRhi which gets invalidated when hide() tears down the
+    // wl_surface and show() creates a new one.
+    // Non-shader overlays: hide() is safe — standard QML items recover from
+    // scene graph pause/resume, avoiding Vulkan surface create/destroy churn.
+    if (window->property("isShaderOverlay").toBool()) {
+        destroyOverlayWindow(screen);
+    } else {
+        window->hide();
     }
 }
 

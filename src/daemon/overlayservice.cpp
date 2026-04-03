@@ -313,16 +313,12 @@ void OverlayService::hide()
     // Do NOT invalidate m_shaderTimer - keeps iTime continuous across show/hide
     // so animations feel less predictable and don't restart
 
-    // Destroy overlay windows instead of hiding them. On Vulkan with Wayland
-    // layer-shell, window->hide() destroys the wl_surface but the Qt Vulkan
-    // backend doesn't properly reinitialize the VkSwapchainKHR when the window
-    // is re-shown, causing the scene graph render loop to stall. Destroying the
-    // window entirely and creating a fresh one on the next show() avoids this.
-    // initializeOverlay() will call createOverlayWindow() since m_overlayWindows
-    // is now empty.
+    // Dismiss all overlay windows. Non-shader windows are hidden (reused on
+    // next show); shader windows are destroyed (QSGRenderNode pipelines
+    // don't survive the QRhi context change across hide/show).
     const QList<QScreen*> screens = m_overlayWindows.keys();
     for (auto* screen : screens) {
-        destroyOverlayWindow(screen);
+        dismissOverlayWindow(screen);
     }
 
     m_pendingShaderError.clear();
@@ -353,8 +349,8 @@ void OverlayService::updateSettings(ISettings* settings)
     syncCavaState();
 
     // Destroy overlay windows on screens/desktops/activities that are now disabled.
-    // Must destroy (not just hide) because on Vulkan, window->hide() destroys the
-    // VkSwapchainKHR but Qt doesn't reinitialize it on re-show, causing stale surfaces.
+    // Destroy (not hide) because disabled contexts won't be re-shown soon, and
+    // destroying frees GPU resources for screens that may be permanently inactive.
     {
         const QList<QScreen*> overlayScreens = m_overlayWindows.keys();
         for (auto* screen : overlayScreens) {
@@ -364,9 +360,7 @@ void OverlayService::updateSettings(ISettings* settings)
             }
         }
     }
-    // Zone selector windows must also be destroyed (not just hidden) when Vulkan is
-    // the scene graph backend — hide() destroys the VkSwapchainKHR and Qt doesn't
-    // reinitialize it on re-show, affecting ALL QQuickWindows.
+    // Zone selector windows on disabled contexts are destroyed to free GPU resources.
     {
         const QList<QScreen*> selectorScreens = m_zoneSelectorWindows.keys();
         for (auto* screen : selectorScreens) {
@@ -435,8 +429,7 @@ Layout* OverlayService::resolveScreenLayout(QScreen* screen) const
 void OverlayService::hideDisabledAndRefresh()
 {
     // Destroy windows on screens where the current context is disabled.
-    // Must destroy (not just hide) because on Vulkan, hide() destroys the
-    // VkSwapchainKHR and Qt doesn't reinitialize it on re-show.
+    // Destroy (not hide) to free GPU resources for permanently inactive contexts.
     if (m_settings) {
         {
             const QList<QScreen*> selectorScreens = m_zoneSelectorWindows.keys();
