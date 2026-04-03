@@ -5,8 +5,10 @@
 
 #include "plasmazones_export.h"
 #include <QColor>
+#include <QMap>
 #include <QString>
 #include <QStringList>
+#include <QVariant>
 #include <memory>
 
 namespace PlasmaZones {
@@ -85,6 +87,12 @@ protected:
 /// Decouples callers from the concrete backend type — only the factory
 /// implementation (in configbackend_json.cpp) knows which class to instantiate.
 PLASMAZONES_EXPORT std::unique_ptr<IConfigBackend> createDefaultConfigBackend();
+
+/// Read config file directly from disk as a flat QMap.
+/// Flattens nested JSON into "Group/Key" format matching QSettings convention.
+/// If @p filePath is empty, reads from the default config path.
+/// Implemented in configbackend_json.cpp.
+PLASMAZONES_EXPORT QMap<QString, QVariant> readConfigFromDisk(const QString& filePath = {});
 
 /// Resolve a shared or fallback backend.  If @p shared is non-null it is
 /// returned directly; otherwise a new default backend is created into

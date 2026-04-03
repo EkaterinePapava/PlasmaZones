@@ -10,11 +10,8 @@
 #include "plasmazones_export.h"
 #include <QColor>
 #include <QJsonObject>
-#include <QMap>
 #include <QString>
 #include <QStringList>
-#include <QVariant>
-#include <atomic>
 #include <memory>
 
 namespace PlasmaZones {
@@ -90,12 +87,6 @@ public:
     void removeRootKey(const QString& key) override;
     QStringList groupList() const override;
 
-    /// Read config file directly from disk as a flat QMap for compatibility
-    /// with WindowTrackingAdaptor::loadState(). Flattens nested JSON into
-    /// "Group/Key" format matching the QSettings convention.
-    /// If @p filePath is empty, reads from the default config path.
-    static QMap<QString, QVariant> readConfigFromDisk(const QString& filePath = {});
-
     /// Atomically write a QJsonObject to disk (temp file + rename).
     /// Shared by sync() and ConfigMigration to avoid duplicated write logic.
     /// Returns true on success.
@@ -110,9 +101,7 @@ private:
     QString m_filePath;
     QJsonObject m_root;
     bool m_dirty = false;
-    // std::atomic despite single-threaded use: prevents UB if a group outlives
-    // a backend move/copy (deleted, but guards against future refactoring).
-    std::atomic<int> m_activeGroupCount{0};
+    int m_activeGroupCount = 0;
 };
 
 } // namespace PlasmaZones

@@ -361,7 +361,7 @@ private Q_SLOTS:
         }
         backend->sync();
 
-        auto map = JsonConfigBackend::readConfigFromDisk();
+        auto map = PlasmaZones::readConfigFromDisk();
         QCOMPARE(map.value(QStringLiteral("Behavior/DefaultLayoutId")).toString(), QStringLiteral("abc-123"));
     }
 

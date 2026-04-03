@@ -13,7 +13,6 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include "../../config/iconfigbackend.h"
-#include "../../config/configbackend_json.h" // for readConfigFromDisk() static helper
 #include <QTimer>
 
 namespace PlasmaZones {
@@ -205,7 +204,7 @@ void WindowTrackingAdaptor::loadState()
     if (m_configBackend) {
         m_configBackend->sync();
     }
-    const auto configMap = PlasmaZones::JsonConfigBackend::readConfigFromDisk();
+    const auto configMap = PlasmaZones::readConfigFromDisk();
     const QString wt = QStringLiteral("WindowTracking");
     auto readVal = [&](const QString& key, const QString& def = QString()) -> QString {
         return configMap.value(wt + QLatin1Char('/') + key, def).toString();
