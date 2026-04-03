@@ -66,11 +66,25 @@ vec4 renderZone(vec2 fragCoord, vec4 rect, vec4 fillColor, vec4 borderColor,
         vec2 sceneUv = channelUv(0, fragCoord);
 
         // ── Depth-of-field blur ─────────────────────────────
-        // Focal depth at screen center; blur based on depth deviation.
+        // Sample a 3x3 grid around screen center and focus on the nearest
+        // terrain hit. A single center-pixel sample jumps between terrain
+        // (depth ~0.2) and sky (depth 1.0) as the camera flies through the
+        // voxel world, causing DOF to cycle on/off. Using the minimum
+        // non-miss depth from a wider region keeps focus stable on the
+        // nearest visible geometry.
         vec4 scene;
         if (dofStrength > 0.001) {
-            vec2 centerUv = channelUv(0, iResolution * 0.5);
-            float focalDepth = readDepth(centerUv);
+            float focalDepth = 1.0;
+            for (int fy = -1; fy <= 1; fy++) {
+                for (int fx = -1; fx <= 1; fx++) {
+                    vec2 sampleCoord = iResolution * 0.5 + vec2(float(fx), float(fy)) * iResolution * 0.08;
+                    float sd = readDepth(channelUv(0, sampleCoord));
+                    if (sd < focalDepth) focalDepth = sd;
+                }
+            }
+            // If all samples miss sky, use mid-range focus
+            focalDepth = min(focalDepth, 0.5);
+
             float pixelDepth = readDepth(sceneUv);
             float coc = abs(pixelDepth - focalDepth) * 2.0 * dofStrength;
 
