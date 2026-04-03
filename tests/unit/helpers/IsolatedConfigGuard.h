@@ -14,10 +14,10 @@ namespace TestHelpers {
 /**
  * @brief RAII guard that isolates both config and data directories for tests.
  *
- * Sets XDG_CONFIG_HOME and XDG_DATA_HOME so that QSettings (via
- * QSettingsConfigBackend::createDefault()) and QStandardPaths::GenericDataLocation
- * resolve inside a temporary directory instead of the real user directories
- * (~/.config, ~/.local/share).
+ * Sets XDG_CONFIG_HOME and XDG_DATA_HOME so that config backends
+ * (JsonConfigBackend::createDefault() / QSettingsConfigBackend::createDefault())
+ * and QStandardPaths::GenericDataLocation resolve inside a temporary directory
+ * instead of the real user directories (~/.config, ~/.local/share).
  *
  * This prevents tests from polluting the user's install with layout files,
  * shader presets, or other data written via QStandardPaths.

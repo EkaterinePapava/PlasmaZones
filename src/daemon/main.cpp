@@ -3,6 +3,7 @@
 
 #include "daemon.h"
 #include "../config/configdefaults.h"
+#include "../config/configmigration.h"
 #include "../core/logging.h"
 #include "../core/qpa/layershellpluginloader.h"
 #include "../core/layersurface.h"
@@ -165,6 +166,9 @@ int main(int argc, char* argv[])
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
     signal(SIGHUP, signalHandler);
+
+    // Migrate INI config to JSON if needed (one-time on upgrade)
+    PlasmaZones::ConfigMigration::ensureJsonConfig();
 
     // Create and start daemon
     Daemon daemon;

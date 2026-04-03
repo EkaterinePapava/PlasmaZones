@@ -13,7 +13,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QStandardPaths>
-#include "../../config/configbackend_qsettings.h"
+#include "../../config/configbackend_json.h"
 #include <algorithm>
 
 namespace PlasmaZones {

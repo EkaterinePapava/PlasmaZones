@@ -193,7 +193,7 @@ Flickable {
         id: exportConfigDialog
 
         title: i18n("Export Settings")
-        nameFilters: [i18n("PlasmaZones Config (*.conf *.ini)"), i18n("All files (*)")]
+        nameFilters: [i18n("PlasmaZones Config (*.json)"), i18n("All files (*)")]
         fileMode: FileDialog.SaveFile
         onAccepted: settingsController.exportAllSettings(selectedFile.toString().replace(/^file:\/\/+/, "/"))
     }
@@ -202,7 +202,7 @@ Flickable {
         id: importConfigDialog
 
         title: i18n("Import Settings")
-        nameFilters: [i18n("PlasmaZones Config (*.conf *.ini *.rc)"), i18n("All files (*)")]
+        nameFilters: [i18n("PlasmaZones Config (*.json *.conf *.ini *.rc)"), i18n("All files (*)")]
         fileMode: FileDialog.OpenFile
         onAccepted: settingsController.importAllSettings(selectedFile.toString().replace(/^file:\/\/+/, "/"))
     }

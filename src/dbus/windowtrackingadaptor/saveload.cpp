@@ -12,7 +12,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
-#include "../../config/configbackend_qsettings.h"
+#include "../../config/configbackend_json.h"
 #include <QTimer>
 
 namespace PlasmaZones {
@@ -50,8 +50,8 @@ static QHash<QString, QStringList> parseZoneListMap(const QString& json)
 
 void WindowTrackingAdaptor::saveState()
 {
-    std::unique_ptr<QSettingsConfigBackend> fallback;
-    QSettingsConfigBackend* backend = QSettingsConfigBackend::resolveBackend(m_configBackend, fallback);
+    std::unique_ptr<JsonConfigBackend> fallback;
+    IConfigBackend* backend = JsonConfigBackend::resolveBackend(m_configBackend, fallback);
     auto tracking = backend->group(QStringLiteral("WindowTracking"));
 
     // Save active layout ID so we can restore it after daemon restart.
@@ -204,7 +204,7 @@ void WindowTrackingAdaptor::loadState()
     if (m_configBackend) {
         m_configBackend->sync();
     }
-    const auto configMap = PlasmaZones::QSettingsConfigBackend::readConfigFromDisk();
+    const auto configMap = PlasmaZones::JsonConfigBackend::readConfigFromDisk();
     const QString wt = QStringLiteral("WindowTracking");
     auto readVal = [&](const QString& key, const QString& def = QString()) -> QString {
         return configMap.value(wt + QLatin1Char('/') + key, def).toString();

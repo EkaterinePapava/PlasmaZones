@@ -282,7 +282,7 @@ QSettingsConfigBackend::~QSettingsConfigBackend()
 #endif
 }
 
-std::unique_ptr<QSettingsConfigGroup> QSettingsConfigBackend::group(const QString& name)
+std::unique_ptr<IConfigGroup> QSettingsConfigBackend::group(const QString& name)
 {
     return std::make_unique<QSettingsConfigGroup>(m_settings.get(), name, this);
 }
@@ -344,16 +344,21 @@ std::unique_ptr<QSettingsConfigBackend> QSettingsConfigBackend::createDefault()
 
 QMap<QString, QVariant> QSettingsConfigBackend::readConfigFromDisk()
 {
+    return readConfigFromDisk(ConfigDefaults::configFilePath());
+}
+
+QMap<QString, QVariant> QSettingsConfigBackend::readConfigFromDisk(const QString& filePath)
+{
     QSettings::SettingsMap map;
-    QFile f(ConfigDefaults::configFilePath());
+    QFile f(filePath);
     if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         readKConfigIni(f, map);
     }
     return map;
 }
 
-QSettingsConfigBackend* QSettingsConfigBackend::resolveBackend(QSettingsConfigBackend* shared,
-                                                               std::unique_ptr<QSettingsConfigBackend>& fallback)
+IConfigBackend* QSettingsConfigBackend::resolveBackend(IConfigBackend* shared,
+                                                       std::unique_ptr<QSettingsConfigBackend>& fallback)
 {
     if (shared) {
         return shared;

@@ -3,33 +3,61 @@
 
 #include "configdefaults.h"
 #include <QDir>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSettings>
 #include <QStandardPaths>
 
 namespace PlasmaZones {
 
+static QString configDir()
+{
+    QString dir = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+    if (dir.isEmpty()) {
+        dir = QDir::homePath() + QStringLiteral("/.config");
+    }
+    return dir;
+}
+
 QString ConfigDefaults::configFilePath()
 {
-    QString configDir = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
-    if (configDir.isEmpty()) {
-        // QStandardPaths failed — QDir::homePath() returns "/" when $HOME is unset,
-        // so the concatenation is always non-empty.
-        configDir = QDir::homePath() + QStringLiteral("/.config");
-    }
-    return configDir + QStringLiteral("/plasmazonesrc");
+    return configDir() + QStringLiteral("/plasmazones/config.json");
+}
+
+QString ConfigDefaults::legacyConfigFilePath()
+{
+    return configDir() + QStringLiteral("/plasmazonesrc");
 }
 
 QString ConfigDefaults::readRenderingBackendFromDisk()
 {
-    QSettings cfg(configFilePath(), QSettings::IniFormat);
+    // Try the new JSON config first
+    const QString jsonPath = configFilePath();
+    QFile jsonFile(jsonPath);
+    if (jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QJsonParseError err;
+        QJsonDocument doc = QJsonDocument::fromJson(jsonFile.readAll(), &err);
+        if (err.error == QJsonParseError::NoError) {
+            const QJsonObject root = doc.object();
+            // Check Rendering group
+            const QJsonObject rendering = root.value(renderingGroup()).toObject();
+            if (rendering.contains(renderingBackendKey())) {
+                return normalizeRenderingBackend(rendering.value(renderingBackendKey()).toString());
+            }
+        }
+    }
 
-    // QSettings::IniFormat maps keys before any [Section] header into the "General"
-    // group automatically on all platforms — so a root-level read (no beginGroup)
-    // already resolves "General/RenderingBackend". The explicit [General] group
-    // fallback was removed: it was dead code because the implicit mapping already
-    // catches both ungrouped and [General]-grouped keys identically.
-    const QString raw = cfg.value(renderingBackendKey(), renderingBackend()).toString();
-    return normalizeRenderingBackend(raw);
+    // Fall back to legacy INI config
+    const QString iniPath = legacyConfigFilePath();
+    QFile iniFile(iniPath);
+    if (iniFile.exists()) {
+        QSettings cfg(iniPath, QSettings::IniFormat);
+        const QString raw = cfg.value(renderingBackendKey(), renderingBackend()).toString();
+        return normalizeRenderingBackend(raw);
+    }
+
+    return renderingBackend(); // default
 }
 
 } // namespace PlasmaZones

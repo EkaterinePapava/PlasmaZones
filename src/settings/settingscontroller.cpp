@@ -15,6 +15,7 @@
 #include "../autotile/algorithms/ScriptedAlgorithmLoader.h"
 
 #include "../config/configdefaults.h"
+#include "../config/configmigration.h"
 #include "../pz_i18n.h"
 
 #include <QDBusMessage>
@@ -1879,27 +1880,56 @@ bool SettingsController::importAllSettings(const QString& filePath)
     if (filePath.isEmpty() || !QFile::exists(filePath)) {
         return false;
     }
+
     const QString configPath = PlasmaZones::ConfigDefaults::configFilePath();
+
+    // Detect if the imported file is legacy INI format (not JSON).
+    // If so, run the migration converter to produce a JSON file.
+    bool isLegacyIni = false;
+    {
+        QFile f(filePath);
+        if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            const QByteArray head = f.peek(1);
+            // JSON files start with '{'; INI files start with a key, '[', or comment
+            isLegacyIni = !head.isEmpty() && head.at(0) != '{';
+        }
+    }
+
     // Backup current config
-    QString backupPath = configPath + QStringLiteral(".bak");
+    const QString backupPath = configPath + QStringLiteral(".bak");
     if (QFile::exists(backupPath)) {
         QFile::remove(backupPath);
     }
-    if (!QFile::copy(configPath, backupPath)) {
+    if (QFile::exists(configPath) && !QFile::copy(configPath, backupPath)) {
         qCWarning(PlasmaZones::lcCore) << "Failed to backup config to:" << backupPath;
         return false;
     }
-    // Replace with imported file
-    if (QFile::exists(configPath)) {
-        QFile::remove(configPath);
+
+    bool ok = false;
+    if (isLegacyIni) {
+        // Convert INI to JSON in-place using the migration module
+        if (QFile::exists(configPath)) {
+            QFile::remove(configPath);
+        }
+        ok = PlasmaZones::ConfigMigration::migrateIniToJson(filePath, configPath);
+        if (!ok) {
+            qCWarning(PlasmaZones::lcCore) << "Failed to convert legacy INI file:" << filePath;
+        }
+    } else {
+        // Direct JSON copy
+        if (QFile::exists(configPath)) {
+            QFile::remove(configPath);
+        }
+        ok = QFile::copy(filePath, configPath);
+        if (!ok) {
+            qCWarning(PlasmaZones::lcCore) << "Failed to import settings from:" << filePath;
+        }
     }
-    bool ok = QFile::copy(filePath, configPath);
+
     if (ok) {
         m_settings.load();
         DaemonDBus::notifyReload();
         Q_EMIT needsSaveChanged();
-    } else {
-        qCWarning(PlasmaZones::lcCore) << "Failed to import settings from:" << filePath;
     }
     return ok;
 }

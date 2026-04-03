@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "iconfigbackend.h"
 #include "plasmazones_export.h"
 #include <QColor>
 #include <QSettings>
@@ -24,34 +25,30 @@ class QSettingsConfigBackend; // forward declare for group back-pointer
 /// QSettingsConfigGroup may be active per backend at a time — destroy it
 /// (let the unique_ptr go out of scope) before creating another.
 /// Not copyable or movable.
-class PLASMAZONES_EXPORT QSettingsConfigGroup
+class PLASMAZONES_EXPORT QSettingsConfigGroup : public IConfigGroup
 {
 public:
     QSettingsConfigGroup(QSettings* settings, const QString& groupName, QSettingsConfigBackend* backend);
-    ~QSettingsConfigGroup();
+    ~QSettingsConfigGroup() override;
 
-    QSettingsConfigGroup(const QSettingsConfigGroup&) = delete;
-    QSettingsConfigGroup& operator=(const QSettingsConfigGroup&) = delete;
     QSettingsConfigGroup(QSettingsConfigGroup&&) = delete;
     QSettingsConfigGroup& operator=(QSettingsConfigGroup&&) = delete;
 
-    // Typed reads with defaults
-    QString readString(const QString& key, const QString& defaultValue = {}) const;
-    int readInt(const QString& key, int defaultValue = 0) const;
-    bool readBool(const QString& key, bool defaultValue = false) const;
-    double readDouble(const QString& key, double defaultValue = 0.0) const;
-    QColor readColor(const QString& key, const QColor& defaultValue = {}) const;
+    // IConfigGroup interface
+    QString readString(const QString& key, const QString& defaultValue = {}) const override;
+    int readInt(const QString& key, int defaultValue = 0) const override;
+    bool readBool(const QString& key, bool defaultValue = false) const override;
+    double readDouble(const QString& key, double defaultValue = 0.0) const override;
+    QColor readColor(const QString& key, const QColor& defaultValue = {}) const override;
 
-    // Typed writes
-    void writeString(const QString& key, const QString& value);
-    void writeInt(const QString& key, int value);
-    void writeBool(const QString& key, bool value);
-    void writeDouble(const QString& key, double value);
-    void writeColor(const QString& key, const QColor& value);
+    void writeString(const QString& key, const QString& value) override;
+    void writeInt(const QString& key, int value) override;
+    void writeBool(const QString& key, bool value) override;
+    void writeDouble(const QString& key, double value) override;
+    void writeColor(const QString& key, const QColor& value) override;
 
-    // Key management
-    bool hasKey(const QString& key) const;
-    void deleteKey(const QString& key);
+    bool hasKey(const QString& key) const override;
+    void deleteKey(const QString& key) override;
 
 private:
     QSettings* m_settings; // not owned
@@ -59,33 +56,25 @@ private:
     QSettingsConfigBackend* m_backend; // not owned, for group-count tracking
 };
 
-/// Top-level config backend.  Owns the connection to the config store
-/// and provides group access, sync, and enumeration.
-class PLASMAZONES_EXPORT QSettingsConfigBackend
+/// Top-level config backend using QSettings (INI format).
+///
+/// Implements IConfigBackend.  Used for reading legacy plasmazonesrc files
+/// and as the migration source for the JSON config backend.
+class PLASMAZONES_EXPORT QSettingsConfigBackend : public IConfigBackend
 {
 public:
     explicit QSettingsConfigBackend(const QString& filePath);
-    ~QSettingsConfigBackend();
+    ~QSettingsConfigBackend() override;
 
-    /// Get a group view.  Caller owns the returned pointer.
-    std::unique_ptr<QSettingsConfigGroup> group(const QString& name);
-
-    /// Re-read config from disk (discard in-memory changes).
-    void reparseConfiguration();
-
-    /// Flush pending writes to disk.
-    void sync();
-
-    /// Delete an entire group and its keys.
-    void deleteGroup(const QString& name);
-
-    /// Read/write ungrouped (root-level) keys — outside any [Section] header.
-    QString readRootString(const QString& key, const QString& defaultValue = {}) const;
-    void writeRootString(const QString& key, const QString& value);
-    void removeRootKey(const QString& key);
-
-    /// List all top-level group names.
-    QStringList groupList() const;
+    // IConfigBackend interface
+    std::unique_ptr<IConfigGroup> group(const QString& name) override;
+    void reparseConfiguration() override;
+    void sync() override;
+    void deleteGroup(const QString& name) override;
+    QString readRootString(const QString& key, const QString& defaultValue = {}) const override;
+    void writeRootString(const QString& key, const QString& value) override;
+    void removeRootKey(const QString& key) override;
+    QStringList groupList() const override;
 
     /// Create the default config backend for the standard plasmazonesrc file.
     static std::unique_ptr<QSettingsConfigBackend> createDefault();
@@ -94,11 +83,13 @@ public:
     /// Returns a QSettings::SettingsMap (QMap<QString, QVariant>) with all keys.
     static QMap<QString, QVariant> readConfigFromDisk();
 
+    /// Read config from a specific file path.
+    static QMap<QString, QVariant> readConfigFromDisk(const QString& filePath);
+
     /// Resolve a shared or fallback backend. If @p shared is non-null it is
     /// returned directly; otherwise a new default backend is created into
     /// @p fallback and returned.  Eliminates repeated resolve boilerplate.
-    static QSettingsConfigBackend* resolveBackend(QSettingsConfigBackend* shared,
-                                                  std::unique_ptr<QSettingsConfigBackend>& fallback);
+    static IConfigBackend* resolveBackend(IConfigBackend* shared, std::unique_ptr<QSettingsConfigBackend>& fallback);
 
 private:
     friend class QSettingsConfigGroup; // for group-count tracking

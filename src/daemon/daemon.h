@@ -39,7 +39,7 @@ class UnifiedLayoutController;
 class AutotileAdaptor;
 class AutotileEngine;
 class IWindowEngine;
-class QSettingsConfigBackend;
+class JsonConfigBackend;
 class ScriptedAlgorithmLoader;
 class SnapAdaptor;
 class SnapEngine;
@@ -273,7 +273,7 @@ private:
      */
     void syncModeFromAssignments();
 
-    std::unique_ptr<QSettingsConfigBackend> m_configBackend;
+    std::unique_ptr<JsonConfigBackend> m_configBackend;
     std::unique_ptr<LayoutManager> m_layoutManager;
     std::unique_ptr<Settings> m_settings;
     std::unique_ptr<ZoneDetector> m_zoneDetector;

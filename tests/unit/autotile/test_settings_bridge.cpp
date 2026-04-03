@@ -10,7 +10,7 @@
 #include "autotile/AlgorithmRegistry.h"
 #include "autotile/TilingState.h"
 #include "core/constants.h"
-#include "config/configbackend_qsettings.h"
+#include "config/configbackend_json.h"
 #include "../helpers/IsolatedConfigGuard.h"
 #include "../helpers/ScriptedAlgoTestSetup.h"
 
@@ -202,7 +202,7 @@ private Q_SLOTS:
     {
         // Write corrupt JSON to the config via QSettingsConfigBackend
         {
-            auto backend = QSettingsConfigBackend::createDefault();
+            auto backend = JsonConfigBackend::createDefault();
             auto group = backend->group(QStringLiteral("AutoTileState"));
             group->writeString(QStringLiteral("algorithm"), QStringLiteral("master-stack"));
             group->writeString(QStringLiteral("screenStates"), QStringLiteral("{{{invalid json!@#}}}"));
@@ -225,7 +225,7 @@ private Q_SLOTS:
     {
         // Write an unknown algorithm to the config via QSettingsConfigBackend
         {
-            auto backend = QSettingsConfigBackend::createDefault();
+            auto backend = JsonConfigBackend::createDefault();
             auto group = backend->group(QStringLiteral("AutoTileState"));
             group->writeString(QStringLiteral("algorithm"), QStringLiteral("nonexistent-algo-xyz"));
             group->writeString(QStringLiteral("screenStates"), QStringLiteral("[]"));
