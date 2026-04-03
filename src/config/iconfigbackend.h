@@ -81,17 +81,20 @@ protected:
     IConfigBackend() = default;
 };
 
+/// Create the default config backend (currently JsonConfigBackend).
+/// Decouples callers from the concrete backend type — only the factory
+/// implementation (in configbackend_json.cpp) knows which class to instantiate.
+PLASMAZONES_EXPORT std::unique_ptr<IConfigBackend> createDefaultConfigBackend();
+
 /// Resolve a shared or fallback backend.  If @p shared is non-null it is
-/// returned directly; otherwise a new default backend of type T is created
-/// into @p fallback and returned.  Eliminates repeated resolve boilerplate
-/// across JsonConfigBackend and QSettingsConfigBackend.
-template<typename T>
-IConfigBackend* resolveBackend(IConfigBackend* shared, std::unique_ptr<T>& fallback)
+/// returned directly; otherwise a new default backend is created into
+/// @p fallback and returned.  Eliminates repeated resolve boilerplate.
+inline IConfigBackend* resolveBackend(IConfigBackend* shared, std::unique_ptr<IConfigBackend>& fallback)
 {
     if (shared) {
         return shared;
     }
-    fallback = T::createDefault();
+    fallback = createDefaultConfigBackend();
     return fallback.get();
 }
 

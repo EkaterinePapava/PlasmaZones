@@ -6,11 +6,9 @@
 #include "configbackend_qsettings.h"
 #include "configdefaults.h"
 #include <QColor>
-#include <QDir>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QSaveFile>
 
 namespace PlasmaZones {
 
@@ -32,7 +30,23 @@ bool ConfigMigration::ensureJsonConfig()
                 }
             }
         }
-        // Empty or corrupt JSON — remove it so migration can re-create it
+        // Corrupt or empty JSON — check if INI backup exists for re-migration.
+        // If no INI exists either, preserve the corrupt file as .corrupt.bak
+        // so the user has a recovery path (rather than silently losing data).
+        const QString iniPath = ConfigDefaults::legacyConfigFilePath();
+        if (!QFile::exists(iniPath)) {
+            const QString corruptBak = jsonPath + QStringLiteral(".corrupt.bak");
+            if (QFile::exists(corruptBak)) {
+                QFile::remove(corruptBak);
+            }
+            QFile::rename(jsonPath, corruptBak);
+            qWarning(
+                "ConfigMigration: corrupt JSON config moved to %s — no INI to re-migrate from, "
+                "using defaults",
+                qPrintable(corruptBak));
+            return true;
+        }
+        // INI exists — remove corrupt JSON so migration can re-create it
         QFile::remove(jsonPath);
     }
 
@@ -75,31 +89,7 @@ bool ConfigMigration::migrateIniToJson(const QString& iniPath, const QString& js
     // Currently write-only — checked when a future migration needs to distinguish formats.
     root[QStringLiteral("_version")] = 1;
 
-    // Ensure parent directory exists
-    QDir dir = QFileInfo(jsonPath).absoluteDir();
-    if (!dir.exists() && !dir.mkpath(QLatin1String("."))) {
-        qWarning("ConfigMigration: failed to create directory %s", qPrintable(dir.absolutePath()));
-        return false;
-    }
-
-    // Atomic write
-    QSaveFile f(jsonPath);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qWarning("ConfigMigration: failed to open %s for writing: %s", qPrintable(jsonPath),
-                 qPrintable(f.errorString()));
-        return false;
-    }
-
-    QJsonDocument doc(root);
-    f.write(doc.toJson(QJsonDocument::Indented));
-
-    if (!f.commit()) {
-        qWarning("ConfigMigration: failed to commit write to %s: %s", qPrintable(jsonPath),
-                 qPrintable(f.errorString()));
-        return false;
-    }
-
-    return true;
+    return JsonConfigBackend::writeJsonAtomically(jsonPath, root);
 }
 
 QJsonObject ConfigMigration::iniMapToJson(const QMap<QString, QVariant>& flatMap)

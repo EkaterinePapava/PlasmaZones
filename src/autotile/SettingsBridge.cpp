@@ -14,7 +14,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSignalBlocker>
-#include "config/configbackend_json.h"
+#include "config/iconfigbackend.h"
 
 namespace PlasmaZones {
 
@@ -364,7 +364,7 @@ void SettingsBridge::syncShortcutAdjustment(qreal splitRatio, int masterCount)
 
 void SettingsBridge::saveState()
 {
-    std::unique_ptr<JsonConfigBackend> fallback;
+    std::unique_ptr<IConfigBackend> fallback;
     IConfigBackend* backend = resolveBackend(m_configBackend, fallback);
     auto group = backend->group(QStringLiteral("AutoTileState"));
 
@@ -402,7 +402,7 @@ void SettingsBridge::saveState()
 
 void SettingsBridge::loadState()
 {
-    std::unique_ptr<JsonConfigBackend> fallback;
+    std::unique_ptr<IConfigBackend> fallback;
     IConfigBackend* backend = resolveBackend(m_configBackend, fallback);
     auto group = backend->group(QStringLiteral("AutoTileState"));
 

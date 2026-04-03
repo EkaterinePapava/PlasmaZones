@@ -1922,7 +1922,20 @@ bool SettingsController::importAllSettings(const QString& filePath)
             qCWarning(PlasmaZones::lcCore) << "Failed to convert legacy INI file:" << filePath;
         }
     } else {
-        // Direct JSON copy
+        // Validate JSON before overwriting current config
+        QFile importFile(filePath);
+        if (!importFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            qCWarning(PlasmaZones::lcCore) << "Failed to open import file:" << filePath;
+            return false;
+        }
+        QJsonParseError parseErr;
+        QJsonDocument importDoc = QJsonDocument::fromJson(importFile.readAll(), &parseErr);
+        if (parseErr.error != QJsonParseError::NoError || !importDoc.isObject() || importDoc.object().isEmpty()) {
+            qCWarning(PlasmaZones::lcCore) << "Invalid JSON in import file:" << filePath << parseErr.errorString();
+            return false;
+        }
+
+        // Valid JSON — copy to config path
         if (QFile::exists(configPath)) {
             QFile::remove(configPath);
         }

@@ -12,6 +12,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
+#include "../../config/iconfigbackend.h"
 #include "../../config/configbackend_json.h"
 #include <QTimer>
 
@@ -50,7 +51,7 @@ static QHash<QString, QStringList> parseZoneListMap(const QString& json)
 
 void WindowTrackingAdaptor::saveState()
 {
-    std::unique_ptr<JsonConfigBackend> fallback;
+    std::unique_ptr<IConfigBackend> fallback;
     IConfigBackend* backend = resolveBackend(m_configBackend, fallback);
     auto tracking = backend->group(QStringLiteral("WindowTracking"));
 

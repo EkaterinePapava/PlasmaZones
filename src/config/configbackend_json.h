@@ -116,6 +116,11 @@ public:
     /// JSON key for the per-screen container object.
     static constexpr char PerScreenKey[] = "PerScreen";
 
+    /// Atomically write a QJsonObject to disk (temp file + rename).
+    /// Shared by sync() and ConfigMigration to avoid duplicated write logic.
+    /// Returns true on success.
+    static bool writeJsonAtomically(const QString& filePath, const QJsonObject& root);
+
 private:
     friend class JsonConfigGroup; // for group-count tracking and dirty flag
 

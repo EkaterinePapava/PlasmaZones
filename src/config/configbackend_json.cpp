@@ -348,12 +348,6 @@ void JsonConfigBackend::sync()
         return;
     }
 
-    // Ensure parent directory exists
-    QDir dir = QFileInfo(m_filePath).absoluteDir();
-    if (!dir.exists()) {
-        dir.mkpath(QLatin1String("."));
-    }
-
     // Ensure _version is always present so future migration steps can
     // distinguish format revisions.  Fresh installs that never went through
     // migration would otherwise lack it.
@@ -361,24 +355,40 @@ void JsonConfigBackend::sync()
         m_root[QLatin1String("_version")] = 1;
     }
 
-    // Atomic write using QSaveFile (writes to temp, then renames on commit)
-    QSaveFile f(m_filePath);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qWarning("JsonConfigBackend: failed to open %s for writing: %s", qPrintable(m_filePath),
-                 qPrintable(f.errorString()));
-        return;
-    }
-
-    QJsonDocument doc(m_root);
-    f.write(doc.toJson(QJsonDocument::Indented));
-
-    if (!f.commit()) {
-        qWarning("JsonConfigBackend: failed to commit write to %s: %s", qPrintable(m_filePath),
-                 qPrintable(f.errorString()));
+    if (!writeJsonAtomically(m_filePath, m_root)) {
         return;
     }
 
     m_dirty = false;
+}
+
+bool JsonConfigBackend::writeJsonAtomically(const QString& filePath, const QJsonObject& root)
+{
+    // Ensure parent directory exists
+    QDir dir = QFileInfo(filePath).absoluteDir();
+    if (!dir.exists() && !dir.mkpath(QLatin1String("."))) {
+        qWarning("JsonConfigBackend: failed to create directory %s", qPrintable(dir.absolutePath()));
+        return false;
+    }
+
+    // Atomic write using QSaveFile (writes to temp, then renames on commit)
+    QSaveFile f(filePath);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning("JsonConfigBackend: failed to open %s for writing: %s", qPrintable(filePath),
+                 qPrintable(f.errorString()));
+        return false;
+    }
+
+    QJsonDocument doc(root);
+    f.write(doc.toJson(QJsonDocument::Indented));
+
+    if (!f.commit()) {
+        qWarning("JsonConfigBackend: failed to commit write to %s: %s", qPrintable(filePath),
+                 qPrintable(f.errorString()));
+        return false;
+    }
+
+    return true;
 }
 
 void JsonConfigBackend::deleteGroup(const QString& name)
@@ -412,7 +422,7 @@ void JsonConfigBackend::deleteGroup(const QString& name)
 QString JsonConfigBackend::readRootString(const QString& key, const QString& defaultValue) const
 {
     // Root-level keys live under "General" (matching QSettings INI behavior)
-    const QJsonObject general = m_root.value(QStringLiteral("General")).toObject();
+    const QJsonObject general = m_root.value(QLatin1String("General")).toObject();
     if (general.contains(key)) {
         return general.value(key).toString(defaultValue);
     }
@@ -421,21 +431,21 @@ QString JsonConfigBackend::readRootString(const QString& key, const QString& def
 
 void JsonConfigBackend::writeRootString(const QString& key, const QString& value)
 {
-    QJsonObject general = m_root.value(QStringLiteral("General")).toObject();
+    QJsonObject general = m_root.value(QLatin1String("General")).toObject();
     general[key] = value;
-    m_root[QStringLiteral("General")] = general;
+    m_root[QLatin1String("General")] = general;
     markDirty();
 }
 
 void JsonConfigBackend::removeRootKey(const QString& key)
 {
-    QJsonObject general = m_root.value(QStringLiteral("General")).toObject();
+    QJsonObject general = m_root.value(QLatin1String("General")).toObject();
     if (general.contains(key)) {
         general.remove(key);
         if (general.isEmpty()) {
-            m_root.remove(QStringLiteral("General"));
+            m_root.remove(QLatin1String("General"));
         } else {
-            m_root[QStringLiteral("General")] = general;
+            m_root[QLatin1String("General")] = general;
         }
         markDirty();
     }
@@ -577,6 +587,13 @@ QString JsonConfigBackend::categoryToPrefix(const QString& category)
         }
     }
     return category;
+}
+
+// ── Default backend factory ──────────────────────────────────────────────
+
+std::unique_ptr<IConfigBackend> createDefaultConfigBackend()
+{
+    return JsonConfigBackend::createDefault();
 }
 
 } // namespace PlasmaZones
