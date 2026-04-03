@@ -1859,6 +1859,9 @@ bool SettingsController::exportAllSettings(const QString& filePath)
     if (filePath.isEmpty()) {
         return false;
     }
+    // Flush current in-memory settings to disk so the exported file reflects
+    // the actual current state, not the last-saved snapshot.
+    m_settings.save();
     const QString configPath = PlasmaZones::ConfigDefaults::configFilePath();
     if (!QFile::exists(configPath)) {
         qCWarning(PlasmaZones::lcCore) << "Config file not found:" << configPath;
@@ -1930,7 +1933,7 @@ bool SettingsController::importAllSettings(const QString& filePath)
         }
         QJsonParseError parseErr;
         QJsonDocument importDoc = QJsonDocument::fromJson(importFile.readAll(), &parseErr);
-        if (parseErr.error != QJsonParseError::NoError || !importDoc.isObject() || importDoc.object().isEmpty()) {
+        if (parseErr.error != QJsonParseError::NoError || !importDoc.isObject()) {
             qCWarning(PlasmaZones::lcCore) << "Invalid JSON in import file:" << filePath << parseErr.errorString();
             return false;
         }
