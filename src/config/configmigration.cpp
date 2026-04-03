@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "configmigration.h"
+#include "configbackend_json.h"
 #include "configbackend_qsettings.h"
 #include "configdefaults.h"
 #include <QColor>
@@ -51,8 +52,7 @@ bool ConfigMigration::migrateIniToJson(const QString& iniPath, const QString& js
     // Read old INI using the QSettings backend's static reader
     const QMap<QString, QVariant> flatMap = QSettingsConfigBackend::readConfigFromDisk(iniPath);
     if (flatMap.isEmpty()) {
-        qWarning("ConfigMigration: old config is empty or unreadable");
-        // Still write a minimal JSON so we don't re-attempt migration
+        qInfo("ConfigMigration: old config is empty — writing minimal JSON to complete migration");
     }
 
     QJsonObject root = iniMapToJson(flatMap);
@@ -113,24 +113,11 @@ QJsonObject ConfigMigration::iniMapToJson(const QMap<QString, QVariant>& flatMap
 
         // Check for known per-screen group patterns: ZoneSelector:*, AutotileScreen:*, SnappingScreen:*
         // Other colon-containing groups (e.g., Assignment:ScreenId:Desktop:1) are regular groups.
-        const bool isPerScreen = groupPart.startsWith(QLatin1String("ZoneSelector:"))
-            || groupPart.startsWith(QLatin1String("AutotileScreen:"))
-            || groupPart.startsWith(QLatin1String("SnappingScreen:"));
-
-        if (isPerScreen) {
+        if (JsonConfigBackend::isPerScreenPrefix(groupPart)) {
             const int colonIdx = groupPart.indexOf(QLatin1Char(':'));
             const QString prefix = groupPart.left(colonIdx);
             const QString screenId = groupPart.mid(colonIdx + 1);
-
-            // Map old prefixes to per-screen categories
-            QString category;
-            if (prefix == QLatin1String("ZoneSelector")) {
-                category = QStringLiteral("ZoneSelector");
-            } else if (prefix == QLatin1String("AutotileScreen")) {
-                category = QStringLiteral("Autotile");
-            } else {
-                category = QStringLiteral("Snapping");
-            }
+            const QString category = JsonConfigBackend::prefixToCategory(prefix);
 
             QJsonObject perScreen = root.value(QStringLiteral("PerScreen")).toObject();
             QJsonObject cat = perScreen.value(category).toObject();

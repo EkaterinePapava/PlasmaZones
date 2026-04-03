@@ -6,7 +6,7 @@
 #include "../core/interfaces.h"
 #include "../core/constants.h"
 #include "configdefaults.h"
-#include "configbackend_json.h"
+#include "iconfigbackend.h"
 #include <memory>
 #include <optional>
 #include <QFont>
@@ -1587,7 +1587,7 @@ private:
     void purgeStaleKeys();
 
     // Config backend — owned (standalone) or non-owned (shared from Daemon)
-    std::unique_ptr<JsonConfigBackend> m_ownedBackend;
+    std::unique_ptr<IConfigBackend> m_ownedBackend;
     IConfigBackend* m_configBackend = nullptr; // always valid after construction
     static QString normalizeUuidString(const QString& uuidStr);
 

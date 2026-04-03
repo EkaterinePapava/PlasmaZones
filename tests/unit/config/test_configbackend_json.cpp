@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QTest>
+#include <QDir>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -388,6 +389,106 @@ private Q_SLOTS:
             QCOMPARE(g->readBool(QStringLiteral("C")), true);
             QCOMPARE(g->readBool(QStringLiteral("D")), false);
         }
+    }
+
+    void testReadBoolFromDouble_onlyZeroAndOne()
+    {
+        IsolatedConfigGuard guard;
+        // Write raw JSON with numeric booleans (simulates hand-edited config)
+        const QString path = ConfigDefaults::configFilePath();
+        QDir().mkpath(QFileInfo(path).absolutePath());
+        QFile f(path);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write(R"({"G":{"zero":0,"one":1,"half":0.5}})");
+        f.close();
+
+        auto backend = JsonConfigBackend::createDefault();
+        auto g = backend->group(QStringLiteral("G"));
+        QCOMPARE(g->readBool(QStringLiteral("zero")), false);
+        QCOMPARE(g->readBool(QStringLiteral("one")), true);
+        // 0.5 is not a valid boolean representation — should return default
+        QCOMPARE(g->readBool(QStringLiteral("half"), false), false);
+        QCOMPARE(g->readBool(QStringLiteral("half"), true), true);
+    }
+
+    // =========================================================================
+    // Corrupt JSON recovery
+    // =========================================================================
+
+    void testCorruptJsonFile_loadsEmpty()
+    {
+        IsolatedConfigGuard guard;
+        // Write corrupt JSON to disk
+        const QString path = ConfigDefaults::configFilePath();
+        QDir().mkpath(QFileInfo(path).absolutePath());
+        QFile f(path);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write("{this is not valid json!!!");
+        f.close();
+
+        // Backend should load with empty root (not crash or throw)
+        auto backend = JsonConfigBackend::createDefault();
+        auto g = backend->group(QStringLiteral("TestGroup"));
+        QCOMPARE(g->readString(QStringLiteral("Missing"), QStringLiteral("default")), QStringLiteral("default"));
+    }
+
+    void testCorruptJsonFile_reparseRecovery()
+    {
+        IsolatedConfigGuard guard;
+        const QString path = ConfigDefaults::configFilePath();
+        QDir().mkpath(QFileInfo(path).absolutePath());
+
+        // Write valid JSON first
+        {
+            QFile f(path);
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            f.write(R"({"TestGroup":{"Key":"Value"}})");
+        }
+
+        auto backend = JsonConfigBackend::createDefault();
+        {
+            auto g = backend->group(QStringLiteral("TestGroup"));
+            QCOMPARE(g->readString(QStringLiteral("Key")), QStringLiteral("Value"));
+        }
+
+        // Now corrupt the file on disk
+        {
+            QFile f(path);
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            f.write("CORRUPT!");
+        }
+
+        // reparseConfiguration should reset to empty (not crash)
+        backend->reparseConfiguration();
+        {
+            auto g = backend->group(QStringLiteral("TestGroup"));
+            QCOMPARE(g->readString(QStringLiteral("Key"), QStringLiteral("gone")), QStringLiteral("gone"));
+        }
+    }
+
+    // =========================================================================
+    // Per-screen helpers
+    // =========================================================================
+
+    void testIsPerScreenPrefix()
+    {
+        QVERIFY(JsonConfigBackend::isPerScreenPrefix(QStringLiteral("ZoneSelector:eDP-1")));
+        QVERIFY(JsonConfigBackend::isPerScreenPrefix(QStringLiteral("AutotileScreen:HDMI-1")));
+        QVERIFY(JsonConfigBackend::isPerScreenPrefix(QStringLiteral("SnappingScreen:DP-2")));
+        // Assignment groups are NOT per-screen
+        QVERIFY(!JsonConfigBackend::isPerScreenPrefix(QStringLiteral("Assignment:eDP-1:Desktop:1")));
+        QVERIFY(!JsonConfigBackend::isPerScreenPrefix(QStringLiteral("General")));
+    }
+
+    void testPrefixCategoryRoundTrip()
+    {
+        QCOMPARE(JsonConfigBackend::prefixToCategory(QStringLiteral("AutotileScreen")), QStringLiteral("Autotile"));
+        QCOMPARE(JsonConfigBackend::prefixToCategory(QStringLiteral("SnappingScreen")), QStringLiteral("Snapping"));
+        QCOMPARE(JsonConfigBackend::prefixToCategory(QStringLiteral("ZoneSelector")), QStringLiteral("ZoneSelector"));
+
+        QCOMPARE(JsonConfigBackend::categoryToPrefix(QStringLiteral("Autotile")), QStringLiteral("AutotileScreen"));
+        QCOMPARE(JsonConfigBackend::categoryToPrefix(QStringLiteral("Snapping")), QStringLiteral("SnappingScreen"));
+        QCOMPARE(JsonConfigBackend::categoryToPrefix(QStringLiteral("ZoneSelector")), QStringLiteral("ZoneSelector"));
     }
 };
 

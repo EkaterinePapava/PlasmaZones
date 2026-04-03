@@ -101,17 +101,28 @@ public:
     /// Resolve a shared or fallback backend.
     static IConfigBackend* resolveBackend(IConfigBackend* shared, std::unique_ptr<JsonConfigBackend>& fallback);
 
+    // ── Per-screen group helpers (shared by backend, migration, groupList) ────
+
+    /// Returns true if @p groupName uses a known per-screen prefix
+    /// (ZoneSelector:, AutotileScreen:, SnappingScreen:).
+    /// Assignment groups and other colon-containing names return false.
+    static bool isPerScreenPrefix(const QString& groupName);
+
+    /// Map a per-screen group prefix (e.g. "AutotileScreen") to its JSON
+    /// category key (e.g. "Autotile").  ZoneSelector maps to itself.
+    static QString prefixToCategory(const QString& prefix);
+
+    /// Reverse of prefixToCategory: "Autotile" → "AutotileScreen", etc.
+    static QString categoryToPrefix(const QString& category);
+
 private:
     friend class JsonConfigGroup; // for group-count tracking and dirty flag
 
     void loadFromDisk();
     void markDirty();
 
-    /// Per-screen group prefix constants
+    /// JSON key for the per-screen container object.
     static constexpr const char* PerScreenKey = "PerScreen";
-    static constexpr const char* ZoneSelectorPrefix = "ZoneSelector:";
-    static constexpr const char* AutotileScreenPrefix = "AutotileScreen:";
-    static constexpr const char* SnappingScreenPrefix = "SnappingScreen:";
 
     QString m_filePath;
     QJsonObject m_root;

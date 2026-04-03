@@ -194,6 +194,7 @@ Flickable {
 
         title: i18n("Export Settings")
         nameFilters: [i18n("PlasmaZones Config (*.json)"), i18n("All files (*)")]
+        defaultSuffix: "json"
         fileMode: FileDialog.SaveFile
         onAccepted: settingsController.exportAllSettings(selectedFile.toString().replace(/^file:\/\/+/, "/"))
     }

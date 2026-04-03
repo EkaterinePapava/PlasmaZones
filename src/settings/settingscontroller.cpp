@@ -1889,8 +1889,9 @@ bool SettingsController::importAllSettings(const QString& filePath)
     {
         QFile f(filePath);
         if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            const QByteArray head = f.peek(1);
-            // JSON files start with '{'; INI files start with a key, '[', or comment
+            // Read enough bytes to skip any leading whitespace/BOM, then check
+            // the first non-whitespace character.  JSON files start with '{'.
+            const QByteArray head = f.peek(256).trimmed();
             isLegacyIni = !head.isEmpty() && head.at(0) != '{';
         }
     }

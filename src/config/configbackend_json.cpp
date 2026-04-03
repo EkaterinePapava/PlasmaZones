@@ -19,6 +19,8 @@ JsonConfigGroup::JsonConfigGroup(QJsonObject& root, const QString& groupName, Js
     , m_groupName(groupName)
     , m_backend(backend)
 {
+    // JsonConfigBackend is single-threaded (used only from the main/GUI thread).
+    // Relaxed ordering is sufficient here — the assert is a debug-only sanity check.
     Q_ASSERT_X(m_backend->m_activeGroupCount.load(std::memory_order_relaxed) == 0, "JsonConfigGroup::JsonConfigGroup",
                "Another JsonConfigGroup is still alive — destroy it first");
     m_backend->m_activeGroupCount.fetch_add(1, std::memory_order_relaxed);
@@ -31,12 +33,7 @@ JsonConfigGroup::~JsonConfigGroup()
 
 bool JsonConfigGroup::isPerScreenGroup() const
 {
-    // Only the three known per-screen prefixes are routed through PerScreen.
-    // Other colon-containing groups (e.g., Assignment:ScreenId:Desktop:1)
-    // are stored as regular top-level groups.
-    return m_groupName.startsWith(QLatin1String("ZoneSelector:"))
-        || m_groupName.startsWith(QLatin1String("AutotileScreen:"))
-        || m_groupName.startsWith(QLatin1String("SnappingScreen:"));
+    return JsonConfigBackend::isPerScreenPrefix(m_groupName);
 }
 
 JsonConfigGroup::PerScreenPath JsonConfigGroup::parsePerScreenGroup() const
@@ -49,18 +46,7 @@ JsonConfigGroup::PerScreenPath JsonConfigGroup::parsePerScreenGroup() const
 
     const QString prefix = m_groupName.left(colonIdx);
     path.screenId = m_groupName.mid(colonIdx + 1);
-
-    // Map old prefix names to per-screen categories
-    if (prefix == QLatin1String("ZoneSelector")) {
-        path.category = QStringLiteral("ZoneSelector");
-    } else if (prefix == QLatin1String("AutotileScreen")) {
-        path.category = QStringLiteral("Autotile");
-    } else if (prefix == QLatin1String("SnappingScreen")) {
-        path.category = QStringLiteral("Snapping");
-    } else {
-        // Unknown prefix — use as-is
-        path.category = prefix;
-    }
+    path.category = JsonConfigBackend::prefixToCategory(prefix);
     return path;
 }
 
@@ -149,9 +135,16 @@ bool JsonConfigGroup::readBool(const QString& key, bool defaultValue) const
             return false;
         }
     }
-    // Handle numeric values (1 = true, 0 = false)
+    // Handle numeric values: only 0 and 1 are valid boolean representations.
+    // Other numbers (e.g. 0.5 from a hand-edited config) fall through to default.
     if (val.isDouble()) {
-        return val.toDouble() != 0.0;
+        const double d = val.toDouble();
+        if (d == 0.0) {
+            return false;
+        }
+        if (d == 1.0) {
+            return true;
+        }
     }
     return defaultValue;
 }
@@ -185,7 +178,7 @@ QColor JsonConfigGroup::readColor(const QString& key, const QColor& defaultValue
         return defaultValue;
     }
 
-    // Try hex format first: #rrggbb or #rrggbbaa
+    // Try hex format: #rrggbb, #aarrggbb (HexArgb, as written by writeColor)
     if (s.startsWith(QLatin1Char('#'))) {
         QColor c(s);
         return c.isValid() ? c : defaultValue;
@@ -216,7 +209,10 @@ QColor JsonConfigGroup::readColor(const QString& key, const QColor& defaultValue
 void JsonConfigGroup::writeString(const QString& key, const QString& value)
 {
     QJsonObject obj = groupObject();
-    // If the string is JSON (array or object), store as native JSON
+    // Detect JSON arrays/objects and store as native JSON rather than escaped strings.
+    // This keeps trigger lists, per-algorithm settings, etc. as clean JSON in the file.
+    // Safe because all known string config values are either plain text or intentional JSON;
+    // strings like "[Main Monitor]" fail JSON parsing and fall through to plain storage.
     if (!value.isEmpty() && (value.front() == QLatin1Char('[') || value.front() == QLatin1Char('{'))) {
         QJsonParseError err;
         QJsonDocument doc = QJsonDocument::fromJson(value.toUtf8(), &err);
@@ -260,7 +256,7 @@ void JsonConfigGroup::writeDouble(const QString& key, double value)
 void JsonConfigGroup::writeColor(const QString& key, const QColor& value)
 {
     QJsonObject obj = groupObject();
-    // Store as #rrggbbaa hex
+    // Store as #aarrggbb hex (Qt's HexArgb format)
     obj[key] = value.name(QColor::HexArgb);
     setGroupObject(obj);
 }
@@ -366,28 +362,13 @@ void JsonConfigBackend::sync()
     m_dirty = false;
 }
 
-static bool isKnownPerScreenPrefix(const QString& name)
-{
-    return name.startsWith(QLatin1String("ZoneSelector:")) || name.startsWith(QLatin1String("AutotileScreen:"))
-        || name.startsWith(QLatin1String("SnappingScreen:"));
-}
-
 void JsonConfigBackend::deleteGroup(const QString& name)
 {
-    if (isKnownPerScreenPrefix(name)) {
+    if (isPerScreenPrefix(name)) {
         const int colonIdx = name.indexOf(QLatin1Char(':'));
         const QString prefix = name.left(colonIdx);
         const QString screenId = name.mid(colonIdx + 1);
-
-        // Map prefix to per-screen category
-        QString category;
-        if (prefix == QLatin1String("ZoneSelector")) {
-            category = QStringLiteral("ZoneSelector");
-        } else if (prefix == QLatin1String("AutotileScreen")) {
-            category = QStringLiteral("Autotile");
-        } else {
-            category = QStringLiteral("Snapping");
-        }
+        const QString category = prefixToCategory(prefix);
 
         QJsonObject perScreen = m_root.value(QLatin1String(PerScreenKey)).toObject();
         QJsonObject cat = perScreen.value(category).toObject();
@@ -415,10 +396,6 @@ QString JsonConfigBackend::readRootString(const QString& key, const QString& def
     if (general.contains(key)) {
         return general.value(key).toString(defaultValue);
     }
-    // Also check top-level for backwards compatibility
-    if (m_root.contains(key)) {
-        return m_root.value(key).toString(defaultValue);
-    }
     return defaultValue;
 }
 
@@ -442,11 +419,6 @@ void JsonConfigBackend::removeRootKey(const QString& key)
         }
         markDirty();
     }
-    // Also remove from top-level if present
-    if (m_root.contains(key)) {
-        m_root.remove(key);
-        markDirty();
-    }
 }
 
 QStringList JsonConfigBackend::groupList() const
@@ -467,15 +439,7 @@ QStringList JsonConfigBackend::groupList() const
     const QJsonObject perScreen = m_root.value(QLatin1String(PerScreenKey)).toObject();
     for (auto catIt = perScreen.constBegin(); catIt != perScreen.constEnd(); ++catIt) {
         const QJsonObject category = catIt.value().toObject();
-        // Reverse-map category names to the old prefix format
-        QString prefix = catIt.key();
-        if (prefix == QLatin1String("Autotile")) {
-            prefix = QStringLiteral("AutotileScreen");
-        } else if (prefix == QLatin1String("Snapping")) {
-            prefix = QStringLiteral("SnappingScreen");
-        }
-        // ZoneSelector stays as-is
-
+        const QString prefix = categoryToPrefix(catIt.key());
         for (auto screenIt = category.constBegin(); screenIt != category.constEnd(); ++screenIt) {
             groups.append(prefix + QLatin1Char(':') + screenIt.key());
         }
@@ -518,12 +482,7 @@ QMap<QString, QVariant> JsonConfigBackend::readConfigFromDisk()
                 // Flatten per-screen: PerScreen/Category/ScreenId/Key → Category:ScreenId/Key
                 const QJsonObject perScreen = it.value().toObject();
                 for (auto catIt = perScreen.constBegin(); catIt != perScreen.constEnd(); ++catIt) {
-                    QString prefix = catIt.key();
-                    if (prefix == QLatin1String("Autotile")) {
-                        prefix = QStringLiteral("AutotileScreen");
-                    } else if (prefix == QLatin1String("Snapping")) {
-                        prefix = QStringLiteral("SnappingScreen");
-                    }
+                    const QString prefix = categoryToPrefix(catIt.key());
                     const QJsonObject category = catIt.value().toObject();
                     for (auto sIt = category.constBegin(); sIt != category.constEnd(); ++sIt) {
                         const QJsonObject screenObj = sIt.value().toObject();
@@ -547,6 +506,39 @@ QMap<QString, QVariant> JsonConfigBackend::readConfigFromDisk()
     }
 
     return map;
+}
+
+// ── Per-screen group helpers ─────────────────────────────────────────────
+
+bool JsonConfigBackend::isPerScreenPrefix(const QString& groupName)
+{
+    return groupName.startsWith(QLatin1String("ZoneSelector:"))
+        || groupName.startsWith(QLatin1String("AutotileScreen:"))
+        || groupName.startsWith(QLatin1String("SnappingScreen:"));
+}
+
+QString JsonConfigBackend::prefixToCategory(const QString& prefix)
+{
+    if (prefix == QLatin1String("AutotileScreen")) {
+        return QStringLiteral("Autotile");
+    }
+    if (prefix == QLatin1String("SnappingScreen")) {
+        return QStringLiteral("Snapping");
+    }
+    // ZoneSelector and unknown prefixes map to themselves
+    return prefix;
+}
+
+QString JsonConfigBackend::categoryToPrefix(const QString& category)
+{
+    if (category == QLatin1String("Autotile")) {
+        return QStringLiteral("AutotileScreen");
+    }
+    if (category == QLatin1String("Snapping")) {
+        return QStringLiteral("SnappingScreen");
+    }
+    // ZoneSelector and unknown categories map to themselves
+    return category;
 }
 
 IConfigBackend* JsonConfigBackend::resolveBackend(IConfigBackend* shared, std::unique_ptr<JsonConfigBackend>& fallback)

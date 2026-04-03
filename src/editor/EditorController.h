@@ -13,7 +13,7 @@
 #include <QQuickWindow>
 #include <QSize>
 #include <QVector>
-#include "../config/configbackend_json.h"
+#include "../config/iconfigbackend.h"
 #include "../core/constants.h"
 #include "../core/logging.h"
 #include "undo/UndoController.h"
