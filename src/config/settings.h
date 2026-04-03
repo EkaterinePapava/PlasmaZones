@@ -1407,7 +1407,7 @@ public:
     void setToggleLayoutLockShortcut(const QString& shortcut);
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Editor Settings (shared [Editor] group in plasmazonesrc)
+    // Editor Settings (shared [Editor] group in config.json)
     // ═══════════════════════════════════════════════════════════════════════════
 
     QString editorDuplicateShortcut() const
@@ -1815,7 +1815,7 @@ private:
     // Toggle Layout Lock (Meta+Ctrl+L)
     QString m_toggleLayoutLockShortcut = ConfigDefaults::toggleLayoutLockShortcut();
 
-    // Editor Settings ([Editor] group in plasmazonesrc)
+    // Editor Settings ([Editor] group in config.json)
     QString m_editorDuplicateShortcut = ConfigDefaults::editorDuplicateShortcut();
     QString m_editorSplitHorizontalShortcut = ConfigDefaults::editorSplitHorizontalShortcut();
     QString m_editorSplitVerticalShortcut = ConfigDefaults::editorSplitVerticalShortcut();

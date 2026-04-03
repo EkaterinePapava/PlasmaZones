@@ -26,7 +26,7 @@ class IsolatedConfigGuard
 {
 public:
     IsolatedConfigGuard()
-        : m_configFileName(QStringLiteral("plasmazonesrc-") + QUuid::createUuid().toString(QUuid::Id128).left(8))
+        : m_configFileName(QStringLiteral("config-") + QUuid::createUuid().toString(QUuid::Id128).left(8))
     {
         QVERIFY2(m_tempDir.isValid(), "Failed to create temporary directory for isolated config");
         m_oldConfigHome = qEnvironmentVariable("XDG_CONFIG_HOME");
@@ -64,7 +64,7 @@ public:
     /**
      * A unique config file name for this guard instance.
      *
-     * Use this instead of the hardcoded "plasmazonesrc" when possible, so each
+     * Use this instead of a hardcoded config file name when possible, so each
      * test gets its own config file within the temporary directory.
      */
     QString configFileName() const

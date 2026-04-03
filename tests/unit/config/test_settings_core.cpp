@@ -108,9 +108,9 @@ private Q_SLOTS:
      * This validates the full round-trip for a representative subset of settings
      * across all config groups.
      *
-     * QSettingsConfigBackend::createDefault() reads from
-     * $XDG_CONFIG_HOME/plasmazonesrc. The IsolatedConfigGuard redirects
-     * XDG_CONFIG_HOME to a temp directory, so each test gets a fresh file.
+     * JsonConfigBackend::createDefault() reads from
+     * $XDG_CONFIG_HOME/plasmazones/config.json. The IsolatedConfigGuard
+     * redirects XDG_CONFIG_HOME to a temp directory, so each test gets a fresh file.
      */
     void testSave_load_roundtrip_allGroups()
     {

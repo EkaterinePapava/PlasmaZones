@@ -295,7 +295,7 @@ void QSettingsConfigBackend::reparseConfiguration()
 
     // Destroy old QSettings BEFORE creating the new one so Qt's QConfFile
     // cache is released. With the shared-backend refactor, this is the ONLY
-    // QSettings instance for plasmazonesrc in the daemon process, so the
+    // QSettings instance for the legacy INI config in this process, so the
     // ref count drops to zero and QConfFile::fromName() re-reads from disk.
     m_settings.reset();
     m_settings = std::make_unique<QSettings>(m_filePath, kconfigIniFormat());

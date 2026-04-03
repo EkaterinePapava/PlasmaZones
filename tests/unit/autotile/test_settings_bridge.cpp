@@ -54,7 +54,7 @@ private Q_SLOTS:
 
     void init()
     {
-        // Redirect config to a temp directory so tests never write to real ~/.config/plasmazonesrc
+        // Redirect config to a temp directory so tests never write to real ~/.config/plasmazones/
         m_configGuard = std::make_unique<IsolatedConfigGuard>();
     }
 

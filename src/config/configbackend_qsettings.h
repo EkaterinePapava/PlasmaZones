@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 fuddlesworth
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// QSettings-based config backend.  Reads/writes ~/.config/plasmazonesrc
-// in INI format, compatible with KConfig's on-disk format.
+// QSettings-based config backend (legacy).  Used for reading old
+// ~/.config/plasmazonesrc INI files during migration to JSON.
 
 #pragma once
 
