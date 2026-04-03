@@ -614,15 +614,16 @@ private:
     QStringList m_bufferFilters;
     QVariantMap m_shaderParams;
 
-    // Custom shader parameters
-    QVector4D m_customParams1;
-    QVector4D m_customParams2;
-    QVector4D m_customParams3;
-    QVector4D m_customParams4;
-    QVector4D m_customParams5;
-    QVector4D m_customParams6;
-    QVector4D m_customParams7;
-    QVector4D m_customParams8;
+    // Custom shader parameters — initialized to -1.0 (the "unset" sentinel).
+    // Shaders use `>= 0.0` to distinguish set values from defaults.
+    QVector4D m_customParams1 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
+    QVector4D m_customParams2 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
+    QVector4D m_customParams3 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
+    QVector4D m_customParams4 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
+    QVector4D m_customParams5 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
+    QVector4D m_customParams6 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
+    QVector4D m_customParams7 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
+    QVector4D m_customParams8 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
     QVector4D m_customColor1 = QVector4D(1.0f, 0.5f, 0.0f, 1.0f); // Default orange highlight
     QVector4D m_customColor2 = QVector4D(0.2f, 0.2f, 0.2f, 0.8f); // Default gray inactive
     QVector4D m_customColor3 = QVector4D(1.0f, 1.0f, 1.0f, 0.0f); // Default white, alpha 0 = not set

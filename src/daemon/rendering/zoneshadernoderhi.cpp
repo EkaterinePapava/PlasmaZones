@@ -121,8 +121,13 @@ ZoneShaderNodeRhi::ZoneShaderNodeRhi(QQuickItem* item)
     QMatrix4x4 identity;
     std::memcpy(m_uniforms.qt_Matrix, identity.constData(), 16 * sizeof(float));
     m_uniforms.qt_Opacity = 1.0f;
-    m_customParams1 = QVector4D(0.5f, 2.0f, 0.0f, 0.0f);
-    m_customParams2 = QVector4D(0.0f, 0.0f, 0.0f, 0.0f);
+    // Initialize all customParams to -1.0 (the "unset" sentinel).
+    // Shaders use `>= 0.0` checks to distinguish set values from defaults.
+    // Without this, unset params read as 0.0 and bypass the default fallback.
+    m_customParams1 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
+    m_customParams2 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
+    m_customParams3 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
+    m_customParams4 = QVector4D(-1.0f, -1.0f, -1.0f, -1.0f);
 
     // 1×1 transparent fallback for when labels are disabled
     m_transparentFallbackImage = QImage(1, 1, QImage::Format_ARGB32_Premultiplied);
