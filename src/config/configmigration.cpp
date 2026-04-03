@@ -18,7 +18,22 @@ bool ConfigMigration::ensureJsonConfig()
 {
     const QString jsonPath = ConfigDefaults::configFilePath();
     if (QFile::exists(jsonPath)) {
-        return true; // Already migrated or fresh JSON config
+        // Verify the file is non-empty and contains valid JSON with data.
+        // An empty or corrupt file (e.g. from interrupted write) should not
+        // block migration — fall through to re-migrate from INI if available.
+        QFile f(jsonPath);
+        if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            const QByteArray data = f.readAll();
+            if (!data.trimmed().isEmpty()) {
+                QJsonParseError err;
+                QJsonDocument doc = QJsonDocument::fromJson(data, &err);
+                if (err.error == QJsonParseError::NoError && !doc.object().isEmpty()) {
+                    return true; // Already migrated or fresh JSON config
+                }
+            }
+        }
+        // Empty or corrupt JSON — remove it so migration can re-create it
+        QFile::remove(jsonPath);
     }
 
     const QString iniPath = ConfigDefaults::legacyConfigFilePath();

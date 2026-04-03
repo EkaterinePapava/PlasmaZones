@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "../settings.h"
-#include "../configbackend_json.h"
+#include "../iconfigbackend.h"
 #include "../configdefaults.h"
 #include "../../core/logging.h"
 #include "../../core/utils.h"

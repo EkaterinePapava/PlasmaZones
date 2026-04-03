@@ -1889,9 +1889,14 @@ bool SettingsController::importAllSettings(const QString& filePath)
     {
         QFile f(filePath);
         if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            // Read enough bytes to skip any leading whitespace/BOM, then check
-            // the first non-whitespace character.  JSON files start with '{'.
-            const QByteArray head = f.peek(256).trimmed();
+            // Read enough bytes to find the first non-whitespace character.
+            // JSON files start with '{' (or '[' for arrays, though config is always an object).
+            // Skip UTF-8 BOM (EF BB BF) if present — trimmed() only strips ASCII whitespace.
+            QByteArray head = f.peek(256).trimmed();
+            if (head.size() >= 3 && static_cast<unsigned char>(head.at(0)) == 0xEF
+                && static_cast<unsigned char>(head.at(1)) == 0xBB && static_cast<unsigned char>(head.at(2)) == 0xBF) {
+                head = head.mid(3).trimmed();
+            }
             isLegacyIni = !head.isEmpty() && head.at(0) != '{';
         }
     }

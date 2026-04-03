@@ -10,6 +10,7 @@
 
 #include "pz_i18n.h"
 #include "../../config/configbackend_json.h"
+#include "../../config/configmigration.h"
 #include <QRegularExpression>
 
 namespace PlasmaZones {
@@ -109,6 +110,10 @@ void EditorController::setDefaultZoneColors(const QString& highlightColor, const
 
 void EditorController::loadEditorSettings()
 {
+    // Ensure INI→JSON migration has run (the daemon does this too, but the
+    // editor may start before the daemon on first upgrade).
+    PlasmaZones::ConfigMigration::ensureJsonConfig();
+
     auto backend = PlasmaZones::JsonConfigBackend::createDefault();
 
     // Note: Per-layout zonePadding/outerGap overrides are loaded from the layout JSON

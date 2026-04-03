@@ -9,6 +9,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QSaveFile>
+#include <limits>
 
 namespace PlasmaZones {
 
@@ -106,7 +107,12 @@ int JsonConfigGroup::readInt(const QString& key, int defaultValue) const
     }
     const QJsonValue val = obj.value(key);
     if (val.isDouble()) {
-        return static_cast<int>(val.toDouble());
+        const double d = val.toDouble();
+        if (d >= static_cast<double>(std::numeric_limits<int>::min())
+            && d <= static_cast<double>(std::numeric_limits<int>::max())) {
+            return static_cast<int>(d);
+        }
+        return defaultValue;
     }
     // Handle string values (from hand-edited configs)
     if (val.isString()) {
@@ -348,6 +354,13 @@ void JsonConfigBackend::sync()
         dir.mkpath(QLatin1String("."));
     }
 
+    // Ensure _version is always present so future migration steps can
+    // distinguish format revisions.  Fresh installs that never went through
+    // migration would otherwise lack it.
+    if (!m_root.contains(QLatin1String("_version"))) {
+        m_root[QLatin1String("_version")] = 1;
+    }
+
     // Atomic write using QSaveFile (writes to temp, then renames on commit)
     QSaveFile f(m_filePath);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
@@ -462,11 +475,11 @@ std::unique_ptr<JsonConfigBackend> JsonConfigBackend::createDefault()
     return std::make_unique<JsonConfigBackend>(ConfigDefaults::configFilePath());
 }
 
-QMap<QString, QVariant> JsonConfigBackend::readConfigFromDisk()
+QMap<QString, QVariant> JsonConfigBackend::readConfigFromDisk(const QString& filePath)
 {
     QMap<QString, QVariant> map;
 
-    QFile f(ConfigDefaults::configFilePath());
+    QFile f(filePath.isEmpty() ? ConfigDefaults::configFilePath() : filePath);
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return map;
     }

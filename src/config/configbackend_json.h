@@ -96,7 +96,8 @@ public:
     /// Read config file directly from disk as a flat QMap for compatibility
     /// with WindowTrackingAdaptor::loadState(). Flattens nested JSON into
     /// "Group/Key" format matching the QSettings convention.
-    static QMap<QString, QVariant> readConfigFromDisk();
+    /// If @p filePath is empty, reads from the default config path.
+    static QMap<QString, QVariant> readConfigFromDisk(const QString& filePath = {});
 
     // ── Per-screen group helpers (shared by backend, migration, groupList) ────
 

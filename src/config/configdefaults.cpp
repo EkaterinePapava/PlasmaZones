@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "configdefaults.h"
+#include "configbackend_json.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -32,25 +33,20 @@ QString ConfigDefaults::legacyConfigFilePath()
 
 QString ConfigDefaults::readRenderingBackendFromDisk()
 {
+    // Try JSON config first — reuse the backend to avoid duplicating parsing logic.
     const QString jsonPath = configFilePath();
-    QFile jsonFile(jsonPath);
-    if (jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QJsonParseError err;
-        QJsonDocument doc = QJsonDocument::fromJson(jsonFile.readAll(), &err);
-        if (err.error == QJsonParseError::NoError) {
-            const QJsonObject root = doc.object();
-            const QJsonObject rendering = root.value(renderingGroup()).toObject();
-            if (rendering.contains(renderingBackendKey())) {
-                return normalizeRenderingBackend(rendering.value(renderingBackendKey()).toString());
-            }
+    if (QFile::exists(jsonPath)) {
+        JsonConfigBackend backend(jsonPath);
+        auto rendering = backend.group(renderingGroup());
+        if (rendering->hasKey(renderingBackendKey())) {
+            return normalizeRenderingBackend(rendering->readString(renderingBackendKey(), renderingBackend()));
         }
     }
 
     // Fallback: read from legacy INI file if JSON doesn't exist yet (migration
     // hasn't run — this function is called very early, before ensureJsonConfig()).
     const QString iniPath = legacyConfigFilePath();
-    QFile iniFile(iniPath);
-    if (iniFile.exists()) {
+    if (QFile::exists(iniPath)) {
         QSettings cfg(iniPath, QSettings::IniFormat);
         const QString raw = cfg.value(renderingBackendKey(), renderingBackend()).toString();
         return normalizeRenderingBackend(raw);
