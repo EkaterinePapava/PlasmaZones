@@ -98,9 +98,6 @@ public:
     /// "Group/Key" format matching the QSettings convention.
     static QMap<QString, QVariant> readConfigFromDisk();
 
-    /// Resolve a shared or fallback backend.
-    static IConfigBackend* resolveBackend(IConfigBackend* shared, std::unique_ptr<JsonConfigBackend>& fallback);
-
     // ── Per-screen group helpers (shared by backend, migration, groupList) ────
 
     /// Returns true if @p groupName uses a known per-screen prefix

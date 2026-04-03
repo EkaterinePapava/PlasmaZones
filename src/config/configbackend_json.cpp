@@ -204,7 +204,8 @@ QColor JsonConfigGroup::readColor(const QString& key, const QColor& defaultValue
                     a = 255;
                 }
             }
-            return QColor(r, g, b, a);
+            QColor c(qBound(0, r, 255), qBound(0, g, 255), qBound(0, b, 255), qBound(0, a, 255));
+            return c.isValid() ? c : defaultValue;
         }
     }
     return defaultValue;
@@ -558,15 +559,6 @@ QString JsonConfigBackend::categoryToPrefix(const QString& category)
         }
     }
     return category;
-}
-
-IConfigBackend* JsonConfigBackend::resolveBackend(IConfigBackend* shared, std::unique_ptr<JsonConfigBackend>& fallback)
-{
-    if (shared) {
-        return shared;
-    }
-    fallback = createDefault();
-    return fallback.get();
 }
 
 } // namespace PlasmaZones

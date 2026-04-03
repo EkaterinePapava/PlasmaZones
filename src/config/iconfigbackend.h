@@ -81,4 +81,18 @@ protected:
     IConfigBackend() = default;
 };
 
+/// Resolve a shared or fallback backend.  If @p shared is non-null it is
+/// returned directly; otherwise a new default backend of type T is created
+/// into @p fallback and returned.  Eliminates repeated resolve boilerplate
+/// across JsonConfigBackend and QSettingsConfigBackend.
+template<typename T>
+IConfigBackend* resolveBackend(IConfigBackend* shared, std::unique_ptr<T>& fallback)
+{
+    if (shared) {
+        return shared;
+    }
+    fallback = T::createDefault();
+    return fallback.get();
+}
+
 } // namespace PlasmaZones

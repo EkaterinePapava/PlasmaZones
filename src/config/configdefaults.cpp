@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSettings>
 #include <QStandardPaths>
 
 namespace PlasmaZones {
@@ -43,6 +44,16 @@ QString ConfigDefaults::readRenderingBackendFromDisk()
                 return normalizeRenderingBackend(rendering.value(renderingBackendKey()).toString());
             }
         }
+    }
+
+    // Fallback: read from legacy INI file if JSON doesn't exist yet (migration
+    // hasn't run — this function is called very early, before ensureJsonConfig()).
+    const QString iniPath = legacyConfigFilePath();
+    QFile iniFile(iniPath);
+    if (iniFile.exists()) {
+        QSettings cfg(iniPath, QSettings::IniFormat);
+        const QString raw = cfg.value(renderingBackendKey(), renderingBackend()).toString();
+        return normalizeRenderingBackend(raw);
     }
 
     return renderingBackend();

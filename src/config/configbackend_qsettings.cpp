@@ -357,14 +357,4 @@ QMap<QString, QVariant> QSettingsConfigBackend::readConfigFromDisk(const QString
     return map;
 }
 
-IConfigBackend* QSettingsConfigBackend::resolveBackend(IConfigBackend* shared,
-                                                       std::unique_ptr<QSettingsConfigBackend>& fallback)
-{
-    if (shared) {
-        return shared;
-    }
-    fallback = createDefault();
-    return fallback.get();
-}
-
 } // namespace PlasmaZones

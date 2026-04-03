@@ -12,6 +12,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
+#include "../../config/iconfigbackend.h"
 #include "../../config/configbackend_json.h"
 #include <QTimer>
 
@@ -51,7 +52,7 @@ static QHash<QString, QStringList> parseZoneListMap(const QString& json)
 void WindowTrackingAdaptor::saveState()
 {
     std::unique_ptr<JsonConfigBackend> fallback;
-    IConfigBackend* backend = JsonConfigBackend::resolveBackend(m_configBackend, fallback);
+    IConfigBackend* backend = resolveBackend(m_configBackend, fallback);
     auto tracking = backend->group(QStringLiteral("WindowTracking"));
 
     // Save active layout ID so we can restore it after daemon restart.

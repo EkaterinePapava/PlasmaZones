@@ -86,11 +86,6 @@ public:
     /// Read config from a specific file path.
     static QMap<QString, QVariant> readConfigFromDisk(const QString& filePath);
 
-    /// Resolve a shared or fallback backend. If @p shared is non-null it is
-    /// returned directly; otherwise a new default backend is created into
-    /// @p fallback and returned.  Eliminates repeated resolve boilerplate.
-    static IConfigBackend* resolveBackend(IConfigBackend* shared, std::unique_ptr<QSettingsConfigBackend>& fallback);
-
 private:
     friend class QSettingsConfigGroup; // for group-count tracking
     QString m_filePath;
